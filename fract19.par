@@ -1,0 +1,57 @@
+; The following illustrate a few features new in Fractint 19.X
+
+Achute             { ; (c) 1995 Bradley Beacham  [74223,2745]
+                     ; No commercial use without permission
+  reset=1827 type=lambda(fn||fn) function=sin/acos passes=t
+  corners=-0.28313936/0.30830419/-1.047353/1.066671/-1.0849512/0.02172946
+  params=1/0.1/0.1 float=y inside=zmag
+  colors=000sKS<5>a00<11>z00sKS<6>zA0<15>zz0<14>w03<8>O0b000<7>0001Uf<7>11\
+  0<9>553000<7>000001001012013<47>1Te1Ue1Uf2Uf<58>xyb<7>1Uf000<14>00000020\
+  0<10>O00
+  }
+
+Aguay              { ; (c) 1995 Bradley Beacham  [74223,2745]
+                     ; No commercial use without permission
+  reset=1827 type=julia(fn||fn) function=cabs/sqr
+  corners=-1.440256/1.440256/-1.080192/1.080192
+  params=-0.48/-0.6/0.045 float=y inside=zmag
+  colors=000000<15>zzz<15>000<15>zn0<15>000<15>zzz<15>004<14>I0qK0uJ0r<12>\
+  308204333<14>zzz<15>000<15>z0G<15>000<15>zzz<15>000<15>0gg<14>033
+  }
+
+Lumber             { ; (c) 1995 Bradley Beacham  [74223,2745]
+                     ; No commercial use without permission
+  reset=1827 type=barnsleyj1 passes=b
+  corners=-1.977756/-0.2794538/-0.3555124/0.9182138
+  params=1.4/1.4 float=y bailoutest=and decomp=128
+  colors=000ePFgQG<4>iVOjXQjWP<3>iSJhRHfQG<23>221000110<23>ZWK_XLaXL<4>maP\
+  <2>g`Oe_NcZN`YM_XL<23>221000011<23>HbUIdVKeV<4>VlZ<3>NhXLgXJeWIcV<23>122\
+  000111<23>SWeUXfVYf<4>dch<3>Z_hXZhVYgTXf<24>110<22>dOF
+  }
+
+Maculated_1        { ; (c) 1995 Bradley Beacham  [74223,2745]
+                     ; No commercial use without permission
+  reset=1827 type=julfn+zsqrd function=cabs passes=t
+  corners=0.0988458963/-0.275862239/0.706334355/1.16300046/-0.255248763/1.\
+  17846057 params=-0.14/1 float=y bailout=16 bailoutest=real fillcolor=1
+  colors=000MMs<2>JJlIIjHHgGGd<2>CCWBBS99P88L66H55D33A226210110<3>HD3KG4OJ\
+  4RL5VO6YR6`T7dW8fY8i_9<2>peArfAthBviBwjB<4>zsKzqIzoFylCykC<2>uhBsgBqeAod\
+  Amb9<3>bU7_S7WP6<2>MH4IE3EB2A82751202000<6>I6LL7ON8QP8T<3>XBaZCc_Cd<3>dE\
+  jeEkeEkfElgHliKlkOl<2>gHleEkdEjcDhbDg<3>XB`VAZTAXR9VP8S<5>A3C82951620330\
+  0<4>M44Q55U55X66_77b77<2>k99m99pAArAAsBBuBBwBBxCCyCCyCC<2>zMM<2>yCC<2>uB\
+  BtBBrAApAA<2>i99f88c77`77Y66<5>C22811400000120251<5>BN5CP6ES7FU7GX8<3>Kd\
+  ALeAMgBMhBNiB<2>OlC<2>YlM<2>OlC<3>MhBLfALeAKcAJa9<2>GW8ET7DR6CO6AL5<4>37\
+  1241001002<5>99PBBSCCWDDZFFa<2>IIjJJlKKoLLqMMs<3>OOxOOyQQySSyUUzSSzQQzOO\
+  y<3>MMt
+  }
+
+Zorro              { ; (c) 1995 Bradley Beacham  [74223,2745]
+                     ; No commercial use without permission
+  reset=1827 type=mandel passes=b
+  corners=-0.15293283576971/-0.15293239576971/1.0397713453297/1.0397716753\
+  297 float=y maxiter=5000 bailoutest=and fillcolor=1
+  colors=000`8i<18>zz0<6>sg7qe9nd9<13>0LL<23>0Xh0Yi0Zi0_j0`k<6>2gq<10>dtz<\
+  9>DgfBfdAeb8c_<25>zwbwtb<8>SHS<4>eHXhGYjEY<4>v7W<25>ywb<9>peNocLncL<10>b\
+  VJ<6>9RC<5>3O62N51M40L34N3<11>xu2<11>000AAC<2>J3SM0YN0_<5>W0mY0pZ2n_5l
+  }
+

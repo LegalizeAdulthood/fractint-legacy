@@ -16,15 +16,14 @@
 #ifndef XFRACT
 #include <conio.h>
 #include <string.h>
-#ifdef __TURBOC__
 #include <dos.h>
-#endif
-#include "port.h"
+
+/* #include "port.h" */ /* in prototyp.h */
 #else
 #include "fractint.h"
 #endif
-#include "tplus.h"
 #include "prototyp.h"
+#include "tplus.h"
 
 struct TPWrite far WriteOffsets = {
       0,       1,	2,	 3,	  0x400,   0x401,      0x402,
@@ -87,8 +86,6 @@ struct TPLUS_IO {
 	    BoardNumber, StructSize;
 } far TPlusIO;
 
-#include <dos.h>
-
 /* TARGAP.SYS Commands */
 #define READALL    0
 #define WRITEALL   0
@@ -137,8 +134,6 @@ int _SetBoard(int BoardNumber) {
    return(TargapSys(SETBOARD, DOS_WRITE));
 }
 
-#include <stdio.h>
-
 int TPlusLUT(BYTE far *LUTData, unsigned Index, unsigned Number,
              unsigned DosFlag)
 {
@@ -167,12 +162,12 @@ int TPlusLUT(BYTE far *LUTData, unsigned Index, unsigned Number,
 
 int SetVGA_LUT(void) {
    char PathName[80];
-   FILE *Data;
+   FILE *Data = NULL;
    BYTE LUTData[256 * 3];
 
    findpath("tplus.dat", PathName);
    if(PathName[0]) {
-      if((Data = fopen(PathName, "rb")) != 0) {
+      if((Data = fopen(PathName, "rb")) != NULL) {
 	 if(!fseek(Data, 16L << 8, SEEK_SET)) {
 	    if(fread(LUTData, 1, sizeof(LUTData), Data) == sizeof(LUTData)) {
 	       fclose(Data);
@@ -181,7 +176,7 @@ int SetVGA_LUT(void) {
 	 }
       }
    }
-   if(Data > 0)
+   if(Data != NULL)
       fclose(Data);
    return(0);
 }
@@ -333,12 +328,12 @@ int CheckForTPlus(void) {
 int SetTPlusMode(int Mode, int NotIntFlag, int Depth, int Zoom) {
    unsigned n;
    char PathName[80];
-   FILE *Data;
+   FILE *Data = NULL;
    unsigned NewRegs[128];
 
    findpath("tplus.dat", PathName);
    if(PathName[0]) {
-      if((Data = fopen(PathName, "rb")) != 0) {
+      if((Data = fopen(PathName, "rb")) != NULL) {
 	 if(!fseek(Data, (long)Mode << 8, SEEK_SET)) {
 	    if(fread(NewRegs, 1, 256, Data) == 256) {
 	       fclose(Data);
@@ -370,7 +365,7 @@ int SetTPlusMode(int Mode, int NotIntFlag, int Depth, int Zoom) {
 	 }
       }
    }
-   if(Data > 0)
+   if(Data != NULL)
       fclose(Data);
    return(0);
 }

@@ -28,9 +28,7 @@
 #include "targa_lc.h"
 #include "prototyp.h"
 
-#ifndef XFRACT
-extern char rlebuf[258];    /* RLE-state variables */
-#else
+#ifdef XFRACT
 char rlebuf[258];    /* RLE-state variables */
 #endif
 static int state, count, bufp;
@@ -60,7 +58,7 @@ FILE *t16_open(char *fname, int *hs, int *vs, int *csize, U8 *cp)
     }
     GET16(header[O_HSIZE], *hs);
     GET16(header[O_VSIZE], *vs);
-    if (*csize = header[O_COMMENTLEN]) fread(cp, *csize, 1, fp);
+    if ((*csize = header[O_COMMENTLEN]) != 0) fread(cp, *csize, 1, fp);
 
     state = count = bufp = 0;
     return fp;

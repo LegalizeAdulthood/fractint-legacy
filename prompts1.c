@@ -1,6 +1,5 @@
 /*
 	Various routines that prompt for things.
-	This module is linked as an overlay, use ENTER_OVLY and EXIT_OVLY.
 */
 
 #include <stdlib.h>
@@ -30,17 +29,6 @@
 #include "helpdefs.h"
 #include "prototyp.h"
 
-extern int Targa_Overlay;
-extern int Targa_Out;
-extern BYTE back_color[];
-extern float  screenaspect;
-
-/* Routines defined in prompts2.c */
-
-extern	int get_corners(void);
-extern	int edit_ifs_params(void );
-extern	int lccompare(VOIDCONSTPTR, VOIDCONSTPTR);
-
 /* Routines used in prompts2.c */
 
 	int prompt_checkkey(int curkey);
@@ -48,13 +36,13 @@ extern	int lccompare(VOIDCONSTPTR, VOIDCONSTPTR);
 
 /* Routines in this module	*/
 
-static	int prompt_valuestring(char *buf,struct fullscreenvalues *val);
+int prompt_valuestring(char *buf,struct fullscreenvalues *val);
 static	int input_field_list(int attr,char *fld,int vlen,char **list,int llen,
 			     int row,int col,int (*checkkey)(int));
 static	int select_fracttype(int t);
 static	int sel_fractype_help(int curkey, int choice);
 	int select_type_params(int newfractype,int oldfractype);
-static	void set_default_parms(void);
+      	void set_default_parms(void);
 static	long gfe_choose_entry(int,char *,char *,char *);
 static	int check_gfe_key(int curkey,int choice);
 static	void load_entry_text(FILE *entfile,char far *buf,int maxlines);
@@ -62,66 +50,6 @@ static	void format_parmfile_line(int,char *);
 static	int get_light_params(void );
 static	int check_mapfile(void );
 static	int get_funny_glasses_params(void );
-
-int julibrot;   /* flag for julibrot */
-
-extern int numtrigfn;
-extern int bailout;
-
-extern struct moreparams far moreparams[];
-static char funnyglasses_map_name[16];
-extern char temp1[256];   /* temporary strings	      */
-extern int previewfactor;
-extern int xtrans, ytrans;
-extern int red_crop_left, red_crop_right;
-extern int blue_crop_left, blue_crop_right;
-extern int red_bright, blue_bright;
-extern char showbox; /* flag to show box and vector in preview */
-extern SEGTYPE extraseg;
-extern int whichimage;
-extern int xadjust;
-extern int eyeseparation;
-extern int glassestype;
-char   MAP_name[80] = "";
-int    mapset = 0;
-extern	int	overlay3d;	    /* 3D overlay flag: 0 = OFF */
-extern	int	lookatmouse;
-extern	int haze;
-extern	int RANDOMIZE;
-extern	char light_name[];
-extern	int Ambient;
-extern	int RAY;
-extern	int BRIEF;
-extern	char ray_name[];
-
-extern	int	init3d[20];	/* '3d=nn/nn/nn/...' values */
-extern	double	xxmin,xxmax;	/* initial corner values    */
-extern	double	yymin,yymax;	/* initial corner values    */
-
-extern	double	xx3rd,yy3rd;	/* initial corner values    */
-extern	int	invert; 	/* non-zero if inversion active */
-extern	double	inversion[3];	/* radius, xcenter, ycenter */
-extern	double	param[];	    /* up to six parameters    */
-extern	double	potparam[3];	/* three potential parameters*/
-extern	int	fractype;	/* if == 0, use Mandelbrot  */
-extern	char	preview;	/* 3D preview mode flag */
-extern	int	transparent[];	/* transparency values */
-extern	int	usr_biomorph;	/* Biomorph flag */
-extern	int	viewcrop;
-extern	float	finalaspectratio;
-extern	int	textcbase;
-extern	char	boxy[];
-extern	int	display3d;
-
-extern char LFileName[];	/* file to find the formulas in */
-extern char LName[];		/* Name of the Formula (if not null) */
-extern char FormFileName[];
-extern char FormName[];
-extern char IFSFileName[];
-extern char IFSName[];
-extern float far *ifs_defn;
-extern int ifs_type;
-extern int ifs_changed;
 
 /* fullscreen_choice options */
 #define CHOICEHELP	4
@@ -131,14 +59,14 @@ extern int ifs_changed;
 #define GETIFS	   2
 #define GETPARM    3
 
-
+static char funnyglasses_map_name[16];
 char ifsmask[13]     = {"*.ifs"};
 char formmask[13]    = {"*.frm"};
 char lsysmask[13]    = {"*.l"};
 char Glasses1Map[] = "glasses1.map";
-
-void prompts1_overlay() { }	/* for restore_active_ovly */
-
+char MAP_name[80] = "";
+int  mapset = 0;
+int julibrot;   /* flag for julibrot */
 
 /* --------------------------------------------------------------------- */
 
@@ -149,7 +77,6 @@ int fullscreen_prompt(	/* full-screen prompting routine */
 	int numprompts, 	/* there are this many prompts (max) */
 	char far **prompts,     /* array of prompting pointers */
 	struct fullscreenvalues *values, /* array of values */
-	int options,		/* for future */
 	int fkeymask,		/* bit n on if Fn to cause return */
 	char far *extrainfo	/* extra info box to display, \n separated */
 	)
@@ -169,27 +96,22 @@ int fullscreen_prompt(	/* full-screen prompting routine */
    int curtype, curlen;
    char buf[81];
 #ifndef XFRACT
-static char far instr1[]  = {"Use " UPARR " and " DNARR " to select values to change"};
-static char far instr2a[]  = {"Type in replacement value for selected field"};
-static char far instr2b[]  = {"Use " LTARR " or " RTARR " to change value of selected field"};
+static FCODE instr1[]  = {"Use " UPARR " and " DNARR " to select values to change"};
+static FCODE instr2a[]  = {"Type in replacement value for selected field"};
+static FCODE instr2b[]  = {"Use " LTARR " or " RTARR " to change value of selected field"};
 #else
 /* Some compilers don't accept "a" "b", so we have to fill in UPARR ourself.  */
 static char far instr1[]  = {"Use up(K) and down(J) to select values to change"};
 static char far instr2a[]  = {"Type in replacement value for selected field"};
 static char far instr2b[]  = {"Use left(H) or right(L) to change value of selected field"};
 #endif
-static char far instr3a[] = {"Press ENTER when finished (or ESCAPE to back out)"};
-static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or F1 for help"};
-static char far instr0a[] = {"No changeable parameters; press ENTER to exit"};
-static char far instr0b[] = {"No changeable parameters; press ENTER to exit or F1 for help"};
-
-   ENTER_OVLY(OVLY_PROMPTS1);
-
-   if (numprompts <= 0) {	/* ?? nothing to do! */
-      EXIT_OVLY;
-      return(0);
-      }
-   
+static FCODE instr3a[] = {"Press ENTER when finished (or ESCAPE to back out)"};
+static FCODE instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or F1 for help"};
+static FCODE instr0a[] = {"No changeable parameters; press ENTER to exit"};
+static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE to back out, F1 for help"};
+/*   if (numprompts <= 0) { */	/* ?? nothing to do! */
+/*      return(0); */
+/*      } */
    savelookatmouse = lookatmouse;
    lookatmouse = 0;
    promptfkeys = fkeymask;
@@ -208,7 +130,7 @@ static char far instr0b[] = {"No changeable parameters; press ENTER to exit or F
 	 titlewidth = i;
       }
    extralines = extrawidth = i = 0;
-   if ((hdgscan = extrainfo))
+   if ((hdgscan = extrainfo) != 0)
       if (*hdgscan == 0)
 	 extrainfo = NULL;
       else { /* count extra lines, find widest */
@@ -256,7 +178,7 @@ static char far instr0b[] = {"No changeable parameters; press ENTER to exit or F
    maxfldwidth = maxpromptwidth = maxcomment = anyinput = 0;
    for (i = 0; i < numprompts; i++) {
       if (values[i].type == 'y') {
-	 static char *noyes[2] = {"no","yes"};
+	 static char *noyes[2] = {s_no,s_yes};
 	 values[i].type = 'l';
 	 values[i].uval.ch.vlen = 3;
 	 values[i].uval.ch.list = noyes;
@@ -354,7 +276,7 @@ static char far instr0b[] = {"No changeable parameters; press ENTER to exit or F
       putstringcenter(instrrow,0,80,C_PROMPT_BKGRD,
         (helpmode > 0) ? instr0b : instr0a);
       movecursor(25,80);
-      while (1) {
+      for(;;) {
         while (!keypressed()) { }
         done = getakey();
         switch(done) {
@@ -408,6 +330,7 @@ static char far instr0b[] = {"No changeable parameters; press ENTER to exit or F
       else {
 	 j = 0;
 	 if (curtype == 'i') j = 3;
+	 if (curtype == 'L') j = 3;
 	 if (curtype == 'd') j = 5;
 	 if (curtype == 'D') j = 7;
 	 if (curtype == 'f') j = 1;
@@ -425,11 +348,14 @@ static char far instr0b[] = {"No changeable parameters; press ENTER to exit or F
 	    case 'i':
 	       values[curchoice].uval.ival = atoi(buf);
 	       break;
+	    case 'L':
+	       values[curchoice].uval.Lval = atol(buf);
+	       break;
 	    case 's':
 	       strncpy(values[curchoice].uval.sval,buf,16);
 	       break;
 	    default: /* assume 0x100+n */
-	       strcpy(values[curchoice].uval.sbuf,buf);
+	       far_strcpy(values[curchoice].uval.sbuf,buf);
 	    }
 	 }
 
@@ -476,20 +402,19 @@ static char far instr0b[] = {"No changeable parameters; press ENTER to exit or F
 fullscreen_exit:
    movecursor(25,80);
    lookatmouse = savelookatmouse;
-   EXIT_OVLY;
    return(done);
 }
 
-static int prompt_valuestring(char *buf,struct fullscreenvalues *val)
+int prompt_valuestring(char *buf,struct fullscreenvalues *val)
 {  /* format value into buf, return field width */
    int i,ret;
    switch (val->type) {
       case 'd':
 	 ret = 20;
 	 i = 16;    /* cellular needs 16 (was 15)*/
-	 while (1) {
+	 for(;;) {
 	    sprintf(buf,"%.*g",i,val->uval.dval);
-	    if (strlen(buf) <= ret) break;
+	    if ((int)strlen(buf) <= ret) break;
 	    --i;
 	    }
 	 break;
@@ -510,8 +435,12 @@ static int prompt_valuestring(char *buf,struct fullscreenvalues *val)
 	 sprintf(buf,"%d",val->uval.ival);
 	 ret = 6;
 	 break;
+      case 'L':
+	 sprintf(buf,"%ld",val->uval.Lval);
+	 ret = 10;
+	 break;
       case '*':
-	 *buf = ret = 0;
+	 *buf = (char)(ret = 0);
 	 break;
       case 's':
 	 strncpy(buf,val->uval.sval,16);
@@ -523,7 +452,7 @@ static int prompt_valuestring(char *buf,struct fullscreenvalues *val)
 	 ret = val->uval.ch.vlen;
 	 break;
       default: /* assume 0x100+n */
-	 strcpy(buf,val->uval.sbuf);
+	 far_strcpy(buf,val->uval.sbuf);
 	 ret = val->type & 0xff;
       }
    return ret;
@@ -577,7 +506,7 @@ static int input_field_list(
    if (initval >= llen) initval = 0;
    curval = initval;
    ret = -1;
-   while (1) {
+   for(;;) {
       strcpy(buf,list[curval]);
       i = strlen(buf);
       while (i < vlen)
@@ -607,7 +536,7 @@ static int input_field_list(
 	    break;
 	 default:
             if (nonalpha(curkey)) {
-	       if (checkkey && (ret = (*checkkey)(curkey)))
+	       if (checkkey && (ret = (*checkkey)(curkey)) != 0)
 		  goto inpfldl_end;
 	       break;				     /* non alphanum char */
 	       }
@@ -657,10 +586,9 @@ static void clear_line(int row, int start, int stop, int color) /* clear part of
 int get_fracttype()		/* prompt for and select fractal type */
 {
    int done,i,oldfractype,t;
-   ENTER_OVLY(OVLY_PROMPTS1);
    done = -1;
    oldfractype = fractype;
-   while (1) {
+   for(;;) {
       if ((t = select_fracttype(fractype)) < 0)
 	 break;
       if ((i = select_type_params(t, fractype)) == 0) { /* ok, all done */
@@ -673,7 +601,6 @@ int get_fracttype()		/* prompt for and select fractal type */
    if (done < 0)
       fractype = oldfractype;
    curfractalspecific = &fractalspecific[fractype];
-   EXIT_OVLY;
    return(done);
 }
 
@@ -681,25 +608,26 @@ struct FT_CHOICE {
       char name[15];
       int  num;
       };
-static struct FT_CHOICE **ft_choices; /* for sel_fractype_help subrtn */
+static struct FT_CHOICE far **ft_choices; /* for sel_fractype_help subrtn */
 
 static int select_fracttype(int t) /* subrtn of get_fracttype, separated */
 				   /* so that storage gets freed up	 */
 {
-   static char far head1[] = {"Select a Fractal Type"};
-   static char far head2[] = {"Select Orbit Algorithm for Julibrot"};
-   static char far instr[] = {"Press F2 for a description of the highlighted type"};
+   static FCODE head1[] = {"Select a Fractal Type"};
+   static FCODE head2[] = {"Select Orbit Algorithm for Julibrot"};
+   static FCODE o_instr[] = {"Press F2 for a description of the highlighted type"};
+   char instr[sizeof(o_instr)];
    char head[40];
    int oldhelpmode;
    int numtypes, done;
    int i, j;
 #define MAXFTYPES 200
    char tname[40];
-   struct FT_CHOICE *choices[MAXFTYPES];
+   struct FT_CHOICE far *choices[MAXFTYPES];
    int attributes[MAXFTYPES];
 
    /* steal existing array for "choices" */
-   choices[0] = (struct FT_CHOICE *)boxy;
+   choices[0] = (struct FT_CHOICE far *)boxy;
    attributes[0] = 1;
    for (i = 1; i < MAXFTYPES; ++i) {
       choices[i] = choices[i-1] + 1;
@@ -710,7 +638,7 @@ static int select_fracttype(int t) /* subrtn of get_fracttype, separated */
    /* setup context sensitive help */
    oldhelpmode = helpmode;
    helpmode = HELPFRACTALS;
-
+   far_strcpy(instr,o_instr);
    if(julibrot)
       far_strcpy(head,head2);
    else
@@ -719,20 +647,16 @@ static int select_fracttype(int t) /* subrtn of get_fracttype, separated */
    i = j = -1;
    while(fractalspecific[++i].name) {
       if(julibrot)
-      {
-        int isinteger;
-        isinteger = curfractalspecific->isinteger; 
 	if (!((fractalspecific[i].flags & OKJB) && *fractalspecific[i].name != '*'))
 	   continue;
-      }
       if (fractalspecific[i].name[0] == '*')
 	 continue;
-      strcpy(choices[++j]->name,fractalspecific[i].name);
+      far_strcpy(choices[++j]->name,fractalspecific[i].name);
       choices[j]->name[14] = 0; /* safety */
       choices[j]->num = i;	/* remember where the real item is */
       }
    numtypes = j + 1;
-   qsort(choices,numtypes,sizeof(char *),lccompare); /* sort list */
+   shell_sort(choices,numtypes,sizeof(char far *),lccompare); /* sort list */
    j = 0;
    for (i = 0; i < numtypes; ++i) /* find starting choice in sorted list */
       if (choices[i]->num == t || choices[i]->num == fractalspecific[t].tofloat)
@@ -740,7 +664,7 @@ static int select_fracttype(int t) /* subrtn of get_fracttype, separated */
 
    tname[0] = 0;
    done = fullscreen_choice(CHOICEHELP+8,head,NULL,instr,numtypes,
-         (char **)choices,attributes,0,0,0,j,NULL,tname,NULL,sel_fractype_help);
+         (char far *far*)choices,attributes,0,0,0,j,NULL,tname,NULL,sel_fractype_help);
    if (done >= 0)
       done = choices[done]->num;
    helpmode = oldhelpmode;
@@ -767,6 +691,7 @@ int select_type_params(	/* prompt for new fractal type parameters */
    int ret,oldhelpmode;
 
    oldhelpmode = helpmode;
+sel_type_restart:
    ret = 0;
    fractype = newfractype;
    curfractalspecific = &fractalspecific[fractype];
@@ -786,43 +711,39 @@ int select_type_params(	/* prompt for new fractal type parameters */
 	 }
       }
    if (fractype == IFS || fractype == IFS3D) {
-      static char far ifsmsg[] = {
-#ifndef XFRACT
-         "Current IFS parameters have been edited but not saved.\n"
-         "Continue to replace them with new selection, cancel to keep them."};
-#else
-         "Current IFS parameters have been edited but not saved.\n\
-Continue to replace them with new selection, cancel to keep them."};
-#endif
       helpmode = HT_IFS;
-      if (!ifs_defn || !ifs_changed || !stopmsg(22,ifsmsg))
-	 if (get_file_entry(GETIFS,"IFS",ifsmask,IFSFileName,IFSName) < 0) {
-	    ret = 1;
-	    goto sel_type_exit;
-	    }
+      if (get_file_entry(GETIFS,"IFS",ifsmask,IFSFileName,IFSName) < 0) {
+	ret = 1;
+	goto sel_type_exit;
+	}
       }
 
 /* Added the following to accommodate fn bifurcations.  JCO 7/2/92 */
    if(((fractype == BIFURCATION) || (fractype == LBIFURCATION)) &&
      !((oldfractype == BIFURCATION) || (oldfractype == LBIFURCATION)))
-        set_trig_array(0,"ident");
+        set_trig_array(0,s_ident);
    if(((fractype == BIFSTEWART) || (fractype == LBIFSTEWART)) &&
      !((oldfractype == BIFSTEWART) || (oldfractype == LBIFSTEWART)))
-        set_trig_array(0,"ident");
+        set_trig_array(0,s_ident);
    if(((fractype == BIFLAMBDA) || (fractype == LBIFLAMBDA)) &&
      !((oldfractype == BIFLAMBDA) || (oldfractype == LBIFLAMBDA)))
-        set_trig_array(0,"ident");
+        set_trig_array(0,s_ident);
    if(((fractype == BIFEQSINPI) || (fractype == LBIFEQSINPI)) &&
      !((oldfractype == BIFEQSINPI) || (oldfractype == LBIFEQSINPI)))
-        set_trig_array(0,"sin");
+        set_trig_array(0,s_sin);
    if(((fractype == BIFADSINPI) || (fractype == LBIFADSINPI)) &&
      !((oldfractype == BIFADSINPI) || (oldfractype == LBIFADSINPI)))
-        set_trig_array(0,"sin");
+        set_trig_array(0,s_sin);
 
    set_default_parms();
 
    if (get_fract_params(0) < 0)
-      ret = 1;
+      if (fractype == FORMULA || fractype == FFORMULA ||
+          fractype == IFS || fractype == IFS3D ||
+          fractype == LSYSTEM)
+         goto sel_type_restart;
+      else
+         ret = 1;
    else {
       if (newfractype != oldfractype) {
 	 invert = 0;
@@ -836,33 +757,33 @@ sel_type_exit:
 
 }
 
-static void set_default_parms()
+void set_default_parms()
 {
-   int i;
+   int i,extra;
    xxmin = curfractalspecific->xmin;
    xxmax = curfractalspecific->xmax;
    yymin = curfractalspecific->ymin;
    yymax = curfractalspecific->ymax;
    xx3rd = xxmin;
    yy3rd = yymin;
+   
    if (viewcrop && finalaspectratio != screenaspect)
       aspectratio_crop(screenaspect,finalaspectratio);
    for (i = 0; i < 4; i++) {
       param[i] = curfractalspecific->paramvalue[i];
-      if (fractype != CELLULAR) /* don't round cellular */
-         roundfloatd(&param[i]);
+      if (fractype != CELLULAR && fractype != FROTH && fractype != FROTHFP)
+         roundfloatd(&param[i]);   /* don't round cellular or frothybasin */
    }
-   if(curfractalspecific->flags&MORE) {
-      int extra;
-      if((extra=find_extra_param(fractype)) > -1)
-         for(i=0;i<MAXPARAMS-4;i++) {
-            param[i+4] = moreparams[extra].paramvalue[i];
-         }
-   }
+   if((extra=find_extra_param(fractype)) > -1)
+      for(i=0;i<MAXPARAMS-4;i++) 
+         param[i+4] = moreparams[extra].paramvalue[i];
+   if(debugflag != 3200)
+      bf_math = 0;
+   else if(bf_math)
+      fractal_floattobf();
 }
 
 #define MAXFRACTALS 25 
-extern int neworbittype, num_fractal_types;
 
 int build_fractal_list(int fractals[], int *last_val, char *nameptr[])
 {
@@ -871,8 +792,6 @@ int build_fractal_list(int fractals[], int *last_val, char *nameptr[])
     numfractals = 0;
     for (i = 0; i < num_fractal_types; i++)
     {
-        int isinteger;
-        isinteger = curfractalspecific->isinteger; 
 	if ((fractalspecific[i].flags & OKJB) && *fractalspecific[i].name != '*')
 	{
 	    fractals[numfractals] = i;
@@ -886,33 +805,44 @@ int build_fractal_list(int fractals[], int *last_val, char *nameptr[])
     }
     return (numfractals);
 }
-char far v00[] = {"Orbit Algorithm"};
-char far v0a[] = {"From cx (real part)"};
-char far v1a[] = {"From cy (imaginary part)"};
-char far v2a[] = {"To   cx (real part)"};
-char far v3a[] = {"To   cy (imaginary part)"};
+
+static FCODE v0a[] = {"From cx (real part)"};
+static FCODE v1a[] = {"From cy (imaginary part)"};
+static FCODE v2a[] = {"To   cx (real part)"};
+static FCODE v3a[] = {"To   cy (imaginary part)"};
 
 /* 4D Mandelbrot */
-char far v0b[] = {"From cj (3rd dim)"};
-char far v1b[] = {"From ck (4th dim)"};
-char far v2b[] = {"To   cj (3rd dim)"};
-char far v3b[] = {"To   ck (4th dim)"};
+static FCODE v0b[] = {"From cj (3rd dim)"};
+static FCODE v1b[] = {"From ck (4th dim)"};
+static FCODE v2b[] = {"To   cj (3rd dim)"};
+static FCODE v3b[] = {"To   ck (4th dim)"};
 
 /* 4D Julia */
-char far v0c[] = {"From zj (3rd dim)"};
-char far v1c[] = {"From zk (4th dim)"};
-char far v2c[] = {"To   zj (3rd dim)"};
-char far v3c[] = {"To   zk (4th dim)"};
+static FCODE v0c[] = {"From zj (3rd dim)"};
+static FCODE v1c[] = {"From zk (4th dim)"};
+static FCODE v2c[] = {"To   zj (3rd dim)"};
+static FCODE v3c[] = {"To   zk (4th dim)"};
 
-char far v4[] = {"Number of z pixels"};
-char far v5[] = {"Location of z origin"};
-char far v6[] = {"Depth of z"};
-char far v7[] = {"Screen height"};
-char far v8[] = {"Screen width"};
-char far v9[] = {"Distance to Screen"};
-char far v10[] = {"Distance between eyes"};
-char far v11[] = {"3D Mode"};
+static FCODE v4[] = {"Number of z pixels"};
+static FCODE v5[] = {"Location of z origin"};
+static FCODE v6[] = {"Depth of z"};
+static FCODE v7[] = {"Screen height"};
+static FCODE v8[] = {"Screen width"};
+static FCODE v9[] = {"Distance to Screen"};
+static FCODE v10[] = {"Distance between eyes"};
+static FCODE v11[] = {"3D Mode"};
 char *juli3Doptions[] = {"monocular","lefteye","righteye","red-blue"};
+
+/* JIIM */
+#ifdef RANDOM_RUN
+static FCODE JIIMstr1[] = "Breadth first, Depth first, Random Walk, Random Run?";
+char *JIIMmethod[] = {"breadth", "depth", "walk", "run"};
+#else
+static FCODE JIIMstr1[] = "Breadth first, Depth first, Random Walk";
+char *JIIMmethod[] = {"breadth", "depth", "walk"};
+#endif
+static FCODE JIIMstr2[] = "Left first or Right first?";
+char *JIIMleftright[] = {"left", "right"};
 
 /* --------------------------------------------------------------------- */
 int get_fract_params(int caller)	/* prompt for type-specific parms */
@@ -921,49 +851,43 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
    char far *v1 = v1a;
    char far *v2 = v2a;
    char far *v3 = v3a;
-   char far *juliorbitname = NULL;
-   extern double mxmaxfp, mxminfp, mymaxfp, myminfp, originfp;
-   extern double depthfp, heightfp, widthfp, distfp, eyesfp;
-   extern int zdots; 
-   char *nameptr[MAXFRACTALS];
-   int fractals[MAXFRACTALS];
+   char *juliorbitname = NULL;
    int i,j,k;
-   int curtype,numparams,numtrig,last_val;
+   int curtype,numparams,numtrig;
    struct fullscreenvalues paramvalues[30];
    char far *choices[30];
-   int oldbailout;
-   int extra;
-   int numextra;
+   long oldbailout = 0L;
    int promptnum;
    char msg[120];
    char *typename, *tmpptr;
    char bailoutmsg[50];
    int ret = 0;
    int oldhelpmode;
-   static char far t11[] = {"Function (if needed by orbit formula)"};
-   static char far t1[] = {"First Function"};
-   static char far t2[] = {"Second Function"};
-   static char far t3[] = {"Third Function"};
-   static char far t4[] = {"Fourth Function"};
-   static char far *trg[] = {t1, t2, t3, t4};
-   extern char tstack[4096];
+   static FCODE t1[] = {"First Function"};
+   static FCODE t2[] = {"Second Function"};
+   static FCODE t3[] = {"Third Function"};
+   static FCODE t4[] = {"Fourth Function"};
+   static FCODE *trg[] = {t1, t2, t3, t4};
    char *filename,*entryname;
    FILE *entryfile;
    char *trignameptr[25];
-   extern int  juli3Dmode;
-   struct fractalspecificstuff far *jborbit;
+#ifdef XFRACT
+   static /* Can't initialize aggregates on the stack */
+#endif
+   char *bailnameptr[] = {s_mod,s_real,s_imag,s_or,s_and};
+   struct fractalspecificstuff far *jborbit = NULL;
    struct fractalspecificstuff far *savespecific;
-   int firstparm;
+   int firstparm =0;
+   int lastparm  = MAXPARAMS;
    double oldparam[MAXPARAMS];
-   ENTER_OVLY(OVLY_PROMPTS1);
-   firstparm = 0;
+   oldbailout = bailout;
    if(fractype==JULIBROT || fractype==JULIBROTFP)
       julibrot = 1;
    else
       julibrot = 0;
    curtype = fractype;
    if (curfractalspecific->name[0] == '*'
-     && (i = fractalspecific->tofloat) != NOFRACTAL
+     && (i = curfractalspecific->tofloat) != NOFRACTAL  /* FIXED BUG HERE!! */
      && fractalspecific[i].name[0] != '*')
       curtype = i;
    curfractalspecific = &fractalspecific[curtype];
@@ -986,14 +910,16 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
       if (find_file_item(filename,entryname,&entryfile) == 0) {
 	 load_entry_text(entryfile,tstack,16);
 	 fclose(entryfile);
+	 if(fractype == FORMULA || fractype == FFORMULA)
+	   RunForm(entryname); /* no error check, should be okay, from above */
 	 }
       }
    else if (i >= 0) {
       int c,lines;
-      if (i = read_help_topic(i,0,2000,tstack) > 0) i = 0;
+      read_help_topic(i,0,2000,tstack); /* need error handling here ?? */
       tstack[2000-i] = 0;
       i = j = lines = 0; k = 1;
-      while ((c = tstack[i++])) {
+      while ((c = tstack[i++]) != 0) {
 	 /* stop at ctl, blank, or line with col 1 nonblank, max 16 lines */
 	 if (k && c == ' ' && ++k <= 5) { } /* skip 4 blanks at start of line */
 	 else {
@@ -1009,7 +935,7 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
 		  break;
 	       k = 0;
 	       }
-	    tstack[j++] = c;
+	    tstack[j++] = (char)c;
 	    }
 	 }
       while (--j >= 0 && tstack[j] == '\n') { }
@@ -1032,29 +958,50 @@ gfp_top:
       jborbit = &fractalspecific[neworbittype];
       juliorbitname = jborbit->name;
    }
+
+   if(fractype == FORMULA || fractype == FFORMULA) {
+      if(uses_p1)  /* set first parameter */
+         firstparm = 0;
+      else if(uses_p2)
+         firstparm = 2;
+      else
+         firstparm = 4; /* uses_p3 or no parameter */
+
+      if(uses_p3)  /* set last parameter */
+         lastparm = 6;
+      else if(uses_p2)
+         lastparm = 4;
+      else
+         lastparm = 2; /* uses_p1 or no parameter */
+   }
+
    promptnum = 0;
 
+   savespecific = curfractalspecific;
    if(julibrot)
    {
-      savespecific = curfractalspecific;
       curfractalspecific = jborbit;
       firstparm = 2; /* in most case Julibrot does not need first two parms */
       if(neworbittype == QUATJULFP     ||   /* all parameters needed */ 
          neworbittype == HYPERCMPLXJFP)
-         firstparm = 0; 
+      {
+         firstparm = 0;
+         lastparm = 4;
+      }    
       if(neworbittype == QUATFP        ||   /* no parameters needed */
          neworbittype == HYPERCMPLXFP)
          firstparm = 4; 
    }   
    numparams = 0;
    
-   for (i = firstparm; i < 4; i++) 
+   for (i = firstparm; i < lastparm; i++) 
    {
       char tmpbuf[30];
-      if (curfractalspecific->param[i][0] == 0) 
+      char *parm;
+      if ((parm=typehasparm(julibrot?neworbittype:fractype,i))==NULL)
          break;
       numparams++;
-      choices[promptnum] = curfractalspecific->param[i];
+      choices[promptnum] = parm;
       paramvalues[promptnum].type = 'd';
    
       if (choices[promptnum][0] == '+') 
@@ -1062,41 +1009,15 @@ gfp_top:
          choices[promptnum]++;
          paramvalues[promptnum].type = 'D';
       }
+      else if (choices[promptnum][0] == '#') 
+         choices[promptnum]++;
       sprintf(tmpbuf,"%.17g",param[i]);
       paramvalues[promptnum].uval.dval = atof(tmpbuf);
       oldparam[i] = paramvalues[promptnum++].uval.dval;
    }
-   numextra = 0;
-   if(curfractalspecific->flags&MORE && !julibrot)
-   {
-      if((extra=find_extra_param(fractype))<-1)
-      {
-         char msg[30];
-         sprintf(msg,"find_extra_param error");
-         stopmsg(0,msg);
-      }
-      else
-      for (i=0;i<MAXPARAMS-4;i++) 
-      {
-         char tmpbuf[30];
-         if (moreparams[extra].param[i][0] == 0) 
-            break;
-         numextra++;
-         choices[promptnum] = moreparams[extra].param[i];
-         paramvalues[promptnum].type = 'd';
-         if (choices[promptnum][0] == '+') 
-         {
-            choices[promptnum]++;
-            paramvalues[promptnum].type = 'D';
-         }
-         sprintf(tmpbuf,"%.17g",param[i+4]);
-         paramvalues[promptnum].uval.dval = atof(tmpbuf);
-         oldparam[i+4] = paramvalues[promptnum++].uval.dval;
-      }
-   }
+
    numtrig = (curfractalspecific->flags >> 6) & 7;
    if(curtype==FORMULA || curtype==FFORMULA ) {
-      extern char maxfn;
       numtrig = maxfn;
       }
 
@@ -1109,25 +1030,39 @@ gfp_top:
       paramvalues[promptnum].uval.ch.llen = numtrigfn;
       paramvalues[promptnum].uval.ch.vlen = 6;
       paramvalues[promptnum].uval.ch.list = trignameptr;
-      choices[promptnum++] = trg[i];
+      choices[promptnum++] = (char far *)trg[i];
       }
    if (*(typename = curfractalspecific->name) == '*')
         ++typename;
 
-   if (curfractalspecific->orbit_bailout)
+   i = curfractalspecific->orbit_bailout;
+
+   if( i != 0 && curfractalspecific->calctype == StandardFractal &&
+       (curfractalspecific->flags & BAILTEST) &&
+       potparam[0] == 0.0 && potparam[2] == 0.0 ) {
+        static FCODE bailteststr[] = {"Bailout Test (mod, real, imag, or, and)"};
+      paramvalues[promptnum].type = 'l';
+      paramvalues[promptnum].uval.ch.val  = (int)bailoutest;
+      paramvalues[promptnum].uval.ch.llen = 5;
+      paramvalues[promptnum].uval.ch.vlen = 6;
+      paramvalues[promptnum].uval.ch.list = bailnameptr;
+      choices[promptnum++] = bailteststr;
+   }
+
+   if (i)
       if (potparam[0] != 0.0 && potparam[2] != 0.0) 
       {
+        static FCODE bailpotstr[] = {"Bailout: continuous potential (Y screen) value in use"};
 	 paramvalues[promptnum].type = '*';
-	 choices[promptnum++] = "Bailout: continuous potential (Y screen) value in use";
+	 choices[promptnum++] = bailpotstr;
       }
       else 
       {
-         static char far bailoutstr[] = {"Bailout value (0 means use default)"};
+         static FCODE bailoutstr[] = {"Bailout value (0 means use default)"};
 	 choices[promptnum] = bailoutstr;
-	 paramvalues[promptnum].type = 'i';
-	 paramvalues[promptnum++].uval.ival = oldbailout = bailout;
+	 paramvalues[promptnum].type = 'L';
+	 paramvalues[promptnum++].uval.Lval = (oldbailout = bailout);
 	 paramvalues[promptnum].type = '*';
-	 i = curfractalspecific->orbit_bailout;
 	 tmpptr = typename;
 	 if (usr_biomorph != -1) 
 	 {
@@ -1200,22 +1135,6 @@ gfp_top:
 
    if (curtype == INVERSEJULIA || curtype == INVERSEJULIAFP)
    {
-      extern int  major_method;
-      extern int  minor_method;
-
-#ifdef RANDOM_RUN
-      static char far JIIMstr1[] =
-	"Breadth first, Depth first, Random Walk, Random Run?";
-      static char *JIIMmethod[] = {"Breadth", "Depth", "Walk", "Run"};
-#else
-      static char far JIIMstr1[] =
-	"Breadth first, Depth first, Random Walk";
-      static char *JIIMmethod[] = {"Breadth", "Depth", "Walk"};
-#endif
-      static char far JIIMstr2[] =
-	"Left first or Right first?";
-      static char *JIIMleftright[] = {"Left", "Right"};
-
       choices[promptnum] = JIIMstr1;
       paramvalues[promptnum].type = 'l';
       paramvalues[promptnum].uval.ch.list = JIIMmethod;
@@ -1236,26 +1155,23 @@ gfp_top:
    }
 
    if (caller				/* <z> command ? */
-      && (display3d > 0 || promptnum == 0))
+/*      && (display3d > 0 || promptnum == 0)) */
+      && (display3d > 0))
       {
-       static char far msg[]={"Current type has no type-specific parameters"};
+       static FCODE msg[]={"Current type has no type-specific parameters"};
        stopmsg(20,msg);
        goto gfp_exit;
        }
    if(julibrot)
-   sprintf(msg,
-	   "Julibrot Parameters (orbit= %s)\n(Press F6 for corner parameters)",
-	   juliorbitname);
+      sprintf(msg,"Julibrot Parameters (orbit= %s)",juliorbitname);
    else
-   sprintf(msg,
-	   "Parameters for fractal type %s\n(Press F6 for corner parameters)",
-	   typename);
-
-   while (1) 
+      sprintf(msg,"Parameters for fractal type %s",typename);
+   far_strcat(msg,"\n(Press F6 for corner parameters)");
+   for(;;)
    {
       oldhelpmode = helpmode;
       helpmode = curfractalspecific->helptext;
-      i = fullscreen_prompt(msg,promptnum,choices,paramvalues,0,0x40,tstack);
+      i = fullscreen_prompt(msg,promptnum,choices,paramvalues,0x40,tstack);
       helpmode = oldhelpmode;
       if (i < 0) 
       {
@@ -1280,19 +1196,10 @@ gfp_top:
         }
         ++promptnum;
     }
-     for(i=0;i<numextra;i++)
-     {
-        if(oldparam[i+4] != paramvalues[promptnum].uval.dval)
-        {
-           param[i+4] = paramvalues[promptnum].uval.dval;
-           ret = 1;
-        }
-        ++promptnum;
-     }
 
    for ( i = 0; i < numtrig; i++) 
    {
-      if (paramvalues[promptnum].uval.ch.val != trigndx[i]) 
+      if (paramvalues[promptnum].uval.ch.val != (int)trigndx[i]) 
       {
 	 set_trig_array(i,trigfn[paramvalues[promptnum].uval.ch.val].name);
 	 ret = 1;
@@ -1306,17 +1213,28 @@ gfp_top:
       curfractalspecific = jborbit;
    }   
 
-   if (curfractalspecific->orbit_bailout)
+   i = curfractalspecific->orbit_bailout;
+
+   if( i != 0 && curfractalspecific->calctype == StandardFractal &&
+       (curfractalspecific->flags & BAILTEST) &&
+       potparam[0] == 0.0 && potparam[2] == 0.0 ) {
+      if (paramvalues[promptnum].uval.ch.val != (int)bailoutest) {
+        bailoutest = (enum bailouts)paramvalues[promptnum].uval.ch.val;
+        ret = 1;
+      }
+      promptnum++;
+   }
+   else
+      bailoutest = Mod;
+   setbailoutformula(bailoutest);
+
+   if (i)
       if (potparam[0] != 0.0 && potparam[2] != 0.0) 
 	 promptnum++;
       else 
       {
-         bailout = paramvalues[promptnum++].uval.ival;
-#ifndef XFRACT
-         if (bailout != 0 && (bailout < 4 || bailout > 32000))
-#else /* We have big integers, so why not allow big bailouts? */
-         if (bailout != 0 && (bailout < 4))
-#endif
+         bailout = paramvalues[promptnum++].uval.Lval;
+         if (bailout != 0 && (bailout < 1 || bailout > 2100000000L))
 	    bailout = oldbailout;
          if (bailout != oldbailout)
 	    ret = 1;
@@ -1331,29 +1249,25 @@ gfp_top:
 	myminfp    = paramvalues[promptnum++].uval.dval;
 	zdots      = paramvalues[promptnum++].uval.ival;
         juli3Dmode = paramvalues[promptnum++].uval.ch.val;
-	eyesfp     = paramvalues[promptnum++].uval.dval;
-	originfp   = paramvalues[promptnum++].uval.dval;
-	depthfp    = paramvalues[promptnum++].uval.dval;
-	heightfp   = paramvalues[promptnum++].uval.dval;
-	widthfp    = paramvalues[promptnum++].uval.dval;
-	distfp     = paramvalues[promptnum++].uval.dval;
+	eyesfp     = (float)paramvalues[promptnum++].uval.dval;
+	originfp   = (float)paramvalues[promptnum++].uval.dval;
+	depthfp    = (float)paramvalues[promptnum++].uval.dval;
+	heightfp   = (float)paramvalues[promptnum++].uval.dval;
+	widthfp    = (float)paramvalues[promptnum++].uval.dval;
+	distfp     = (float)paramvalues[promptnum++].uval.dval;
         ret = 1;  /* force new calc since not resumable anyway */
      }
       if (curtype == INVERSEJULIA || curtype == INVERSEJULIAFP)
       {
-	 extern int major_method, minor_method;
-
 	 if (paramvalues[promptnum].uval.ch.val != major_method ||
 	     paramvalues[promptnum+1].uval.ch.val != minor_method)
 	    ret = 1;
-
-	 major_method = paramvalues[promptnum  ].uval.ch.val;
-	 minor_method = paramvalues[promptnum+1].uval.ch.val;
+	 major_method = (enum Major)paramvalues[promptnum  ].uval.ch.val;
+	 minor_method = (enum Minor)paramvalues[promptnum+1].uval.ch.val;
       }
 
 gfp_exit:
    curfractalspecific = &fractalspecific[fractype];
-   EXIT_OVLY;
    return(ret);
 }
 
@@ -1362,21 +1276,23 @@ int find_extra_param(int type)
    int i,ret,curtyp;
    ret = -1;
    i= -1;
-   while((curtyp=moreparams[++i].type) != type && curtyp != -1);
-   if(curtyp == type)
-     ret = i;
+
+   if(fractalspecific[type].flags&MORE)
+   {
+      while((curtyp=moreparams[++i].type) != type && curtyp != -1);
+      if(curtyp == type)
+        ret = i;
+   }  
    return(ret);
 }     
-
 
 int check_orbit_name(char *orbitname)
 {
    int i, numtypes, bad;
    char *nameptr[MAXFRACTALS];
    int fractals[MAXFRACTALS];
-   int curtype,numparams,numtrig,last_val;
+   int last_val;
 
-   ENTER_OVLY(OVLY_PROMPTS1);
    numtypes = build_fractal_list(fractals, &last_val, nameptr);
    bad = 1;
    for(i=0;i<numtypes;i++)
@@ -1388,13 +1304,12 @@ int check_orbit_name(char *orbitname)
          break;
       }
    }
-   EXIT_OVLY;
    return(bad);
 }
 
 /* --------------------------------------------------------------------- */
 
-   static FILE *gfe_file;
+static FILE *gfe_file;
 
 long get_file_entry(int type,char *title,char *fmask,
 			  char *filename,char *entryname)
@@ -1403,9 +1318,8 @@ long get_file_entry(int type,char *title,char *fmask,
    /* containing definitions in the form    name { ... }     */
    int newfile,firsttry;
    long entry_pointer;
-   extern char tstack[4096];
    newfile = 0;
-   while (1) {
+   for(;;) {
       firsttry = 0;
       /* pb: binary mode used here - it is more work, but much faster, */
       /*     especially when ftell or fgetpos is used		       */
@@ -1413,13 +1327,13 @@ long get_file_entry(int type,char *title,char *fmask,
 	 char buf[60];
 	 newfile = 0;
 	 if (firsttry) {
-        extern char s_cantfind[];
 	    sprintf(temp1,s_cantfind, filename);
 	    stopmsg(0,temp1);
 	    }
 	 sprintf(buf,"Select %s File",title);
 	 if (getafilename(buf,fmask,filename) < 0)
 	    return -1;
+	    
 	 firsttry = 1; /* if around open loop again it is an error */
 	 }
       setvbuf(gfe_file,tstack,_IOFBF,4096); /* improves speed when file is big */
@@ -1451,96 +1365,174 @@ long get_file_entry(int type,char *title,char *fmask,
       }
 }
 
-   struct entryinfo {
-      char name[ITEMNAMELEN+1];
-      long point; /* points to the ( or the { following the name */
-      };
-   static struct entryinfo **gfe_choices; /* for format_getparm_line */
-   static char *gfe_title;
+struct entryinfo {
+   char name[ITEMNAMELEN+2];
+   long point; /* points to the ( or the { following the name */
+   };
+static struct entryinfo far *far*gfe_choices; /* for format_getparm_line */
+static char *gfe_title;
+
+/* skip to next non-white space character and return it */
+int skip_white_space(FILE *infile, long *file_offset)
+{
+   int c;
+   do
+   {
+      c = getc(infile);
+      (*file_offset)++; 
+   }
+   while (c == ' ' || c == '\t' || c == '\n' || c == '\r');
+   return(c);
+}
+
+/* skip to end of line */
+int skip_comment(FILE *infile, long *file_offset)
+{
+   int c;
+   do
+   {
+      c = getc(infile);
+      (*file_offset)++; 
+   }
+   while (c != '\n' && c != '\r' && c != EOF && c != '\032');
+   return(c); 
+}
+
+#define MAXENTRIES 2000L
+int scan_entries(FILE * infile, void far * ch, char *itemname)
+{
+   struct entryinfo far *far * choices;
+   char buf[101];
+   long name_offset, file_offset = -1;
+   int numentries = 0;
+
+   choices = (struct entryinfo far * far *) ch;
+
+   for (;;)
+   {                            /* scan the file for entry names */
+      int c, len;
+      if ((c = skip_white_space(infile, &file_offset)) == ';')
+      {
+         c = skip_comment(infile, &file_offset);
+         if (c == EOF || c == '\032')
+            break;
+         continue;
+      }
+      name_offset = file_offset;
+      /* next equiv roughly to fscanf(..,"%40[^* \n\r\t({\032]",buf) */
+      len = 0; 
+      while (c != ' ' && c != '\t' && c != '(' && c != ';'
+           && c != '{' && c != '\n' && c != '\r' && c != EOF && c != '\032')
+      {
+         if (len < 40)
+            buf[len++] = (char) c;
+         c = getc(infile);
+         ++file_offset;
+      }
+      buf[len] = 0;
+      while (c != '{' && /* c != '\n' && c != '\r' && */  c != EOF && c != '\032')
+      {
+         if(c == ';')
+            c = skip_comment(infile, &file_offset);
+         else
+         { 
+            c = getc(infile);
+            ++file_offset;
+         }   
+      }
+      if (c == '{')
+      {
+         while (c != '}' && c != EOF && c != '\032')
+         {
+            if(c == ';')
+               c = skip_comment(infile, &file_offset);
+            else
+            {
+               c = getc(infile);
+               ++file_offset;
+            }   
+         }
+         if (c != '}')
+            break;
+         buf[ITEMNAMELEN] = 0;
+         if (itemname != NULL)  /* looking for one entry */
+         {
+            if (stricmp(buf, itemname) == 0)
+            {
+               fseek(infile, name_offset, SEEK_SET);
+               return (-1);
+            }
+         }
+         else /* make a whole list of entries */
+         {
+            if (buf[0] != 0 && stricmp(buf, "comment") != 0)
+            {
+               far_strcpy(choices[numentries]->name, buf);
+               choices[numentries]->point = name_offset;
+               if (++numentries >= MAXENTRIES)
+               {
+                  sprintf(buf, "Too many entries in file, first %ld used", MAXENTRIES);
+                  stopmsg(0, buf);
+                  break;
+               }
+            }
+         }
+      }
+      else if (c == EOF || c == '\032')
+         break;
+   }
+   return (numentries);
+}
 
 static long gfe_choose_entry(int type,char *title,char *filename,char *entryname)
 /* subrtn of get_file_entry, separated so that storage gets freed up */
 {
-#define MAXENTRIES 200
-   static char far instr[]={"Press F6 to select different file, F2 for details of highlighted choice"};
+   static FCODE o_instr[]={"Press F6 to select different file, F2 for details, F4 to toggle sort "};
    int numentries, i;
    char buf[101];
-   struct entryinfo *choices[MAXENTRIES];
-   int attributes[MAXENTRIES];
-   void (*formatitem)();
+   struct entryinfo far * far *choices;
+   int far *attributes;
+   void (*formatitem)(int, char *);
    int boxwidth,boxdepth,colwidth;
-   long file_offset,name_offset;
-   extern struct entryinfo boxx[MAXENTRIES];
-
+   static int dosort = 1;
+   int options = 8;
+   char far *instr;   
+   /* steal existing array for "choices" */
+   choices = (struct entryinfo far *far*)MK_FP(extraseg,0);
+   /* leave room for details F2 */  
+   choices = choices + (2048/sizeof(struct entryinfo far *far*)); 
+   choices[0] = (struct entryinfo far *)(choices + MAXENTRIES+1);
+   attributes = (int far *)(choices[0] + MAXENTRIES+1);
+   instr = (char far *)(attributes + MAXENTRIES +1);
    gfe_choices = &choices[0];
    gfe_title = title;
-   for (i = 0; i < MAXENTRIES; i++) {
+retry:
+   attributes[0] = 1;
+   for(i=1;i<MAXENTRIES+1;i++)
+   {
+      choices[i] = choices[i-1] + 1;
       attributes[i] = 1;
-      choices[i] = &boxx[i];
-      }
-   numentries = 0;
-   file_offset = -1;
+   }
 
+   numentries = 0;
    helptitle(); /* to display a clue when file big and next is slow */
 
-   while (1) { /* scan the file for entry names */
-      int c,len;
-      do {
-	 ++file_offset;
-	 c = getc(gfe_file);
-	 } while (c == ' ' /* skip white space */
-	       || c == '\t' || c == '\n' || c == '\r');
-      if (c == ';') {
-	 do {
-	    ++file_offset;
-	    c = getc(gfe_file);
-	    } while (c != '\n' && c != EOF && c != '\032');
-	 if (c == EOF || c == '\032') break;
-	 continue;
-	 }
-      name_offset = file_offset;
-      len = 0; /* next equiv roughly to fscanf(..,"%40[^ \n\r\t({\032]",buf) */
-      while (c != ' ' && c != '\t' && c != '('
-	&& c != '{' && c != '\n' && c != '\r' && c != EOF && c != '\032') {
-	 if (len < 40) buf[len++] = c;
-	 c = getc(gfe_file);
-	 ++file_offset;
-	 }
-      buf[len] = 0;
-      while (c != '{' && c != '\n' && c != '\r' && c != EOF && c != '\032') {
-	 c = getc(gfe_file);
-	 ++file_offset;
-	 }
-      if (c == '{') {
-	 while (c != '}' && c != EOF && c != '\032') {
-	    c = getc(gfe_file);
-	    ++file_offset;
-	    }
-	 if (c != '}') break;
-	 buf[ITEMNAMELEN] = 0;
-	 if (buf[0] != 0 && stricmp(buf,"comment") != 0) {
-	    strcpy(boxx[numentries].name,buf);
-	    boxx[numentries].point = name_offset;
-	    if (++numentries >= MAXENTRIES) {
-	       sprintf(buf,"Too many entries in file, first %d used",MAXENTRIES);
-	       stopmsg(0,buf);
-	       break;
-	       }
-	    }
-	 }
-      else
-	 if (c == EOF || c == '\032') break;
-      }
-
+   numentries=scan_entries(gfe_file,choices,NULL);
    if (numentries == 0) {
-      static char far msg[]={"File doesn't contain any valid entries"};
+      static FCODE msg[]={"File doesn't contain any valid entries"};
       stopmsg(0,msg);
       fclose(gfe_file);
       return -2; /* back to file list */
       }
-
-   qsort((char **)choices,numentries,sizeof(char *),lccompare);
-
+   far_strcpy(instr,o_instr);
+   if(dosort)
+   {
+      far_strcat(instr,"off");
+      shell_sort((char far *)choices,numentries,sizeof(char far *),lccompare);
+   }
+   else
+      far_strcat(instr,"on");
+   
    strcpy(buf,entryname); /* preset to last choice made */
    sprintf(temp1,"%s Selection\nFile: %s",title,filename);
    formatitem = NULL;
@@ -1551,18 +1543,29 @@ static long gfe_choose_entry(int type,char *title,char *filename,char *entryname
       boxdepth = 16;
       colwidth = 76;
       }
-   i = fullscreen_choice(8,temp1,NULL,instr,numentries,(char **)choices,
+   if(dosort)
+      options = 8;
+   else
+      options = 8+32;   
+   i = fullscreen_choice(options,temp1,NULL,instr,numentries,(char far*far*)choices,
                            attributes,boxwidth,boxdepth,colwidth,0,
 			   formatitem,buf,NULL,check_gfe_key);
+   if (i == 0-F4)
+   {
+     rewind(gfe_file);
+     dosort = 1-dosort;
+     goto retry;
+   }
    fclose(gfe_file);
    if (i < 0) {
       if (i == 0-F6)
 	 return -2; /* go back to file list */
       return -1;    /* cancel */
       }
-   strcpy(entryname, choices[i]->name);
+   far_strcpy(entryname, choices[i]->name);
    return(choices[i]->point);
 }
+
 
 static int check_gfe_key(int curkey,int choice)
 {
@@ -1571,6 +1574,8 @@ static int check_gfe_key(int curkey,int choice)
 
    if (curkey == F6)
       return 0-F6;
+   if (curkey == F4)
+      return 0-F4;
    if (curkey == F2) {
       infbuf = MK_FP(extraseg,0);
       fseek(gfe_file,gfe_choices[choice]->point,SEEK_SET);
@@ -1584,7 +1589,10 @@ static int check_gfe_key(int curkey,int choice)
       putstring(2,1,C_GENERAL_HI,infhdg);
       textcbase = 2; /* left margin is 2 */
       putstring(-1,0,C_GENERAL_MED,infbuf);
-      putstring(-1,0,C_GENERAL_LO,"\n\n\nPress any key to return to selection list");
+      {
+      static FCODE msg[] = {"\n\n\nPress any key to return to selection list"};
+      putstring(-1,0,C_GENERAL_LO,msg);
+      }
       textcbase = 0;
       movecursor(25,80);
       getakeynohelp();
@@ -1595,9 +1603,13 @@ static int check_gfe_key(int curkey,int choice)
 
 static void load_entry_text(FILE *entfile,char far *buf,int maxlines)
 {
-   int linect,linelen,c;
+   int linect,linelen,c,comment=0;
    linect = linelen = 0;
    while ((c = fgetc(entfile)) != EOF && c != '\032') {
+      if (c == ';')
+         comment = 1;
+      else if (c == '\n' || c == '\r')
+         comment = 0;         
       if (c != '\r') {
 	 if (c == '\t') {
 	    while ((linelen % 8) != 7 && linelen < 75) { /* 76 wide max */
@@ -1614,8 +1626,8 @@ static void load_entry_text(FILE *entfile,char far *buf,int maxlines)
 	    if (linelen == 76) *(buf++) = '\021';
 	    }
 	 else
-	    *(buf++) = c;
-	 if (c == '}') break;
+	    *(buf++) = (char)c;
+	 if (comment == 0 && c == '}') break;
 	 }
       }
    *buf = 0;
@@ -1630,11 +1642,15 @@ static void format_parmfile_line(int choice,char *buf)
    while ((c = getc(gfe_file)) == ' ' || c == '\t' || c == ';') { }
    i = 0;
    while (i < 56 && c != '\n' && c != '\r' && c != EOF && c != '\032') {
-      line[i++] = (c == '\t') ? ' ' : c;
+      line[i++] = (char)((c == '\t') ? ' ' : c);
       c = getc(gfe_file);
       }
    line[i] = 0;
+#ifndef XFRACT   
+   sprintf(buf,"%-20Fs%-56s",gfe_choices[choice]->name,line);
+#else
    sprintf(buf,"%-20s%-56s",gfe_choices[choice]->name,line);
+#endif
 }
 
 /* --------------------------------------------------------------------- */
@@ -1642,20 +1658,25 @@ static void format_parmfile_line(int choice,char *buf)
 int get_fract3d_params() /* prompt for 3D fractal parameters */
 {
    int i,k,ret,oldhelpmode;
-   static char far hdg[] = {"3D Parameters"};
-   static char far p1[] = {"X-axis rotation in degrees"};
-   static char far p2[] = {"Y-axis rotation in degrees"};
-   static char far p3[] = {"Z-axis rotation in degrees"};
-   static char far p4[] = {"Perspective distance [1 - 999, 0 for no persp]"};
-   static char far p5[] = {"X shift with perspective (positive = right)"};
-   static char far p6[] = {"Y shift with perspective (positive = up   )"};
-   static char far p7[] = {"Stereo (R/B 3D)? (0=no,1=alternate,2=superimpose,3=photo)"};
-   static char far *ifs3d_prompts[8] = {p1, p2, p3, p4, p5, p6, p7};
+   static FCODE hdg[] = {"3D Parameters"};
+   static FCODE p1[] = {"X-axis rotation in degrees"};
+   static FCODE p2[] = {"Y-axis rotation in degrees"};
+   static FCODE p3[] = {"Z-axis rotation in degrees"};
+   static FCODE p4[] = {"Perspective distance [1 - 999, 0 for no persp]"};
+   static FCODE p5[] = {"X shift with perspective (positive = right)"};
+   static FCODE p6[] = {"Y shift with perspective (positive = up   )"};
+   static FCODE p7[] = {"Stereo (R/B 3D)? (0=no,1=alternate,2=superimpose,3=photo)"};
    struct fullscreenvalues uvalues[20];
+   char far *ifs3d_prompts[8];
 
-   ENTER_OVLY(OVLY_PROMPTS1);
    stackscreen();
-
+   ifs3d_prompts[0] = p1;
+   ifs3d_prompts[1] = p2;
+   ifs3d_prompts[2] = p3;
+   ifs3d_prompts[3] = p4;
+   ifs3d_prompts[4] = p5;
+   ifs3d_prompts[5] = p6;
+   ifs3d_prompts[6] = p7;
    k = 0;
    uvalues[k].type = 'i';
    uvalues[k++].uval.ival = XROT;
@@ -1674,7 +1695,7 @@ int get_fract3d_params() /* prompt for 3D fractal parameters */
 
    oldhelpmode = helpmode;
    helpmode = HELP3DFRACT;
-   i = fullscreen_prompt(hdg,k,ifs3d_prompts,uvalues,0,0,NULL);
+   i = fullscreen_prompt(hdg,k,ifs3d_prompts,uvalues,0,NULL);
    helpmode = oldhelpmode;
    if (i < 0) {
       ret = -1;
@@ -1696,7 +1717,6 @@ int get_fract3d_params() /* prompt for 3D fractal parameters */
 
 get_f3d_exit:
    unstackscreen();
-   EXIT_OVLY;
    return(ret);
 }
 
@@ -1704,20 +1724,24 @@ get_f3d_exit:
 /* These macros streamline the "save near space" campaign */ 
 
 #define LOADPROMPTS3D(X)     {\
-   static char far tmp[] = { X };\
+   static FCODE tmp[] = { X };\
    prompts3d[++k]= tmp;\
    }
 
-
+#define LOADPROMPTSCHOICES(X)     {\
+   static FCODE tmp[] = { X };\
+   choices[k++]= tmp;\
+   }
+   
 int get_3d_params()	/* prompt for 3D parameters */
 {
-   static char far hdg[]={"3D Mode Selection"};
-   static char far hdg1[]={"Select 3D Fill Type"};
-   char *choices[10];
+   static FCODE hdg[]={"3D Mode Selection"};
+   static FCODE hdg1[]={"Select 3D Fill Type"};
+   char far *choices[11];
    int attributes[21];
    int sphere;
    char far *s;
-   static char far s1[] = {"              Sphere 3D Parameters\n\
+   static FCODE s1[] = {"              Sphere 3D Parameters\n\
 Sphere is on its side; North pole to right\n\
 Long. 180 is top, 0 is bottom; Lat. -90 is left, 90 is right"};
    static char s2[]={"              Planar 3D Parameters\n\
@@ -1728,12 +1752,9 @@ Pre-rotation Z axis is coming at you out of the screen!"};
    int i, k;
    int oldhelpmode;
 
-   ENTER_OVLY(OVLY_PROMPTS1);
-
 #ifdef WINFRACT
      {
      extern int far wintext_textmode;
-    
      if (wintext_textmode != 2)  /* are we in textmode? */
          return(0);              /* no - prompts are already handled */
      }
@@ -1784,21 +1805,24 @@ restart_1:
    uvalues[k].type = 'y';
    uvalues[k].uval.ch.val = Targa_Out;
 
+   LOADPROMPTS3D("Use grayscale value for depth? (if \"no\" uses color number)");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = grayflag;
+
    oldhelpmode = helpmode;
    helpmode = HELP3DMODE;
 
-   k = fullscreen_prompt(hdg,k+1,prompts3d,uvalues,0,0,NULL);
+   k = fullscreen_prompt(hdg,k+1,prompts3d,uvalues,0,NULL);
    helpmode = oldhelpmode;
    if (k < 0) {
-      EXIT_OVLY;
       return(-1);
       }
 
    k=0;
 
-   preview = uvalues[k++].uval.ch.val;
+   preview = (char)uvalues[k++].uval.ch.val;
 
-   showbox = uvalues[k++].uval.ch.val;
+   showbox = (char)uvalues[k++].uval.ch.val;
 
    previewfactor  = uvalues[k++].uval.ival;
 
@@ -1809,7 +1833,7 @@ restart_1:
    RAY = uvalues[k++].uval.ival;
    k++;
    {
-      static char far msg[] = {
+      static FCODE msg[] = {
 "DKB/POV-Ray output is obsolete but still works. See \"Ray Tracing Output\" in\n\
 the online documentation."};
       if(RAY == 1)
@@ -1820,6 +1844,7 @@ the online documentation."};
    strcpy(ray_name,uvalues[k++].uval.sval);
 
    Targa_Out = uvalues[k++].uval.ch.val;
+   grayflag  = (char)uvalues[k++].uval.ch.val;
 
    /* check ranges */
    if(previewfactor < 2)
@@ -1853,25 +1878,25 @@ the online documentation."};
    if (!RAY)
    {
       k = 0;
-      choices[k++] = "make a surface grid";
-      choices[k++] = "just draw the points";
-      choices[k++] = "connect the dots (wire frame)";
-      choices[k++] = "surface fill (colors interpolated)";
-      choices[k++] = "surface fill (colors not interpolated)";
-      choices[k++] = "solid fill (bars up from \"ground\")";
+      LOADPROMPTSCHOICES("make a surface grid");
+      LOADPROMPTSCHOICES("just draw the points");
+      LOADPROMPTSCHOICES("connect the dots (wire frame)");
+      LOADPROMPTSCHOICES("surface fill (colors interpolated)");
+      LOADPROMPTSCHOICES("surface fill (colors not interpolated)");
+      LOADPROMPTSCHOICES("solid fill (bars up from \"ground\")");
       if(SPHERE)
       {
-	     choices[k++] = "light source";
+	     LOADPROMPTSCHOICES("light source");
       }
       else
       {
-	     choices[k++] = "light source before transformation";
-	     choices[k++] = "light source after transformation";
+	     LOADPROMPTSCHOICES("light source before transformation");
+	     LOADPROMPTSCHOICES("light source after transformation");
       }
       for (i = 0; i < k; ++i)
 	 attributes[i] = 1;
       helpmode = HELP3DFILL;
-      i = fullscreen_choice(CHOICEHELP,hdg1,NULL,NULL,k,choices,attributes,
+      i = fullscreen_choice(CHOICEHELP,hdg1,NULL,NULL,k,(char far * far *)choices,attributes,
 			      0,0,0,FILLTYPE+1,NULL,NULL,NULL,NULL);
       helpmode = oldhelpmode;
       if (i < 0)
@@ -1974,7 +1999,7 @@ the online documentation."};
       s = s2;
 
    helpmode = HELP3DPARMS;
-   k = fullscreen_prompt(s,k,prompts3d,uvalues,0,0,NULL);
+   k = fullscreen_prompt(s,k,prompts3d,uvalues,0,NULL);
    helpmode = oldhelpmode;
    if (k < 0)
       goto restart_1;
@@ -2007,15 +2032,13 @@ the online documentation."};
    if ((Targa_Out || ILLUMINE || RAY))
 	if(get_light_params())
 	    goto restart_3;
-
-EXIT_OVLY;
 return(0);
 }
 
 /* --------------------------------------------------------------------- */
 static int get_light_params()
 {
-   static char far hdg[]={"Light Source Parameters"};
+   static FCODE hdg[]={"Light Source Parameters"};
    char far *prompts3d[13];
    struct fullscreenvalues uvalues[13];
 
@@ -2089,7 +2112,7 @@ static int get_light_params()
 
    oldhelpmode = helpmode;
    helpmode = HELP3DLIGHT;
-   k = fullscreen_prompt(hdg,k,prompts3d,uvalues,0,0,NULL);
+   k = fullscreen_prompt(hdg,k,prompts3d,uvalues,0,NULL);
    helpmode = oldhelpmode;
    if (k < 0)
       return(-1);
@@ -2118,9 +2141,9 @@ static int get_light_params()
 		/* In case light_name conflicts with an existing name it is checked
 			again in line3d */
 		k++;
-    	back_color[0] = (char)uvalues[k++].uval.ival % 255;
-    	back_color[1] = (char)uvalues[k++].uval.ival % 255;
-    	back_color[2] = (char)uvalues[k++].uval.ival % 255;
+    	back_color[0] = (char)(uvalues[k++].uval.ival % 255);
+    	back_color[1] = (char)(uvalues[k++].uval.ival % 255);
+    	back_color[2] = (char)(uvalues[k++].uval.ival % 255);
     	Targa_Overlay = uvalues[k].uval.ch.val;
    }
    return(0);
@@ -2131,42 +2154,43 @@ static int get_light_params()
 
 static int check_mapfile()
 {
-   extern BYTE dacbox[256][3];
-   extern BYTE olddacbox[256][3];
    int askflag = 0;
    int i,oldhelpmode;
+   if(dontreadcolor)
+      return(0);
    strcpy(temp1,"*");
    if (mapset)
       strcpy(temp1,MAP_name);
    if (!(glassestype == 1 || glassestype == 2))
       askflag = 1;
    else
-      strcpy(temp1,funnyglasses_map_name);
-   while (TRUE) {
+      merge_pathnames(temp1,funnyglasses_map_name,0);
+   
+   for(;;) {
       if (askflag) {
+         static FCODE msg[] = {"\
+Enter name of .MAP file to use,\n\
+or '*' to use palette from the image to be loaded."};
 	 oldhelpmode = helpmode;
 	 helpmode = -1;
-	 i = field_prompt(0,"\
-Enter name of .MAP file to use,\n\
-or '*' to use palette from the image to be loaded.",
-		 NULL,temp1,60,NULL);
+	 i = field_prompt(0,msg,NULL,temp1,60,NULL);
 	 helpmode = oldhelpmode;
 	 if (i < 0)
 	    return(-1);
-        if (temp1[0] == '*') {
+         if (temp1[0] == '*') {
             mapset = 0;
             break;
-            }
-        }
-        memcpy(olddacbox,dacbox,256*3); /* save the DAC */
+         }
+      }
+      memcpy(olddacbox,dacbox,256*3); /* save the DAC */
       i = ValidateLuts(temp1);
       memcpy(dacbox,olddacbox,256*3); /* restore the DAC */
       if (i != 0) { /* Oops, somethings wrong */
          askflag = 1;
-	 continue;
-	 }
+         continue;
+         }
       mapset = 1;
-      strcpy (MAP_name,temp1);
+      merge_pathnames(MAP_name,temp1,0);
       break;
       }
    return(0);
@@ -2174,7 +2198,7 @@ or '*' to use palette from the image to be loaded.",
 
 static int get_funny_glasses_params()
 {
-   static char far hdg[]={"Funny Glasses Parameters"};
+   static FCODE hdg[]={"Funny Glasses Parameters"};
    char far *prompts3d[10];
 
    struct fullscreenvalues uvalues[10];
@@ -2206,7 +2230,10 @@ static int get_funny_glasses_params()
       if(FILLTYPE == -1)
 	 strcpy(funnyglasses_map_name,"grid.map");
       else
-	 strcpy(funnyglasses_map_name,"glasses2.map");
+      {
+	 strcpy(funnyglasses_map_name,Glasses1Map);
+	 funnyglasses_map_name[7] = '2';
+      }
    }
 
    k = -1;
@@ -2251,7 +2278,7 @@ static int get_funny_glasses_params()
 
    oldhelpmode = helpmode;
    helpmode = HELP3DGLASSES;
-   k = fullscreen_prompt(hdg,k+1,prompts3d,uvalues,0,0,NULL);
+   k = fullscreen_prompt(hdg,k+1,prompts3d,uvalues,0,NULL);
    helpmode = oldhelpmode;
    if (k < 0)
       return(-1);
@@ -2269,4 +2296,71 @@ static int get_funny_glasses_params()
    if(glassestype == 1 || glassestype == 2)
       strcpy(funnyglasses_map_name,uvalues[k].uval.sval);
    return(0);
+}
+
+void setbailoutformula(enum bailouts test) {
+
+   switch(test) {
+     case Mod:
+     default:{
+         if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
+           floatbailout = (int (near *)(void))asmfpMODbailout;
+         else
+           floatbailout = (int (near *)(void))fpMODbailout;
+         if (cpu >=386 && debugflag != 8088)	/* Fast 386 math */
+           longbailout = (int (near *)(void))asm386lMODbailout;
+         else
+           longbailout = (int (near *)(void))asmlMODbailout;
+         bignumbailout = (int (near *)(void))bnMODbailout;
+         bigfltbailout = (int (near *)(void))bfMODbailout;
+         break;}
+     case Real: {
+         if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
+           floatbailout = (int (near *)(void))asmfpREALbailout;
+         else
+           floatbailout = (int (near *)(void))fpREALbailout;
+         if (cpu >=386 && debugflag != 8088)	/* Fast 386 math */
+           longbailout = (int (near *)(void))asm386lREALbailout;
+         else
+           longbailout = (int (near *)(void))asmlREALbailout;
+         bignumbailout = (int (near *)(void))bnREALbailout;
+         bigfltbailout = (int (near *)(void))bfREALbailout;
+         break;}
+     case Imag:{
+         if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
+           floatbailout = (int (near *)(void))asmfpIMAGbailout;
+         else
+           floatbailout = (int (near *)(void))fpIMAGbailout;
+         if (cpu >=386 && debugflag != 8088)	/* Fast 386 math */
+           longbailout = (int (near *)(void))asm386lIMAGbailout;
+         else
+           longbailout = (int (near *)(void))asmlIMAGbailout;
+         bignumbailout = (int (near *)(void))bnIMAGbailout;
+         bigfltbailout = (int (near *)(void))bfIMAGbailout;
+         break;}
+     case Or:{
+         if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
+           floatbailout = (int (near *)(void))asmfpORbailout;
+         else
+           floatbailout = (int (near *)(void))fpORbailout;
+         if (cpu >=386 && debugflag != 8088)	/* Fast 386 math */
+           longbailout = (int (near *)(void))asm386lORbailout;
+         else
+           longbailout = (int (near *)(void))asmlORbailout;
+         bignumbailout = (int (near *)(void))bnORbailout;
+         bigfltbailout = (int (near *)(void))bfORbailout;
+         break;}
+     case And:{
+         if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
+           floatbailout = (int (near *)(void))asmfpANDbailout;
+         else
+           floatbailout = (int (near *)(void))fpANDbailout;
+         if (cpu >=386 && debugflag != 8088)	/* Fast 386 math */
+           longbailout = (int (near *)(void))asm386lANDbailout;
+         else
+           longbailout = (int (near *)(void))asmlANDbailout;
+         bignumbailout = (int (near *)(void))bnANDbailout;
+         bigfltbailout = (int (near *)(void))bfANDbailout;
+         break;}
+   }
 }

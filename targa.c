@@ -16,11 +16,6 @@
 #include	"fractint.h"
 #include	"prototyp.h"
 
-
-/*************	****************/
-
-extern char far *mapdacbox;
-
 /*************	****************/
 
 void	WriteTGA( int x, int y, int index );
@@ -71,7 +66,6 @@ static int   last = 0;
 
 /*************	****************/
 
-extern int	sxdots,sydots;		/* # of dots on the physical screen */
 static int	initialized;
 
 /*************	****************/
@@ -142,7 +136,7 @@ long far * lp;
 	if( ! xorTARGA )
 		*lp = tga32[index];
 	else
-		*lp = *lp ^ 0x00FFFFFF;
+		*lp = *lp ^ 0x00FFFFFFL;
 }
 
 /**************************************************************************/
@@ -154,7 +148,7 @@ long	pixel;
 long	far * lp;
 
 	lp = MK_FP( MEMSEG, Row32Calculate( y, x ) );
-	pixel = *lp & 0x00FFFFFF;
+	pixel = *lp & 0x00FFFFFFL;
 	if( pixel == tga32[last] ) return( last );
 	for( index = 0; index < 256; index++ )
 		if( pixel == tga32[index] ) {
@@ -221,9 +215,13 @@ void EndTGA( void )
 void StartTGA()
 {
 int	i;
-static char far couldntfind[]={"Could not find Targa card"};
-static char far noenvvar[]={"TARGA environment variable missing"};
-static char far insuffmem[]={"Insufficient memory for Targa"};
+/* 
+   This overlayed data safe because used in this file, any only used for
+   fatal error message! 
+*/
+static FCODE couldntfind[]={"Could not find Targa card"};
+static FCODE noenvvar[]={"TARGA environment variable missing"};
+static FCODE insuffmem[]={"Insufficient memory for Targa"};
 
 	/****************/
 	if( initialized ) return;
@@ -238,7 +236,7 @@ static char far insuffmem[]={"Insufficient memory for Targa"};
 
 	/****************/
 	/*** look for and activate card ***/
-	if ((i = GraphInit()))
+	if ((i = GraphInit()) != 0)
 		fatalerror((i == -1) ? couldntfind : noenvvar);
 
 	VCenterDisplay( sydots + 1 );
@@ -251,11 +249,11 @@ static char far insuffmem[]={"Insufficient memory for Targa"};
 	SetTgaColors();
 
 	if( targa.boardType == 16 ) {
-		GetPixel = GetPix16;
+		GetPixel = (unsigned (near _fastcall *)(int, int))GetPix16;
 		DoPixel = PutPix16;
 	}
 	else {
-		GetPixel = GetPix32;
+		GetPixel = (unsigned (near _fastcall *)(int, int))GetPix32;
 		DoPixel = PutPix32;
 	}
 	PutPixel = DoFirstPixel;	/* on first pixel --> erase */
@@ -272,7 +270,7 @@ static char far insuffmem[]={"Insufficient memory for Targa"};
 
 void ReopenTGA()
 {
-static char far runningontarga[]={"Running On TrueVision TARGA Card"};
+static FCODE runningontarga[]={"Running On TrueVision TARGA Card"};
 	helptitle();
 	putstring(2,20,7,runningontarga);
 	movecursor(6,0); /* in case of brutal exit */
@@ -280,7 +278,7 @@ static char far runningontarga[]={"Running On TrueVision TARGA Card"};
 
 static void _fastcall fatalerror(char far *msg)
 {
-static char far abortmsg[]={"...aborting!"};
+static FCODE abortmsg[]={"...aborting!"};
 	putstring(4,20,15,msg);
 	putstring(5,20,15,abortmsg);
 	movecursor(8,0);
@@ -334,7 +332,7 @@ static void _fastcall near SetDispReg(int reg, int value)
 
 /*****************************************************************/
 
-#define   WAITCOUNT  60000
+#define   WAITCOUNT  60000L
 
 static int VWait()
 {
@@ -619,7 +617,7 @@ unsigned switches, got_switches;
 	targa.Hue = DEF_HUE;
 	targa.RGBorCV = CV;			/* default to Composite video */
 	targa.VCRorCamera = CAMERA;
-	targa.PanXOrig = 0; targa.PanYOrig=0;
+	targa.PanXOrig = 0; targa.PanYOrig = 0;
 	targa.PageUpper= 0xffff;		/* set the bank flags to illega& values */
 	targa.PageLower= 0xffff;		/* so that they will be set the first time */
 	targa.ovrscnAvail = 0;			/* Assume no Overscan option */
@@ -643,8 +641,8 @@ unsigned switches, got_switches;
 	   targa.iobase = 0x200  + ((switches & 0x0f) << 4);
 	   }
 
-	if ((envptr = getenv("TARGASET"))) {
-	   while(1) { /* parse next parameter */
+	if ((envptr = getenv("TARGASET")) != NULL) {
+	   for(;;) { /* parse next parameter */
 	      while (*envptr == ' ' || *envptr == ',') ++envptr;
 	      if (*envptr == 0) break;
 	      if (*envptr >= 'a' && *envptr <= 'z') *envptr -= ('a'-'A');
@@ -771,5 +769,4 @@ int reg;
 	for ( reg=0; reg<FIXED_REGS; reg++)
 		SetDispReg(FixedRegs[reg],FixedValue[reg]);
 }
-
 

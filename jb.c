@@ -6,21 +6,6 @@
 #include "prototyp.h"
 #include "fractype.h"
 
-extern int savedac;
-extern int c_exp;
-extern int debugflag;
-extern int maxit;
-extern int num_fractal_types;
-extern struct fractalspecificstuff far fractalspecific[];
-extern int row, col, xdots, ydots, bitshift, fractype;
-extern int ixstart, ixstop, iystart, iystop, colors, helpmode;
-extern double param[], xxmin, xxmax, yymin, yymax;
-extern long delx, dely, ltempsqrx, ltempsqry, far * lx0, far * ly0;
-extern double tempsqrx, tempsqry, qc, qci, qcj, qck;
-extern _LCMPLX lold, lnew, *longparm;
-extern _CMPLX old, new, *floatparm;
-extern llimit2;
-
 /* these need to be accessed elsewhere for saving data */
 double mxminfp = -.83;
 double myminfp = -.25;
@@ -54,57 +39,48 @@ struct Perspectivefp LeftEyefp, RightEyefp, *Perfp;
 _LCMPLX jbc;
 _CMPLX jbcfp;
 
-extern char Glasses1Map[];
-extern char GreyFile[];
-
 static double fg, fg16;
 int zdots = 128;
 
-double originfp = 8, heightfp = 7, widthfp = 10, distfp = 24, eyesfp = 2.5, depthfp = 8, brratiofp = 1;
+float originfp  = (float)8.0;
+float heightfp  = (float)7.0;
+float widthfp   = (float)10.0;
+float distfp    = (float)24.0;
+float eyesfp    = (float)2.5;
+float depthfp   = (float)8.0;
+float brratiofp = (float)1.0;
 static long width, dist, eyes, depth, brratio;
 
 int juli3Dmode = 0;
 
-int lastorbittype = -1;
 int neworbittype = JULIA;
 
 int
 JulibrotSetup(void)
 {
-   long origin, height;
-   int numparams;
-   struct fractalspecificstuff far *oldcurfractalspecific;
-   int oldfractype;
-   int i;
-   int r;
-   int oldhelpmode;
+   long origin;
+   int r = 0;
    char *mapname;
 
 #ifndef XFRACT
    if (colors < 255)
    {
-      static char far msg[] =
+      static FCODE msg[] =
       {"Sorry, but Julibrots require a 256-color video mode"};
       stopmsg(0, msg);
       return (0);
    }
 #endif
 
-   stackscreen();
-   oldhelpmode = helpmode;
-   helpmode = HT_JULIBROT;
    xoffsetfp = (xxmax + xxmin) / 2;     /* Calculate average */
    yoffsetfp = (yymax + yymin) / 2;     /* Calculate average */
    dmxfp = (mxmaxfp - mxminfp) / zdots;
    dmyfp = (mymaxfp - myminfp) / zdots;
    floatparm = &jbcfp;
-
-
    x_per_inchfp = (xxmin - xxmax) / widthfp;
    y_per_inchfp = (yymax - yymin) / heightfp;
    inch_per_xdotfp = widthfp / xdots;
    inch_per_ydotfp = heightfp / ydots;
-
    initzfp = originfp - (depthfp / 2);
    if(juli3Dmode == 0)
       RightEyefp.x = 0.0;
@@ -115,22 +91,15 @@ JulibrotSetup(void)
    LeftEyefp.zx = RightEyefp.zx = distfp;
    LeftEyefp.zy = RightEyefp.zy = distfp;
    bbase = 128;
-   oldcurfractalspecific = curfractalspecific;
-   oldfractype = fractype;
-   fractype = neworbittype;
-   curfractalspecific = &fractalspecific[fractype];
-   lastorbittype = neworbittype;
-   curfractalspecific = oldcurfractalspecific;
-   fractype = oldfractype;
+
 #ifndef XFRACT
    if (fractalspecific[fractype].isinteger > 0)
    {
       long jxmin, jxmax, jymin, jymax, mxmax, mymax;
       if (fractalspecific[neworbittype].isinteger == 0)
       {
-         char msg[80];
-         sprintf(msg, "Julibrot orbit type isinteger mismatch");
-         stopmsg(0, msg);
+         static FCODE msg[] = {"Julibrot orbit type isinteger mismatch"};
+         stopmsg(0, (char far *)msg);
       }
       if (fractalspecific[neworbittype].isinteger > 1)
          bitshift = fractalspecific[neworbittype].isinteger;
@@ -148,7 +117,6 @@ JulibrotSetup(void)
       mymax = (long) (mymaxfp * fg);
       origin = (long) (originfp * fg16);
       depth = (long) (depthfp * fg16);
-      height = (long) (heightfp * fg16);
       width = (long) (widthfp * fg16);
       dist = (long) (distfp * fg16);
       eyes = (long) (eyesfp * fg16);
@@ -174,8 +142,6 @@ JulibrotSetup(void)
    }
 #endif
 
-   helpmode = oldhelpmode;
-   unstackscreen();
    if (juli3Dmode == 3)
    {
       savedac = 0;
@@ -231,7 +197,8 @@ jbfp_per_pixel(void)
    return (1);
 }
 
-static int n, zpixel, plotted, color;
+static int zpixel, plotted;
+static long n;
 
 int
 zline(long x, long y)
@@ -263,7 +230,7 @@ zline(long x, long y)
       lold.y = jy;
       jbc.x = mx;
       jbc.y = my;
-      if (check_key())
+      if (keypressed())
          return (-1);
       ltempsqrx = multiply(lold.x, lold.x, bitshift);
       ltempsqry = multiply(lold.y, lold.y, bitshift);
@@ -309,7 +276,9 @@ zline(long x, long y)
 int
 zlinefp(double x, double y)
 {
+#ifdef XFRACT
    static int keychk = 0;
+#endif   
    xpixelfp = x;
    ypixelfp = y;
    mxfp = mxminfp;
@@ -345,11 +314,11 @@ zlinefp(double x, double y)
       if (keychk++ > 500)
       {
          keychk = 0;
-         if (check_key())
+         if (keypressed())
             return (-1);
       }
 #else
-      if (check_key())
+      if (keypressed())
          return (-1);
 #endif      
       tempsqrx = sqr(old.x);
@@ -367,7 +336,7 @@ zlinefp(double x, double y)
                (*plot) (col, row, 127 - color);
             else
             {
-               color = color * brratiofp;
+               color = (int)(color * brratiofp);
                if (color < 1)
                   color = 1;
                if (color > 127)
@@ -396,7 +365,7 @@ Std4dFractal(void)
 {
    long x, y;
    int xdot, ydot;
-   c_exp = param[2];
+   c_exp = (int)param[2];
    if(neworbittype == LJULIAZPOWER)
    {
       if(c_exp < 1)
@@ -437,7 +406,7 @@ Std4dfpFractal(void)
 {
    double x, y;
    int xdot, ydot;
-   c_exp = param[2];
+   c_exp = (int)param[2];
 
    if(neworbittype == FPJULIAZPOWER)
    {

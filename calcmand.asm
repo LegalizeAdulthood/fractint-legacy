@@ -62,6 +62,7 @@
 ;	by (x+y)*(x-y) to reduce 4 16-bit multiplys to 3, but it makes
 ;	escape detection a bit trickier. Another time, maybe.
 ;
+;   3. Made maxit a dword variable. 1/18/94
 
 ;			 required for compatibility if Turbo ASM
 IFDEF ??version
@@ -85,6 +86,7 @@ DGROUP	      group   _DATA,_DATA2
 _DATA2		segment DWORD PUBLIC 'DATA'
 
 FUDGEFACTOR	equ	29		; default (non-potential) fudgefactor
+KEYPRESSDELAY	equ	32767	; 7FFFh
 
 ; ************************ External variables *****************************
 
@@ -93,12 +95,12 @@ FUDGEFACTOR	equ	29		; default (non-potential) fudgefactor
 	extrn   outside:word            ; "outside" color, normally -1 (iter)
 	extrn	creal:dword, cimag:dword ; Julia Set Constant
 	extrn	delmin:dword		; min increment - precision required
-	extrn	maxit:word		; maximum iterations
+	extrn	maxit:dword		; maximum iterations
 	extrn	lm:dword		; magnitude bailout limit
+	extrn	coloriter:dword		; iterations calculated for the pixel
+	extrn	realcoloriter:dword
 
 	extrn	row:word, col:word	; current pixel to calc
-	extrn	color:word		; color calculated for the pixel
-	extrn	realcolor:word		; color before inside,etc adjustments
 
 	extrn	reset_periodicity:word	; nonzero if to be reset
 	extrn	kbdcount:word		; keyboard counter
@@ -109,24 +111,26 @@ FUDGEFACTOR	equ	29		; default (non-potential) fudgefactor
 	extrn	show_orbit:word 	; "show-orbit" flag
 	extrn	orbit_ptr:word		; "orbit pointer" flag
 	extrn	periodicitycheck:word	; no periodicity if zero
+	extrn	lclosenuff:dword
 
 	public	linitx,linity		; caller sets these
-	public	savedmask		; caller sets this
+
+	extrn	nextsavedincr:word		; for incrementing AND value
+	extrn	firstsavedand:dword		; AND value
 
 ; ************************ Internal variables *****************************
 
 		align	4
 x		dd	0		; temp value: x
 y		dd	0		; temp value: y
-absx		dd	0		; temp value: abs(x)
+;absx		dd	0		; temp value: abs(x)
 linitx		dd	0		; initial value, set by calcfrac
 linity		dd	0		; initial value, set by calcfrac
-savedmask	dd	0		; saved values mask
 savedx		dd	0		; saved values of X and Y iterations
 savedy		dd	0		;  (for periodicity checks)
-k		dw	0		; iteration countdown counter
-oldcolor	dw	0		; prior pixel's escape time k value
-savedand	dw	0		; AND value for periodicity checks
+k		dd	0		; iteration countdown counter
+oldcoloriter	dd	0		; prior pixel's escape time k value
+savedand	dd	0		; AND value for periodicity checks
 savedincr	dw	0		; flag for incrementing AND value
 period		db	0		; periodicity, if in the lake
 
@@ -156,14 +160,19 @@ UNFRAME MACRO regs
 calcmandasm	proc
 	FRAME	<di,si> 		; std frame, for TC++ overlays
 	sub	ax,ax			; clear ax
+	mov	dx,ax			; clear dx
 	cmp	periodicitycheck,ax	; periodicity checking disabled?
 	je	initoldcolor		;  yup, set oldcolor 0 to disable it
 	cmp	reset_periodicity,ax	; periodicity reset?
 	je	short initparms 	; inherit oldcolor from prior invocation
-	mov	ax,maxit		; yup.	reset oldcolor to maxit-250
+	mov	ax,word ptr maxit		; yup.	reset oldcolor to maxit-250
+	mov	dx,word ptr maxit+2
 	sub	ax,250			; (avoids slowness at high maxits)
+	sbb	dx,0
+
 initoldcolor:
-	mov	oldcolor,ax		; reset oldcolor
+	mov	word ptr oldcoloriter,ax		; reset oldcoloriter
+	mov	word ptr oldcoloriter+2,dx		; reset oldcoloriter
 
 initparms:
 	mov	ax,word ptr creal	; initialize x == creal
@@ -176,9 +185,12 @@ initparms:
 	mov	word ptr y,ax		;  ...
 	mov	word ptr y+2,dx 	;  ...
 
-	mov	ax,maxit		; setup k = maxit
-	inc	ax			; (+ 1)
-	mov	k,ax			;  (decrementing to 0 is faster)
+	mov	ax,word ptr maxit		; setup k = maxit
+	mov	dx,word ptr maxit+2
+	add	ax,1			; (+ 1)
+	adc	dx,0
+	mov	word ptr k,ax			;  (decrementing to 0 is faster)
+	mov	word ptr k+2,dx
 
 	cmp	fractype,1		; julia or mandelbrot set?
 	je	short dojulia		; julia set - go there
@@ -204,7 +216,8 @@ initparms:
 ;	mov	word ptr y+2,dx 	;  ...
 ;	mov	word ptr y,ax		;  ...
 
-	dec	k			; we know the first iteration passed
+	sub	word ptr k,1		; we know the first iteration passed
+	sbb	word ptr k+2,0		; we know the first iteration passed
 	mov	dx,word ptr linitx+2	; add x += linitx
 	mov	ax,word ptr linitx	;  ...
 	add	word ptr x,ax		;  ...
@@ -237,7 +250,10 @@ dojulia:				; Julia Set initialization
 
 doeither:				; common Mandelbrot, Julia set code
 	mov	period,0		; claim periodicity of 1
-	mov	savedand,1		; initial periodicity check
+	mov	ax,word ptr firstsavedand	; initial periodicity check
+	mov	word ptr savedand,ax	; initial periodicity check
+	mov	ax,word ptr firstsavedand+2	; initial periodicity check
+	mov	word ptr savedand+2,ax	; initial periodicity check
 	mov	savedincr,1		;  flag for incrementing periodicity
 	mov	word ptr savedx+2,0ffffh; impossible value of "old" x
 	mov	word ptr savedy+2,0ffffh; impossible value of "old" y
@@ -248,18 +264,18 @@ doeither:				; common Mandelbrot, Julia set code
 	mov	kbdcount,10		; stuff in a low kbd count
 	cmp	show_orbit,0		; are we showing orbits?
 	jne	quickkbd		;  yup.  leave it that way.
-	mov	kbdcount,5000		; else, stuff an appropriate count val
+	mov	kbdcount,5000	; else, stuff an appropriate count val
 	cmp	cpu,386 		; ("appropriate" to the CPU)
 	je	short kbddiskadj	;  ...
 ;;	cmp	word ptr delmin+2,1	; is 16-bit math good enough?
 	cmp	word ptr delmin+2,8	; is 16-bit math good enough?
 	ja	kbddiskadj		;  yes. test less often
-	mov	kbdcount,500		;  no.	test more often
+	mov	kbdcount,500	;  no.	test more often
 kbddiskadj:
 	cmp	dotmode,11		; disk video?
 	jne	quickkbd		;  no, leave as is
-	shr	kbdcount,1		; yes, reduce count
-	shr	kbdcount,1		;  ...
+	shr	kbdcount,1	; yes, reduce count
+	shr	kbdcount,1	; yes, reduce count
 quickkbd:
 	call	far ptr keypressed	; has a key been pressed?
 	cmp	ax,0			;  ...
@@ -276,7 +292,9 @@ orbitkey:
 	mov	show_orbit,ax		;  ...
 	jmp	short nokey		; pretend no key was hit
 keyhit: mov	ax,-1			; return with -1
-	mov	color,ax		; set color to -1
+	mov	dx,ax
+	mov	word ptr coloriter,ax	; set coloriter to -1
+	mov	word ptr coloriter+2,dx
 	UNFRAME <si,di> 		; pop stack frame
 	ret				; bail out!
 
@@ -290,9 +308,13 @@ nokey:
 	ja	yes16bitcode		;  YAY!  16-bit speed!
 no16bitcode:
 	call	near ptr code32bit	; BOO!! nap time.  Full 32 bit math
+	cmp	cx,-1
+	je	keyhit		; key stroke, get us out of here
 	jmp	kloopend		;  bypass the 386-specific code.
 yes16bitcode:
 	call	near ptr code16bit	; invoke the 16-bit version
+	cmp	cx,-1
+	je	keyhit		; key stroke, get us out of here
 	jmp	kloopend		;  bypass the 386-specific code.
 
 .386					; 386-specific code starts here
@@ -344,30 +366,46 @@ kloop386_16:   ; cx=bitshift-16, ebp=overflow.mask
 	add	bx,word ptr linitx+2	; (from above) (x*x - y*y)/fudge + linitx
 	movsx	esi,bx			; save as x
 
-	mov	ax,oldcolor		; recall the old color
-	cmp	ax,k			; check it against this iter
-	jge	short chkpd386_16	;  yup.  do periodicity check.
+;	mov	eax,oldcoloriter		; recall the old color
+;	cmp	eax,k			; check it against this iter
+;	jge	short chkpd386_16	;  yup.  do periodicity check.
+	mov	eax,k			; rearranged for speed
+	cmp	eax,oldcoloriter
+	jb	short chkpd386_16
 nonmax386_16:
+; miraculously, k is always loaded into eax at this point
+;	mov	eax,k	; set up to test for key stroke
+	test	eax,KEYPRESSDELAY
+	jne	notakey1		; don't test yet
+	push	cx
+	call	far ptr keypressed	; has a key been pressed?
+	pop	cx
+	cmp	ax,0			;  ...
+	je	notakey1			; nope.  proceed
+	pop	ebp
+	jmp	keyhit
+notakey1:
+
 	dec	k			; while (k < maxit)
 	jnz	short kloop386_16	; try, try again
 end386_16:
 	pop	ebp
-	jmp	kloopend		; we done
+	jmp	kloopend32		; we done
 
 chkpd386_16:
-	mov	ax,k			; set up to test for save-time
-	test	ax,savedand		; save on 0, check on anything else
+;	mov	eax,k	; set up to test for save-time	;; already loaded
+	test	eax,savedand		; save on 0, check on anything else
 	jz	short chksv386_16	;  time to save a new "old" value
-	mov	ax,si			; load up x
-	xor	ax,word ptr savedx+2	; does X match?
-	test	ax,word ptr savedmask+2 ;  truncate to appropriate precision
-	jne	short nonmax386_16	;  nope.  forget it.
-	mov	ax,di			; now test y
-	xor	ax,word ptr savedy+2	; does Y match?
-	test	ax,word ptr savedmask+2 ;  truncate to appropriate precision
-	jne	short nonmax386_16	;  nope.  forget it.
+	mov	bx,si			; load up x
+	xor	bx,word ptr savedx+2	; does X match?
+	cmp	bx,word ptr lclosenuff+2 ;  truncate to appropriate precision
+	ja	short nonmax386_16	;  nope.  forget it.
+	mov	bx,di			; now test y
+	xor	bx,word ptr savedy+2	; does Y match?
+	cmp	bx,word ptr lclosenuff+2 ;  truncate to appropriate precision
+	ja	short nonmax386_16	;  nope.  forget it.
 	mov	period,1		; note that we have found periodicity
-	mov	k,0			; pretend maxit reached
+	mov	k,0	; pretend maxit reached
 	jmp	short end386_16
 chksv386_16:
 	mov	word ptr savedx+2,si	; save x
@@ -375,8 +413,9 @@ chksv386_16:
 	dec	savedincr		; time to change the periodicity?
 	jnz	short nonmax386_16	;  nope.
 	shl	savedand,1		; well then, let's try this one!
-	inc	savedand		;  (2**n -1)
-	mov	savedincr,4		; and reset the increment flag
+	inc	savedand		;  (2**n +1)
+	mov	ax,nextsavedincr	; and reset the increment flag
+	mov	savedincr,ax	; and reset the increment flag
 	jmp	short nonmax386_16
 
 	; 32bit on 386:
@@ -418,41 +457,100 @@ kloop:					; for (k = 0; k <= maxit; k++)
 	add	ebx,linitx		;	+ linitx
 	mov	esi,ebx 		; save this as x
 
-	mov	ax,oldcolor		; recall the old color
-	cmp	ax,k			; check it against this iter
-	jge	short chkperiod1
+;	mov	eax,oldcoloriter		; recall the old coloriter
+;	cmp	eax,k			; check it against this iter
+;	jge	short chkperiod1
+	mov	eax,k			; rearranged for speed
+	cmp	eax,oldcoloriter	
+	jb	short chkperiod1
 nonmax1:
+	mov	eax,k
+	test	eax,KEYPRESSDELAY
+	jne	notakey2		; don't test yet
+	call	far ptr keypressed	; has a key been pressed?
+	cmp	ax,0			;  ...
+	je	notakey2			; nope.  proceed
+	jmp	keyhit
+notakey2:
+
 	dec	k			; while (k < maxit) (dec to 0 is faster)
-	jnz	short kloop		; while (k < maxit) ...
+	jnz	kloop		; while (k < maxit) ...
 kloopend1:
 	jmp	short kloopend32	; we done.
 
 chkperiod1:
+;	mov	eax,k		; already done
+	test	eax,savedand
+	jz	short chksave1
 	mov	eax,esi
 	xor	eax,savedx
-	test	eax,savedmask
-	jnz	short chksave1
+	cmp	eax,lclosenuff
+	ja	short nonmax1
 	mov	eax,edi
 	xor	eax,savedy
-	test	eax,savedmask
-	jnz	short chksave1
+	cmp	eax,lclosenuff
+	ja	short nonmax1
 	mov	period,1		; note that we have found periodicity
 	mov	k,0			; pretend maxit reached
-	jmp	short kloopend1
+	jmp	short kloopend32	; we done.
 chksave1:
-	mov	ax,k
-	test	ax,savedand
-	jne	short nonmax1
+	mov	eax,k
 	mov	savedx,esi
 	mov	savedy,edi
 	dec	savedincr		; time to change the periodicity?
 	jnz	short nonmax1		;  nope.
 	shl	savedand,1		; well then, let's try this one!
-	inc	savedand		;  (2**n -1)
-	mov	savedincr,4		; and reset the increment flag
+	inc	savedand		;  (2**n +1)
+	mov	ax,nextsavedincr		; and reset the increment flag
+	mov	savedincr,ax		; and reset the increment flag
 	jmp	short nonmax1
 
 kloopend32:
+
+	cmp	orbit_ptr,0		; any orbits to clear?
+	je	noorbit32		;  nope.
+	call	far ptr scrub_orbit	; clear out any old orbits
+noorbit32:
+
+	mov	eax, k		; set old color
+	sub	eax,10		; minus 10, for safety
+	mov	oldcoloriter,eax	; and save it as the "old" color
+	mov	eax,maxit		; compute color
+	sub	eax,k			;  (first, re-compute "k")
+	sub	kbdcount,ax		; adjust the keyboard count (use ax only)
+	cmp	eax,0			; convert any "outlier" region
+	jg	short coloradjust1_32	;  (where abs(x) > 2 or abs(y) > 2)
+	mov	eax,1			;   to look like we ran through
+coloradjust1_32:				;    at least one loop.
+	mov     realcoloriter,eax     ; result before adjustments
+	cmp     eax,maxit             ; did we max out on iterations?
+	jne     short notmax32        ;  nope.
+	mov     oldcoloriter,eax      ; set "oldcolor" to maximum
+	cmp     inside,0                ; is "inside" >= 0?
+	jl      wedone32                ;  nope.  leave it at "maxit"
+	sub     eax,eax
+	mov     ax,inside               ; reset max-out color to default
+	cmp     periodicitycheck,0      ; show periodicity matches?
+	jge     wedone32                ;  nope.
+;	mov     al,period               ;  reset color to periodicity flag
+	cmp     period,0
+	je      wedone32
+	mov     ax,7                    ; use color 7 (default white)
+	jmp     short wedone32
+
+notmax32:
+	cmp     outside,0               ; is "outside" >= 0?
+	jl      wedone32                ;   nope. leave as realcolor
+	sub     eax,eax
+	mov     ax, outside             ; reset to "outside" color
+
+wedone32:                             ;
+	mov     coloriter,eax           ; save the color result
+	shld    edx,eax,16              ; put result in ax,dx
+	shr     eax,16
+	UNFRAME <si,di>                 ; pop stack frame
+	ret                             ; and return with color
+
 
 .8086					; 386-specific code ends here
 
@@ -462,35 +560,56 @@ kloopend:
 	call	far ptr scrub_orbit	; clear out any old orbits
 noorbit2:
 
-	mov	ax,k			; set old color
+	mov	ax,word ptr k	; set old color
+	mov	dx,word ptr k+2	; set old color
 	sub	ax,10			; minus 10, for safety
-	mov	oldcolor,ax		; and save it as the "old" color
-	mov	ax,maxit		; compute color
-	sub	ax,k			;  (first, re-compute "k")
-	sub	kbdcount,ax		; adjust the keyboard count
-	cmp	ax,1			; convert any "outlier" region
-	jge	short coloradjust1	;  (where abs(x) > 2 or abs(y) > 2)
+	sbb	dx,0
+	mov	word ptr oldcoloriter,ax	; and save it as the "old" color
+	mov	word ptr oldcoloriter+2,dx	; and save it as the "old" color
+	mov	ax,word ptr maxit		; compute color
+	mov	dx,word ptr maxit+2	; compute color
+	sub	ax,word ptr k		;  (first, re-compute "k")
+	sbb	dx,word ptr k+2		;  (first, re-compute "k")
+	sub	kbdcount,ax			; adjust the keyboard count
+	cmp	dx,0			; convert any "outlier" region
+	js	short kludge_for_julia	;  k can be > maxit!!!
+	ja	short coloradjust1	;  (where abs(x) > 2 or abs(y) > 2)
+	cmp	ax,0
+	ja	short coloradjust1	;  (where abs(x) > 2 or abs(y) > 2)
+kludge_for_julia:
 	mov	ax,1			;   to look like we ran through
+	sub	dx,dx
 coloradjust1:				;    at least one loop.
-	mov     realcolor,ax            ; result before adjustments
-	cmp     ax,maxit                ; did we max out on iterations?
+	mov     word ptr realcoloriter,ax     ; result before adjustments
+	mov     word ptr realcoloriter+2,dx   ; result before adjustments
+	cmp     dx,word ptr maxit+2           ; did we max out on iterations?
 	jne     short notmax            ;  nope.
-	mov     oldcolor,ax             ; set "oldcolor" to maximum
+	cmp     ax,word ptr maxit             ; did we max out on iterations?
+	jne     short notmax            ;  nope.
+	mov     word ptr oldcoloriter,ax      ; set "oldcolor" to maximum
+	mov     word ptr oldcoloriter+2,dx    ; set "oldcolor" to maximum
 	cmp     inside,0                ; is "inside" >= 0?
 	jl      wedone                  ;  nope.  leave it at "maxit"
 	mov     ax,inside               ; reset max-out color to default
+	sub     dx,dx
 	cmp     periodicitycheck,0      ; show periodicity matches?
 	jge     wedone                  ;  nope.
-	mov     al,period               ;  reset color to periodicity flag
+;	sub     ax,ax                   ; clear top half for next
+;	mov     al,period               ;  reset color to periodicity flag
+	cmp     period,0
+	jz      wedone
+	mov     ax,7                    ; use color 7 (default white)
 	jmp     short wedone
 
 notmax:
 	cmp     outside,0               ; is "outside" >= 0?
 	jl      wedone                  ;   nope. leave as realcolor
 	mov     ax, outside             ; reset to "outside" color
+	sub     dx,dx
 
 wedone:                                 ;
-	mov     color,ax                ; save the color result
+	mov     word ptr coloriter,ax   ; save the color result
+	mov     word ptr coloriter+2,dx   ; save the color result
 	UNFRAME <si,di>                 ; pop stack frame
 	ret                             ; and return with color
 
@@ -550,9 +669,12 @@ loop16bit1:
 
 	cmp	cx,word ptr lm+2	; while (xx+yy < lm)
 	jae	end16bit		;  ...
-	dec	k			; while (k < maxit)
+	sub	word ptr k,1	; while (k < maxit)
+	sbb	word ptr k+2,0
+	jnz	notdoneyet
+	cmp	word ptr k,0
 	jz	end16bit		;  we done.
-
+notdoneyet:
 	mov	ax,di			; compute (y * x) fg14+14=fg28
 	imul	si			;  ...
 ;	mov	cx,33-FUDGEFACTOR-2	; ( * 2 / fudge)
@@ -570,13 +692,29 @@ loop16bit1:
 	jo	end16bit		; bail out if too high
 	mov	si,bx			; save as x
 
-	mov	ax,oldcolor		; recall the old color
-	cmp	ax,k			; check it against this iter
-	jle	short nonmax3		;  nope.  bypass periodicity check.
+	mov	dx,word ptr oldcoloriter+2	; recall the old color
+	cmp	dx,word ptr k+2			; check it against this iter
+	jb	short nonmax3		;  nope.  bypass periodicity check.
+	mov	ax,word ptr oldcoloriter	; recall the old color
+	cmp	ax,word ptr k			; check it against this iter
+	jb	short nonmax3		;  nope.  bypass periodicity check.
 	mov	word ptr x+2,si 	; save x for periodicity check
 	mov	word ptr y+2,di 	; save y for periodicity check
 	call	checkperiod		; check for periodicity
 nonmax3:
+	mov	ax,word ptr k	; set up to test for key stroke
+	test	ax,KEYPRESSDELAY
+	jne	notakey3		; don't test yet
+	push	cx
+	push	bx
+	call	far ptr keypressed	; has a key been pressed?
+	pop	bx
+	pop	cx
+	cmp	ax,0			;  ...
+	je	notakey3			; nope.  proceed
+	mov	cx,-1
+	jmp	short end16bit
+notakey3:
 	jmp	start16bit		; try, try again.
 
 end16bit:				; we done.
@@ -593,45 +731,49 @@ code16bit	endp
 ;	detected by the dull-normal maximum iteration process).
 
 checkperiod	proc near		; periodicity check
-	mov	ax,k			; set up to test for save-time
-	test	ax,savedand		; save on 0, check on anything else
+	mov	ax,word ptr k	; set up to test for save-time
+	test	ax,word ptr savedand	; save on 0, check on anything else
+	jnz	notimeyet		;  NOT time to save a new "old" value
+	mov	dx,word ptr k+2	; set up to test for save-time
+	test	dx,word ptr savedand+2	; save on 0, check on anything else
 	jz	checksave		;  time to save a new "old" value
+notimeyet:
 	mov	dx,word ptr x+2 	; load up x
-	and	dx,word ptr savedmask+2 ;  truncate to appropriate precision
-	cmp	dx,word ptr savedx+2	; does X match?
-	jne	checkdone		;  nope.  forget it.
+	xor	dx,word ptr savedx+2
+	cmp	dx,word ptr lclosenuff+2
+	ja	checkdone
 	mov	ax,word ptr x		; load up x
-	and	ax,word ptr savedmask	;  truncate to appropriate precision
-	cmp	ax,word ptr savedx	; does X match?
-	jne	checkdone		;  nope.  forget it.
-	mov	dx,word ptr y+2 	; now test y
-	and	dx,word ptr savedmask+2 ;  truncate to appropriate precision
-	cmp	dx,word ptr savedy+2	; does Y match?
-	jne	checkdone		;  nope.  forget it.
+	xor	ax,word ptr savedx
+	cmp	ax,word ptr lclosenuff
+	ja	checkdone
+	mov	dx,word ptr y+2 	; load up y
+	xor	dx,word ptr savedy+2
+	cmp	dx,word ptr lclosenuff+2
+	ja	checkdone
 	mov	ax,word ptr y		; load up y
-	and	ax,word ptr savedmask	;  truncate to appropriate precision
-	cmp	ax,word ptr savedy	; does Y match?
-	jne	checkdone		;  nope.  forget it.
+	xor	ax,word ptr savedy
+	cmp	ax,word ptr lclosenuff
+	ja	checkdone
 	mov	period,1		; note that we have found periodicity
-	mov	k,1			; pretend maxit reached
+	mov	word ptr k,1	; pretend maxit reached
+	mov	word ptr k+2,0	; pretend maxit reached
 checksave:
 	mov	dx,word ptr x+2 	; load up x
-	and	dx,word ptr savedmask+2 ;  truncate to appropriate precision
 	mov	word ptr savedx+2,dx	;  and save it
 	mov	ax,word ptr x		; load up x
-	and	ax,word ptr savedmask	;  truncate to appropriate precision
 	mov	word ptr savedx,ax	;  and save it
 	mov	dx,word ptr y+2 	; load up y
-	and	dx,word ptr savedmask+2 ;  truncate to appropriate precision
 	mov	word ptr savedy+2,dx	;  and save it
 	mov	ax,word ptr y		; load up y
-	and	ax,word ptr savedmask	;  truncate to appropriate precision
 	mov	word ptr savedy,ax	;  and save it
 	dec	savedincr		; time to change the periodicity?
 	jnz	checkdone		;  nope.
-	shl	savedand,1		; well then, let's try this one!
-	inc	savedand		;  (2**n -1)
-	mov	savedincr,4		; and reset the increment flag
+	shl	word ptr savedand,1	; well then, let's try this one!
+	rcl	word ptr savedand+2,1		; well then, let's try this one!
+	add	word ptr savedand,1		;  (2**n +1)
+	adc	word ptr savedand+2,0		;  (2**n +1)
+	mov	ax,nextsavedincr		; and reset the increment flag
+	mov	savedincr,ax		; and reset the increment flag
 checkdone:
 	ret				; we done.
 checkperiod	endp
@@ -737,8 +879,12 @@ done0: pop	bp			; restore saved bp
 
 ;---------------------------------------------------------------------------
 
-nextxy:	dec	k		; while (k < maxit)
+nextxy:	sub	word ptr k,1	; while (k < maxit)
+	sbb	word ptr k+2,0
+	jnz	tryagain
+	cmp	word ptr k,0
 	jz	done4		;  we done.
+tryagain:
 	sub	cx,si			; subtract y*y from x*x
 	sbb	dx,bp			;  ...
 	add	cx,word ptr linitx	; add "A"
@@ -789,18 +935,33 @@ signok:
 	jo	done0
 	mov	word ptr y,ax		; save the new value of y
 	mov	word ptr y+2,dx 	;  ...
-	mov	ax,oldcolor		; recall the old color
-	cmp	ax,k			; check it against this iter
-	jle	short chkmaxit		;  nope.  bypass periodicity check.
+	mov	dx,word ptr oldcoloriter+2	; recall the old color
+	cmp	dx,word ptr k+2		; check it against this iter
+	jb	short chkkey4		;  nope.  bypass periodicity check.
+	mov	ax,word ptr oldcoloriter	; recall the old color
+	cmp	ax,word ptr k		; check it against this iter
+	jb	short chkkey4		;  nope.  bypass periodicity check.
 	call	checkperiod		; check for periodicity
+
+chkkey4:
+	mov	ax,word ptr k	; set up to test for key stroke
+	test	ax,KEYPRESSDELAY
+	jne	notakey4		; don't test yet
+	push	cx
+	push	bx
+	call	far ptr keypressed	; has a key been pressed?
+	pop	bx
+	pop	cx
+	cmp	ax,0			;  ...
+	je	notakey4			; nope.  proceed
+	mov	cx,-1
+	jmp	done0
+notakey4:
 
 chkmaxit:
 	cmp	show_orbit,0		; orbiting on?
 	jne	horbit			;  yep.
 	jmp	nextit			;go around again
-
-jmpdone0:
-	jmp	done0			; DOES [(X*X)-(Y*Y)+P] BEFORE THE DEC.
 
 horbit: push	bx			; save my flags
 	mov	ax,-1			; color for plot orbit

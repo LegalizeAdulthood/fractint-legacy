@@ -18,12 +18,15 @@
 */
 
 #include <stdlib.h>
+
+/* This now in prototyp.h */
+/*
 #include "mpmath.h"
+*/
+
 #include "prototyp.h"
 
 #ifndef XFRACT
-
-int MPaccuracy = 32;
 
 struct MP *MPsub(struct MP x, struct MP y) {
    y.Exp ^= 0x8000;
@@ -43,8 +46,9 @@ struct MP *MPsub386(struct MP x, struct MP y) {
 }
 
 struct MP *MPabs(struct MP x) {
-   x.Exp &= 0x7fff;
-   return(&x);
+   Ans = x;
+   Ans.Exp &= 0x7fff;
+   return(&Ans);
 }
 
 struct MPC MPCsqr(struct MPC x) {
@@ -149,7 +153,7 @@ struct MPC cmplx2MPC(_CMPLX z) {
 }
 
 /* function pointer versions added by Tim Wegner 12/07/89 */
-int        (*ppMPcmp)() = MPcmp086;
+/* int        (*ppMPcmp)() = MPcmp086; */
 int        (*pMPcmp)(struct MP x, struct MP y) = MPcmp086;
 struct MP  *(*pMPmul)(struct MP x, struct MP y)= MPmul086;
 struct MP  *(*pMPdiv)(struct MP x, struct MP y)= MPdiv086;
@@ -157,7 +161,7 @@ struct MP  *(*pMPadd)(struct MP x, struct MP y)= MPadd086;
 struct MP  *(*pMPsub)(struct MP x, struct MP y)= MPsub086;
 struct MP  *(*pd2MP)(double x)                 = d2MP086 ;
 double *(*pMP2d)(struct MP m)                  = MP2d086 ;
-struct MP  *(*pfg2MP)(long x, int fg)          = fg2MP086;
+/* struct MP  *(*pfg2MP)(long x, int fg)          = fg2MP086; */
 
 void setMPfunctions(void) {
    if(cpu == 386)
@@ -169,7 +173,7 @@ void setMPfunctions(void) {
       pMPcmp = MPcmp386;
       pd2MP  = d2MP386 ;
       pMP2d  = MP2d386 ;
-      pfg2MP = fg2MP386;
+      /* pfg2MP = fg2MP386; */
    }
    else
    {
@@ -180,7 +184,7 @@ void setMPfunctions(void) {
       pMPcmp = MPcmp086;
       pd2MP  = d2MP086 ;
       pMP2d  = MP2d086 ;
-      pfg2MP = fg2MP086;
+      /* pfg2MP = fg2MP086; */
    }
 }
 
@@ -190,11 +194,17 @@ void setMPfunctions(void) {
 #define sqr(x) ((x)*(x))
 #endif
 
-extern int debugflag, fpu;
-
 _CMPLX ComplexPower(_CMPLX xx, _CMPLX yy) {
    _CMPLX z, cLog, t;
    double e2x, siny, cosy;
+
+   /* fixes power bug - if any complaints, backwards compatibility hook
+      goes here TIW 3/95 */
+   if(debugflag != 94)
+      if(xx.x == 0 && xx.y == 0) {
+         z.x = z.y = 0.0;
+         return(z);
+      }
 
    FPUcplxlog(&xx, &cLog);
    FPUcplxmul(&cLog, &yy, &t);
@@ -213,29 +223,229 @@ _CMPLX ComplexPower(_CMPLX xx, _CMPLX yy) {
    return(z);
 }
 
+/* 
+
+  The following Complex function routines added by Tim Wegner November 1994.
+  
+*/  
+
+#define Sqrtz(z,rz) (*(rz) = ComplexSqrtFloat((z).x, (z).y))
+
+/* rz=Arcsin(z)=-i*Log{i*z+sqrt(1-z*z)} */
+void Arcsinz(_CMPLX z,_CMPLX *rz)
+{
+  _CMPLX tempz1,tempz2;
+
+  if(z.y == 0 && z.x > 1)
+  {
+     rz->x = HUGE_VAL;
+     rz->y = 0;
+     return;
+  }  
+  FPUcplxmul( &z, &z, &tempz1);
+  tempz1.x = 1 - tempz1.x; tempz1.y = -tempz1.y;  /* tempz1 = 1 - tempz1 */
+  Sqrtz( tempz1, &tempz1);
+
+  tempz2.x = -z.y; tempz2.y = z.x;                /* tempz2 = i*z  */  
+  tempz1.x += tempz2.x;  tempz1.y += tempz2.y;    /* tempz1 += tempz2 */
+  FPUcplxlog( &tempz1, &tempz1);
+  rz->x = tempz1.y;  rz->y = -tempz1.x;           /* rz = (-i)*tempz1 */
+}   /* end. Arcsinz */
+
+
+/* rz=Arccos(z)=-i*Log{z+sqrt(z*z-1)} */  
+void Arccosz(_CMPLX z,_CMPLX *rz)
+{
+  _CMPLX temp;
+
+  FPUcplxmul( &z, &z, &temp);
+  temp.x -= 1;                                 /* temp = temp - 1 */
+  Sqrtz( temp, &temp);
+
+  temp.x += z.x; temp.y += z.y;                /* temp = z + temp */
+  
+  FPUcplxlog( &temp, &temp);
+  rz->x = temp.y;  rz->y = -temp.x;              /* rz = (-i)*tempz1 */
+}   /* end. Arccosz */
+
+void Arcsinhz(_CMPLX z,_CMPLX *rz)
+{
+  _CMPLX temp;
+
+  FPUcplxmul( &z, &z, &temp);
+  temp.x += 1;                                 /* temp = temp + 1 */
+  Sqrtz( temp, &temp);
+  temp.x += z.x; temp.y += z.y;                /* temp = z + temp */
+  FPUcplxlog( &temp, rz);
+}  /* end. Arcsinhz */
+
+/* rz=Arccosh(z)=Log(z+sqrt(z*z-1)} */
+void Arccoshz(_CMPLX z,_CMPLX *rz)
+{
+  _CMPLX tempz;
+  FPUcplxmul( &z, &z, &tempz);
+  tempz.x -= 1;                              /* tempz = tempz - 1 */
+  Sqrtz( tempz, &tempz);
+  tempz.x = z.x + tempz.x; tempz.y = z.y + tempz.y;  /* tempz = z + tempz */
+  FPUcplxlog( &tempz, rz);
+}   /* end. Arccoshz */
+
+/* rz=Arctanh(z)=1/2*Log{(1+z)/(1-z)} */
+void Arctanhz(_CMPLX z,_CMPLX *rz)
+{
+  _CMPLX temp0,temp1,temp2;
+   
+  if( z.x == 0.0){
+    rz->x = 0;
+    rz->y = atan( z.y);
+    return;
+  }
+  else{
+    if( fabs(z.x) == 1.0 && z.y == 0.0){
+      return;
+    }
+    else if( fabs( z.x) < 1.0 && z.y == 0.0){
+      rz->x = log((1+z.x)/(1-z.x))/2;
+      rz->y = 0;
+      return;
+    } 
+    else{
+      temp0.x = 1 + z.x; temp0.y = z.y;             /* temp0 = 1 + z */
+      temp1.x = 1 - z.x; temp1.y = -z.y;            /* temp1 = 1 - z */
+      FPUcplxdiv( &temp0, &temp1, &temp2);
+      FPUcplxlog( &temp2, &temp2);
+      rz->x = .5*temp2.x; rz->y = .5*temp2.y;       /* rz = .5*temp2 */
+      return;
+    }
+  }
+}   /* end. Arctanhz */
+
+/* rz=Arctan(z)=i/2*Log{(1-i*z)/(1+i*z)} */
+void Arctanz(_CMPLX z,_CMPLX *rz)
+{
+  _CMPLX temp0,temp1,temp2,temp3;
+  if( z.x == 0.0 && z.y == 0.0)
+    rz->x = rz->y = 0;
+  else if( z.x != 0.0 && z.y == 0.0){
+    rz->x = atan( z.x);
+    rz->y = 0;
+  }
+  else if( z.x == 0.0 && z.y != 0.0){
+    temp0.x = z.y;  temp0.y = 0.0;
+    Arctanhz( temp0, &temp0);
+    rz->x = -temp0.y; rz->y = temp0.x;              /* i*temp0 */
+  } 
+  else if( z.x != 0.0 && z.y != 0.0){
+
+    temp0.x = -z.y; temp0.y = z.x;                  /* i*z */
+    temp1.x = 1 - temp0.x; temp1.y = -temp0.y;      /* temp1 = 1 - temp0 */
+    temp2.x = 1 + temp0.x; temp2.y = temp0.y;       /* temp2 = 1 + temp0 */
+
+    FPUcplxdiv( &temp1, &temp2, &temp3);
+    FPUcplxlog( &temp3, &temp3);
+    rz->x = -temp3.y*.5; rz->y = .5*temp3.x;           /* .5*i*temp0 */
+  }
+}   /* end. Arctanz */
+
+#define SinCosFudge 0x10000L
+#ifdef LONGSQRT
+long lsqrt(long f)
+{
+    int N;
+    unsigned long y0, z;
+    static long a=0, b=0, c=0;                  /* constant factors */
+
+    if (f == 0)
+	return f;
+    if (f <  0)
+	return 0;
+
+    if (a==0)                                   /* one-time compute consts */
+    {
+	a = (long)(fudge * .41731);
+	b = (long)(fudge * .59016);
+	c = (long)(fudge * .7071067811);
+    }
+
+    N  = 0;
+    while (f & 0xff000000L)                     /* shift arg f into the */
+    {                                           /* range: 0.5 <= f < 1  */
+	N++;
+	f /= 2;
+    }
+    while (!(f & 0xff800000L))
+    {
+	N--;
+	f *= 2;
+    }
+
+    y0 = a + multiply(b, f,  bitshift);         /* Newton's approximation */
+
+    z  = y0 + divide (f, y0, bitshift);
+    y0 = (z>>2) + divide(f, z,  bitshift);
+
+    if (N % 2)
+    {
+	N++;
+	y0 = multiply(c,y0, bitshift);
+    }
+    N /= 2;
+    if (N >= 0)
+	return y0 <<  N;                        /* correct for shift above */
+    else
+	return y0 >> -N;
+}
+#endif
+LCMPLX ComplexSqrtLong(long x, long y)
+{
+   double    mag, theta;
+   long      maglong, thetalong;
+   LCMPLX    result;
+
+#ifndef LONGSQRT
+   mag       = sqrt(sqrt(((double) multiply(x,x,bitshift))/fudge +
+			 ((double) multiply(y,y,bitshift))/ fudge));
+   maglong   = (long)(mag * fudge);
+#else
+   maglong   = lsqrt(lsqrt(multiply(x,x,bitshift)+multiply(y,y,bitshift)));
+#endif
+   theta     = atan2((double) y/fudge, (double) x/fudge)/2;
+   thetalong = (long)(theta * SinCosFudge);
+   SinCos086(thetalong, &result.y, &result.x);
+   result.x  = multiply(result.x << (bitshift - 16), maglong, bitshift);
+   result.y  = multiply(result.y << (bitshift - 16), maglong, bitshift);
+   return result;
+}
+
+_CMPLX ComplexSqrtFloat(double x, double y)
+{
+   double mag;
+   double theta;
+   _CMPLX  result;
+
+   if(x == 0.0 && y == 0.0)
+      result.x = result.y = 0.0;
+   else
+   {   
+      mag   = sqrt(sqrt(x*x + y*y));
+      theta = atan2(y, x) / 2;
+      FPUsincos(&theta, &result.y, &result.x);
+      result.x *= mag;
+      result.y *= mag;
+   }
+   return result;
+}
+
+
 /***** FRACTINT specific routines and variables *****/
 
 #ifndef TESTING_MATH
 
-#include <stdlib.h>
-
-#include "fractint.h"
-
-extern double param[];
-extern _CMPLX old, new, init;
-extern double threshold, roverd, d1overd, dx0[], dy0[];
-extern int periodicitycheck, row, col, debugflag;
-
-
-#include <stdlib.h>
-
-extern int  xdots, ydots;     /* coordinates of dots on the screen  */
-extern int  colors;           /* maximum colors available */
-extern int  maxit;
-
 BYTE far *LogTable = (BYTE far *)0;
-extern int LogFlag;
-   /* LogFlag == 1  -- standard log palettes
+int MaxLTSize;
+
+   /* int LogFlag;
+      LogFlag == 1  -- standard log palettes
       LogFlag == -1 -- 'old' log palettes
       LogFlag >  1  -- compress counts < LogFlag into color #1
       LogFlag < -1  -- use quadratic palettes based on square roots && compress
@@ -247,49 +457,49 @@ void SetupLogTable(void) {
 
    if (LogFlag > -2) {
       lf = (LogFlag > 1) ? LogFlag : 0;
-      if (lf >= maxit)
-         lf = maxit - 1;
-      Fg2Float((long)(maxit-lf), 0, m);
+      if (lf >= (unsigned int)MaxLTSize)
+         lf = MaxLTSize - 1;
+      Fg2Float((long)(MaxLTSize-lf), 0, m);
       fLog14(m, m);
       Fg2Float((long)(colors-(lf?2:1)), 0, c);
       fDiv(m, c, m);
       for (prev = 1; prev <= lf; prev++)
          LogTable[prev] = 1;
-      for (n = (lf?2:1); n < colors; n++) {
+      for (n = (lf?2:1); n < (unsigned int)colors; n++) {
          Fg2Float((long)n, 0, f);
          fMul16(f, m, f);
          fExp14(f, l);
-         limit = Float2Fg(l, 0) + lf;
-         if (limit > maxit || n == colors-1)
-            limit = maxit;
+         limit = (unsigned int)Float2Fg(l, 0) + lf;
+         if (limit > (unsigned int)MaxLTSize || n == (unsigned int)(colors-1))
+            limit = MaxLTSize;
          while (prev <= limit)
-            LogTable[prev++] = n;
+            LogTable[prev++] = (BYTE)n;
       }
    } else {
-      if ((lf = 0 - LogFlag) >= maxit)
-         lf = maxit - 1;
-      Fg2Float((long)(maxit-lf), 0, m);
+      if ((lf = 0 - LogFlag) >= (unsigned int)MaxLTSize)
+         lf = MaxLTSize - 1;
+      Fg2Float((long)(MaxLTSize-lf), 0, m);
       fSqrt14(m, m);
       Fg2Float((long)(colors-2), 0, c);
       fDiv(m, c, m);
       for (prev = 1; prev <= lf; prev++)
          LogTable[prev] = 1;
-      for (n = 2; n < colors; n++) {
+      for (n = 2; n < (unsigned int)colors; n++) {
          Fg2Float((long)n, 0, f);
          fMul16(f, m, f);
          fMul16(f, f, l);
-         limit = Float2Fg(l, 0) + lf;
-         if (limit > maxit || n == colors-1)
-            limit = maxit;
+         limit = (unsigned int)(Float2Fg(l, 0) + lf);
+         if (limit > (unsigned int)MaxLTSize || n == (unsigned int)(colors-1))
+            limit = MaxLTSize;
          while (prev <= limit)
-            LogTable[prev++] = n;
+            LogTable[prev++] = (BYTE)n;
       }
    }
    LogTable[0] = 0;
    if (LogFlag != -1)
-      for (n = 1; n < maxit; n++) /* spread top to incl unused colors */
+      for (n = 1; n < (unsigned int)MaxLTSize; n++) /* spread top to incl unused colors */
          if (LogTable[n] > LogTable[n-1])
-            LogTable[n] = LogTable[n-1]+1;
+            LogTable[n] = (BYTE)(LogTable[n-1]+1);
 }
 
 long far ExpFloat14(long xx) {
@@ -302,12 +512,9 @@ long far ExpFloat14(long xx) {
    return(RegFg2Float(Ans, (char)f));
 }
 
-extern _CMPLX tmp;
-extern int color, colors;
 double TwoPi;
-_CMPLX temp, t2, BaseLog;
-_CMPLX cdegree = { 3.0, 0.0 },
-               croot   = { 1.0, 0.0 };
+_CMPLX temp, BaseLog;
+_CMPLX cdegree = { 3.0, 0.0 }, croot   = { 1.0, 0.0 };
 
 int ComplexNewtonSetup(void) {
    threshold = .001;
@@ -346,8 +553,8 @@ int ComplexNewton(void) {
    tmp.x += croot.x;
    tmp.y += croot.y;
 
-   FPUcplxmul(&temp, &cdegree, &t2);
-   FPUcplxdiv(&tmp, &t2, &old);
+   FPUcplxmul(&temp, &cdegree, &cd1);
+   FPUcplxdiv(&tmp, &cd1, &old);
    if(DivideOverflow)
    {
       DivideOverflow = 0;
@@ -379,16 +586,16 @@ int ComplexBasin(void) {
       FPUcplxlog(&old, &temp);
       FPUcplxmul(&temp, &cdegree, &tmp);
       mod = tmp.y/TwoPi;
-      color = (int)mod;
-      if(fabs(mod - color) > 0.5) {
+      coloriter = (long)mod;
+      if(fabs(mod - coloriter) > 0.5) {
          if(mod < 0.0)
-            color--;
+            coloriter--;
          else
-            color++;
+            coloriter++;
       }
-      color += 2;
-      if(color < 0)
-         color += 128;
+      coloriter += 2;
+      if(coloriter < 0)
+         coloriter += 128;
       return(1);
    }
 
@@ -396,8 +603,8 @@ int ComplexBasin(void) {
    tmp.x += croot.x;
    tmp.y += croot.y;
 
-   FPUcplxmul(&temp, &cdegree, &t2);
-   FPUcplxdiv(&tmp, &t2, &old);
+   FPUcplxmul(&temp, &cdegree, &cd1);
+   FPUcplxdiv(&tmp, &cd1, &old);
    if(DivideOverflow)
    {
       DivideOverflow = 0;
@@ -406,29 +613,6 @@ int ComplexBasin(void) {
    new = old;
    return(0);
 }
-
-extern int Distribution, Offset, Slope;
-extern long con;
-
-/*** PB, commented this out, it was unused, actual work is in prompts.c
-int Starfield(void) {
-   int c;
-
-   plasma();
-   Distribution = (int)param[1];
-   con = (long)(param[2] / 100 * (1L << 16));
-   Slope = (int)param[3];
-   for(row = 0; row < ydots; row++) {
-      for(col = 0; col < xdots; col++) {
-         if(check_key())
-            return(-1);
-         c = getcolor(col, row);
-         putcolor(col, row, GausianNumber(c, colors));
-      }
-   }
-   return(0);
-}
-  ***/
 
 /*
  * Generate a gaussian distributed number.

@@ -12,6 +12,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #ifndef XFRACT
 #include <dos.h>
@@ -23,38 +24,15 @@ static void close_file(void);
 
 #define MAXCOLORS	256
 
-extern int rowcount;		/* row counter for screen */
-extern char readname[]; 	/* file name		  */
 static FILE *fpin = NULL;	/* FILE pointer 	  */
 unsigned int height;
-extern	char busy;
 unsigned numcolors;
-
-extern char MAP_name[];
-extern int mapset;
-extern int colorstate;		/* comments in cmdfiles */
-
-extern int colors;
-extern int glassestype;
-extern int display3d;
-extern int dotmode;		/* so we can detect disk-video */
-extern int calc_status;
-extern long calctime;
-extern long timer_interval;
-extern int pot16bit;		/* 16 bit values for continuous potential */
-extern int dither_flag;
-
-extern int (*outln)();
 static int out_line_dither(BYTE *, int);
 static int out_line_migs(BYTE *, int);
-
 int bad_code_count = 0; 	/* needed by decoder module */
-
-extern short skipxdots; /* 0 to get every dot, 1 for every 2nd, 2 every 3rd, ... */
-extern short skipydots; /* ditto for rows */
-unsigned int far gifview_image_top;	/* (for migs) */
-unsigned int far gifview_image_left;	/* (for migs) */
-unsigned int far gifview_image_twidth;	/* (for migs) */
+unsigned int gifview_image_top;	/* (for migs) */
+unsigned int gifview_image_left;	/* (for migs) */
+unsigned int gifview_image_twidth;	/* (for migs) */
 
 int get_byte()
 {
@@ -66,21 +44,15 @@ int get_bytes(BYTE *where,int how_many)
    return (fread((char *)where,1,how_many,fpin)); /* EOF is -1, as desired */
 }
 
-extern BYTE dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
-#ifndef XFRACT
-extern BYTE decoderline[MAXPIXELS+1]; /* write-line routines use this */
-#else
+#ifdef XFRACT
 BYTE decoderline[MAXPIXELS+1]; /* write-line routines use this */
 #endif
 
-static int ditherlen = -1;
 static char far *ditherbuf = NULL;
 
 /* Main entry decoder */
 
-void decoder_overlay() { }	/* for restore_active_ovly */
-
-int gifview1()
+int gifview()
 {
    BYTE buffer[16];
    unsigned top, left, width, finished;
@@ -88,8 +60,6 @@ int gifview1()
 
    int status;
    int i, j, k, planes;
-
-   ENTER_OVLY(OVLY_DECODER);
 
    status = 0;
 
@@ -100,19 +70,24 @@ int gifview1()
    for (width = 0; width < MAXPIXELS+1; width++) decoderline[width] = 0;
 
    /* Open the file */
-   strcpy(temp1,readname);
+   if(outln == outline_stereo)
+      strcpy(temp1,stereomapname);
+   else
+      strcpy(temp1,readname);
    if (strchr(temp1,'.') == NULL) {
       strcat(temp1,DEFAULTFRACTALTYPE);
       if ((fpin = fopen(temp1,"rb")) != NULL) {
 	 fclose(fpin);
 	 }
       else {
-	 strcpy(temp1,readname);
+         if(outln == outline_stereo)
+            strcpy(temp1,stereomapname);
+         else
+            strcpy(temp1,readname);
 	 strcat(temp1,ALTERNATEFRACTALTYPE);
 	 }
       }
    if ((fpin = fopen(temp1, "rb")) == NULL) {
-      EXIT_OVLY;
       return (-1);
       }
 
@@ -121,22 +96,20 @@ int gifview1()
    {
       int tmp;
 
-      buffer[i] = tmp = get_byte();
+      buffer[i] = (BYTE)(tmp = get_byte());
       if (tmp < 0)
       {
 	 close_file();
-         EXIT_OVLY;
 	 return(-1);
       }
    }
 
-   if(strncmp(buffer,"GIF87a",3) ||             /* use updated GIF specs */
+   if(strncmp((char *)buffer,"GIF87a",3) ||             /* use updated GIF specs */
       buffer[3] < '0' || buffer[3] > '9' ||
       buffer[4] < '0' || buffer[4] > '9' ||
       buffer[5] < 'A' || buffer[5] > 'z' )
    {
       close_file();
-      EXIT_OVLY;
       return(-1);
    }
 
@@ -148,7 +121,6 @@ int gifview1()
    if((buffer[10] & 0x80)==0)	 /* color map (better be!) */
    {
       close_file();
-      EXIT_OVLY;
       return(-1);
    }
    numcolors = 1 << planes;
@@ -157,22 +129,28 @@ int gifview1()
 	 outln = out_line_dither;
    }
 
-
-   for (i = 0; i < numcolors; i++)
+   for (i = 0; i < (int)numcolors; i++)
    {
       for (j = 0; j < 3; j++) {
 	 if ((k = get_byte()) < 0)
 	 {
 	    close_file();
-            EXIT_OVLY;
 	    return(-1);
 	 }
-	 if(!display3d || (glassestype != 1 && glassestype != 2))
-	    dacbox[i][j] = k >> 2;
+	 /*
+	 {
+	    char msg[80];
+	    sprintf(msg,"initbatch %d colorstate %d mapset %d",initbatch, colorstate, mapset);
+             stopmsg(0,msg);
+	 }
+	 */
+	 if((!display3d || (glassestype != 1 && glassestype != 2)) 
+	               && !dontreadcolor)
+	    dacbox[i][j] = (BYTE)(k >> 2); 
       }
    }
    colorstate = 1; /* colors aren't default and not a known .map file */
-
+   
    /* don't read if glasses */
    if (display3d && mapset && glassestype!=1 && glassestype != 2)
    {
@@ -181,10 +159,18 @@ int gifview1()
    }
    if (dacbox[0][0] != 255)
       spindac(0,1);	  /* update the DAC */
-
-   if (dotmode == 11) /* disk-video */
-       dvid_status(1,"...restoring...");
-
+   if (dotmode == 11){ /* disk-video */
+      char fname[FILE_MAX_FNAME];
+      char ext[FILE_MAX_EXT];
+      char tmpname[15];
+      char msg[40];
+       splitpath(temp1,NULL,NULL,fname,ext);
+       makepath(tmpname,NULL,NULL,fname,ext);
+       sprintf(msg,"restoring %s",tmpname);
+       dvid_status(1,msg);
+   }
+   dontreadcolor = 0;
+   
    /* Now display one or more GIF objects */
    finished = 0;
    while (!finished)
@@ -213,7 +199,7 @@ int gifview1()
 	 {
             int tmp;
 
-            buffer[i] = tmp = get_byte();
+            buffer[i] = (BYTE)(tmp = get_byte());
 	    if (tmp < 0)
 	    {
 	       status = -1;
@@ -299,7 +285,10 @@ int gifview1()
    }
    close_file();
    if (dotmode == 11) { /* disk-video */
-      dvid_status(0,"Restore completed");
+      static FCODE o_msg[] = {"Restore completed"};
+      char msg[sizeof(o_msg)];
+      far_strcpy(msg,o_msg);
+      dvid_status(0,msg);
       dvid_status(1,"");
       }
       
@@ -308,7 +297,6 @@ int gifview1()
         ditherbuf = NULL;
 	}
 
-   EXIT_OVLY;
    return(status);
 }
 
@@ -320,7 +308,7 @@ static void close_file()
 
 /* routine for MIGS that generates partial output lines */
 
-static out_line_migs(BYTE *pixels, int linelen)
+static int out_line_migs(BYTE *pixels, int linelen)
 {
 int row, startcol, stopcol;
 
@@ -330,12 +318,11 @@ stopcol = startcol+linelen-1;
 put_line(row, startcol, stopcol, pixels);
 rowcount++;
 
+return(0); /* Bert, what is supposed to be returned? JCO */
 }
 
 
-static int out_line_dither(pixels, linelen)
-BYTE *pixels;
-int linelen;
+static int out_line_dither(BYTE *pixels, int linelen)
 {
     int i,nexterr,brt,err;
 	if(ditherbuf == NULL)
@@ -355,8 +342,8 @@ int linelen;
 	    err = brt;
 	}
 	nexterr = ditherbuf[i+1]+err/3;
-	ditherbuf[i] = err/3;
-	ditherbuf[i+1] = err/3;
+	ditherbuf[i] = (char)(err/3);
+	ditherbuf[i+1] = (char)(err/3);
     }
     return out_line(pixels, linelen);
 }

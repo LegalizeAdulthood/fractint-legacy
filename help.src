@@ -13,32 +13,32 @@
 ~Label=HELP_INDEX
 
 ~Format-
-   { Using Help }			    { Fractals and the PC }
-   { Introduction }			    { Distribution of Fractint }
-   { Conditions on Use }		    { Contacting the Authors }
-   { Getting Started }			    { The Stone Soup Story }
-   { What's New for the Second Edition }    { A Word About the Authors }
-   { New Features in Version 18.21 }	    { Other Fractal Products }
-   { Display Mode Commands }
-   { Color Cycling Commands }		    { Using Fractint With a Mouse }
-   { Palette Editing Commands } 	    { Video Adapter Notes }
-					  { GIF Save File Format }
-   { Summary of Fractal Types }
-					  { Common Problems }
-   { Doodads\, Bells\, and Whistles }
-   { "3D" Images }                          { Bibliography }
-   { Palette Maps }			    { Other Programs }
-					  { Revision History }
-   { Startup Parameters\, Parameter Files }  { Version13 to 14 Conversion }
-   { Batch Mode }
+   { Using Help }                           { Fractals and the PC }
+   { Introduction }                         { Distribution of Fractint }
+   { Conditions on Use }                    { Contacting the Authors }
+   { Getting Started }                      { The Stone Soup Story }
+   { New Features in Version 19.0 }         { A Word About the Authors }
+                                          { Other Fractal Products }
+   { Display Mode Commands }                
+   { Color Cycling Commands }               { Fractint on Unix }               
+   { Palette Editing Commands }             { Using Fractint With a Mouse }    
+                                          { Video Adapter Notes }            
+   { Summary of Fractal Types }             { GIF Save File Format }           
+                                                                               
+   { Doodads\, Bells\, and Whistles }         { Common Problems }                
+   { "3D" Images }                                                             
+   { Palette Maps }                         { Bibliography }                   
+                                          { Other Programs }                 
+   { Startup Parameters\, Parameter Files }  { Revision History }               
+   { Batch Mode }                           { Version13 to 14 Conversion }    
    { "Disk-Video" Modes }                   { Printing Fractint Documentation }
+
 ~Format+
 ;
 ;
 ;
 ~DocContents
-{     , 0, "New Features in Version 18.21", FF}
-
+{     , 0, "New Features in Version 19.0", FF}
 {     , 0, "Introduction", "Conditions on Use", FF}
 
 {1.   , 0, Fractint Commands, FF}
@@ -55,8 +55,10 @@
 {1.11 , 1, "Orbits Window"}
 {1.12 , 1, "View Window"}
 {1.13 , 1, "Video Mode Function Keys"}
-{1.14 , 1, "Hints"}
-
+{1.14 , 1, "Browse Commands"}
+{1.15 , 1, "RDS Commands"}
+{1.16 , 1, "Hints"}
+{1.17 , 1, "Fractint on Unix"}
 {2.   , 0, "Fractal Types", FF}
 {2.1  , 1, "The Mandelbrot Set"}
 {2.2  , 1, "Julia Sets"}
@@ -105,8 +107,9 @@
 {2.45 , 1, "Quaternion"}
 {2.46 , 1, "HyperComplex"}
 {2.47 , 1, "Cellular Automata"}
-{2.48 , 1, "Phoenix"}
-{2.49 , 1, "Frothy Basins"}
+{2.48 , 1, "Ant Automaton"}
+{2.49 , 1, "Phoenix"}
+{2.50 , 1, "Frothy Basins"}
 
 {3.   , 0, Doodads\, Bells\, and Whistles, FF}
 {3.1  , 1, "Drawing Method"}
@@ -119,6 +122,8 @@
 {3.8  , 1, "Biomorphs"}
 {3.9  , 1, "Continuous Potential"}
 {3.10 , 1, "Starfields"}
+{3.11 , 1, "Bailout Test"}
+{3.12 , 1, "Random Dot Stereograms (RDS)"}
 
 {4.   , 0, "\"3D\" Images", "3D Overview", FF}
 {4.1  , 1, "3D Mode Selection"}
@@ -154,6 +159,7 @@
 {5.17 , 1, "Plotter Parameters"}
 {5.18 , 1, "3D Parameters"}
 {5.19 , 1, "Batch Mode"}
+{5.20 , 1, "Browser Parameters"}
 
 {6.   , 0, Hardware Support, FF}
 {6.1  , 1, Notes on Video Modes\, \"Standard\" and Otherwise,
@@ -171,14 +177,16 @@
 {8.2  , 1, A Little Code}
 {8.2.1, 2, "Periodicity Logic"}
 {8.2.2, 2, "Limitations of Integer Math (And How We Cope)"}
-{8.2.3, 2, "The Fractint \"Fractal Engine\" Architecture"}
+{8.2.3, 2, "Arbitrary Precision and Deep Zooming"}
+{8.2.4, 2, "The Fractint \"Fractal Engine\" Architecture"}
 
 {Appendix A, 0, Mathematics of the Fractal Types,
 		   "Summary of Fractal Types",
 		   "Inside=bof60|bof61|zmag|period",
 		   "Inside=epscross|startrail",
 		   "Finite Attractors",
-		   "Trig Identities", FF}
+		   "Trig Identities", 
+                   "Quaternion and Hypercomplex Algebra",FF}
 
 {Appendix B, 0, Stone Soup With Pixels: The Authors,
 		   "The Stone Soup Story",
@@ -188,13 +196,14 @@
 
 {Appendix C, 0, "GIF Save File Format", FF}
 
-{Appendix D, 0, Other Fractal Products, FF}
+{Appendix D, 0, "Other Fractal Products", FF}
 
 {Appendix E, 0, "Bibliography", FF}
 
 {Appendix F, 0, "Other Programs", FF}
 
 {Appendix G, 0, Revision History,
+		   "Version 18",
 		   "Version 17",
 		   "Version 16",
 		   "Version 15",
@@ -253,313 +262,111 @@ documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=What's New for the Second Edition
-The first edition of Fractal Creations came with Fractint version 15.1x,
-which was released in late 1990. The Fractal Creations Second Edition
-comes with Fractint version 18.2X, released in mid 1993. In the
-intervening three years literally hundreds of new additions and improvements 
-have been made. A few of the main changes are highlighted here. For more 
-details see { New Features in Version 18.21 } and { Revision History }.
+~Topic=New Features in Version 19.0
+New arbitrary precision math allows types mandelbrot, julia, manzpower, and 
+  julzpower to zoom to 10^1600. See {Arbitrary Precision and Deep Zooming}
 
- * More than 27 new fractal types on the fractal type screen. Since
-   many previous fractal types have been consolidated, in reality
-   there are hundreds more new types.
+New Random Dot Stereogram feature using <Ctrl>-<S>. Thanks to Paul De Leeuw
+  for contributing this feature. For more, see {Random Dot Stereograms (RDS)}.
 
- * Over 350 screens of on-line help accessible via a hypertext system
-   that lets you jump directly to related topics.
+New browser invoked by the <l> command allows you to see the relationships of
+  a family of images within the current corners values. See {Browse Commands}
+  and {Browser Parameters}. Thanks to Robin Bussell for contributing this
+  feature.
 
- * Many fractal types have been greatly speeded up through the use of
-   hand-coded assembler routines.
+Added four {Bailout Test}s, real, imag, or, and.  These are set on the
+  <Z> screen of the fractal types for which they work.  The default is
+  still mod.
 
- * New real-time window mode lets you view orbit tracks and Julia outlines
-   as you move the cursor around your computer screen. 
+New asin, asinh, acos, acosh, atan, atanh, sqrt, abs (abs(x)+i*abs(y)), 
+  and cabs (sqrt(x*x + y*y)) functions added to function variables and parser.
 
- * New 3-D fractal types including ICON3D, new lorenz types, new IFS
-   types, and a greatly generalized Julibrot type that can use 4-D math.
+New fractal types types chip, quadruptwo, threeply, phoenixcplx, 
+  mandphoenixclx, and ant automaton.
 
- * Fractal parameter sets can be saved as named entries in .PAR files
-   so that you can exchange fractals in very compact form with fractal
-   enthusiasts around the world. Fractint's PAR format has become a
-   de facto standard supported by software on other platforms including
-   Mandella (Macintosh) and Xfract (UNIX).
+Increased maximum iterations to 2,147,483,647 and maximum bailout to 2,100,000,000
+   when using floating point math.
 
- * New capability to make truly GIANT images, up to 65535x65535x256. The
-   previous limit was 2048x2048x256.
+New path/directory management. Fractint now remembers the pathname of 
+  command-line filenames. This means that you can specifiy directories where 
+  your files reside in SSTOOLS.INI. 
 
- * Greatly improved and expanded super VGA support.
+  File                      SSTOOLS.INI Command       Comments\
+  ==========================================================================\
+  PAR directory             parmfile=<path>           new command\
+  GIF files for reading     filename=<path>\
+  MAP files                 map=<path>\
+  Autokey files             autokeyname=<path>\
+  GIF files for saving      savename=<path>\
+  Print file                printfile=<path>\
+  Formula files             formulafile=<path>\
+  Lsystem file              lfile=<path>\
+  IFS file                  ifsfile=<path>\
+  Miscellaneous files       workdir=<path>\           new command\
+  Temporary files           tmpdir=<path>\            new command\
 
- * IFS and Lyapunov fractals can now be stored as named entries
-   in .IFS and .L files.
+  If the directories do not exist, Fractint gives an error message on runup 
+  with the option to continue. 
+~FF
+Fractint now searches all FRM, IFS, LSYS, and PAR files in the designated
+  directory for entries. The number of entries in files has been greatly 
+  increased from 200 to 2000. Comment support in these files is improved.
 
- * Many new rendering options, including inside color options zmag, 
-   epscross, starcross, periodicity and outside options real, imag, mult,
-   and summ.
+Parameters shown in <z> screen now match those used in a formula.
 
- * You can make fractal music (well, maybe "noise" is more accurate)
-   using Sound= with <O>rbits and <R>ead commands. This feature was
-   worked out with the help of Nick Dotson, a blind Fractint user,
-   who uses this feature to visualize fractals.
+Distance estimator logic has been overhauled, with the variable olddemmcolors
+  added for backward compatibility.
+
+New floating point code for Lsystems from Nick Wilt greatly speeds up image
+   generation.
+
+Enhanced fast parser from Chuck Ebbert makes floating point formula fractals 
+  faster than built-in types.
+
+Enhanced the history command to include all parameters, colors, and 
+  even .frm, .l, and .ifs file names and entries. Number of history sets
+  remembered can be set with the maxhistory=<nnn> command to save memory.
+
+Enhanced center-mag coordinates to support rotated/stretched/skewed zoom
+  boxes. 
+
+Added new parameter to built-in Halley for comparison with formula type,
+  also added new parameter to Frothybasin type. 
+
+Added color number to orbits numbers <n> display. 
+
+Added two new parameters to distest= to allow specifying resolution. 
+  This allows making resolution-independent distance estimator images. 
+
+Fixed bug that caused the "big red switch" bug if '(' appeared in random
+  uncommented formula file text, but fair warning, we don't officially 
+  support uncommented text in FRM files. 
+
+Symmetry now works for the Marksjulia type and Marksmandel types. 
+
+Full path no longer written in PAR files with <b> command.
+
+Fixed fractal type fn(z*z) so that zooming out will no longer dump you out
+  to DOS, affecting zoomed out integer images made with this type.
+
+Fixed a float to fudged integer conversion that affects integer fractal
+  types fn(z*z) and fn*fn.  This has only a minor impact on integer images
+  made with these types.
+
+Default drive and directory restored after dropping to DOS, in
+  case you changed it while under DOS.
+
+Added support for inversion to the formula parser (type=formula). 
+
+Increased maximum number of files listed by <r> command to 2977 from 300.
+
+Added outside=atan option.
+
+Added faster auto logmap logic.
+
+Fractint Version 19.0 is based on Developer's version 18.28 patch 8.
 ;
 ;
-;
-~Topic=New Features in Version 18.21
-Fractint version 18.21 is a special version of Fractint supplied with the
-Waite Group's "Fractal Creations, Second Edition", based on the 
-freeware version 18.2.
-
-Versions 18.1 and 18.2 (and 18.21) are bug-fix releases for version 18.0.  
-Changes from 18.1 to 18.21 include:
-
- The <b> command now causes filenames only to be written in PAR files.
-
- Fractint will now search directories in the PATH for files not found in the 
- requested the requested directory or the current directory. If you place 
- .MAP, .FRM, etc. in directories in your PATH, then Fractint will find them.
-
- Fixed bug that caused fractals using PI symmetry to fail at high resolution.
-
- Fractals interrupted with <3> or <r> can now resume.
-
- The palette editor's <u> (undo) now works.
-
- The <s> command in orbit/Julia window mode is no longer case sensitive.
-
- Added warnings that the POV-Ray output is obsolete (but has been left in).
- Use POV-Ray's height field facility instead or create and convert RAW files.
-
- Fixed several IFS bugs.
-
-Changes from 18.0 to 18.1 include:
-
- Overlay tuning - the Mandelbrot/Julia Set fractals are now back up
- to 17.x speeds
-
- Disk Video modes now work correctly with VESA video adapters (they
- used to use the same array for different purposes, confusing each other)
-
- 1024x768x256 and 2048x2048x256 disk video modes work again
-
- Parameter-file processing no longer crashes Fractint if it attempts to
- run a formula requiring access to a non-existent FRM file
-
- IFS arrays no longer overrun their array space
-
- type=cellular fixes
-
- "autologmap=2" now correctly picks up the minimum color
-
- The use of disk-video mode with random-access fractal types is now
- legal (it generates a warning message but lets you proceed if you
- really want to)
-
- The Lsystems "spinning-wheel" now spins slower (removing needless overhead)
-
- Changes to contributors' addresses in the Help screens
-
-(The remainder of this "new features" section is from version 18.0)
-
-New fractal types:
-
- 19 new fractal types, including:
-
- New fractal types - 'lambda(fn||fn)', 'julia(fn||fn)', 'manlam(fn||fn)',
- 'mandel(fn||fn)', 'halley', 'phoenix', 'mandphoenix', 'cellular',
- generalized bifurcation, and 'bifmay' - from Jonathan Osuch.
-
- New Mandelcloud, Quaternion, Dynamic System, Cellular Automata fractal
- types from Ken Shirriff.
-
- New HyperComplex fractal types from Timothy Wegner
-
- New ICON type from Dan Farmer, including a PAR file of examples.
-
- New Frothy Basin fractal types (and PAR entries) by Wesley Loewer
-
- MIIM (Modified Inverse Iteration Method) implementation of Inverse Julia
- from Michael Snyder.
-
- New Inverse Julia fractal type from Juan Buhler.
-
- New floating-point versions of Markslambda, Marksmandel, Mandel4,
- and Julia4 types (chosen automatically if the floating-point option
- is enabled).
-
-New options/features:
-
- New assembler-based parser logic from Chuck Ebbert - significantly
- faster than the C-based code it replaces!
-
- New assembler-based Lyapunov logic from Nicholas Wilt and Wes Loewer.
- Roughly six times faster than the old version!
-
- New Orbits-on-a-window / Julia-in-a-window options:\
-  1) The old Overlay option is now '#' (Shift-3).\
-  2) During generation, 'O' brings up orbits (as before) - after\
-     generation, 'O' brings up new orbits Windows mode.\
-  3) Control-O brings up new orbits Windows mode at any time.\
-  4) Spacebar toggles between Inverse Julia mode and the Julia set and\
-     back to the Mandelbrot set.\
- These new "in-a-window" modes are really neat!  See {Orbits Window}
- and {Julia Toggle Spacebar Commands} for details.
-
- New multi-image GIF support in the <B> command.  You can now generate
- 65535x65535x256 fractal images using Fractint (if you have the disk
- space, of course).  This option builds special PAR entries and a
- MAKEMIG.BAT file that you later use to invoke Fractint multiple times
- to generate individual sections of the image and (in a final step)
- stitch them all together.  If your other software can't handle
- Multiple-image GIFs, a SIMPLGIF program is also supplied that converts
- MIGS into simgle-image GIFs.  Press F1 at the <B> prompts screen for
- details.
-
- Fractint's decoder now handles Multi-Image Gifs.
-
- New SuperVGA/VESA Autodetect logic from the latest version of
- VGAKIT.  Sure hope we didn't break anything.
-
- New register-compatible 8514/A code from Jonathan Osuch.  By default,
- Fractint now looks first for the presence of an 8514/A register-compatible
- adapter and then (and only if it doesn't find one) the presence of the
- 8514/A API (IE, HDILOAD is no longer necessary for register-compatible
- "8514/a" adapters).  Fractint can be forced to use the 8514/A API by using
- a new command-line option, "afi=yes".  Jonathan also added ATI's
- "8514/a-style" 800x600x256 and 1280x1024x16 modes.
-
- New XGA-detection logic for ISA-based XGA-2 systems.
-
- The palette editor now has a "freestyle" editing option.  See
- {Palette Editing Commands} for details.
-
-
- Fractint is now more "batch file" friendly.  When running Fractint from
- a batch file, pressing any key will cause Fractint to exit with an
- errorlevel = 2.  Any error that interrupts an image save to disk will
- cause an exit with errorlevel = 2.  Any error that prevents an
- image from being generated will cause an exit with errorlevel = 1.
-
- New Control-X, Control-Y, and Control-Z options flip a fractal image
- along the X-axis, Y-axis, and Origin, respectively.
-
- New area calculation mode in TAB screen from Ken Shirriff 
- (for accuracy use inside=0).
- 
- The TAB screen now indicates when the Integer Math algorithms are in use.
-
- The palette must now be explicitly changed, it will not reset to the default
- unexpectedly when doing things like switching video modes.
- 
- The Julibrot type has been generalized.
- Julibrot fractals can now be generated from PAR files.
-
- Added <b> command support for viewwindows. 
-
- Added room for two additional PAR comments in the <B> command
-
- New coloring method for IFS shows which parts of fractal came from
- which transform.
-
- Added attractor basin phase plotting for Julia sets from Ken Shirriff.
-
- Improved finite attractor code to find more attractors from Ken Shirriff.
-
- New zero function, to be used in PAR files to replace old integer tan, tanh
-
- Debugflag=10000 now reports video chipset in use as well as CPU/FPU
- type and available memory
-
- Added 6 additional parameters for params= for those fractal types that
- need them.
-
- New 'matherr()' logic lets Fractint get more aggressive when these errors
- happen.
-
- New autologmap option (log=+-2) from Robin Bussell that ensures that
- all palette values are used by searching the screen border for the lowest
- value and then setting log= to +- that color.
-
- Two new diffusion options - falling and square cavity.
-
- Three new Editpal commands: '!', '@' and '#' commands (that's
- <shift-1>, <shift-2>, and <shift-3>) to swap R<->G, G<->B, R<->B.
-
- Parameter files now use a slightly shorter maximum line length, making
- them a bit more readable when stuffed into messages on Compuserve.
-
- Plasma now has 16-bit .POT output for use with Ray tracers. The "old"
- algorithm has been modified so that the plasma effect is independent
- of resolution.
-
- Slight modification to the Raytrace code to make it compatible with
- Rayshade 4.0 patch level 6.
-
- Improved boundary-tracing logic from Wesley Loewer.
-
- Command-line parameters can now be entered on-the-fly using the <g> key
- thanks to Ken Shirriff.
-
- Dithered gif images can now be loaded onto a b/w display.
- Thanks to Ken Shirriff.
-
- Pictures can now be output as compressed PostScript.
- Thanks to Ken Shirriff.
-
- Periodicity is a new inside coloring option.
- Thanks to Ken Shirriff.
-
- Fixes: symmetry values for the SQR functions, bailout for the floating-pt
- versions of 'lambdafn' and 'mandelfn' fractals from Jonathan Osuch.
-
- "Flip", "conj" operators are now selectable in the parser
-
- New DXF Raytracing option from Dennis Bragg.
-
- Improved boundary-tracing logic from Wesley Loewer.
-
- New MSC7-style overlay structure is used if MAKEFRAC.BAT specifies MSC7.
- (with new FRACTINT.DEF and FRACTINT.LNK files for MSC7 users).  Several
- modules have been re-organized to take advantage of this new overlay
- capability if compiled under MSC7.
- 
- Fractint now looks first any embedded help inside FRACTINT.EXE, and then
- for an external FRACTINT.HLP file before giving up. Previous releases
- required that the help text be embedded inside FRACTINT.EXE.
-
-Bug fixes:
-
- Corrected formulas displayed for Marksmandel, Cmplxmarksmandel, and
-  associated julia types.
-
- BTM and precision fixes.
-
- Symmetry logic changed for various "outside=" options
-
- Symmetry value for EXP function in lambdafn and lambda(fn||fn) fixed.
-
- Fixed bug where math errors prevented save in batch mode.
- 
- The <3> and <r> commands no longer destroy image -- user can back out
- with ESC and image is still there.
-
- Fixed display of correct number of Julibrot parameters, and Julibrot
- relaxes and doesn't constantly force ALTERN.MAP.
-
- Fixed tesseral type for condition when border is all one color but center
- contains image.
-
- Fixed integer mandel and julia when used with parameters > +1.99 and < -1.99
-
- Eliminated recalculation when generating a julia type from a mandelbrot
- type when the 'z' screen is viewed for the first time.
-
- Minor logic change to prevent double-clutching into and out of graphics
- mode when pressing, say, the 'x' key from a menu screen.
-
- Changed non-US phone number for the Houston Public (Software) Library
-
- The "Y" screen is now "Extended Options" instead of "Extended Doodads"
-
- ...and probably a lot more bux-fixes that we've since forgotten that
- we've implemented.
 
 ~Topic=Introduction
 
@@ -609,8 +416,8 @@ tasking control programs such as DESQview and Windows 3.
 
 Fractint is an experiment in collaboration. Many volunteers have joined
 Bert Tyler, the program's first author, in improving successive versions. 
-Through electronic mail messages, first on CompuServe's PICS forum and now 
-on GRAPHDEV, new versions are hacked out and debugged a little at a time.
+Through electronic mail messages, CompuServe's GO GRAPHICS forums, 
+new versions are hacked out and debugged a little at a time.
 Fractint was born fast, and none of us has seen any other fractal plotter
 close to the present version for speed, versatility, and all-around
 wonderfulness. (If you have, tell us so we can steal somebody else's ideas
@@ -718,6 +525,8 @@ see "Command Line Parameters, Parameter Files, Batch Mode" for details.
    { View Window }
    { \"3D\" Commands }
    { Video Mode Function Keys }
+   { Browse Commands }
+   { RDS Commands }
    { Hints }
 ;
 ;
@@ -734,7 +543,8 @@ Commands marked with an '*' are also available at the credits screen.
  * Delete,F2,F3,.. Select a Video Mode and draw (or redraw) current fractal
  * F1		   HELP! (Enter help mode)
    Esc or m	   Go to main menu
-   \\		    Redraw previous screen (you can 'back out' recursively)
+   h		   Redraw previous screen (you can 'back out' recursively)
+   Ctrl-H	   Redraw next screen in history circular buffer	     
    Tab		   Display information about the current fractal image
  * t		   Select a new fractal type and parameters
  * x		   Set a number of options and doodads
@@ -748,6 +558,8 @@ Commands marked with an '*' are also available at the credits screen.
  * i		   Set parameters for 3D fractal types
  * Insert	   Restart the program (at the credits screen)
    a		   Convert the current image into a fractal 'starfield'
+   Ctrl-A	   Turn on screen-eating ant automaton
+   Ctrl-S	   Convert current image to a Random Dot Stereogram (RDS)
    o		   toggles 'orbits' option on and off during image generation
  * d		   Shell to DOS (type 'exit' at the DOS prompt to return)
    Ctrl-X	   Flip the current image along the screen's X-axis
@@ -760,7 +572,7 @@ Commands marked with an '*' are also available at the credits screen.
 
 {Orbits Window}
    o		   Turns on Orbits Window mode after image generation
-   ctrl-o	   Turns on Orbits Window mode 
+   ctrl-o	   Turns on Orbits Window mode
 
 {View Window}
  * v		   Set view window parameters (reduction, aspect ratio)
@@ -771,7 +583,7 @@ Commands marked with an '*' are also available at the credits screen.
 {Parameter Save/Restore Commands}
    b		   Save commands describing the current image in a file
 		   (writes an entry to be used with @ command)
- * @		   Run a set of commands (in command line format) from a file
+ * @ or 2	   Run a set of commands (in command line format) from a file
    g		   Give a startup parameter: {Summary of all Parameters}
 
 {\"3D\" Commands}
@@ -796,6 +608,11 @@ Commands marked with an '*' are also available at the credits screen.
 {Interrupting and Resuming}
 
 {Video Mode Function Keys}
+
+{Browse Commands}
+  L(ook)		   Enter Browsing Mode
+{RDS Commands}
+  Ctrl-S                   Access RDS parameter screen 
 ~Doc+
 ;
 ;
@@ -823,10 +640,19 @@ From the main menu, <Esc> is used to exit from Fractint.
 Same as choosing "select video mode" from the main menu.
 Goes to the "select video mode" screen.  See {Video Mode Function Keys}.
 
-<\\> (previously <Home>)\
-Redraw the previous image. The program tracks 25 sets of previous
-coordinates and fractal types, but does not remember other options which
-were different for those past images.
+<h>\
+Redraw the previous image in the circular history buffer, revisiting fractals
+you previously generated this session in reverse order. Fractint saves
+the last ten images worth of information including fractal type, coordinates, 
+colors, and all options. Image information is saved only when some item
+changes. After ten images the circular buffer wraps around and earlier
+information is overwritten. You can set image capacity of the history feature
+using the maxhistory=<nnn> command. About 1200 bytes of memory is required 
+for each image slot.
+
+<Ctrl-h>\
+Redraw the next image in the circular history buffer. Use this to return to
+images you passed by when using <h>.
 
 <Tab>\
 Display the current fractal type, parameters, video mode, screen or (if
@@ -851,6 +677,16 @@ few letters of its name) and hit <Enter>. Next you will be prompted for
 any parameters used by the selected type - hit <Enter> for the defaults.
 See {Fractal Types} for a list of supported types.
 
+<F>\
+Toggles the use of floating-point algorithms
+(see {"Limitations of Integer Math (And How We Cope)"}).
+Whether floating point is in
+use is shown on the <Tab> status screen.  The floating point option can
+also be turned on and off using the "X" options screen.
+If you have a non-Intel floating point chip which supports the full 387
+instruction set, see the "FPU=" command in {Startup Parameters}
+to get the most out of your chip.
+
 <X>\
 Select a number of eXtended options. Brings up a full-screen menu of
 options, any of which you can change at will.  These options are:\
@@ -865,16 +701,6 @@ options, any of which you can change at will.  These options are:\
   "biomorph=" - see {Biomorphs}\
   "decomp=" - see {Decomposition}\
   "fillcolor=" - see {Drawing Method}\
-
-<F>\
-Toggles the use of floating-point algorithms
-(see {"Limitations of Integer Math (And How We Cope)"}).
-Whether floating point is in
-use is shown on the <Tab> status screen.  The floating point option can
-also be turned on and off using the "X" options screen.
-If you have a non-Intel floating point chip which supports the full 387
-instruction set, see the "FPU=" command in {Startup Parameters}
-to get the most out of your chip.
 
 <Y>\
 More options which we couldn't fit under the <X> command:\
@@ -892,12 +718,14 @@ that selection. You can enter "e" or "p" in column one of the input fields
 to get the numbers e and pi (2.71828... and 3.14159...).\
 From the fractal parameters screen, you can press <F6> to bring up a
 sub parameter screen for the coordinates of the image's corners.
+With selected fractal types, <Z> allows you to change the {Bailout Test}.
 ; With the IFS fractal type, <Z> brings up the IFS editor (see
 ; {=HT_IFS Barnsley IFS Fractals}).
 
 <+> or <->\
 Switch to color-cycling mode and begin cycling the palette
 by shifting each color to the next "contour."  See {Color Cycling Commands}.\
+
 <C>\
 Switch to color-cycling mode but do not start cycling.
 The normally black "overscan" border of the screen changes to white.
@@ -928,6 +756,13 @@ Modify 3D transformation parameters used with 3D fractal types such as
 <A>\
 Convert the current image into a fractal 'starfield'.  See {Starfields}.
 
+<Ctrl-A>\
+Unleash an image-eating ant automaton on current image. See {Ant Automaton}.
+
+<Ctrl-S> (or <k>)\
+Convert the current image into a Random Dot Stereogram (RDS).
+See {Random Dot Stereograms (RDS)}.
+
 <O> (the letter, not the number)\
 If pressed while an image is being generated, toggles the display of
 intermediate results -- the "orbits" Fractint uses as it calculates values
@@ -937,11 +772,14 @@ program is behind the scenes. (See "A Little Code" in
 
 <D>\
 Shell to DOS. Return to Fractint by entering "exit" at a DOS prompt.
-~OnlineFF
+
 <Insert>\
 Restart at the "credits" screen and reset most variables to their initial
 state.	Variables which are not reset are: savename, lightname, video,
 startup filename.
+
+<L>\
+Enter Browsing Mode.  See {Browse Commands}.
 ;
 ;
 ;
@@ -1116,20 +954,20 @@ required to recreate particular images.  The parameters required to
 describe an image require very little disk space, especially compared with
 saving the image itself.
 
-<@>
+<@> or <2>
 
-The <@> command loads a set of parameters describing an image.
+The <@> or <2> command loads a set of parameters describing an image.
 (Actually, it can also be used to set non-image parameters such as SOUND,
 but at this point we're interested in images. Other uses of parameter
 files are discussed in {"Parameter Files and the <@> Command"}.)
 
-When you hit <@>, Fractint displays the names of the entries in the
+When you hit <@> or <2>, Fractint displays the names of the entries in the
 currently selected parameter file.  The default parameter file,
 FRACTINT.PAR, is included with the Fractint release and contains
 parameters for some sample images.
 
-After pressing <@>, highlight an entry and press <Enter> to load it, or
-press <F6> to change to another parameter file.
+After pressing <@> or <2>, highlight an entry and press <Enter> to load it,
+or press <F6> to change to another parameter file.
 
 Note that parameter file entries specify all calculation related
 parameters, but do not specify things like the video mode - the image will
@@ -1138,8 +976,8 @@ be plotted in your currently selected mode.
 <B>
 
 The <B> command saves the parameters required to describe the currently
-displayed image, which can subsequently be used with the <@> command to
-recreate it.
+displayed image, which can subsequently be used with the <@> or <2> command
+to recreate it.
 
 After you press <B>, Fractint prompts for:
 
@@ -1152,7 +990,7 @@ After you press <B>, Fractint prompts for:
   {"File Parameters"}.)
 
   Name:  The name you want to assign to the entry, to be displayed when
-  the <@> command is used.
+  the <@> or <2> command is used.
 
   Main comment:  A comment to be shown beside the entry in the <@> command
   display.
@@ -1276,9 +1114,10 @@ bottom left corner can be entered as zeros to default to an ordinary
 unrotated rectangular area.  For rotated or skewed images, the bottom
 left corner must also be specified.
 
-Center-mag mode can only be used with unrotated unstretched images.
-In this mode the image area is described by entering the coordinates for
-the center of the rectangle, and its magnification factor.
+In center-mag mode the image area is described by entering the coordinates
+for the center of the rectangle, and its magnification factor.  Usually
+only these three values are needed, but the user can also specify the amount
+that the image is stretched, rotated and skewed.
 ;
 ;
 ;
@@ -1339,9 +1178,9 @@ turned on. The following keys take effect in Orbits mode.\
             proportional to the iteration. Press <c> again to toggle\
             back to point-by-point display of orbits.\
 <l>         Line toggle - connects orbits with lines (can use with <c>)\
-<n>         Numbers toggle - shows coordinates of the cursor on the\ 
-            screen. Press <n> again to turn off numbers.\
-<p>         Enter pixel coordinates directly\ 
+<n>         Numbers toggle - shows complex coordinates and color number of\
+            the cursor on the screen. Press <n> again to turn off numbers.\
+<p>         Enter pixel coordinates directly\
 <h>         Hide fractal toggle. Works only if View Windows is turned on\ 
             and set for a small window (such as the default size.) Hides the\ 
             fractal, allowing the orbit to take up the whole screen. Press\
@@ -1475,6 +1314,155 @@ adding your own video modes.
 ;
 ;
 ;
+~Topic=Browse Commands, Label=HELPBROWSE
+
+The following keystrokes function while browsing an image:\
+
+<ARROW KEYS>     Step through the outlines on the screen.\
+<ENTER>          Selects the image to display.\
+<\\>,<h>          Recalls the last image selected.\
+<D>              Deletes the selected file.\
+<R>              Renames the selected file.\
+<s>              Saves the current image with the browser boxes displayed.\
+<ESC>,<l>        Toggles the browse mode off.\
+<Ctrl-b>         Brings up the {Browser Parameters} screen.\
+
+This is a "visual directory", here is how it works...\
+When 'L' or 'l' is pressed from a fractal display the current directory is
+searched for any saved files that are deeper zooms of the current image and
+their position shown on screen by a box (or crosshairs if the box would be
+too small). See also {Browser Parameters} for more on how this is done.
+
+One outline flashes, the selected outline can be changed by using the
+cursor keys.  At the moment the outlines are selected in the order that
+they appear in your directory, so don't worry if the flashing window jumps
+all over the place!
+~OnlineFF
+When enter is pressed, the selected image is loaded. In this mode a stack
+of the last sixteen selected filenames is maintained and the '\\' or 'h' key
+pops and loads the last image you were looking at.  Using this it is
+possible to set up sequences of images that allow easy exploration of your
+favorite fractal without having to wait for recalc once the level of zoom
+gets too high, great for demos! (also useful for keeping track of just
+exactly where fract532.gif came from :-) )
+
+You can also use this facility to tidy up your disk: by typing UPPER CASE 'D'
+when a file is selected the browser will delete the file for you, after
+making sure that you really mean it, you must reply to the "are you sure"
+prompts with an UPPER CASE 'Y' and nothing else, otherwise the command is
+ignored. Just to make absolutely sure you don't accidentally wipe out the
+fruits of many hours of cpu time the default setting is to have the browser
+prompt you twice, you can disable the second prompt within the parameters
+screen, however, if you're feeling overconfident :-).
+
+To complement the Delete function there is a rename function, use the UPPER
+CASE 'R' key for this. You need to enter the FULL new file name, no .GIF is
+implied.
+
+It is possible to save the current image along with all of the displayed
+boxes indicating subimages by pressing the 's' key.  This exits the browse
+mode to save the image and the boxes become a permanent part of the image.
+Currently, the screen image ends up with stray dots colored after it is
+saved.
+
+Esc backs out of image selecting mode.\
+
+To find the next outer image, zoom in using page_up, press control_enter,
+ignore the generating image, and press control_L to start browsing.  Whatever
+is boxed around the center is the next outer image!
+~OnlineFF
+POSSIBLE ERRORS:
+
+"Sorry..I can't find anything"\
+The browser can't locate any files which match the file name mask.
+See {Browser Parameters}  This is also displayed if you have less than
+10K of far memory free when you run Fractint.
+
+"Sorry....  no more space"\
+At the moment the browser can only cope with 450 sub images at one time.
+Any subsequent images are ignored, make sure that the minimum image size
+isn't set too small on the parameters screen.
+
+"Sorry .... out of memory"\
+The browser has run out of far memory in which to store the pixels covered by
+the sub image boxes.  Try again with the main image at lower resolution,
+and/or reduce the number of TSRs resident in memory when you start Fractint.
+
+"Sorry.... read only file, can't delete"/ "can't rename"\
+The file which you were trying to delete or rename has the read only
+attribute set, you'll need to reset this with your operating system before
+you can get rid of it.
+
+;
+;
+;
+~Topic=Browser Parameters, Label=HELPBRWSPARMS
+
+This Screen enables you to control Fractints built in file browsing utility.
+If you don't know what that is see {Browse Commands}.  This screen is
+selected with <Ctrl-B> from just about anywhere.
+
+"Autobrowsing"\
+Select yes if you want the loaded image to be scanned for sub images
+immediately without pressing 'L' every time.
+
+"Ask about GIF video mode"\
+Allows turning on and off the display of the video mode table when loading
+GIFs.  This has the same effect as the askvideo= command.
+
+"Type/Parm check"\
+Select whether the browser tests for fractal type or parms when deciding
+whether a file is a sub image of the current screen or not. DISABLE WITH
+CAUTION! or things could get confusing. These tests can be switched off
+to allow such situations as wishing to display old images that were
+generated using a formula type which is now implemented as a built in
+fractal type.
+~OnlineFF
+"Confirm deletes"\
+Set this to No if you get fed up with the double prompting that the browser
+gives when deleting a file.  It won't get rid of the first prompt however.
+
+"Smallest window"\
+This parameter determines how small the image would have to be onscreen
+before it decides not to include it in the selection of files.  The size
+is entered in decimal pixels so, for instance, this could be set to 0.2 to
+allow images that are up to around three maximum zooms away (depending on
+the current video resolution) to be loaded instantly.  Set this to 0 to
+enable all sub images to be detected.  This can lead to a very cluttered
+screen!  The primary use is in conjunction with the search file mask (see
+below) to allow location of high magnification images within an overall
+view (like the whole Mset ).
+
+"Smallest box"\
+This determines when the image location is shown as crosshairs rather than
+a rather small box.  Set this according to how good your eyesight is
+(probably worse than before you started staring at fractals all the time :-))
+or the resolution of your screen.  WARNING the crosshairs routine centers
+the cursor on one corner of the image box at the moment so this looks
+misleading if set too large.
+~OnlineFF
+"Search Mask"\
+Sets the file name pattern which the browser searches, this can be used
+to search out the location of a file by setting this to the filename and
+setting smallest image to 0 (see above).
+;
+;
+;
+~Topic=RDS Commands, Label=RDSKEYS
+The following keystrokes function while viewing an RDS image:\
+
+<Enter> or <Space>   -- Toggle calibration bars on and off.\
+<Ctrl-s> or <k>      -- Return to RDS Parameters Screen.\
+<s>                  -- Save RDS image, then restore original.\ 
+<c>, <+>, <->        -- Color cycle RDS image.\
+Other keys           -- Exit RDS mode, restore original image, and pass\
+                        keystroke on to main menu.\
+
+For more about RDS, see {Random Dot Stereograms (RDS)}
+;
+;
+;
+
 ~Topic=Hints
 
 Remember, you do NOT have to wait for the program to finish a full screen
@@ -1511,6 +1499,96 @@ assumed), or by starting Fractint normally and then using the <R> command
 to reload the saved file. Or you could hit <B> to create a parameter file
 entry with the "recipe" for a given image, and next time use the <@>
 command to re-plot it.
+;
+;
+;
+~Topic=Fractint on Unix
+
+Fractint has been ported to Unix to run under X Windows.  This version is
+called "Xfractint".  Xfractint may be obtained by anonymous ftp to
+sprite.Berkeley.EDU, in the file xfractnnn.shar.Z.
+
+Xfractint is still under development and is not as reliable as the IBM PC
+version.
+
+Contact Ken Shirriff (shirriff@cs.Berkeley.EDU) for information on Xfractint.
+
+Xfractint is a straight port of the IBM PC version.  Thus, it uses the
+IBM user interface.  If you do not have function keys, or Xfractint does
+not accept them from your keyboard, use the following key mappings:
+
+     IBM             Unix\
+     F1 to F10       Shift-1 to Shift-0\
+     INSERT          I\
+     DELETE          D\
+     PAGE_UP         U\
+     PAGE_DOWN       N\
+     LEFT_ARROW      H\
+     RIGHT_ARROW     L\
+     UP_ARROW        K\
+     DOWN_ARROW      J\
+     HOME            O\
+     END             E\
+     CTL_PLUS        \}\
+     CTL_MINUS       \{
+
+Xfractint takes the following options:
+
+-onroot\
+Puts the image on the root window.
+
+-fast\
+Uses a faster drawing technique.
+
+-disk\
+Uses disk video.
+
+-geometry WxH[\{+-X}\{+-Y}]\
+Changes the geometry of the image window.
+
+-display displayname\
+Specifies the X11 display to use.
+
+-private\
+Allocates the entire colormap (i.e. more colors).
+
+-share\
+Shares the current colormap.
+
+-fixcolors n\
+Uses only n colors.
+
+-slowdisplay\
+Prevents xfractint from hanging on the title page with slow displays.
+
+-simple\
+Uses simpler keyboard handling, which makes debugging easier.
+
+Common problems:
+
+If you get the message "Couldn't find fractint.hlp", you can\
+a) Do "setenv FRACTDIR /foo", replacing /foo with the directory containing
+fractint.hlp.\
+b) Run xfractint from the directory containing fractint.hlp, or\
+c) Copy fractint.hlp to /usr/local/bin/X11/fractint
+
+If you get the message "Invalid help signature", the problem is due to
+byteorder.  You are probably using a Sun help file on a Dec machine or
+vice versa.
+
+If xfractint doesn't accept input, try typing into both the graphics window
+and the text window.  On some systems, only one of these works.
+
+If you are using Openwindows and can't get xfractint to accept input, add
+to your .Xdefaults file:\
+OpenWindows.FocusLenience:      True
+
+If you cannot view the GIFs that xfractint creates, the problem is that
+xfractint creates GIF89a format and your viewer probably only handles
+GIF87a format.  Run "xfractint gif87a=y" to produce GIF87a format.
+
+Because many shifted characters are used to simulate IBM keys, you can't
+enter capitalized filenames.
 ;
 ;
 ;

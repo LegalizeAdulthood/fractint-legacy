@@ -77,7 +77,6 @@ void HComplexTrig0(_HCMPLX *h, _HCMPLX *out)
        be generalized to hypercomplex numbers */
     
     _CMPLX a,b, resulta,resultb;
-    double t,s;
     
     /* convert to duplex form */
     a.x = h->x - h->t;    

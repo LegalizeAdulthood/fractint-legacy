@@ -1,4 +1,3 @@
-
 Koch1 { ; Adrian Mariano
 ; from The Fractal Geometry of Nature by Mandelbrot
   Angle 6
@@ -88,7 +87,7 @@ SnowflakeColor { ; Adrian Mariano
   axiom F
   F=--!F<1!F<1++F<1++F<1@IQ3|-F<1!F<1++
   F=F<1++F<1!---@Q3F<1@QI3|-F<1!F<1@Q3|-F<1!F<1
-  <=
+  F=
   }
 
 Island1 { ; Adrian Mariano

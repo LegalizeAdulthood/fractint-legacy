@@ -14,6 +14,8 @@ ENDIF
 	; this get's rid of TURBO-C fixup errors
 	extrn	multiply:far		; this routine is in 'general.asm'
 
+	extrn	floatbailout:word		; this routine is in 'fractals.c'
+
 .data
 
 	extrn	lold:qword, lnew:qword	; each defined as LCMPLX in fractals.c
@@ -25,12 +27,11 @@ ENDIF
 	extrn	bitshift:word		; fudgefactor for integer math
 	extrn	overflow:word		; error from integer math
 
-.code
+.code FRACTALS_TEXT
 
+;; Note: the check for overflow is now in StandardFractal(), JCO 2/12/95
 
-	public	longbailout
-
-longbailout	proc
+asmlMODbailout	proc near
 ;
 ; equivalent to the C code:
 ;  ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);
@@ -74,37 +75,37 @@ longbailout	proc
 ;   || lmagnitud < 0
 chkvs0: or	dx,dx
 	js	bailout
-;   || labs(lnew.x) > llimit2
-	mov	ax,WORD PTR lnew
-	mov	dx,WORD PTR lnew+2
-	or	dx,dx
-	jge	lnewx
-	neg	ax
-	adc	dx,0
-	neg	dx
-lnewx:	cmp	dx,WORD PTR llimit2+2
-	jl	chklnewy
-	jg	bailout
-	cmp	ax,WORD PTR llimit2
-	ja	bailout
+;   || labs(lnew.x) > llimit2		; This test and next one are extraneous:
+;	mov	ax,WORD PTR lnew		; take    x > llimit2  and sqr both sides
+;	mov	dx,WORD PTR lnew+2	;       x^2 > llimit
+;	or	dx,dx				; if    x^2 > llimit then surely
+;	jge	lnewx				; x^2 + y^2 > llimit
+;	neg	ax				; which was just checked!
+;	adc	dx,0
+;	neg	dx
+;lnewx:	cmp	dx,WORD PTR llimit2+2
+;	jl	chklnewy
+;	jg	bailout
+;	cmp	ax,WORD PTR llimit2
+;	ja	bailout
 ;   || labs(lnew.y) > llimit2
-chklnewy:
-	mov	ax,WORD PTR lnew+4
-	mov	dx,WORD PTR lnew+6
-	or	dx,dx
-	jge	lnewy
-	neg	ax
-	adc	dx,0
-	neg	dx
-lnewy:	cmp	dx,WORD PTR llimit2+2
-	jl	chkoflow
-	jg	bailout
-	cmp	ax,WORD PTR llimit2
-	ja	bailout
+;chklnewy:
+;	mov	ax,WORD PTR lnew+4
+;	mov	dx,WORD PTR lnew+6
+;	or	dx,dx
+;	jge	lnewy
+;	neg	ax
+;	adc	dx,0
+;	neg	dx
+;lnewy:	cmp	dx,WORD PTR llimit2+2
+;	jl	chkoflow
+;	jg	bailout
+;	cmp	ax,WORD PTR llimit2
+;	ja	bailout
 ;   || overflow)
 chkoflow:
-	cmp	overflow,0
-	jne	bailout
+;	cmp	overflow,0
+;	jne	bailout
 ;  else {
 ;  lold = lnew;
 	mov	ax,WORD PTR lnew
@@ -120,10 +121,561 @@ chkoflow:
 	ret
 bailout:
 ;  { overflow=0; return(1); }
-	mov	overflow,0
+;	mov	overflow,0
 	mov	ax,1
 	ret
-longbailout	endp
+asmlMODbailout	endp
+
+asmlREALbailout	proc near
+;
+; equivalent to the C code:
+;  ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);
+;  if (ltempsqrx >= llimit || overflow)
+;	       { overflow=0; return(1); }
+;  lold = lnew;
+;  return(0);
+;
+;  ltempsqry = lsqr(lnew.y);
+	push	bitshift
+	push	WORD PTR lnew+6
+	push	WORD PTR lnew+4
+	push	WORD PTR lnew+6
+	push	WORD PTR lnew+4
+	call	FAR PTR multiply
+	mov	WORD PTR ltempsqry,ax
+	mov	WORD PTR ltempsqry+2,dx
+;  ltempsqrx = lsqr(lnew.x);
+	push	bitshift
+	push	WORD PTR lnew+2
+	push	WORD PTR lnew
+	push	WORD PTR lnew+2
+	push	WORD PTR lnew
+	call	FAR PTR multiply
+	add	sp,20
+	mov	WORD PTR ltempsqrx,ax
+	mov	WORD PTR ltempsqrx+2,dx
+;  lmagnitud = ltempsqrx + ltempsqry;
+	add	ax,WORD PTR ltempsqry
+	adc	dx,WORD PTR ltempsqry+2
+	mov	WORD PTR lmagnitud,ax
+	mov	WORD PTR lmagnitud+2,dx
+	mov	ax,WORD PTR ltempsqrx	; restore ltempsqrx to ax & dx
+	mov	dx,WORD PTR ltempsqrx+2
+;  if (ltempsqrx >= llimit
+	cmp	dx,WORD PTR llimit+2
+	jl	chkoflow
+	jg	bailout
+	cmp	ax,WORD PTR llimit
+	jae	bailout
+;   || overflow)
+chkoflow:
+;	cmp	overflow,0
+;	jne	bailout
+;  else {
+;  lold = lnew;
+	mov	ax,WORD PTR lnew
+	mov	dx,WORD PTR lnew+2
+	mov	WORD PTR lold,ax
+	mov	WORD PTR lold+2,dx
+	mov	ax,WORD PTR lnew+4
+	mov	dx,WORD PTR lnew+6
+	mov	WORD PTR lold+4,ax
+	mov	WORD PTR lold+6,dx
+;  return(0); }
+	sub	ax,ax
+	ret
+bailout:
+;  { overflow=0; return(1); }
+;	mov	overflow,0
+	mov	ax,1
+	ret
+asmlREALbailout	endp
+
+asmlIMAGbailout	proc near
+;
+; equivalent to the C code:
+;  ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);
+;  if (ltempsqry >= llimit || overflow)
+;	       { overflow=0; return(1); }
+;  lold = lnew;
+;  return(0);
+;
+;  ltempsqrx = lsqr(lnew.x);
+	push	bitshift
+	push	WORD PTR lnew+2
+	push	WORD PTR lnew
+	push	WORD PTR lnew+2
+	push	WORD PTR lnew
+	call	FAR PTR multiply
+	mov	WORD PTR ltempsqrx,ax
+	mov	WORD PTR ltempsqrx+2,dx
+;  ltempsqry = lsqr(lnew.y);
+	push	bitshift
+	push	WORD PTR lnew+6
+	push	WORD PTR lnew+4
+	push	WORD PTR lnew+6
+	push	WORD PTR lnew+4
+	call	FAR PTR multiply
+	add	sp,20
+	mov	WORD PTR ltempsqry,ax
+	mov	WORD PTR ltempsqry+2,dx
+;  lmagnitud = ltempsqrx + ltempsqry;
+	add	ax,WORD PTR ltempsqrx
+	adc	dx,WORD PTR ltempsqrx+2
+	mov	WORD PTR lmagnitud,ax
+	mov	WORD PTR lmagnitud+2,dx
+	mov	ax,WORD PTR ltempsqry	; restore ltempsqry to ax & dx
+	mov	dx,WORD PTR ltempsqry+2
+;  if (ltempsqry >= llimit
+	cmp	dx,WORD PTR llimit+2
+	jl	chkoflow
+	jg	bailout
+	cmp	ax,WORD PTR llimit
+	jae	bailout
+;   || overflow)
+chkoflow:
+;	cmp	overflow,0
+;	jne	bailout
+;  else {
+;  lold = lnew;
+	mov	ax,WORD PTR lnew
+	mov	dx,WORD PTR lnew+2
+	mov	WORD PTR lold,ax
+	mov	WORD PTR lold+2,dx
+	mov	ax,WORD PTR lnew+4
+	mov	dx,WORD PTR lnew+6
+	mov	WORD PTR lold+4,ax
+	mov	WORD PTR lold+6,dx
+;  return(0); }
+	sub	ax,ax
+	ret
+bailout:
+;  { overflow=0; return(1); }
+;	mov	overflow,0
+	mov	ax,1
+	ret
+asmlIMAGbailout	endp
+
+asmlORbailout	proc near
+;
+; equivalent to the C code:
+;  ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);
+;  if (ltempsqrx >= llimit || ltempsqry >= llimit || overflow)
+;	       { overflow=0; return(1); }
+;  lold = lnew;
+;  return(0);
+;
+;  ltempsqrx = lsqr(lnew.x);
+	push	bitshift
+	push	WORD PTR lnew+2
+	push	WORD PTR lnew
+	push	WORD PTR lnew+2
+	push	WORD PTR lnew
+	call	FAR PTR multiply
+	mov	WORD PTR ltempsqrx,ax
+	mov	WORD PTR ltempsqrx+2,dx
+;  ltempsqry = lsqr(lnew.y);
+	push	bitshift
+	push	WORD PTR lnew+6
+	push	WORD PTR lnew+4
+	push	WORD PTR lnew+6
+	push	WORD PTR lnew+4
+	call	FAR PTR multiply
+	add	sp,20
+	mov	WORD PTR ltempsqry,ax
+	mov	WORD PTR ltempsqry+2,dx
+;  lmagnitud = ltempsqrx + ltempsqry;
+	add	ax,WORD PTR ltempsqrx
+	adc	dx,WORD PTR ltempsqrx+2
+	mov	WORD PTR lmagnitud,ax
+	mov	WORD PTR lmagnitud+2,dx
+	mov	ax,WORD PTR ltempsqry	; restore ltempsqry to ax & dx
+	mov	dx,WORD PTR ltempsqry+2
+;  if (ltempsqry >= llimit
+	cmp	dx,WORD PTR llimit+2
+	jl	chkxnxt
+	jg	bailout
+	cmp	ax,WORD PTR llimit
+	jae	bailout
+;   || ltempsqrx >= llimit
+chkxnxt:
+	mov	ax,WORD PTR ltempsqrx
+	mov	dx,WORD PTR ltempsqrx+2
+	cmp	dx,WORD PTR llimit+2
+	jl	chkoflow
+	jg	bailout
+	cmp	ax,WORD PTR llimit
+	jae	bailout
+;   || overflow)
+chkoflow:
+;	cmp	overflow,0
+;	jne	bailout
+;  else {
+;  lold = lnew;
+	mov	ax,WORD PTR lnew
+	mov	dx,WORD PTR lnew+2
+	mov	WORD PTR lold,ax
+	mov	WORD PTR lold+2,dx
+	mov	ax,WORD PTR lnew+4
+	mov	dx,WORD PTR lnew+6
+	mov	WORD PTR lold+4,ax
+	mov	WORD PTR lold+6,dx
+;  return(0); }
+	sub	ax,ax
+	ret
+bailout:
+;  { overflow=0; return(1); }
+;	mov	overflow,0
+	mov	ax,1
+	ret
+asmlORbailout	endp
+
+asmlANDbailout	proc near
+;
+; equivalent to the C code:
+;  ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);
+;  if ((ltempsqrx >= llimit && ltempsqry >= llimit) || overflow)
+;	       { overflow=0; return(1); }
+;  lold = lnew;
+;  return(0);
+;
+;  ltempsqrx = lsqr(lnew.x);
+	push	bitshift
+	push	WORD PTR lnew+2
+	push	WORD PTR lnew
+	push	WORD PTR lnew+2
+	push	WORD PTR lnew
+	call	FAR PTR multiply
+	mov	WORD PTR ltempsqrx,ax
+	mov	WORD PTR ltempsqrx+2,dx
+;  ltempsqry = lsqr(lnew.y);
+	push	bitshift
+	push	WORD PTR lnew+6
+	push	WORD PTR lnew+4
+	push	WORD PTR lnew+6
+	push	WORD PTR lnew+4
+	call	FAR PTR multiply
+	add	sp,20
+	mov	WORD PTR ltempsqry,ax
+	mov	WORD PTR ltempsqry+2,dx
+;  lmagnitud = ltempsqrx + ltempsqry;
+	add	ax,WORD PTR ltempsqrx
+	adc	dx,WORD PTR ltempsqrx+2
+	mov	WORD PTR lmagnitud,ax
+	mov	WORD PTR lmagnitud+2,dx
+	mov	ax,WORD PTR ltempsqry	; restore ltempsqry to ax & dx
+	mov	dx,WORD PTR ltempsqry+2
+;  if ((ltempsqry >= llimit
+	cmp	dx,WORD PTR llimit+2
+	jl	chkoflow
+	jg	chkx
+	cmp	ax,WORD PTR llimit
+	jae	chkx
+	jmp	short chkoflow
+;  && ltempsqrx >= llimit)
+chkx:	mov	ax,WORD PTR ltempsqrx
+	mov	dx,WORD PTR ltempsqrx+2
+	cmp	dx,WORD PTR llimit+2
+	jl	chkoflow
+	jg	bailout
+	cmp	ax,WORD PTR llimit
+	jae	bailout
+;   || overflow)
+chkoflow:
+;	cmp	overflow,0
+;	jne	bailout
+;  else {
+;  lold = lnew;
+	mov	ax,WORD PTR lnew
+	mov	dx,WORD PTR lnew+2
+	mov	WORD PTR lold,ax
+	mov	WORD PTR lold+2,dx
+	mov	ax,WORD PTR lnew+4
+	mov	dx,WORD PTR lnew+6
+	mov	WORD PTR lold+4,ax
+	mov	WORD PTR lold+6,dx
+;  return(0); }
+	sub	ax,ax
+	ret
+bailout:
+;  { overflow=0; return(1); }
+;	mov	overflow,0
+	mov	ax,1
+	ret
+asmlANDbailout	endp
+
+
+.386
+
+asm386lMODbailout	proc near
+;
+; equivalent to the C code:
+;  ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);
+;  lmagnitud = ltempsqrx + ltempsqry;
+;  if (lmagnitud >= llimit || lmagnitud < 0 || labs(lnew.x) > llimit2
+;	 || labs(lnew.y) > llimit2 || overflow)
+;	       { overflow=0; return(1); }
+;  lold = lnew;
+;  return(0);
+;
+;  ltempsqrx = lsqr(lnew.x);
+	push	bitshift
+	push	DWORD PTR lnew
+	push	DWORD PTR lnew
+	call	FAR PTR multiply
+	mov	WORD PTR ltempsqrx,ax
+	mov	WORD PTR ltempsqrx+2,dx
+;  ltempsqry = lsqr(lnew.y);
+	push	bitshift
+	push	DWORD PTR lnew+4
+	push	DWORD PTR lnew+4
+	call	FAR PTR multiply
+	add	sp,20
+	mov	WORD PTR ltempsqry,ax
+	mov	WORD PTR ltempsqry+2,dx
+;  lmagnitud = ltempsqrx + ltempsqry;
+	mov	eax,DWORD PTR ltempsqry
+	add	eax,DWORD PTR ltempsqrx
+	mov	DWORD PTR lmagnitud,eax
+;  if (lmagnitud >= llimit
+	cmp	eax,DWORD PTR llimit
+	jae	bailout
+;   || overflow)
+chkoflow:
+;	cmp	overflow,0
+;	jne	bailout
+;  else {
+;  lold = lnew;
+	mov	eax,DWORD PTR lnew
+	mov	DWORD PTR lold,eax
+	mov	eax,DWORD PTR lnew+4
+	mov	DWORD PTR lold+4,eax
+;  return(0); }
+	sub	ax,ax
+	ret
+bailout:
+;  { overflow=0; return(1); }
+;	mov	overflow,0
+	mov	ax,1
+	ret
+asm386lMODbailout	endp
+
+asm386lREALbailout	proc near
+;
+; equivalent to the C code:
+;  ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);
+;  if (ltempsqrx >= llimit || overflow)
+;	       { overflow=0; return(1); }
+;  lold = lnew;
+;  return(0);
+;
+;  ltempsqry = lsqr(lnew.y);
+	push	bitshift
+	push	DWORD PTR lnew+4
+	push	DWORD PTR lnew+4
+	call	FAR PTR multiply
+	mov	WORD PTR ltempsqry,ax
+	mov	WORD PTR ltempsqry+2,dx
+;  ltempsqrx = lsqr(lnew.x);
+	push	bitshift
+	push	DWORD PTR lnew
+	push	DWORD PTR lnew
+	call	FAR PTR multiply
+	add	sp,20
+	mov	WORD PTR ltempsqrx,ax
+	mov	WORD PTR ltempsqrx+2,dx
+;  lmagnitud = ltempsqrx + ltempsqry;
+	mov	eax,DWORD PTR ltempsqry
+	add	eax,DWORD PTR ltempsqrx
+	mov	DWORD PTR lmagnitud,eax
+;  if (ltempsqrx >= llimit
+	mov	eax,DWORD PTR ltempsqrx
+	cmp	eax,DWORD PTR llimit
+	jae	bailout
+;   || overflow)
+chkoflow:
+;	cmp	overflow,0
+;	jne	bailout
+;  else {
+;  lold = lnew;
+	mov	eax,DWORD PTR lnew
+	mov	DWORD PTR lold,eax
+	mov	eax,DWORD PTR lnew+4
+	mov	DWORD PTR lold+4,eax
+;  return(0); }
+	sub	ax,ax
+	ret
+bailout:
+;  { overflow=0; return(1); }
+;	mov	overflow,0
+	mov	ax,1
+	ret
+asm386lREALbailout	endp
+
+asm386lIMAGbailout	proc near
+;
+; equivalent to the C code:
+;  ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);
+;  if (ltempsqry >= llimit || overflow)
+;	       { overflow=0; return(1); }
+;  lold = lnew;
+;  return(0);
+;
+;  ltempsqrx = lsqr(lnew.x);
+	push	bitshift
+	push	DWORD PTR lnew
+	push	DWORD PTR lnew
+	call	FAR PTR multiply
+	mov	WORD PTR ltempsqrx,ax
+	mov	WORD PTR ltempsqrx+2,dx
+;  ltempsqry = lsqr(lnew.y);
+	push	bitshift
+	push	DWORD PTR lnew+4
+	push	DWORD PTR lnew+4
+	call	FAR PTR multiply
+	add	sp,20
+	mov	WORD PTR ltempsqry,ax
+	mov	WORD PTR ltempsqry+2,dx
+;  lmagnitud = ltempsqrx + ltempsqry;
+	mov	eax,DWORD PTR ltempsqry
+	add	eax,DWORD PTR ltempsqrx
+	mov	DWORD PTR lmagnitud,eax
+;  if (ltempsqry >= llimit
+	mov	eax,DWORD PTR ltempsqry
+	cmp	eax,DWORD PTR llimit
+	jae	bailout
+;   || overflow)
+chkoflow:
+;	cmp	overflow,0
+;	jne	bailout
+;  else {
+;  lold = lnew;
+	mov	eax,DWORD PTR lnew
+	mov	DWORD PTR lold,eax
+	mov	eax,DWORD PTR lnew+4
+	mov	DWORD PTR lold+4,eax
+;  return(0); }
+	sub	ax,ax
+	ret
+bailout:
+;  { overflow=0; return(1); }
+;	mov	overflow,0
+	mov	ax,1
+	ret
+asm386lIMAGbailout	endp
+
+asm386lORbailout	proc near
+;
+; equivalent to the C code:
+;  ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);
+;  if (ltempsqrx >= llimit || ltempsqry >= llimit || overflow)
+;	       { overflow=0; return(1); }
+;  lold = lnew;
+;  return(0);
+;
+;  ltempsqrx = lsqr(lnew.x);
+	push	bitshift
+	push	DWORD PTR lnew
+	push	DWORD PTR lnew
+	call	FAR PTR multiply
+	mov	WORD PTR ltempsqrx,ax
+	mov	WORD PTR ltempsqrx+2,dx
+;  ltempsqry = lsqr(lnew.y);
+	push	bitshift
+	push	DWORD PTR lnew+4
+	push	DWORD PTR lnew+4
+	call	FAR PTR multiply
+	add	sp,20
+	mov	WORD PTR ltempsqry,ax
+	mov	WORD PTR ltempsqry+2,dx
+;  lmagnitud = ltempsqrx + ltempsqry;
+	mov	eax,DWORD PTR ltempsqry
+	add	eax,DWORD PTR ltempsqrx
+	mov	DWORD PTR lmagnitud,eax
+;  if (ltempsqry >= llimit
+	mov	eax,DWORD PTR ltempsqry
+	cmp	eax,DWORD PTR llimit
+	jae	bailout
+;   || ltempsqrx >= llimit
+chkxnxt:
+	mov	eax,DWORD PTR ltempsqrx
+	cmp	eax,DWORD PTR llimit
+	jae	bailout
+;   || overflow)
+chkoflow:
+;	cmp	overflow,0
+;	jne	bailout
+;  else {
+;  lold = lnew;
+	mov	eax,DWORD PTR lnew
+	mov	DWORD PTR lold,eax
+	mov	eax,DWORD PTR lnew+4
+	mov	DWORD PTR lold+4,eax
+;  return(0); }
+	sub	ax,ax
+	ret
+bailout:
+;  { overflow=0; return(1); }
+;	mov	overflow,0
+	mov	ax,1
+	ret
+asm386lORbailout	endp
+
+asm386lANDbailout	proc near
+;
+; equivalent to the C code:
+;  ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);
+;  if ((ltempsqrx >= llimit && ltempsqry >= llimit) || overflow)
+;	       { overflow=0; return(1); }
+;  lold = lnew;
+;  return(0);
+;
+;  ltempsqrx = lsqr(lnew.x);
+	push	bitshift
+	push	DWORD PTR lnew
+	push	DWORD PTR lnew
+	call	FAR PTR multiply
+	mov	WORD PTR ltempsqrx,ax
+	mov	WORD PTR ltempsqrx+2,dx
+;  ltempsqry = lsqr(lnew.y);
+	push	bitshift
+	push	DWORD PTR lnew+4
+	push	DWORD PTR lnew+4
+	call	FAR PTR multiply
+	add	sp,20
+	mov	WORD PTR ltempsqry,ax
+	mov	WORD PTR ltempsqry+2,dx
+;  lmagnitud = ltempsqrx + ltempsqry;
+	mov	eax,DWORD PTR ltempsqry
+	add	eax,DWORD PTR ltempsqrx
+	mov	DWORD PTR lmagnitud,eax
+;  if ((ltempsqry >= llimit
+	mov	eax,DWORD PTR ltempsqry
+	cmp	eax,DWORD PTR llimit
+	jl	chkoflow
+;  && ltempsqrx >= llimit)
+chkx:	mov	eax,DWORD PTR ltempsqrx
+	cmp	eax,DWORD PTR llimit
+	jae	bailout
+;   || overflow)
+chkoflow:
+;	cmp	overflow,0
+;	jne	bailout
+;  else {
+;  lold = lnew;
+	mov	eax,DWORD PTR lnew
+	mov	DWORD PTR lold,eax
+	mov	eax,DWORD PTR lnew+4
+	mov	DWORD PTR lold+4,eax
+;  return(0); }
+	sub	ax,ax
+	ret
+bailout:
+;  { overflow=0; return(1); }
+;	mov	overflow,0
+	mov	ax,1
+	ret
+asm386lANDbailout	endp
 
 
 ;  Fast fractal orbit calculation procs for Fractint.
@@ -153,7 +705,7 @@ longbailout	endp
 	extrn rqlim:qword, magnitude:qword, tempsqrx:qword, tempsqry:qword
 	extrn cpu:word, fpu:word, floatparm:word
 
-.code
+.code FRACTALS_TEXT
 
 	; px,py = floatparm->x,y
 	; ox,oy = oldx,oldy
@@ -173,13 +725,16 @@ FManOWarfpFractal	proc uses si di
 	fadd	st,st			; oldx*oldy*2 newx
 	fadd	tmp+8			; oldx*oldy*2+tmp.y newx
 	fadd	qword ptr [bx+8]	; newy newx
+	fstp	qword ptr new+8	; newx
+	fstp	qword ptr new	; stack is empty
 	mov	si,offset old		; tmp=old
 	mov	di,offset tmp
 	mov	ax,ds
 	mov	es,ax
 	mov	cx,8
 	rep	movsw
-	call	near ptr asmfloatbailout
+;	call	near ptr asmfloatbailout
+	call	word ptr [floatbailout]
 	ret
 FManOWarfpFractal	endp
 
@@ -193,7 +748,10 @@ FJuliafpFractal proc uses si di
 	fmul	qword ptr old+8
 	fadd	st,st
 	fadd	qword ptr [bx+8]	; add floatparm->y
-	call	near ptr asmfloatbailout
+	fstp	qword ptr new+8	; newx
+	fstp	qword ptr new	; stack is empty
+;	call	near ptr asmfloatbailout
+	call	word ptr [floatbailout]
 	ret
 FJuliafpFractal 		endp
 
@@ -225,7 +783,10 @@ BFPM1add:
 	faddp	st(3),st		;/* oypx+oxpy py nx */
 	fadd				;/* ny nx */
 BFPM1cont:
-	call	near ptr asmfloatbailout
+	fstp	qword ptr new+8	; newx
+	fstp	qword ptr new	; stack is empty
+;	call	near ptr asmfloatbailout
+	call	word ptr [floatbailout]
 	ret
 FBarnsley1FPFractal endp
 
@@ -257,7 +818,10 @@ BFPM2add:
 	faddp	st(2),st		;/* oxpx-oypy ny px */
 	faddp	st(2),st		;/* ny nx */
 BFPM2cont:
-	call	near ptr asmfloatbailout
+	fstp	qword ptr new+8	; newx
+	fstp	qword ptr new	; stack is empty
+;	call	near ptr asmfloatbailout
+	call	word ptr [floatbailout]
 	ret
 FBarnsley2FPFractal endp
 
@@ -282,10 +846,14 @@ FLambdaFPFractal proc uses si di
 	fmul				;pyty pytx pxty pxtx
 	fsubp	st(3),st		;pytx pxty nx=pxtx-pyty
 	fadd				;ny=pxty+pytx nx
-	call	near ptr asmfloatbailout
+	fstp	qword ptr new+8	; newx
+	fstp	qword ptr new	; stack is empty
+;	call	near ptr asmfloatbailout
+	call	word ptr [floatbailout]
 	ret
 FLambdaFPFractal endp
 
+; The following is no longer used.
 asmfloatbailout proc near
 	; called with new.y and new.x on stack and clears the stack
 	; destroys SI and DI: caller must save them
@@ -314,7 +882,153 @@ bailout:
 	mov	ax,1
 	ret
 asmfloatbailout endp
+; The preceeding is no longer used.
 
+asmfpMODbailout proc near uses si di
+	fld	qword ptr new+8
+	fmul	st,st			;/* ny2 */
+	fst	tempsqry
+	fld	qword ptr new	;/* nx ny2 */
+	fmul	st,st			;/* nx2 ny2 */
+	fst	tempsqrx
+	fadd
+	fst	magnitude
+	fcomp	rqlim			;/*** stack is empty */
+	fstsw	ax			;/*** 287 and up only */
+	sahf
+	jae	bailout
+	mov	si,offset new
+	mov	di,offset old
+	mov	ax,ds
+	mov	es,ax
+	mov	cx,8
+	rep	movsw
+	xor	ax,ax
+	ret
+bailout:
+	mov	ax,1
+	ret
+asmfpMODbailout endp
+
+asmfpREALbailout proc near uses si di
+	fld	qword ptr new
+	fmul	st,st			;/* nx2 */
+	fst	tempsqrx
+	fld	qword ptr new+8	;/* ny nx2 */
+	fmul	st,st			;/* ny2 nx2 */
+	fst	tempsqry		;/* ny2 nx2 */
+	fadd	st,st(1)		;/* ny2+nx2 nx2 */
+	fstp	magnitude		;/* nx2 */
+	fcomp	rqlim			;/*** stack is empty */
+	fstsw	ax			;/*** 287 and up only */
+	sahf
+	jae	bailout
+	mov	si,offset new
+	mov	di,offset old
+	mov	ax,ds
+	mov	es,ax
+	mov	cx,8
+	rep	movsw
+	xor	ax,ax
+	ret
+bailout:
+	mov	ax,1
+	ret
+asmfpREALbailout endp
+
+asmfpIMAGbailout proc near uses si di
+	fld	qword ptr new+8
+	fmul	st,st			;/* ny2 */
+	fst	tempsqry
+	fld	qword ptr new	;/* nx ny2 */
+	fmul	st,st			;/* nx2 ny2 */
+	fst	tempsqrx		;/* nx2 ny2 */
+	fadd	st,st(1)		;/* nx2+ny2 ny2 */
+	fstp	magnitude		;/* ny2 */
+	fcomp	rqlim			;/*** stack is empty */
+	fstsw	ax			;/*** 287 and up only */
+	sahf
+	jae	bailout
+	mov	si,offset new
+	mov	di,offset old
+	mov	ax,ds
+	mov	es,ax
+	mov	cx,8
+	rep	movsw
+	xor	ax,ax
+	ret
+bailout:
+	mov	ax,1
+	ret
+asmfpIMAGbailout endp
+
+asmfpORbailout proc near uses si di
+	fld	qword ptr new+8
+	fmul	st,st			;/* ny2 */
+	fst	tempsqry
+	fld	qword ptr new	;/* nx ny2 */
+	fmul	st,st			;/* nx2 ny2 */
+	fst	tempsqrx
+	fld	st(1)			;/* ny2 nx2 ny2 */
+	fadd	st,st(1)		;/* ny2+nx2 nx2 ny2 */
+	fstp	magnitude		;/* nx2 ny2 */
+	fcomp	rqlim			;/* ny2 */
+	fstsw	ax			;/*** 287 and up only */
+	sahf
+	jae	bailoutp
+	fcomp	rqlim			;/*** stack is empty */
+	fstsw	ax			;/*** 287 and up only */
+	sahf
+	jae	bailout
+	mov	si,offset new
+	mov	di,offset old
+	mov	ax,ds
+	mov	es,ax
+	mov	cx,8
+	rep	movsw
+	xor	ax,ax
+	ret
+bailoutp:
+	finit		;/* cleans up stack */
+bailout:
+	mov	ax,1
+	ret
+asmfpORbailout endp
+
+asmfpANDbailout proc near uses si di
+	fld	qword ptr new+8
+	fmul	st,st			;/* ny2 */
+	fst	tempsqry
+	fld	qword ptr new	;/* nx ny2 */
+	fmul	st,st			;/* nx2 ny2 */
+	fst	tempsqrx
+	fld	st(1)			;/* ny2 nx2 ny2 */
+	fadd	st,st(1)		;/* ny2+nx2 nx2 ny2 */
+	fstp	magnitude		;/* nx2 ny2 */
+	fcomp	rqlim			;/* ny2 */
+	fstsw	ax			;/*** 287 and up only */
+	sahf
+	jb	nobailoutp
+	fcomp	rqlim			;/*** stack is empty */
+	fstsw	ax			;/*** 287 and up only */
+	sahf
+	jae	bailout
+	jmp	short nobailout
+nobailoutp:
+	finit		;/* cleans up stack */
+nobailout:
+	mov	si,offset new
+	mov	di,offset old
+	mov	ax,ds
+	mov	es,ax
+	mov	cx,8
+	rep	movsw
+	xor	ax,ax
+	ret
+bailout:
+	mov	ax,1
+	ret
+asmfpANDbailout endp
 
 .8086
 .8087

@@ -42,6 +42,7 @@
  *			 in a data topic.
  *		      Fixed tables to flow down instead of across the page.
  *			 Makes no allowances for page breaks within tables.
+ *   11-03-94 TIW     Increased buffer size.
  *
  */
 
@@ -109,7 +110,8 @@
 
 
 
-#define BUFFER_SIZE   (24*1024)
+/* #define BUFFER_SIZE   (24*1024) */
+#define BUFFER_SIZE   (30*1024)
 
 
 typedef struct

@@ -34,11 +34,12 @@
  == (Bert Tyler and Timothy Wegner)
  */
 
-/* Rev ??/??/?? - Initial Release
- * Rev 01/02/91 - Revised by Mike Gelvin
- *					altered logic to allow newcode to input a line at a time
- *					altered logic to allow decoder to place characters
- *						directly into the output buffer if they fit
+/* Rev 01/02/91 - Revised by Mike Gelvin
+ *	          altered logic to allow newcode to input a line at a time
+ *	          altered logic to allow decoder to place characters
+ *	          directly into the output buffer if they fit
+ * Rev 03/02/95 - Revised by Tim Wegner
+ *	          made sizeofstring local pointing to extraseg
 */
 
 /***** C Library Includes ***********************************************/
@@ -80,18 +81,13 @@ int (*outln)(BYTE *,int) = out_line;
 #define OPEN_ERROR -3
 #define CREATE_ERROR -4
 
-#define MAX_CODES   4095
+/* #define MAX_CODES   4095 */ /* moved to Fractint.h */
 
 #define NOPE 0
 #define YUP -1
 
 static short curr_size;			/* The current code size */
 
-#ifndef XFRACT
-static short far sizeofstring[MAX_CODES+1];
-#else
-static short sizeofstring[MAX_CODES+1];	/* size of string list */
-#endif
 
 /* The following static variables are used
  * for seperating out codes
@@ -100,7 +96,6 @@ static short navail_bytes;		/* # bytes left in block */
 static short nbits_left;		/* # bits left in current byte */
 static BYTE byte_buff[257];	/* Current block, reuse shared mem */
 static BYTE *pbytes;		/* Pointer to next byte in block */
-static unsigned short ret_code;
 
 static short code_mask[13] = {
      0,
@@ -119,12 +114,14 @@ static short code_mask[13] = {
  * is incremented each time an out of range code is read by the decoder.
  * When this value is non-zero after a decode, your GIF file is probably
  * corrupt in some way...
+ *
+ * whups, here are more globals, added by PB: 
+ * extern short skipxdots;  0 to get every dot, 1 for every 2nd, 2 every 3rd, ...
+ * extern short skipydots; 
+ *
+ * All external declarations now in PROTOTYPE.H
  */
-extern short bad_code_count;
 
-/* whups, here are more globals, added by PB: */
-extern short skipxdots; /* 0 to get every dot, 1 for every 2nd, 2 every 3rd, ... */
-extern short skipydots; /* ditto for rows */
 
 /*
 I removed the LOCAL identifiers in the arrays below and replaced them
@@ -132,11 +129,14 @@ with 'extern's so as to declare (and re-use) the space elsewhere.
 The arrays are actually declared in the assembler source.
 						Bert Tyler
 */
-extern BYTE dstack[MAX_CODES + 1];			/* Stack for storing pixels */
-extern BYTE suffix[MAX_CODES + 1];			/* Suffix table */
-extern unsigned short prefix[MAX_CODES + 1];		/* Prefix linked list */
-extern BYTE decoderline[2];				/* decoded line goes here */
 
+#if 0
+/* declarations moved to PROTOTYPE.H - these left for documentation */
+ BYTE dstack[MAX_CODES + 1];			/* Stack for storing pixels */
+ BYTE suffix[MAX_CODES + 1];			/* Suffix table */
+ unsigned short prefix[MAX_CODES + 1];		/* Prefix linked list */
+ BYTE decoderline[2];				/* decoded line goes here */
+#endif
 
 /* The reason we have these separated like this instead of using
  * a structure like the original Wilhite code did, is because this
@@ -168,6 +168,12 @@ extern BYTE decoderline[2];				/* decoded line goes here */
  */
 short decoder( short linewidth)
 {
+#ifndef XFRACT
+	static short far *sizeofstring;
+#else
+	extern int prefix[];
+	short sizeofstring[MAX_CODES+1];	/* size of string list */
+#endif
 	BYTE *sp;
 	short code;
 	short old_code;
@@ -188,26 +194,28 @@ short decoder( short linewidth)
 	short ending;					/* Value for a ending code */
 	BYTE out_value;
 
-
+#ifndef XFRACT
+	sizeofstring = (short far *)MK_FP(extraseg, 0);
+#endif
 	/* Initialize for decoding a new image...
 	*/
 
-	if ((size = get_byte()) < 0)
+	if ((size = (short)get_byte()) < 0)
 		return(size);
 	if (size < 2 || 9 < size)
 		return(BAD_CODE_SIZE);
 
-	curr_size = size + 1;
-	top_slot = 1 << curr_size;
-	clear = 1 << size;
-	ending = clear + 1;
-	slot = newcodes = ending + 1;
+	curr_size = (short)(size + 1);
+	top_slot = (short)(1 << curr_size);
+	clear = (short)(1 << size);
+	ending = (short)(clear + 1);
+	slot = newcodes = (short)(ending + 1);
 	navail_bytes = nbits_left = sizeofstring[slot] = xskip = yskip
 		= old_code = 0;
 	out_value = 0;
-for (i = 0; i < slot; i++)
-{	sizeofstring[i] = 0;
-}
+	for (i = 0; i < slot; i++)
+	{	sizeofstring[i] = 0;
+	}
 	
 	/* Initialize in case they forgot to put in a clear code.
 	 * (This shouldn't happen, but we'll try and decode it anyway...)
@@ -239,10 +247,10 @@ for (i = 0; i < slot; i++)
 		*/
 		if (c == clear)
 		{
-			curr_size = size + 1;
+			curr_size = (short)(size + 1);
 			slot = newcodes;
 			sizeofstring[slot] = 0;
-			top_slot = 1 << curr_size;
+			top_slot = (short)(1 << curr_size);
 
 			/* Continue reading codes until we get a non-clear code
 			 * (Another unlikely, but possible case...)
@@ -264,10 +272,10 @@ for (i = 0; i < slot; i++)
 			if (c >= slot)
 				c = 0;
 
-			old_code = out_value = c;
+			out_value = (BYTE)(old_code = c);
 
 			/* And let us not forget to put the char into the buffer... */
-			*sp++ = c;
+			*sp++ = (BYTE)c;
 		}
 		else
 		{
@@ -318,7 +326,7 @@ for (i = 0; i < slot; i++)
 					if (bufcnt == 0) /* finished an input row? */
 					{	if (--yskip < 0)
 						{
-							if ((ret = (*outln)(decoderline, bufptr - decoderline)) < 0)
+							if ((ret = (short)((*outln)(decoderline, bufptr - decoderline))) < 0)
 								return(ret);
 							yskip = skipydots;
 						}
@@ -348,7 +356,7 @@ for (i = 0; i < slot; i++)
 
 			if (slot < top_slot)
 			{
-				sizeofstring[slot] = sizeofstring[old_code]+1;
+				sizeofstring[slot] = (short)(sizeofstring[old_code]+1);
 				suffix[slot] = out_value = (BYTE)code;
 				prefix[slot++] = old_code;
 				old_code = c;
@@ -371,7 +379,7 @@ for (i = 0; i < slot; i++)
 			if (--bufcnt == 0) /* finished an input row? */
 			{	if (--yskip < 0)
 				{
-					if ((ret = (*outln)(decoderline, bufptr - decoderline)) < 0)
+					if ((ret = (short)((*outln)(decoderline, bufptr - decoderline))) < 0)
 						return(ret);
 					yskip = skipydots;
 				}
@@ -412,7 +420,7 @@ static short get_next_code()
 			/* Out of bytes in current block, so read next block
 			*/
 			pbytes = byte_buff;
-			if ((navail_bytes = get_byte()) < 0)
+			if ((navail_bytes = (short)get_byte()) < 0)
 				return(navail_bytes);
 			else
 				if (navail_bytes)
@@ -423,7 +431,7 @@ static short get_next_code()
 		--navail_bytes;
 	}
 
-	ret_code = b1 >> (8 - nbits_left);
+	ret_code = (short)(b1 >> (8 - nbits_left));
 	while (curr_size > nbits_left)
 	{
 		if (navail_bytes <= 0)
@@ -432,7 +440,7 @@ static short get_next_code()
 			/* Out of bytes in current block, so read next block
 			*/
 			pbytes = byte_buff;
-			if ((navail_bytes = get_byte()) < 0)
+			if ((navail_bytes = (short)get_byte()) < 0)
 				return(navail_bytes);
 			else
 				if (navail_bytes)
@@ -444,5 +452,6 @@ static short get_next_code()
 		--navail_bytes;
 	}
 	nbits_left -= curr_size;
-	return(ret_code & code_mask[curr_size]);
+	return((short)(ret_code & code_mask[curr_size]));
 }
+

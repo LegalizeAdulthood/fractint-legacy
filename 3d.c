@@ -56,12 +56,8 @@ ROTZ(i) =	      cosi  sini	0     0
 */
 
 #include <stdio.h>
-#include <float.h>
 #include <string.h>
-#include "fractint.h"
 #include "prototyp.h"
-extern int overflow;
-extern int bad_value;
 
 /* initialize a matrix and set to identity matrix
    (all 0's, 1's on diagonal) */
@@ -208,9 +204,7 @@ normalize_vector(VECTOR v)
 
 /* multiply source vector s by matrix m, result in target t */
 /* used to apply transformations to a vector */
-int vmult(s,m,t)
-VECTOR s,t;
-MATRIX m;
+int vmult(VECTOR s, MATRIX m, VECTOR t)
 {
    VECTOR tmp;
    int i,j;
@@ -231,10 +225,8 @@ MATRIX m;
 /* use with a function pointer in line3d.c */
 /* must coordinate calling conventions with */
 /* mult_vec_iit in general.asm */
-void mult_vec_c(s)
-VECTOR s;
+void mult_vec_c(VECTOR s)
 {
-   extern MATRIX m;
    VECTOR tmp;
    int i,j;
    for(j=0;j<CMAX-1;j++)
@@ -252,7 +244,6 @@ VECTOR s;
 /* perspective projection of vector v with respect to viewpont vector view */
 perspective(VECTOR v)
 {
-   extern VECTOR view;
    double denom;
    denom = view[2] - v[2];
 
@@ -272,14 +263,15 @@ perspective(VECTOR v)
 }
 
 /* long version of vmult and perspective combined for speed */
-longvmultpersp(s, m, t0, t, lview, bitshift)
-LVECTOR s;	 /* source vector */
-LMATRIX m;	 /* transformation matrix */
-LVECTOR t0;	 /* after transformation, before persp */
-LVECTOR t;	 /* target vector */
-LVECTOR lview;	 /* perspective viewer coordinates */
-int bitshift;	 /* fixed point conversion bitshift */
+longvmultpersp(LVECTOR s, LMATRIX m, LVECTOR t0, LVECTOR t, LVECTOR lview,
+               int bitshift)
 {
+/* s: source vector */
+/* m: transformation matrix */
+/* t0: after transformation, before persp */
+/* t: target vector */
+/* lview: perspective viewer coordinates */
+/* bitshift: fixed point conversion bitshift */
    LVECTOR tmp;
    int i,j, k;
    overflow = 0;

@@ -36,7 +36,6 @@ Penrose1Forced { ; by Herb Savage
   Y=-WC10FC12F++XC11FC10F[+++YC10FC11F++ZC12FC10F]-
   Z=--YC10FC11F++++WC10FC12F[+ZC12FC10F++++XC11FC10F]--XC11FC10F
   F=
-  C=
 }
 
 KitesAndDarts { ; by Herb Savage

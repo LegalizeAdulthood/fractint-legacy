@@ -1,217 +1,264 @@
 ; LSYSA.ASM: assembler support routines for optimized L-System code
 ; Nicholas Wilt, 11/13/91.
-;
+; Updated to work with integer/FP code, 7/93.
+
+ifdef ??version
+   masm51
+   quirks
+endif
 
 .MODEL	MEDIUM,C
 
-EXTRN	reverse:BYTE,angle:BYTE,maxangle:BYTE,dmaxangle:BYTE
-EXTRN	xpos:DWORD,ypos:DWORD,ssize:DWORD
-EXTRN	realangle:DWORD
-EXTRN	lsys_Xmin:DWORD,lsys_Xmax:DWORD,lsys_Ymin:DWORD,lsys_Ymax:DWORD
-EXTRN	sins:DWORD
-EXTRN	coss:DWORD
+lsys_turtlestatei   STRUC   
+counter             DB      ?
+angle               DB      ?
+reverse             DB      ?
+stackoflow          DB      ?
+maxangle            DB      ?
+dmaxangle           DB      ?
+curcolor            DB      ?
+dummy               DB      ?
+ssize               DD      ?
+realangle           DD      ?
+xpos                DD      ?
+ypos                DD      ?
+xmin                DD      ?
+ymin                DD      ?
+xmax                DD      ?
+ymax                DD      ?
+aspect              DD      ?
+num                 DD      ?
+lsys_turtlestatei   ENDS
+
 EXTRN	overflow:WORD
+EXTRN	boxy:DWORD
+
+sins	equ	boxy
+coss	equ	boxy + 200	; 50 * 4 bytes
 
 .CODE
 
-decangle	PROC	NEAR
-	mov	al,angle
-	or	al,al
-	jz	DecAngle0
-	dec	angle
-	ret
-DecAngle0:
-	mov	al,dmaxangle
-	mov	angle,al
-	ret
-decangle	ENDP
+DECANGLE MACRO
+	LOCAL	@1
+	dec	al
+	jge	@1
+	mov	al,[bx.dmaxangle]
+@1:	mov	[bx.angle],al
+	ENDM
 
-incangle	PROC	NEAR
-	mov	al,angle
+INCANGLE MACRO
+	LOCAL	@1
 	inc	al
-	cmp	al,maxangle
-	jnz	IncWriteAngle
+	cmp	al,[bx.maxangle]
+	jne	@1
 	xor	ax,ax
-IncWriteAngle:
-	mov	angle,al
-	ret
-incangle	ENDP
+@1:	mov	[bx.angle],al
+	ENDM
 
-	PUBLIC	lsys_doplus
+	PUBLIC	lsysi_doplus
 
-lsys_doplus	PROC
-	cmp	reverse,0
+lsysi_doplus	PROC	lsyscmd:ptr
+	mov	bx,lsyscmd
+	mov	al,[bx.angle]
+	cmp	[bx.reverse],0
 	jnz	PlusIncAngle
-	call	decangle
+	DECANGLE
 	ret
 PlusIncAngle:
-	call	incangle
+	INCANGLE
 	ret
-lsys_doplus	ENDP
+lsysi_doplus	ENDP
 
-	PUBLIC	lsys_dominus
+	PUBLIC	lsysi_dominus
 
-lsys_dominus	PROC
-	cmp	reverse,0
+lsysi_dominus	PROC	lsyscmd:ptr
+	mov	bx,lsyscmd	; Get pointer
+	mov	al,[bx.angle]
+	cmp	[bx.reverse],0
 	jnz	MinusDecAngle
-	call	incangle
+	INCANGLE
 	ret
 MinusDecAngle:
-	call	decangle
+	DECANGLE
 	ret
-lsys_dominus	ENDP
+lsysi_dominus	ENDP
 
-	PUBLIC	lsys_doplus_pow2
+	PUBLIC	lsysi_doplus_pow2
 
-lsys_doplus_pow2	PROC
-	mov	al,angle
-	cmp	reverse,0
+lsysi_doplus_pow2	PROC	lsyscmd:ptr
+	mov	bx,lsyscmd	; Get pointer
+	mov	al,[bx.angle]
+	cmp	[bx.reverse],0
 	jnz	Plus2IncAngle
 	dec	al
-	and	al,dmaxangle
-	mov	angle,al
+	and	al,[bx.dmaxangle]
+	mov	[bx.angle],al
 	ret
 Plus2IncAngle:
 	inc	al
-	and	al,dmaxangle
-	mov	angle,al
+	and	al,[bx.dmaxangle]
+	mov	[bx.angle],al
 	ret
-lsys_doplus_pow2	ENDP
+lsysi_doplus_pow2	ENDP
 
-	PUBLIC	lsys_dominus_pow2
+	PUBLIC	lsysi_dominus_pow2
 
-lsys_dominus_pow2	 PROC
-	mov	al,angle
-	cmp	reverse,0
+lsysi_dominus_pow2	 PROC	lsyscmd:ptr
+	mov	bx,lsyscmd	; Get pointer
+	mov	al,[bx.angle]
+	cmp	[bx.reverse],0
 	jz	Minus2IncAngle
 	dec	al
-	and	al,dmaxangle
-	mov	angle,al
+	and	al,[bx.dmaxangle]
+	mov	[bx.angle],al
 	ret
 Minus2IncAngle:
 	inc	al
-	and	al,dmaxangle
-	mov	angle,al
+	and	al,[bx.dmaxangle]
+	mov	[bx.angle],al
 	ret
-lsys_dominus_pow2	 ENDP
+lsysi_dominus_pow2	 ENDP
 
-	PUBLIC	lsys_dopipe_pow2
+	PUBLIC	lsysi_dopipe_pow2
 
-lsys_dopipe_pow2	PROC
+lsysi_dopipe_pow2	PROC	lsyscmd:ptr
+	mov	bx,lsyscmd	; Get pointer
 	xor	ax,ax
-	mov	al,maxangle
+	mov	al,[bx.maxangle]
 	shr	ax,1
 	xor	dx,dx
-	mov	dl,angle
+	mov	dl,[bx.angle]
 	add	ax,dx
-	and	al,dmaxangle
-	mov	angle,al
+	and	al,[bx.dmaxangle]
+	mov	[bx.angle],al
 	ret
-lsys_dopipe_pow2	ENDP
+lsysi_dopipe_pow2	ENDP
 
-	PUBLIC	lsys_dobang
+	PUBLIC	lsysi_dobang
 
-lsys_dobang	PROC
-	mov	al,reverse	; reverse = ! reverse;
+lsysi_dobang	PROC	lsyscmd:ptr
+	mov	bx,lsyscmd	; Get pointer
+	mov	al,[bx.reverse]	; reverse = ! reverse;
 	dec	al		; -1 if was 0; 0 if was 1
 	neg	al		; 1 if was 0; 0 if was 1
-	mov	reverse,al	;
+	mov	[bx.reverse],al	;
 	ret
-lsys_dobang	ENDP
+lsysi_dobang	ENDP
 
 ; Some 386-specific leaf functions go here.
 
 .386
 
-	PUBLIC	lsys_doslash_386
+	PUBLIC	lsysi_doslash_386
 
-lsys_doslash_386	PROC	N:DWORD
-	mov	eax,N
-	cmp	reverse,0
+lsysi_doslash_386	PROC	lsyscmd:ptr
+	mov	bx,lsyscmd	; Get pointer
+	mov	eax,[bx.num]
+	cmp	[bx.reverse],0
 	jnz	DoSlashDec
-	add	realangle,eax
+	add	[bx.realangle],eax
 	ret
 DoSlashDec:
-	sub	realangle,eax
+	sub	[bx.realangle],eax
 	ret
-lsys_doslash_386	ENDP
+lsysi_doslash_386	ENDP
 
-	PUBLIC	lsys_dobslash_386
+	PUBLIC	lsysi_dobslash_386
 
-lsys_dobslash_386	 PROC	 N:DWORD
-	mov	eax,N
-	cmp	reverse,0
+lsysi_dobslash_386	 PROC	 lsyscmd:ptr
+	mov	bx,lsyscmd	; Get pointer
+	mov	eax,[bx.num]
+	cmp	[bx.reverse],0
 	jz	DoBSlashDec
-	add	realangle,eax
+	add	[bx.realangle],eax
 	ret
 DoBSlashDec:
-	sub	realangle,eax
+	sub	[bx.realangle],eax
 	ret
-lsys_dobslash_386	 ENDP
+lsysi_dobslash_386	 ENDP
 
-	PUBLIC	lsys_doat_386
+	PUBLIC	lsysi_doat_386
 
-lsys_doat_386	PROC	N:DWORD
-	mov	eax,ssize	; Get size
-	imul	N		; Mul by n
-	shrd	eax,edx,19	; Shift right 19 bits
-	mov	ssize,eax	; Save back
+lsysi_doat_386	PROC	lsyscmd:ptr,N:DWORD
+	mov	bx,lsyscmd	; Get pointer
+	mov	eax,[bx.ssize]	; Get size
+	imul	[bx.num]	; Mul by n
+	shrd	eax,edx,19
+	mov	[bx.ssize],eax	; Save back
 	ret
-lsys_doat_386	ENDP
+lsysi_doat_386	ENDP
 
-	PUBLIC	lsys_dosizegf_386
+	PUBLIC	lsysi_dosizegf_386
 
-lsys_dosizegf_386	PROC
-	mov	ecx,ssize	; Get size; we'll need it twice
-	xor	bx,bx		; BX <- angle*sizeof(int)
-	mov	bl,angle	;
-	shl	bx,1		;
-	shl	bx,1		;
-	mov	eax,coss[bx]	; eax <- coss[angle]
+lsysi_dosizegf_386	PROC	USES SI,lsyscmd:ptr
+	mov	si,lsyscmd	;
+	mov	ecx,[si.ssize]	; Get size; we'll need it twice
+   movzx ebx,[si.angle]
+ifndef ??version
+	mov	eax,coss[ebx*4]	; eax <- coss[angle]
+else
+   ; TASM-only (this is slower but it should work)
+   shl   bx,2
+   add   bx,offset DGROUP:coss
+	mov	eax,[ebx]	; eax <- coss[angle]
+endif
 	imul	ecx		; Mul by size
 	shrd	eax,edx,29	; eax <- multiply(size, coss[angle], 29)
-	add	eax,xpos	;
+	add	eax,[si.xpos]	;
 	jno	nooverfl	;   check for overflow
 	mov	overflow,1	;    oops - flag the user later
-nooverfl: 
-	cmp	eax,lsys_Xmax	; If xpos <= lsys_Xmax,
+nooverfl:
+	cmp	eax,[si.xmax]	; If xpos <= [si.xmax,
 	jle	GF1		;   jump
-	mov	lsys_Xmax,eax	;
-GF1:	cmp	eax,lsys_Xmin	; If xpos >= lsys_Xmin
+	mov	[si.xmax],eax	;
+GF1:	cmp	eax,[si.xmin]	; If xpos >= [si.xmin
 	jge	GF2		;   jump
-	mov	lsys_Xmin,eax	;
-GF2:	mov	xpos,eax	; Save xpos
-	mov	eax,sins[bx]	; eax <- sins[angle]
+	mov	[si.xmin],eax	;
+GF2:	mov	[si.xpos],eax	; Save xpos
+ifndef ??version
+	mov	eax,sins[ebx*4]	; eax <- sins[angle]
+else     ; sins table is 200 bytes before coss
+	mov	eax,[ebx-200]	; eax <- sins[angle]
+endif
 	imul	ecx		;
 	shrd	eax,edx,29	;
-	add	eax,ypos	;
-	cmp	eax,lsys_Ymax	; If ypos <= lsys_Ymax,
+	add	eax,[si.ypos]	;
+	cmp	eax,[si.ymax]	; If ypos <= [si.ymax,
 	jle	GF3		;   jump
-	mov	lsys_Ymax,eax	;
-GF3:	cmp	eax,lsys_Ymin	; If ypos >= lsys_Ymin
+	mov	[si.ymax],eax	;
+GF3:	cmp	eax,[si.ymin]	; If ypos >= [si.ymin
 	jge	GF4		;   jump
-	mov	lsys_Ymin,eax	;
-GF4:	mov	ypos,eax	;
+	mov	[si.ymin],eax	;
+GF4:	mov	[si.ypos],eax	;
 	ret
-lsys_dosizegf_386	ENDP
+lsysi_dosizegf_386	ENDP
 
-	PUBLIC	lsys_dodrawg_386
+	PUBLIC	lsysi_dodrawg_386
 
-lsys_dodrawg_386	PROC
-	mov	ecx,ssize	; Because we need it twice
-	xor	bx,bx		; BX <- angle * sizeof(int)
-	mov	bl,angle	;
-	shl	bx,1		;
-	shl	bx,1		;
-	mov	eax,coss[bx]	; eax <- coss[angle]
+lsysi_dodrawg_386	PROC	USES SI,lsyscmd:ptr
+	mov	si,lsyscmd	; Get pointer to structure
+	mov	ecx,[si.ssize]	; Because we need it twice
+   movzx ebx,[si.angle]
+ifndef ??version
+	mov	eax,coss[ebx*4]	; eax <- coss[angle]
+else
+   ; TASM-only (this is slow but it should work)
+   shl   bx,2
+   add   bx,offset DGROUP:coss
+	mov	eax,[ebx]	; eax <- coss[angle]
+endif
 	imul	ecx		;
 	shrd	eax,edx,29	;
-	add	xpos,eax	; xpos += size*coss[angle] >> 29
-	mov	eax,sins[bx]	; eax <- sins[angle]
+	add	[si.xpos],eax	; xpos += size*coss[angle] >> 29
+ifndef ??version
+	mov	eax,sins[ebx*4]	; eax <- sins[angle]
+else     ; sins table is 200 bytes before coss
+	mov	eax,[ebx-200]	; eax <- sins[angle]
+endif
 	imul	ecx		; ypos += size*sins[angle] >> 29
 	shrd	eax,edx,29	;
-	add	ypos,eax	;
+	add	[si.ypos],eax	;
 	ret			;
-lsys_dodrawg_386	ENDP
+lsysi_dodrawg_386	ENDP
 
 	END

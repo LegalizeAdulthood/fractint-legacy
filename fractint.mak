@@ -9,7 +9,7 @@
 
 !ifdef C7
 DEFFILE  = fractint.def
-LINKFILE = fractint.ln7
+LINKFILE = fractint.lnk
 LINKER="link /dynamic:1024 $(LINKER)"
 !else
 DEFFILE  = 
@@ -22,20 +22,20 @@ LINKFILE = fractint.lnk
 all : fractint.exe
 
 .asm.obj:
-	$(AS) $*;
+	$(AS) $*; >> f_errs.txt
 # for Quick Assembler
 #       $(AS) $*.asm
 
 .c.obj:
-	  $(CC) /AM /W1 /FPi /c $(OptT) $*.c
+	  $(CC) /AM /W4 /FPi /c $(OptT) $*.c >> f_errs.txt
 
-Optsize = $(CC) /AM /W1 /FPi /c $(OptS) $*.c
+Optsize = $(CC) /AM /W4 /FPi /c $(OptS) $*.c >> f_errs.txt
 
-Optnoalias = $(CC) /AM /W1 /FPi /c $(OptN) $*.c
+Optnoalias = $(CC) /AM /W4 /FPi /c $(OptN) $*.c >> f_errs.txt
 
 lorenz.obj : lorenz.c fractint.h fractype.h
 
-lsys.obj : lsys.c fractint.h
+lsys.obj : lsys.c fractint.h lsys.h
 
 lsysa.obj: lsysa.asm
 
@@ -47,13 +47,16 @@ fractals.obj : fractals.c fractint.h fractype.h mpmath.h helpdefs.h
 
 fractalp.obj : fractalp.c fractint.h fractype.h mpmath.h helpdefs.h
 
+fractalb.obj : fractalb.c fractint.h fractype.h bignum.h helpdefs.h
+
 calcfrac.obj : calcfrac.c fractint.h mpmath.h
 
 miscfrac.obj : miscfrac.c fractint.h mpmath.h
 
-fracsubr.obj : fracsubr.c fractint.h
-
-jiim.obj : jiim.c
+fracsubr.obj : fracsubr.c fractint.h helpdefs.h
+	$(Optnoalias)
+       
+jiim.obj : jiim.c helpdefs.h
 
 fracsuba.obj : fracsuba.asm
 
@@ -99,6 +102,9 @@ hgcfra.obj : hgcfra.asm
 fractint.obj : fractint.c fractint.h fractype.h helpdefs.h
 	$(Optsize)
 
+framain2.obj : framain2.c fractint.h fractype.h helpdefs.h
+	$(Optsize)
+
 video.obj : video.asm
 
 general.obj : general.asm
@@ -120,8 +126,6 @@ newton.obj : newton.asm
 
 printer.obj : printer.c fractint.h
 	$(Optsize)
-
-printera.obj : printera.asm
 
 prompts1.obj : prompts1.c fractint.h fractype.h helpdefs.h
 	$(Optsize)
@@ -160,7 +164,8 @@ mpmath_a.obj : mpmath_a.asm
 jb.obj : jb.c fractint.h helpdefs.h
 
 zoom.obj : zoom.c fractint.h
-	$(Optsize)
+	$(Optnoalias)
+#	$(Optsize)
 
 miscres.obj : miscres.c fractint.h fractype.h helpdefs.h
 	$(Optsize)
@@ -178,27 +183,68 @@ tplus_a.obj : tplus_a.asm
 lyapunov.obj : lyapunov.asm
 	$(AS) /e lyapunov;
 
-tp3d.obj : tp3d.c fractint.h
-
 slideshw.obj : slideshw.c
 	$(Optsize)
+
+bignumc.obj : bignumc.c bignum.h
+	$(Optnoalias)
+
+bignum.obj : bignum.c bignum.h
+	$(Optnoalias)
+
+biginit.obj : biginit.c bignum.h biginit.h
+	$(Optnoalias)
+
+bigflt.obj : bigflt.c bignum.h bigflt.h
+	$(Optnoalias)
+
+bigfltc.obj : bigfltc.c bignum.h bigflt.h
+	$(Optnoalias)
+
+bignuma.obj : bignuma.asm
+
+bigflta.obj : bigflta.asm
+# for MASM
+	$(AS) /e bigflta.asm;
+# for QuickAssembler
+#   $(AS) /FPi bigflta.asm
+
+stereo.obj : stereo.c helpdefs.h 
+
+ant.obj : ant.c helpdefs.h
+
+frasetup.obj : frasetup.c 
+
+lsysf.obj : lsysf.c fractint.h lsys.h
+
+lsysaf.obj: lsysaf.asm
+# for MASM
+	$(AS) /e lsysaf.asm;
+# for QuickAssembler
+#   $(AS) /FPi lsysaf.asm
 
 fractint.exe : fractint.obj help.obj loadfile.obj encoder.obj gifview.obj \
      general.obj calcmand.obj calmanfp.obj fractals.obj fractalp.obj calcfrac.obj \
      testpt.obj decoder.obj rotate.obj yourvid.obj prompts1.obj prompts2.obj parser.obj \
      parserfp.obj parsera.obj diskvid.obj line3d.obj 3d.obj newton.obj cmdfiles.obj \
      intro.obj slideshw.obj jiim.obj miscfrac.obj \
-     targa.obj loadmap.obj printer.obj printera.obj fracsubr.obj fracsuba.obj \
-     video.obj tgaview.obj f16.obj fr8514a.obj loadfdos.obj \
+     targa.obj loadmap.obj printer.obj fracsubr.obj fracsuba.obj \
+     video.obj tgaview.obj f16.obj fr8514a.obj loadfdos.obj stereo.obj\
      hgcfra.obj fpu087.obj fpu387.obj mpmath_c.obj mpmath_a.obj \
      lorenz.obj plot3d.obj jb.obj zoom.obj miscres.obj miscovl.obj \
-     realdos.obj lsys.obj lsysa.obj editpal.obj tplus.obj tplus_a.obj tp3d.obj \
-     lyapunov.obj fractint.hlp hcmplx.obj $(DEFFILE) $(LINKFILE)
-	$(LINKER) /ST:5120 /SE:200 /PACKC /F /NOE @$(LINKFILE) > foo
+     realdos.obj lsys.obj lsysa.obj editpal.obj tplus.obj tplus_a.obj \
+     lyapunov.obj fractint.hlp hcmplx.obj biginit.obj bignuma.obj bignum.obj bigflt.obj \
+     bigfltc.obj bigflta.obj fractalb.obj ant.obj frasetup.obj framain2.obj \
+     lsysf.obj lsysaf.obj \
+     $(DEFFILE) $(LINKFILE)
+	$(LINKER) /ST:9000 /SE:210 /PACKC /F /NOE @$(LINKFILE) > foo
 !ifdef C7
         @echo (Any overlay_thunks (L4059) warnings from the linker are harmless) >> foo
 !endif
+        more < f_errs.txt
 	type foo
+        
 !ifndef DEBUG
 	hc /a
 !endif
+

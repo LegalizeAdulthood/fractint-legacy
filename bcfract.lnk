@@ -1,0 +1,79 @@
+/m+/s+/i/c +
+/o- /v- c0m.obj+
+/o- /v- 3d.obj+
+/o- /v- ant.obj+
+/o- /v- bigflt.obj+
+/o- /v- bigfltc.obj+
+/o- /v- biginit.obj+
+/o- /v- bignum.obj+
+/o+ /v- calcfrac.obj+
+/o+ /v- cmdfiles.obj+
+/o+ /v- miscfrac.obj+
+/o- /v- hcmplx.obj+
+/o+ /v- decoder.obj+
+/o- /v- diskvid.obj+
+/o+ /v- editpal.obj+
+/o+ /v- encoder.obj+
+/o- /v- f16.obj+
+/o- /v- fracsubr.obj+
+/o- /v- fractalb.obj+
+/o- /v- fractalp.obj+
+/o- /v- fractals.obj+
+/o- /v- fractint.obj+
+/o+ /v- framain2.obj+
+/o+ /v- frasetup.obj+
+/o+ /v- gifview.obj+
+/o+ /v- help.obj+
+/o+ /v- intro.obj+
+/o- /v- jb.obj+
+/o- /v- jiim.obj+
+/o+ /v- line3d.obj+
+/o+ /v- loadfdos.obj+
+/o+ /v- loadfile.obj+
+/o- /v- loadmap.obj+
+/o- /v- lorenz.obj+
+/o- /v- lsys.obj+
+/o- /v- lsysf.obj+
+/o+ /v- miscovl.obj+
+/o- /v- miscres.obj+
+/o- /v- mpmath_c.obj+
+/o+ /v- parser.obj+
+/o+ /v- parserfp.obj+
+/o- /v- plot3d.obj+
+/o+ /v- printer.obj+
+/o+ /v- prompts1.obj+
+/o+ /v- prompts2.obj+
+/o- /v- realdos.obj+
+/o+ /v- rotate.obj+
+/o- /v- slideshw.obj+
+/o- /v- stereo.obj+
+/o- /v- targa.obj+
+/o+ /v- testpt.obj+
+/o- /v- tgaview.obj+
+/o- /v- tplus.obj+
+/o- /v- yourvid.obj+
+/o- /v- zoom.obj+
+/o- /v- bigflta.obj+
+/o- /v- bignuma.obj+
+/o- /v- calcmand.obj+
+/o- /v- calmanfp.obj+
+/o- /v- fpu087.obj+
+/o- /v- fpu387.obj+
+/o- /v- fr8514a.obj+
+/o- /v- fracsuba.obj+
+/o- /v- general.obj+
+/o- /v- hgcfra.obj+
+/o- /v- lsysa.obj+
+/o- /v- lsysaf.obj+
+/o- /v- lyapunov.obj+
+/o- /v- mpmath_a.obj+
+/o- /v- newton.obj+
+/o- /v- parsera.obj+
+/o- /v- tplus_a.obj+
+/o- /v- video.obj
+fractint.exe
+bcfract.map
+emu.lib+
+overlay.lib+
+mathm.lib+
+cm.lib

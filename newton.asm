@@ -31,7 +31,7 @@ public	NewtonFractal2
 public	invertz2
 
 .data
-	extrn	color:word, maxcolor:word, degree:word, basin:word
+	extrn	coloriter:dword, maxcolor:word, degree:word, basin:word
 	extrn	row:word, col:word
 
 	extrn	dx0:dword, dy0:dword
@@ -171,7 +171,7 @@ dloop:
 	mov	dx, cx
 	cmp	basin,2			; basin==2 is flag for stripes
 	jne	nostripes
-	mov	ax, color
+	mov	ax, word ptr coloriter
 	and	ax, 1
 	shl	ax, 1
 	shl	ax, 1
@@ -193,7 +193,8 @@ nfb:
 	jne	notm1
 	mov	ax, maxcolor		; if (tmpcolor == -1)...
 notm1:
-	mov	color, ax
+	mov	word ptr coloriter, ax
+	mov	word ptr coloriter+2, 0
 notbasin:
 	mov	ax, 1
 	jmp	nlexit

@@ -14,7 +14,7 @@
 #include "fractint.h"
 #include "prototyp.h"
 
-static void sleep(int);
+static void sleep_secs(int);
 static int  showtempmsg_txt(int,int,int,int,char *);
 static void message(int secs, char far *buf);
 static void slideshowerr(char far *msg);
@@ -68,22 +68,18 @@ static char far *get_mnemonic(int code)
 #undef stop
 
 char busy = 0;
-static FILE *fp = NULL;
-extern int slides;
-extern int text_type;
-extern int calc_status;
-extern char autoname[];
+static FILE *fpss = NULL;
 static long starttick;
 static long ticks;
 static int slowcount;
 static unsigned int quotes;
 static char calcwait = 0;
 static int repeats = 0;
-static int last = 0;
-static char far smsg[] = "MESSAGE";
-static char far sgoto[] = "GOTO";
-static char far scalcwait[] = "CALCWAIT";
-static char far swait[] = "WAIT";
+static int last1 = 0;
+static FCODE smsg[] = "MESSAGE";
+static FCODE sgoto[] = "GOTO";
+static FCODE scalcwait[] = "CALCWAIT";
+static FCODE swait[] = "WAIT";
 
 /* places a temporary message on the screen in text mode */
 static int showtempmsg_txt(int row, int col, int attr,int secs,char *txt)
@@ -99,7 +95,7 @@ static int showtempmsg_txt(int row, int col, int attr,int secs,char *txt)
    }
    putstring(row,col,attr,txt);
    movecursor(25,80);
-   sleep(secs);
+   sleep_secs(secs);
    for(i=0;i<80;i++)
    {
       movecursor(row,i);
@@ -120,7 +116,7 @@ static void message(int secs, char far *buf)
       showtempmsg_txt(0,0,7,secs,nearbuf);
    else if (showtempmsg(nearbuf) == 0)
       {
-	 sleep(secs);
+	 sleep_secs(secs);
 	 cleartempmsg();
       }
 }
@@ -136,7 +132,7 @@ int slideshw()
 	 return(0); /* wait for calc to finish before reading more keystrokes */
       calcwait = 0;
    }
-   if(fp==NULL)   /* open files first time through */
+   if(fpss==NULL)   /* open files first time through */
       if(startslideshow()==0)
 	 {
 	 stopslideshow();
@@ -159,17 +155,17 @@ int slideshw()
    if(repeats>0)
    {
       repeats--;
-      return(last);
+      return(last1);
    }
 start:
    if(quotes) /* reading a quoted string */
    {
-      if((out=fgetc(fp)) != '\"' && out != EOF)
-	 return(last=out);
+      if((out=fgetc(fpss)) != '\"' && out != EOF)
+	 return(last1 = out);
       quotes = 0;
    }
    /* skip white space: */
-   while ((out=fgetc(fp)) == ' ' || out == '\t' || out == '\n') { }
+   while ((out=fgetc(fpss)) == ' ' || out == '\t' || out == '\n') { }
    switch(out)
    {
       case EOF:
@@ -179,26 +175,26 @@ start:
 	 quotes = 1;
 	 goto start;
       case ';':         /* comment from here to end of line, skip it */
-	 while((out=fgetc(fp)) != '\n' && out != EOF) { }
+	 while((out=fgetc(fpss)) != '\n' && out != EOF) { }
 	 goto start;
       case '*':
-	 if (fscanf(fp,"%d",&repeats) != 1
-	   || repeats <= 1 || repeats >= 256 || feof(fp))
+	 if (fscanf(fpss,"%d",&repeats) != 1
+	   || repeats <= 1 || repeats >= 256 || feof(fpss))
 	 {
-	    static char far msg[] = "error in * argument";
+	    static FCODE msg[] = "error in * argument";
 	    slideshowerr(msg);
-	    last = repeats = 0;
+	    last1 = repeats = 0;
 	 }
 	 repeats -= 2;
-	 return(out = last);
+	 return(out = last1);
    }
 
    i = 0;
-   while(1) /* get a token */
+   for(;;) /* get a token */
    {
       if(i < 80)
-	 buffer[i++] = out;
-      if((out=fgetc(fp)) == ' ' || out == '\t' || out == '\n' || out == EOF)
+	 buffer[i++] = (char)out;
+      if((out=fgetc(fpss)) == ' ' || out == '\t' || out == '\n' || out == EOF)
 	 break;
    }
    buffer[i] = 0;
@@ -211,9 +207,9 @@ start:
       {
 	 int secs;
 	 out = 0;
-	 if (fscanf(fp,"%d",&secs) != 1)
+	 if (fscanf(fpss,"%d",&secs) != 1)
 	 {
-	    static char far msg[] = "MESSAGE needs argument";
+	    static FCODE msg[] = "MESSAGE needs argument";
 	    slideshowerr(msg);
 	 }
 	 else
@@ -221,7 +217,7 @@ start:
 	    int len;
 	    char buf[41];
 	    buf[40] = 0;
-	    fgets(buf,40,fp);
+	    fgets(buf,40,fpss);
 	    len = strlen(buf);
 	    buf[len-1]=0; /* zap newline */
 	    message(secs,(char far *)buf);
@@ -230,24 +226,24 @@ start:
       }
    else if(far_strcmp((char far *)buffer,sgoto)==0)
       {
-	 if (fscanf(fp,"%s",buffer) != 1)
+	 if (fscanf(fpss,"%s",buffer) != 1)
 	 {
-	    static char far msg[] = "GOTO needs target";
+	    static FCODE msg[] = "GOTO needs target";
 	    slideshowerr(msg);
 	    out = 0;
 	 }
 	 else
 	 {
 	    char buffer1[80];
-	    rewind(fp);
+	    rewind(fpss);
 	    strcat(buffer,":");
 	    do
 	    {
-	       err = fscanf(fp,"%s",buffer1);
+	       err = fscanf(fpss,"%s",buffer1);
 	    } while( err == 1 && strcmp(buffer1,buffer) != 0);
-	    if(feof(fp))
+	    if(feof(fpss))
 	    {
-	       static char far msg[] = "GOTO target not found";
+	       static FCODE msg[] = "GOTO target not found";
 	       slideshowerr(msg);
 	       return(0);
 	    }
@@ -259,16 +255,16 @@ start:
    else if(far_strcmp(swait,(char far *)buffer)==0)
       {
 	 float fticks;
-	 err = fscanf(fp,"%f",&fticks); /* how many ticks to wait */
+	 err = fscanf(fpss,"%f",&fticks); /* how many ticks to wait */
 	 fticks *= CLK_TCK;		/* convert from seconds to ticks */
 	 if(err==1)
 	 {
-	    ticks = fticks;
+	    ticks = (long)fticks;
 	    starttick = clock_ticks();	/* start timing */
 	 }
 	 else
 	 {
-	    static char far msg[] = "WAIT needs argument";
+	    static FCODE msg[] = "WAIT needs argument";
 	    slideshowerr(msg);
 	 }
 	 slowcount = out = 0;
@@ -278,22 +274,21 @@ start:
 	 calcwait = 1;
 	 slowcount = out = 0;
       }
-   else if((i=check_vidmode_keyname(buffer)))
+   else if((i=check_vidmode_keyname(buffer)) != 0)
       out = i;
    if(out == -12345)
    {
-      extern char s_cantunderstand[];
       char msg[80];
       sprintf(msg,s_cantunderstand,buffer);
       slideshowerr(msg);
       out = 0;
    }
-   return(last=out);
+   return(last1 = out);
 }
 
 startslideshow()
 {
-   if((fp=fopen(autoname,"r"))==NULL)
+   if((fpss=fopen(autoname,"r"))==NULL)
       slides = 0;
    ticks = 0;
    quotes = 0;
@@ -304,9 +299,9 @@ startslideshow()
 
 void stopslideshow()
 {
-   if(fp)
-      fclose(fp);
-   fp = NULL;
+   if(fpss)
+      fclose(fpss);
+   fpss = NULL;
    slides = 0;
 }
 
@@ -314,10 +309,10 @@ void recordshw(int key)
 {
    char far *mn;
    float dt;
-   dt = ticks;	   /* save time of last call */
+   dt = (float)ticks;	   /* save time of last call */
    ticks=clock_ticks();  /* current time */
-   if(fp==NULL)
-      if((fp=fopen(autoname,"w"))==NULL)
+   if(fpss==NULL)
+      if((fpss=fopen(autoname,"w"))==NULL)
 	 return;
    dt = ticks-dt;
    dt /= CLK_TCK;  /* dt now in seconds */
@@ -326,46 +321,46 @@ void recordshw(int key)
       if(quotes) /* close quotes first */
       {
 	 quotes=0;
-	 fprintf(fp,"\"\n",dt);
+	 fprintf(fpss,"\"\n");
       }
-      fprintf(fp,"WAIT %4.1f\n",dt);
+      fprintf(fpss,"WAIT %4.1f\n",dt);
    }
    if(key >= 32 && key < 128)
    {
       if(!quotes)
       {
 	 quotes=1;
-	 fputc('\"',fp);
+	 fputc('\"',fpss);
       }
-      fputc(key,fp);
+      fputc(key,fpss);
    }
    else
    {
       if(quotes) /* not an ASCII character - turn off quotes */
       {
-	 fprintf(fp,"\"\n");
+	 fprintf(fpss,"\"\n");
 	 quotes=0;
       }
       if((mn=get_mnemonic(key)) != NULL)
 #ifndef XFRACT
-	  fprintf(fp,"%Fs",mn);
+	  fprintf(fpss,"%Fs",mn);
 #else
-          fprintf(fp,"%s",mn);
+          fprintf(fpss,"%s",mn);
 #endif
       else if (check_vidmode_key(0,key) >= 0)
 	 {
 	    char buf[10];
 	    vidmode_keyname(key,buf);
-	    fprintf(fp,buf);
+	    fprintf(fpss,buf);
 	 }
       else /* not ASCII and not FN key */
-	 fprintf(fp,"%4d",key);
-      fputc('\n',fp);
+	 fprintf(fpss,"%4d",key);
+      fputc('\n',fpss);
    }
 }
 
 /* suspend process # of seconds */
-static void sleep(int secs)
+static void sleep_secs(int secs)
 {
    long stop;
    stop = clock_ticks() + (long)secs*CLK_TCK;
@@ -375,7 +370,7 @@ static void sleep(int secs)
 static void slideshowerr(char far *msg)
 {
    char msgbuf[300];
-   static char far errhdg[] = "Slideshow error:\n";
+   static FCODE errhdg[] = "Slideshow error:\n";
    stopslideshow();
    far_strcpy(msgbuf,errhdg);
    far_strcat(msgbuf,msg);

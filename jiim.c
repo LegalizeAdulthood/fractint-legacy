@@ -6,9 +6,6 @@
  *
  *  The J-set is generated in a fixed-size window, a third of the screen.
  *
- * This module is linked as an overlay, use ENTER_OVLY and EXIT_OVLY.
- *
- *
  * The routines used to set/move the cursor and to save/restore the
  * window were "borrowed" from editpal.c (TW - now we *use* the editpal code)
  *     (if you don't know how to write good code, look for someone who does)
@@ -36,6 +33,9 @@
  *			     Added orbits capability, various commands, some 
  * 			     of Dan Farmer's ideas like circles and lines 
  *			     connecting orbits points.
+ *        12-18-93      TIW  Removed use of float only for orbits, fixed a
+ *			     helpmode bug.
+ *	
  */
 
 #include <stdio.h>
@@ -73,61 +73,16 @@ enum stored_at_values
    MEMORY
    } ;
 
-/* borrowed from LORENZ.C */
-struct affine
-{
-   /* weird order so a,b,e and c,d,f are vectors */
-   double a;
-   double b;
-   double e;
-   double c;
-   double d;
-   double f;
-};
-
-extern int  setup_convert_to_screen(struct affine *);
-
 int show_numbers =0;              /* toggle for display of coords */
 int stored_at;
 char far *memory = NULL;            /* pointer to saved rectangle */
 FILE *file;
 int windows = 0;               /* windows management system */
 
-extern char scrnfile[];   /* file where screen portion is */
-				  /* stored */
-extern BYTE      *line_buff;   /* must be alloced!!! */
-extern int           sxdots;             /* width of physical screen         */
-extern int           sydots;             /* depth of physical screen         */
-extern int           sxoffs;             /* start of logical screen          */
-extern int           syoffs;             /* start of logical screen          */
-extern int           strlocn[];          /* 10K buffer to store classes in   */
-extern int           colors;             /* # colors avail.                  */
-extern int       using_jiim;
-extern int       viewwindow;     /* 0 for full screen, 1 for window */
-extern float     viewreduction;  /* window auto-sizing */
-extern int       viewcrop;               /* nonzero to crop default coords */
-extern float     finalaspectratio;              /* for view shape and rotation */
-extern int       viewxdots,viewydots;   /* explicit view sizing */
-extern double    dxsize, dysize;
-extern int       xdots;                  /* width of logical screen          */
-extern int       ydots;                  /* depth of logical screen          */
-extern double    xxmax,xxmin;    /* limits of the "window"       */
-extern double    yymax,yymin;    /* on the z-plane               */
-extern int           color_bright;       /* brightest color in palette       */
-extern int           color_dark;         /* darkest color in palette         */
-extern int           color_medium;       /* nearest to medbright gray color  */
-extern int           lookatmouse;        /* mouse mode for getakey(), etc    */
-extern int           maxit;                  /* try this many iterations */
-extern int           fractype;       /* fractal type */
-extern _CMPLX     old,new,init;
-extern double tempsqrx,tempsqry;
 static int xc, yc;                       /* corners of the window */
 static int xd, yd;                       /* dots in the window    */
-extern void displayc(int x, int y, int fg, int bg, int ch);
-extern float screenaspect;
 double xcjul = BIG;
 double ycjul = BIG;
-extern int hasinverse;
 
 void displays(int x, int y, int fg, int bg, char *str, int len)
 {
@@ -138,7 +93,7 @@ void displays(int x, int y, int fg, int bg, char *str, int len)
 
 /* circle routines from Dr. Dobbs June 1990 */
 int xbase, ybase;
-unsigned xAspect, yAspect;
+unsigned int xAspect, yAspect;
 
 void SetAspect(double aspect)
 {
@@ -147,9 +102,9 @@ void SetAspect(double aspect)
    aspect = fabs(aspect);
    if (aspect != 1.0)
       if (aspect > 1.0)
-	 yAspect = 65536.0 / aspect;
+	 yAspect = (unsigned int)(65536.0 / aspect);
       else
-	 xAspect = 65536.0 * aspect;
+	 xAspect = (unsigned int)(65536.0 * aspect);
 }
 
 void _fastcall c_putcolor(int x, int y, int color)
@@ -240,98 +195,6 @@ void circle(int radius, int color)
  int    OKtoMIIM;
  int    SecretExperimentalMode;
  float  luckyx = 0, luckyy = 0;
- extern int debugflag;
- extern int           bitshift;         /* bit shift for fudge */
- extern long          fudge;            /* fudge factor (2**n) */
-
-
-long lsqrt(long f)
-{
-    int N;
-    unsigned long y0, z;
-    static long a=0, b=0, c=0;                  /* constant factors */
-
-    if (f == 0)
-	return f;
-    if (f <  0)
-	return 0;
-
-    if (a==0)                                   /* one-time compute consts */
-    {
-	a = fudge * .41731;
-	b = fudge * .59016;
-	c = fudge * .7071067811;
-    }
-
-    N  = 0;
-    while (f & 0xff000000L)                     /* shift arg f into the */
-    {                                           /* range: 0.5 <= f < 1  */
-	N++;
-	f /= 2;
-    }
-    while (!(f & 0xff800000L))
-    {
-	N--;
-	f *= 2;
-    }
-
-    y0 = a + multiply(b, f,  bitshift);         /* Newton's approximation */
-
-    z  = y0 + divide (f, y0, bitshift);
-    y0 = (z>>2) + divide(f, z,  bitshift);
-
-    if (N % 2)
-    {
-	N++;
-	y0 = multiply(c,y0, bitshift);
-    }
-    N /= 2;
-    if (N >= 0)
-	return y0 <<  N;                        /* correct for shift above */
-    else
-	return y0 >> -N;
-}
-
-#define SinCosFudge 0x10000L
-
-
-LCMPLX
-ComplexSqrtLong(long x, long y)
-{
-   double    mag, theta;
-   long      maglong, thetalong;
-   LCMPLX    result;
-
-#if 1
-   mag       = sqrt(sqrt(((double) multiply(x,x,bitshift))/fudge +
-			 ((double) multiply(y,y,bitshift))/ fudge));
-   maglong   = mag * fudge;
-#else
-   maglong   = lsqrt(lsqrt(multiply(x,x,bitshift)+multiply(y,y,bitshift)));
-#endif
-   theta     = atan2((double) y/fudge, (double) x/fudge)/2;
-   thetalong = theta * SinCosFudge;
-   SinCos086(thetalong, &result.y, &result.x);
-   result.x  = multiply(result.x << (bitshift - 16), maglong, bitshift);
-   result.y  = multiply(result.y << (bitshift - 16), maglong, bitshift);
-   return result;
-}
-
-_CMPLX
-ComplexSqrtFloat(double x, double y)
-{
-   double mag   = sqrt(sqrt(x*x + y*y));
-   double theta = atan2(y, x) / 2;
-   _CMPLX  result;
-
-   FPUsincos(&theta, &result.y, &result.x);
-   result.x *= mag;
-   result.y *= mag;
-   return result;
-}
-
-
-extern char dstack[];
 
 static void fillrect(int x, int y, int width, int depth, int color)
 {
@@ -343,7 +206,7 @@ static void fillrect(int x, int y, int width, int depth, int color)
    {
       if(keypressed()) /* we could do this less often when in fast modes */
          return;
-      putrow(x, y++, width, dstack);
+      putrow(x, y++, width, (char *)dstack);
    }
 }
 
@@ -359,11 +222,13 @@ QueueEmpty()		/* True if NO points remain in queue */
    return (ListFront == ListBack);
 }
 
+#if 0 /* not used */
 int
 QueueFull()		/* True if room for NO more points in queue */
 {
    return (((ListFront + 1) % ListSize) == ListBack);
 }
+#endif
 
 int
 QueueFullAlmost()	/* True if room for ONE more point in queue */
@@ -383,21 +248,11 @@ ClearQueue()
  * move to JIIM.C when done
  */
 
-extern long  ListSize, ListFront, ListBack, lsize, lmax;
-extern float luckyx, luckyy;
-
 int Init_Queue(unsigned long request)
 {
-   extern int _fastcall common_startdisk(long, long, int);
-   extern unsigned int xmmlongest();
-   extern unsigned int xmmreallocate(unsigned int, unsigned int);
-   extern int dotmode;
-   unsigned int        largest;
-
-
    if (dotmode == 11)
    {
-      static char far *nono = "Don't try this in disk video mode, kids...\n";
+      static FCODE nono[] = "Don't try this in disk video mode, kids...\n";
       stopmsg(0, nono);
       ListSize = 0;
       return 0;
@@ -435,9 +290,6 @@ Free_Queue()
    ListFront = ListBack = ListSize = lsize = lmax = 0;
 }
 
-extern int ToMemDisk  (long, int, void far *);
-extern int FromMemDisk(long, int, void far *);
-
 int
 PushLong(long x, long y)
 {
@@ -450,8 +302,8 @@ PushLong(long x, long y)
 	 if (++lsize > lmax)
 	 {
 	    lmax   = lsize;
-	    luckyx = x;
-	    luckyy = y;
+	    luckyx = (float)x;
+	    luckyy = (float)y;
 	 }
 	 return 1;
       }
@@ -657,7 +509,7 @@ static void SaveRect(int x, int y, int width, int depth)
       for (yoff=0; yoff<depth; yoff++)
       {
 	 getrow(x, y+yoff, width, buff);
-	 putrow(x, y+yoff, width, dstack);
+	 putrow(x, y+yoff, width, (char *)dstack);
 	 movedata(FP_SEG(bufptr), FP_OFF(bufptr), FP_SEG(ptr), FP_OFF(ptr), width);
 	 ptr = (char far *)normalize(ptr+width);
       }
@@ -670,7 +522,7 @@ static void SaveRect(int x, int y, int width, int depth)
 
       if ( file == NULL )
       {
-	 file = fopen(scrnfile, "w+b");
+	 file = dir_fopen(tempdir,scrnfile, "w+b");
 	 if (file == NULL)
 	 {
 	    stored_at = NOWHERE;
@@ -684,7 +536,7 @@ static void SaveRect(int x, int y, int width, int depth)
       for (yoff=0; yoff<depth; yoff++)
       {
 	 getrow(x, y+yoff, width, buff);
-	 putrow(x, y+yoff, width, dstack);
+	 putrow(x, y+yoff, width, (char *)dstack);
 	 if ( fwrite(buff, width, 1, file) != 1 )
 	 {
 	    buzzer(3);
@@ -696,7 +548,7 @@ static void SaveRect(int x, int y, int width, int depth)
 }
 
 
-static void RestoreRect(x, y, width, depth)
+static void RestoreRect(int x, int y, int width, int depth)
 {
    char buff[MAXRECT];
    int  yoff;
@@ -744,38 +596,45 @@ static void RestoreRect(x, y, width, depth)
 /*
  * interface to FRACTINT
  */
-int jfractype;
-
-extern int row, col;
-extern double far *dx0, far *dy0;
-extern double far *dx1, far *dy1;
-extern int integerfractal;
-extern long far *lx0, far *ly0;
-extern long far *lx1, far *ly1;
-extern int bitshift;
-extern int helpmode;
 
 /* the following macros and function call the setup, per_pixel, and orbit
    routines and calculate an orbit at row 0 column 0. Have to save and 
    restore the first elements of dx0 ... dy1 as well as row and col */
 
-#define PER_IMAGE fractalspecific[o_fractype].per_image
-#define PER_PIXEL fractalspecific[o_fractype].per_pixel
-#define ORBITCALC   fractalspecific[o_fractype].orbitcalc
+#define PER_IMAGE   (fractalspecific[fractype].per_image)
+#define PER_PIXEL   (fractalspecific[fractype].per_pixel)
+#define ORBITCALC   (fractalspecific[fractype].orbitcalc)
 
-int do_fractal_routines(double cr, double ci, int (*func)())
+int do_fractal_routines(double cr, double ci, int (*func)(void))
 {
    int ret;
    int old_row, old_col;
-   double old_dx0, old_dx1, old_dy0, old_dy1;
-   old_dx0 = *dx0; old_dx1 = *dx1;
-   old_dy0 = *dy0; old_dy1 = *dy1;
    old_row = row;  old_col = col;
    row = col = 0;
-   *dx0 = cr; *dy0 = ci; *dx1 = *dy1 = 0.0;
-   ret = func();
-   *dx0 = old_dx0; *dx1 = old_dx1;
-   *dy0 = old_dy0; *dy1 = old_dy1;
+   if(integerfractal)
+   {
+      long old_lx0, old_lx1, old_ly0, old_ly1;
+      old_lx0 = *lx0; old_lx1 = *lx1;
+      old_ly0 = *ly0; old_ly1 = *ly1;
+      *lx0 = (long)(cr*fudge); *ly0 = (long)(ci*fudge); *lx1 = *ly1 = 0L;
+      ret = func();
+      *lx0 = old_lx0; *lx1 = old_lx1;
+      *ly0 = old_ly0; *ly1 = old_ly1;
+      old.x = lold.x; old.x /= fudge;
+      old.y = lold.y; old.y /= fudge;
+      init.x = linit.x; init.x /= fudge;
+      init.y = linit.y; init.y /= fudge;
+   }
+   else
+   {
+      double old_dx0, old_dx1, old_dy0, old_dy1;
+      old_dx0 = *dx0; old_dx1 = *dx1;
+      old_dy0 = *dy0; old_dy1 = *dy1;
+      *dx0 = cr; *dy0 = ci; *dx1 = *dy1 = 0.0;
+      ret = func();
+      *dx0 = old_dx0; *dx1 = old_dx1;
+      *dy0 = old_dy0; *dy1 = old_dy1;
+   }
    row = old_row;  col = old_col;
    return(ret);
 }
@@ -794,16 +653,14 @@ void Jiim(int which)         /* called by fractint */
 
    int xoff, yoff;                   /* center of the window  */
    int x, y;
-   int still, kbdchar;
+   int still, kbdchar= -1;
    int xcrsr,ycrsr;     /* coords of the cursor / offsets to move it  */
-   int iter;
+   long iter;
    int color;
    float zoom;
    int oldsxoffs, oldsyoffs;
    int savehasinverse;
-   int (*oldcalctype)();
-   extern int (*calctype)();
-   int o_fractype;
+   int (*oldcalctype)(void);
    int old_x, old_y;
    double aspect;
    static int randir = 0;
@@ -811,16 +668,13 @@ void Jiim(int which)         /* called by fractint */
    static _CMPLX SaveC = {-3000.0, -3000.0};
    int actively_computing = 1;
    int first_time = 1;
-
-   ENTER_OVLY(OVLY_ROTATE);
-   /* must use standard fractal and have a float variant */
-   if(fractalspecific[fractype].calctype != StandardFractal ||
-	 (fractalspecific[fractype].isinteger &&
-	 fractalspecific[fractype].tofloat == NOFRACTAL))
-   {
-       EXIT_OVLY;
+   int old_debugflag;
+   
+   old_debugflag = debugflag;
+   /* must use standard fractal or be calcfroth */
+   if(fractalspecific[fractype].calctype != StandardFractal
+       && fractalspecific[fractype].calctype != calcfroth)
        return;
-   }
    oldhelpmode = helpmode;
    if(which == JIIM)
       helpmode = HELP_JIIM;
@@ -828,11 +682,13 @@ void Jiim(int which)         /* called by fractint */
    {
       helpmode = HELP_ORBITS;
       hasinverse = 1;
+      /* Earth to Chuck Ebbert - remove this code when your code supports
+         my changes to PARSER.C */
+      if(fractype == FFORMULA)
+      {
+         debugflag = 90;
+      }
    }
-   if(fractalspecific[fractype].isinteger)
-      o_fractype = fractalspecific[fractype].tofloat;
-   else
-      o_fractype = fractype;
    oldsxoffs = sxoffs;
    oldsyoffs = syoffs;
    oldcalctype = calctype;
@@ -875,15 +731,9 @@ void Jiim(int which)         /* called by fractint */
    }
 
    if(which == ORBIT)
-      do_fractal_routines(cr, ci,PER_IMAGE);
+      (*PER_IMAGE)();
    else
       color = color_bright;
-
-   oldhelpmode = helpmode;
-   if(which == JIIM)
-      helpmode = HELP_JIIM;
-   else
-      helpmode = HELP_ORBITS;
 
    if(xdots == sxdots || ydots == sydots ||
        sxdots-xdots < sxdots/3 ||
@@ -924,8 +774,8 @@ void Jiim(int which)         /* called by fractint */
       yoff = yd/2;
    }
 
-   xfactor = xd/5.33;
-   yfactor = -yd/4;
+   xfactor = (int)(xd/5.33);
+   yfactor = (int)(-yd/4);
 
    if(windows == 0)
       SaveRect(xc,yc,xd,yd);
@@ -940,8 +790,8 @@ void Jiim(int which)         /* called by fractint */
    setup_convert_to_screen(&cvt);
 
    /* reuse last location if inside window */
-   xcrsr = cvt.a*SaveC.x + cvt.b*SaveC.y + cvt.e + .5;
-   ycrsr = cvt.c*SaveC.x + cvt.d*SaveC.y + cvt.f + .5;
+   xcrsr = (int)(cvt.a*SaveC.x + cvt.b*SaveC.y + cvt.e + .5);
+   ycrsr = (int)(cvt.c*SaveC.x + cvt.d*SaveC.y + cvt.f + .5);
    if(xcrsr < 0 || xcrsr >= xdots ||
       ycrsr < 0 || ycrsr >= ydots)
    {
@@ -956,8 +806,8 @@ void Jiim(int which)         /* called by fractint */
 
    old_x = old_y = -1;
 
-   xcrsr = cvt.a*cr + cvt.b*ci + cvt.e + .5;
-   ycrsr = cvt.c*cr + cvt.d*ci + cvt.f + .5;
+   xcrsr = (int)(cvt.a*cr + cvt.b*ci + cvt.e + .5);
+   ycrsr = (int)(cvt.c*cr + cvt.d*ci + cvt.f + .5);
 
    Cursor_SetPos(xcrsr, ycrsr);
    Cursor_Show();
@@ -1053,21 +903,21 @@ void Jiim(int which)         /* called by fractint */
 	       break;
 	    case 'z':
 	    case 'Z':
-	       zoom = 1.0;
+	       zoom = (float)1.0;
 	       break;
 	    case '<':
 	    case ',':
-	       zoom /= 1.15;
+	       zoom /= (float)1.15;
 	       break;
 	    case '>':
 	    case '.':
-	       zoom *= 1.15;
+	       zoom *= (float)1.15;
 	       break;
 	    case SPACE:
 	       xcjul = cr;
 	       ycjul = ci;
 	       goto finish;
-	       break;
+	       /* break; */
 	    case 'c':   /* circle toggle */
 	    case 'C':   /* circle toggle */
 	       mode = mode ^ 1;
@@ -1090,8 +940,8 @@ void Jiim(int which)         /* called by fractint */
 	    case 'P':
 	       get_a_number(&cr,&ci);
                exact = 1;
-               xcrsr = cvt.a*cr + cvt.b*ci + cvt.e + .5;
-               ycrsr = cvt.c*cr + cvt.d*ci + cvt.f + .5;
+               xcrsr = (int)(cvt.a*cr + cvt.b*ci + cvt.e + .5);
+               ycrsr = (int)(cvt.c*cr + cvt.d*ci + cvt.f + .5);
                dxcrsr = dycrsr = 0;
 	       break;
 	    case 'h':   /* hide fractal toggle */
@@ -1132,6 +982,14 @@ void Jiim(int which)         /* called by fractint */
                exact = 0;
             xcrsr += dxcrsr;
             ycrsr += dycrsr;
+#ifdef XFRACT
+	    if (kbdchar == ENTER) {
+		/* We want to use the position of the cursor */
+		exact=0;
+		xcrsr = Cursor_GetX();
+		ycrsr = Cursor_GetY();
+	    }
+#endif
             
 	    /* keep cursor in logical screen */
 	   if(xcrsr >= xdots)
@@ -1154,7 +1012,7 @@ void Jiim(int which)         /* called by fractint */
 	       ci = ly0[ycrsr]+ly1[xcrsr];
 	       cr /= (1L<<bitshift);
 	       ci /= (1L<<bitshift);
-	    }
+            }
 	    else
 	    {
 	       cr = dx0[xcrsr]+dx1[ycrsr];
@@ -1164,11 +1022,15 @@ void Jiim(int which)         /* called by fractint */
 	 actively_computing = 1;
 	 if(show_numbers) /* write coordinates on screen */
 	 {
-	    char str[80];
-	    sprintf(str,"x=%16.14f y=%16.14f   ",cr,ci);
-	    str[40] = 0;
+	    char str[41];
+	    sprintf(str,"%16.14f %16.14f %3d",cr,ci,getcolor(xcrsr,ycrsr));
 	    if(windows == 0)
 	    {
+	       /* show temp msg will clear self if new msg is a 
+	          different length - pad to length 40*/
+	       while(strlen(str) < 40)
+	          strcat(str," ");
+	       str[40] = 0;   
 	       Cursor_Hide();
 	       actively_computing = 1;
 	       showtempmsg(str);
@@ -1178,9 +1040,12 @@ void Jiim(int which)         /* called by fractint */
 	       displays(5, sydots-show_numbers, WHITE, BLACK, str,strlen(str));
 	 }
 	 iter = 1;
-	 old.x = old.y = 0;
+	 old.x = old.y = lold.x = lold.y = 0;
 	 SaveC.x = init.x =  cr;
 	 SaveC.y = init.y =  ci;
+         linit.x = (long)(init.x*fudge);
+         linit.y = (long)(init.y*fudge);
+	 
 	 old_x = old_y = -1;
 /*
  * MIIM code:
@@ -1198,8 +1063,8 @@ void Jiim(int which)         /* called by fractint */
 
 	    ClearQueue();
 	    maxhits = 1;
-	    EnQueueFloat(f1.x, f1.y);
-	    EnQueueFloat(f2.x, f2.y);
+	    EnQueueFloat((float)f1.x, (float)f1.y);
+	    EnQueueFloat((float)f2.x, (float)f2.y);
 	 }
 /*
  * End MIIM code.
@@ -1247,13 +1112,13 @@ void Jiim(int which)         /* called by fractint */
 		  lsize  = lmax   = 0;
 		  old.x  = new.x  = luckyx;
 		  old.y  = new.y  = luckyy;
-		  luckyx = luckyy = 0.0;
+		  luckyx = luckyy = (float)0.0;
 		  for (i=0; i<199; i++)
 		  {
 		     old = ComplexSqrtFloat(old.x - cr, old.y - ci);
 		     new = ComplexSqrtFloat(new.x - cr, new.y - ci);
-		     EnQueueFloat( new.x,  new.y);
-		     EnQueueFloat(-old.x, -old.y);
+		     EnQueueFloat( (float)new.x,  (float)new.y);
+		     EnQueueFloat((float)-old.x, (float)-old.y);
 		  }
 		  maxhits++;
 	       }
@@ -1268,15 +1133,15 @@ void Jiim(int which)         /* called by fractint */
 	       if (maxhits < colors - 1)
 		   maxhits++;
 #endif
-	    x = old.x * xfactor * zoom + xoff;
-	    y = old.y * yfactor * zoom + yoff;
+	    x = (int)(old.x * xfactor * zoom + xoff);
+	    y = (int)(old.y * yfactor * zoom + yoff);
 	    color = c_getcolor(x, y);
 	    if (color < maxhits)
 	    {
 	       c_putcolor(x, y, color + 1);
 	       new = ComplexSqrtFloat(old.x - cr, old.y - ci);
-	       EnQueueFloat( new.x,  new.y);
-	       EnQueueFloat(-new.x, -new.y);
+	       EnQueueFloat( (float)new.x,  (float)new.y);
+	       EnQueueFloat((float)-new.x, (float)-new.y);
 	    }
 	 }
 	 else
@@ -1293,7 +1158,7 @@ void Jiim(int which)         /* called by fractint */
 	     iter = 1;
 	 }
 	 iter++;
-	 color = ((count++)>>5)&(colors-1); /* chg color every 32 pts */
+	 color = ((count++)>>5)%colors; /* chg color every 32 pts */
 	 if(color==0)
 	  color = 1;
 
@@ -1313,8 +1178,8 @@ void Jiim(int which)         /* called by fractint */
 		   new.x = -new.x;
 		   new.y = -new.y;
 		}
-		x = new.x * xfactor * zoom + xoff;
-		y = new.y * yfactor * zoom + yoff;
+		x = (int)(new.x * xfactor * zoom + xoff);
+		y = (int)(new.y * yfactor * zoom + yoff);
 		break;
 	    case 1:		  	/* always go one direction */
 		if (SaveC.y < 0)
@@ -1322,8 +1187,8 @@ void Jiim(int which)         /* called by fractint */
 		   new.x = -new.x;
 		   new.y = -new.y;
 		}
-		x = new.x * xfactor * zoom + xoff;
-		y = new.y * yfactor * zoom + yoff;
+		x = (int)(new.x * xfactor * zoom + xoff);
+		y = (int)(new.y * yfactor * zoom + yoff);
 		break;
 	    case 2:			/* go one dir, draw the other */
 		if (SaveC.y < 0)
@@ -1331,29 +1196,29 @@ void Jiim(int which)         /* called by fractint */
 		   new.x = -new.x;
 		   new.y = -new.y;
 		}
-		x = -new.x * xfactor * zoom + xoff;
-		y = -new.y * yfactor * zoom + yoff;
+		x = (int)(-new.x * xfactor * zoom + xoff);
+		y = (int)(-new.y * yfactor * zoom + yoff);
 		break;
 	    case 4:			/* go negative if max color */
-		x = new.x * xfactor * zoom + xoff;
-		y = new.y * yfactor * zoom + yoff;
+		x = (int)(new.x * xfactor * zoom + xoff);
+		y = (int)(new.y * yfactor * zoom + yoff);
 		if (c_getcolor(x, y) == colors - 1)
 		{
 		   new.x = -new.x;
 		   new.y = -new.y;
-		   x = new.x * xfactor * zoom + xoff;
-		   y = new.y * yfactor * zoom + yoff;
+		   x = (int)(new.x * xfactor * zoom + xoff);
+		   y = (int)(new.y * yfactor * zoom + yoff);
 		}
 		break;
 	    case 5:			/* go positive if max color */
 		new.x = -new.x;
 		new.y = -new.y;
-		x = new.x * xfactor * zoom + xoff;
-		y = new.y * yfactor * zoom + yoff;
+		x = (int)(new.x * xfactor * zoom + xoff);
+		y = (int)(new.y * yfactor * zoom + yoff);
 		if (c_getcolor(x, y) == colors - 1)
 		{
-		   x = new.x * xfactor * zoom + xoff;
-		   y = new.y * yfactor * zoom + yoff;
+		   x = (int)(new.x * xfactor * zoom + xoff);
+		   y = (int)(new.y * yfactor * zoom + yoff);
 		}
 		break;
 	    case 7:
@@ -1362,8 +1227,8 @@ void Jiim(int which)         /* called by fractint */
 		   new.x = -new.x;
 		   new.y = -new.y;
 		}
-		x = -new.x * xfactor * zoom + xoff;
-		y = -new.y * yfactor * zoom + yoff;
+		x = (int)(-new.x * xfactor * zoom + xoff);
+		y = (int)(-new.y * yfactor * zoom + yoff);
 		if(iter > 10)
 		{
 		   if(mode == 0)			/* pixels  */
@@ -1381,8 +1246,8 @@ void Jiim(int which)         /* called by fractint */
 		   old_x = x;
 		   old_y = y;
 		}
-		x = new.x * xfactor * zoom + xoff;
-		y = new.y * yfactor * zoom + yoff;
+		x = (int)(new.x * xfactor * zoom + xoff);
+		y = (int)(new.y * yfactor * zoom + yoff);
 		break;
 	    case 8:			/* go in long zig zags */
 		if (rancnt >= 300)
@@ -1392,8 +1257,8 @@ void Jiim(int which)         /* called by fractint */
 		    new.x = -new.x;
 		    new.y = -new.y;
 		}
-		x = new.x * xfactor * zoom + xoff;
-		y = new.y * yfactor * zoom + yoff;
+		x = (int)(new.x * xfactor * zoom + xoff);
+		y = (int)(new.y * yfactor * zoom + yoff);
 		break;
 	    case 9:			/* "random run" */
 		switch (randir) {
@@ -1421,8 +1286,8 @@ void Jiim(int which)         /* called by fractint */
 			    randir = rancnt = 0;
 			break;
 		}
-		x = new.x * xfactor * zoom + xoff;
-		y = new.y * yfactor * zoom + yoff;
+		x = (int)(new.x * xfactor * zoom + xoff);
+		y = (int)(new.y * yfactor * zoom + yoff);
 		break;
 	 } /* end switch SecretMode (sorry about the indentation) */
 	 } /* end if not MIIM */
@@ -1431,10 +1296,15 @@ void Jiim(int which)         /* called by fractint */
       {
 	 if(iter < maxit)
 	 {
-	    color = iter&(colors-1);
-	    x = (old.x - init.x) * xfactor * 3 * zoom + xoff;
-	    y = (old.y - init.y) * yfactor * 3 * zoom + yoff;
-	    if(do_fractal_routines(cr, ci,ORBITCALC))
+	    color = (int)iter%colors;
+	    if(integerfractal)
+	    {
+	       old.x = lold.x; old.x /= fudge;
+               old.y = lold.y; old.y /= fudge;
+            }
+            x = (int)((old.x - init.x) * xfactor * 3 * zoom + xoff);
+            y = (int)((old.y - init.y) * yfactor * 3 * zoom + yoff);
+	    if((*ORBITCALC)())
 	       iter = maxit;
 	    else
 	       iter++;
@@ -1463,6 +1333,7 @@ void Jiim(int which)         /* called by fractint */
 	 old_y = y;
       }
       old = new;
+      lold = lnew;
    } /* end while(still) */
 finish:
 
@@ -1519,12 +1390,12 @@ finish:
    lookatmouse = oldlookatmouse;
    using_jiim = 0;
    calctype = oldcalctype;
-
+   debugflag = old_debugflag; /* yo Chuck! */
    helpmode = oldhelpmode;
    if(kbdchar == 's' || kbdchar == 'S')
    {
       viewwindow = viewxdots = viewydots = 0;
-      viewreduction = 4.2;
+      viewreduction = (float)4.2;
       viewcrop = 1;
       finalaspectratio = screenaspect;
       xdots = sxdots;
@@ -1541,10 +1412,11 @@ finish:
       {
       fclose(file);
       file = NULL;
-      remove(scrnfile);
+      dir_remove(tempdir,scrnfile);
       }
    show_numbers = 0;
    ungetakey(kbdchar);
-   EXIT_OVLY;
+
+   if (curfractalspecific->calctype == calcfroth)
+      froth_cleanup();
 }
-  

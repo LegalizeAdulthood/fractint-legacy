@@ -24,29 +24,35 @@
 ~Topic=Summary of all Parameters, Label=HELPCOMMANDS
 ; This topic is online only.
 ~Format-
-
 {Startup Parameters}
   @filename[/setname]	   Process commands from a file
+  pardir=directory         Set directory to search for command files
   [filename=]filename	   Start with this saved file (one saved by FRACTINT
 			   or a generic GIF file [treated as a plasma cloud])
-			   ('filename=' is required except on command line)
   batch=yes		   Batch mode run (display image, save-to-disk, exit)
   autokey=play|record	   Playback or record keystrokes
   autokeyname=filename	   File for autokey mode, default AUTO.KEY
   fpu=387|iit|noiit	   Assume 387 or IIT fpu is present or absent
   makedoc=filename	   Create Fractint documentation file
-
+  maxhistory=<nnn>	   Set image capacity of history feature. A higher
+                           number stores more images but uses more memory.
+  tempdir=directory        Place temporary files here
+  workdir=directory        Directory for miscellaneous written files
+~FF
 {Calculation Mode Parameters}
-  passes=1|2|g|b|t	   Select Single-Pass, Dual-Pass, Solid-Guessing,
-			   Boundary-Tracing, or the Tesseral drawing
-			   algorithms
+  passes=1|2|3|g|b|t	   Select Single-Pass, Dual-Pass, Triple-Pass
+			   Solid-Guessing, Boundary-Tracing, or the 
+			   Tesseral drawing algorithms
   fillcolor=normal|<nnn>   Sets a block fill color for use with Boundary
       			   Tracing and Tesseral options		  
   float=yes		   For most functions changes from integer math to fp
   symmetry=xxxx 	   Force symmetry to None, Xaxis, Yaxis, XYaxis,
-			   Origin, or Pi symmetry.  Useful for debugging.
+			   Origin, or Pi symmetry.  Useful as a speedup. Only
+                           use this feature if the fractal actually *has* the
+                           stated symmetry, otherwise may not work as expected.
+  bfdigits=<nnn>           Force nnn digits if arbitrary precision used (not 
+                           recommended - this is a developer feature.) 
 ~FF
-
 {Fractal Type Parameters}
   type=fractaltype	   Perform this Fractal Type (Default = mandel)
 			   See {Fractal Types} for a full list
@@ -56,7 +62,8 @@
 			   with types using variable functions. Values are
 			   sin, cos, tan, cotan, sinh, cosh, tanh, cotanh,
 			   exp, log, sqr, recip (1/z), ident (identity),
-			   conj, flip, zero, and cosxx (cos with bug)
+			   conj, flip, zero, cosxx (cos with bug), asin, 
+                           asinh, acos, acosh, atan, atanh, sqrt, abs, cabs
   formulaname=name	   Formula name for 'type=formula' fractals
   lname=name		   Lsystem name for 'type=lsystem' fractals
   ifs=name		   IFS name for 'type=ifs' fractals
@@ -70,15 +77,21 @@
                            Eg. miim=depth/left/-.74543/.11301/3
 ~FF
 {Image Calculation Parameters}
-  corners=xmin/xmax/ymin/ymax[/x3rd/y3rd]
+  corners=[xmin/xmax/ymin/ymax[/x3rd/y3rd]]
 			   Begin with these Coordinates
-			   (Example: corners=-0.739/-0.736/0.288/0.291)
-  center-mag=[Xctr/Yctr/Mag] An alternative method of entering corners.
+                           (Example: corners=-0.739/-0.736/0.288/0.291)
+                           With no parameters causes <B> command to output
+                           'corners=' (default) instead of center-mag.
+  center-mag=[Xctr/Yctr/Mag[/Xmagfactor/Rotation/Skew]]
+                           An alternative method of entering corners.
+                           (Example: corners=-0.7375/0.2895/300)
 			   With no parameters causes <B> command to output
 			   'center-mag=' instead of corners.
   maxiter=nnn		   Maximum number of iterations (default = 150)
   bailout=nnnn		   Use this as the iteration bailout value (instead
 			   of the default (4.0 for most fractal types)
+  bailoutest=mod|real|imag|or|and  Sets the test for bailing out
+			   (default = mod)
   initorbit=nnn/nnn	   Sets the value used to initialize Mandelbrot orbits
 			   to the given complex number (real and imag parts)
   orbitdelay=nn		   Slows up the display of orbits (by nn/10000 sec)
@@ -91,20 +104,20 @@
 			   'show' or a neg value colors 'caught' points white.
   rseed=nnnnn		   Random number seed, for reproducable Plasma Clouds
   showdot=nn		   Colors the current dot being calculated color nn.
-~FF
+
 {Color Parameters}
   inside=nnn|maxiter|zmag|bof60|bof61|epscr|star|per
 			   Fractal interior color (inside=0 for black)
-  outside=nnn|iter|real|imag|mult|summ  Fractal exterior color options
+  outside=nnn|iter|real|imag|mult|summ|atan  Fractal exterior color options
   map=filename		   Use 'filename' as the default color map (vga/targa)
   colors=@filename|colorspec Sets current image color map from file or spec,
 			   vga or higher only
   cyclerange=nnn/nnn	   Range of colors to cycle (default 1/255)
   cyclelimit=nnn	   Color-cycler speed-limit (1 to 256, default = 55)
+  olddemmcolors=yes|no	   Use old coloring scheme with distance estimator
   textcolors=aa/bb/cc/...  Set text screen colors
   textcolors=mono	   Set text screen colors to simple black and white
-  shortmap=yes		   Uses the compact .map file format
-
+~FF
 {Doodad Parameters}
   logmap=yes|old|nn	   Yes maps logarithm of iteration to color. Old uses
 			   pre vsn 14 logic. >1 compresses, <-1 for quadratic.
@@ -114,10 +127,9 @@
   biomorph=nnn		   Biomorph Coloring
   potential=nn[/nn[/nn[/16bit]]]  Continuous Potential
   invert=nn/nn/nn	   Turns on inversion - turns images 'inside out'
-~FF
   finattract=yes	   Look for finite attractor in julia types
   exitnoask=yes		   bypasses the final "are you sure?" exit screen
-
+~FF
 {Sound Parameters}
   sound=off|x|y|z          Nobody ever plays with fractals at work, do they?
                            x|y|z can be used to add sound to attractor
@@ -159,10 +171,8 @@
 			   crop starting coordinates (y/n), explicit x size,
 			   and explicit y size
 ~FF
-
 {Printer Parameters}
-  printer=type[/res[/lpt#[/-1]]]
-			   Set the printer type, dots/inch, and port#
+  printer=type[/res[/lpt#[/-1]]]  Set the printer type, dots/inch, and port#
 			   types: IBM, EPSON, CO (Star Micronix),
 				  HP (LaserJet), PA (Paintjet),
 				  PS (PostScript portrait), PSL (landscape)
@@ -181,10 +191,9 @@
 			   baud=115,150,300,600,1200,2400,4800,9600
 			   options 7,8 | 1,2 | e,n,o (any order)
 			   Example: comport=1/9600/n71
-~FF
   colorps=yes|no           Enable or Disable the color postscript extensions
   rleps=yes|no             Enable or Disable the postscript rle encoding
-
+~FF
 {3D Parameters}
   3d=yes|overlay	   Resets 3D to defaults, starts 3D mode. If overlay
 			   specified, does not clear existing graphics screen
@@ -196,7 +205,7 @@
 			   1 = alternate, 2 = superimpose, 3 = photo
   ray=nnn		   selects raytrace output file format
   brief=yes		   selects brief or verbose file for DKB output
-
+  usegrayscale=yes         use grayscale as depth instead of color number
   interocular=nnn	   Sets 3D Interocular distance default value
   converge=nnn		   Sets 3D Convergence default value
   crop=nnn/nnn/nnn/nnn	   Sets 3D red-left, red-right, blue-left,
@@ -224,6 +233,7 @@
 			   light source fill types
   haze=nnn		   sets haze for distant objects if fullcolor=1
   lightname=filename	   fullcolor output file name, default FRACT001.TGA
+  monitorwidth=nnn         monitor width in inches (for RDS only so far)
 ;
 ;
 ~Topic=Introduction to Parameters
@@ -297,8 +307,8 @@ be other, sister programs to Fractint using that file.)
 ~Topic=Parameter Files and the <@> Command
 
 You can change parameters on-the-fly while running Fractint by using the
-<@> command and a parameter file. Parameter files contain named groups of
-parameters, looking something like this:
+<@> or <2> command and a parameter file. Parameter files contain named
+groups of parameters, looking something like this:
 
   quickdraw \{	    ; a set of parameters named quickdraw\
      maxiter=150\
@@ -309,13 +319,13 @@ parameters, looking something like this:
      float=yes\
      }\
 
-If you use the <@> command and select a parameter file containing the
+If you use the <@> or <2> command and select a parameter file containing the
 above example, Fractint will show two choices: quickdraw and slowdraw. You
 move the cursor to highlight one of the choices and press <Enter> to set
 the parameters specified in the file by that choice.
 
 The default parameter file name is FRACTINT.PAR. A different file can be
-selected with the "parmfile=" option, or by using <@> and then hitting
+selected with the "parmfile=" option, or by using <@> or <2> and then hitting
 <F6>.
 
 You can create parameter files with a text editor, or for some uses, by
@@ -375,6 +385,18 @@ line, as Fractint is not clever enough to deal with multiple indirection.
 Like @FILENAME, but reads a named group of parameters from a parameter
 file.  See {"Parameter Files and the <@> Command"}.
 
+PARDIR=[directory]\
+This command sets the directory where Fractint will look for the .PAR 
+command files read with the @FILENAME/GROUPNAME command.
+
+TEMPDIR=[directory]\
+This command allows to specify the directory where Fractint writes temporary
+files.
+
+WORKDIR=[directory]\
+This command sets the directory where miscellaneous Fractint files get 
+written, including MAKEBIG.BAT and debugging files.
+
 FILENAME=[name]\
 Causes Fractint to read the named file, which must either have been saved
 from an earlier Fractint session or be a generic GIF file, and use that as
@@ -426,13 +448,26 @@ see {Printing Fractint Documentation}.
 ~Doc+,Online-
 use "Printing Fractint Documentation" from the main help index.
 ~Online+
+
+MAXHISTORY=<nnn>\
+Fractint maintains a list of parameters of the past 10 images that you
+generated in the current Fractint session. You can revisit these images 
+using the <h> and <Ctrl-h> commands. The maxhistory command allows you
+to set the number of image parameter sets stored in memory. The tradeoff
+is between the convenience of storing more images and memory use. Each
+image in the circular history buffer takes up over 1200 bytes, so the 
+default value of ten images uses up 12,000 bytes of memory. If your memory
+is very tight, and some memory-intensive Fractint operations are giving
+"out of memory" messages, you can reduce maxistory to 2 or even zero. Keep
+in mind that every time you color cycle or change from integer to float or 
+back, another image parameter set is saved, so the default ten images are 
+used up quickly. 
 ;
 ;
 ~Topic=Calculation Mode Parameters
-
-PASSES=1|2|guess|btm|tesseral\
-Selects single-pass, dual-pass, solid-Guessing mode, Boundary Tracing,
-or the Tesseral algorithm.  See {Drawing Method}.
+PASSES=1|2|3|guess|btm|tesseral\
+Selects single-pass, dual-pass, triple-pass, solid-Guessing mode, Boundary 
+Tracing, or the Tesseral algorithm.  See {Drawing Method}.
 
 FILLCOLOR=normal|<nnn>\
 Sets a color to be used for block fill by Boundary Tracing and Tesseral
@@ -450,7 +485,10 @@ Also see {"Limitations of Integer Math (And How We Cope)"}.
 
 SYMMETRY=xxx\
 Forces symmetry to None, Xaxis, Yaxis, XYaxis, Origin, or Pi symmetry.
-Useful for debugging.
+Useful as a speedup for symmetrical fractals. This is not a kaleidoscope 
+feature for imposing symmetry where it doesn't exist. Use only when the 
+fractal actual exhibits the symmetry, or else results may not be
+satisfactory.
 ;
 ;
 ~Topic=Fractal Type Parameters
@@ -470,8 +508,9 @@ Julia set for the stated x (real) and y (imaginary) coordinates.)
 FUNCTION=[fn1[/fn2[/fn3[/fn4]]]]\
 Allows setting variable functions found in some fractal type formulae.
 Possible values are sin, cos, tan, cotan, sinh, cosh, tanh, cotanh, exp,
-log, sqr, recip (i.e. 1/z), ident (i.e. identity), and cosxx (cos with
-a pre version 16 bug).
+log, sqr, recip (i.e. 1/z), ident (i.e. identity), cosxx (cos with a pre 
+version 16 bug), asin, asinh, acos, acosh, atan, atanh, sqrt,\
+abs (abs(x)+i*abs(y)), cabs (sqrt(x*x + y*y)).
 
 FORMULANAME=[formulaname]\
 Specifies the default formula name for type=formula fractals.  (I.e. the
@@ -496,13 +535,13 @@ MAXITER=nnn\
 Reset the iteration maximum (the number of iterations at which the program
 gives up and says 'OK, this point seems to be part of the set in question
 and should be colored [insidecolor]') from the default 150. Values range
-from 10 to 32000 (super-high iteration limits like 30000 are useful when
-using logarithmic palettes).  See {The Mandelbrot Set} for a description
+from 2 to 2,147,483,647 (super-high iteration limits like 200000000 are useful
+when using logarithmic palettes).  See {The Mandelbrot Set} for a description
 of the iteration method of calculating fractals.\
 "maxiter=" can also be used to adjust the number of orbits plotted for
 3D "attractor" fractal types such as lorenz3d and kamtorus.
 
-CORNERS=xmin/xmax/ymin/ymax[/x3rd/y3rd]\
+CORNERS=[xmin/xmax/ymin/ymax[/x3rd/y3rd]]\
 Example: corners=-0.739/-0.736/0.288/0.291\
 Begin with these coordinates as the range of x and y coordinates, rather
 than the default values of (for type=mandel) -2.0/2.0/-1.5/1.5. When you
@@ -513,20 +552,35 @@ Six parameters can be used to describe any rotated or stretched
 parallelogram:	(xmin,ymax) are the coordinates used for the top-left
 corner of the screen, (xmax,ymin) for the bottom-right corner, and
 (x3rd,y3rd) for the bottom-left.
+Entering just "CORNERS=" tells Fractint to use this form
+(the default mode) rather than CENTER-MAG (see below) when saving
+parameters with the <B> command.
 
-CENTER-MAG=[Xctr/Yctr/Mag]\
+CENTER-MAG=[Xctr/Yctr/Mag[/Xmagfactor/Rotation/Skew]]\
 This is an alternative way to enter corners as a center point and a
 magnification that is popular with some fractal programs and publications.
-Entering just "CENTER-MAG=" tells Fractint whether to use this form rather
-than corners when saving parameters with  the <B> command. The <TAB>
-status display shows the "corners" in both forms.  Note that an aspect
-ratio of 1.3333 is assumed; if you have altered the zoom box proportions
-or rotated the zoom box, this form can no longer be used.
+Entering just "CENTER-MAG=" tells Fractint to use this form rather
+than CORNERS (see above) when saving parameters with the <B> command.
+The <TAB> status
+display shows the "corners" in both forms.  When you specify three values
+(the usual case), this defines a rectangle:  (Xctr, Yctr) specifies the
+coordinates of the center of the image while Mag indicates the amount of
+magnification to use.  Six parameters can be used to describe any rotated
+or stretched parallelogram:  Xmagfactor tells how many times bigger the
+x-magnification is than the y-magnification, Rotation indicates how many
+degrees the image has been turned, and Skew tells how many degrees the
+image is leaning over.  Positive angles will rotate and skew the image
+counter-clockwise.
 
 BAILOUT=nnn\
 Over-rides the default bailout criterion for escape-time fractals. Can
 also be set from the parameters screen after selecting a fractal type.
 See description of bailout in {The Mandelbrot Set}.
+
+BAILOUTEST=mod|real|imag|or|and\
+Specifies the {Bailout Test} used to determine when the fractal calculation
+has exceeded the bailout value.  The default is mod and not all fractal types
+can utilize the additional tests.
 
 RESET\
 Causes Fractint to reset all calculation related parameters to their
@@ -581,27 +635,27 @@ fractals for showing you the calculation status.
 INSIDE=nnn|bof60|bof61|zmag|attractor|epscross|startrail|period\
 Set the color of the interior: for
 example, "inside=0" makes the M-set "lake" a stylish basic black. A setting of
--1 makes inside=maxiter. Three more options reveal hidden structure inside the
-lake.  Inside=bof60 and inside=bof61, are named after the figures on pages 60
-and 61 of "Beauty of Fractals".  See {Inside=bof60|bof61|zmag|period}
-for a brilliant explanation of what these do!
+-1 makes inside=maxiter.
 
-Inside=zmag is a method of coloring based on the magnitude of Z after the
-maximum iterations have been reached.  The affect along the edges of the
-Mandelbrot is like thin-metal welded sculpture.
+Four more options reveal hidden structure inside the lake.  Inside=bof60 and
+inside=bof61, are named after the figures on pages 60 and 61 of "Beauty of
+Fractals".  Inside=zmag is a method of coloring based on the magnitude of Z
+after the maximum iterations have been reached.  The affect along the edges
+of the Mandelbrot is like thin-metal welded sculpture.  Inside=period colors
+pixels according to the period of their eventual orbit.
+See {Inside=bof60|bof61|zmag|period} for a brilliant explanation of what
+these do!
 
 Inside=epscross colors pixels green or yellow according to whether their 
 orbits swing close to the Y-axis or X-axis, respectively. Inside=starcross
 has a coloring scheme based on clusters of points in the orbits. Best with
 outside=<nnn>. For more information, see {Inside=epscross|startrail}.
 
-Inside=period colors pixels according to the period of their eventual orbit.
-
 Note that the "Look for finite attractor" option on the <Y> options screen
 will override the selected inside option if an attractor is found - see
 {Finite Attractors}.
 
-OUTSIDE=nnn|iter|real|imag|summ|mult\
+OUTSIDE=nnn|iter|real|imag|summ|mult|atan\
 The classic method of coloring outside
 the fractal is to color according to how many iterations were required before
 Z reached the bailout value, usually 4. This is the method used when
@@ -613,7 +667,9 @@ value plus the real or imaginary values.  OUTSIDE=summ uses the sum of all
 these values.  These options can give a startling 3d quality to otherwise flat
 images and can change some boring images to wonderful ones. OUTSIDE=mult
 colors by multiplying the iteration by real divided by imaginary. There was no
-mathematical reason for this, it just seemed like a good idea.
+mathematical reason for this, it just seemed like a good idea.  OUTSIDE=atan
+colors by determining the angle in degrees the last iterated value has with
+respect to the real axis, and using the absolute value.
 
 Outside=nnn sets the color of the exterior to some number of your choosing:
 for example, "OUTSIDE=1" makes all points not INSIDE the fractal set to color
@@ -631,15 +687,18 @@ See {Palette Maps}.
 COLORS=@filename|colorspecification\
 Sets colors for the current image, like the <L> function in color cycling
 and palette editing modes. Unlike the MAP= parameter, colors set with
-COLORS= do not replace the default - when you next select a new video
-mode, colors will revert to their defaults.\
+COLORS= do not replace the default - when you next select a new fractal
+type, colors will revert to their defaults.\
 COLORS=@filename tells Fractint to use a color map file named "filename".
 See {Palette Maps}.\
 COLORS=colorspecification specifies the colors directly. The value of
 "colorspecification" is rather long (768 characters for 256 color modes),
-and its syntax is not documented here. This form of the COLORS= command is
-not intended for manual use - it exists for use by the <B> command when
-saving the description of a nice image.
+and its syntax is not documented here.  This form of the COLORS= command
+is not intended for manual use - it exists for use by the <B> command
+when saving the description of a nice image.
+~Doc-
+ See {Color Specification}.
+~Doc+
 
 CYCLERANGE=nnn/nnn\
 Sets the range of color numbers to be animated during color cycling.  The
@@ -668,8 +727,8 @@ Color values are:
     5 magenta	D light magenta
     6 brown	E yellow
     7 white	F bright white
-31 colors can be specified, their meanings are as follows:
 ~OnlineFF
+31 colors can be specified, their meanings are as follows:
   heading:
     1  Fractint version info
     2  heading line development info (not used in released version)
@@ -690,6 +749,7 @@ Color values are:
    15  current choice in multiple choice list
    16  speed key prompt in multiple choice list
    17  speed key keyin in multiple choice list
+~OnlineFF
   general (tab key display, IFS parameters, "thinking" display):
    18  high intensity information
    19  medium intensity information
@@ -709,11 +769,47 @@ Color values are:
    30  primary authors
    31  contributing authors
 The default is
-   textcolors=1F/1A/2E/70/28/71/31/78/70/17/
-	      1F/1E/2F/3F/5F/07/0D/71/70/78/0F/
-	      70/0E/0F/4F/20/17/20/28/0F/07
+   textcolors=1F/1A/2E/70/28/71/31/78/70/17/1F/1E/2F/3F/5F/07/
+	      0D/71/70/78/0F/70/0E/0F/4F/20/17/20/28/0F/07
 (In a real command file, all values must be on one line.)
 ~Format+
+OLDDEMMCOLORS=yes|no\
+Sets the coloring scheme used with the distance estimator method to the
+pre-version 16 scheme.
+;
+;
+~Topic=Color Specification
+~Format-,Online-
+COLOR SPECIFICATION
+~Format+,Online+
+
+The colors= parameter in a PAR entry is a set of triplets.  Each triplet
+represents a color in the saved palette.  The triplet is made from the red
+green and blue components of the color in the palette entry.  The current
+limitations of fractint's palette handling capabilities restrict the palette
+to 256 colors.  Each triplet rgb component is a 6 bit value from 0 to 63.
+These values are encoded using the following scheme:\
+
+  rgb value  =>  encoded value\
+   0  -   9  =>  0  -  9\
+  10  -  35  =>  A  -  Z\
+  36  -  37  =>  _  -  `\
+  38  -  63  =>  a  -  z\
+
+In addition, Pieter Branderhorst has incorporated a way to compress the
+encoding when the image has smooth-shaded ranges.  These ranges are written
+as <nn> with the nn representing the number of entries between the
+preceeding triplet and the following triplet.  The routine for finding the
+smooth-shaded range works something like this.  The current triplet's color
+values are compared to the current-1 triplet's color values.  The difference
+is saved and then the current triplet's color values are compared to the
+current-2 triplet's color values. The difference is saved and then this
+difference is compared to the first one.  If the differences are the same, a
+shaded range has been found.  If the differences are off by one, this is
+saved as the one exceptable alternative difference.  Up to four previous
+triplets will be looked at for the current triplet.  If the color "slope" of
+the range is not sharp, meaning the colors change slowly, the current range
+is broken into more ranges to stop "drift" when loading and storing the PAR.
 ;
 ;
 ~Topic=Doodad Parameters
@@ -797,7 +893,7 @@ display, you can create a 256-color gif with disk video and then read it
 back in dithered.
 
 PARMFILE=[parmfilename]\
-Specifies the default parameter file to be used by the <@> and <B>
+Specifies the default parameter file to be used by the <@> (or <2>) and <B>
 commands.  If not specified, the default is FRACTINT.PAR.
 
 FORMULAFILE=[formulafilename]\
@@ -1148,7 +1244,7 @@ spectacular results.  2048 by 2048 is barely enough to fill the width
 of a letter size page with 300 dpi printer resolution.  For higher
 resolution printers, you will wish fractint supported larger window
 sizes (hint, hint...). Bug reports and/or suggestions should be
-forwarded to Yavuz Onder (post to sci.fractals, no e-mail yet).
+forwarded to Yavuz Onder through e-mail (yavuz@bnr.ca).
 ~OnlineFF
 
 A word from the author (Scott Taylor)\
@@ -1266,6 +1362,7 @@ SPHERE=yes		   Turns on spherical projection mode
 STEREO=n		   Selects the type of stereo image creation
 RAY=nnn 		   selects raytrace output file format
 BRIEF=yes		   selects brief or verbose file for DKB output
+USEGRAYSCALE=yes           use grayscale as depth instead of color number
 
 INTEROCULAR=nn		   Sets the interocular distance for stereo
 CONVERGE=nn		   Determines the overall image separation
@@ -1319,6 +1416,11 @@ The name of the Targa-24 file to be created when using full color with
 light source. Default is light001.tga. If overwrite=no (the default), the
 file name will be incremented until an unused filename is found.
 Background in this file will be sky blue.
+
+MONITORWIDTH=<nnn>\
+This parameter allows you to specify the width in inches of the image on
+your monitor for the purpose of getting the correct stereo effect when
+viewing RDS images. See {Random Dot Stereograms (RDS)}.
 ;
 ;
 ;
@@ -1592,10 +1694,12 @@ it is anyway).	So is the orbit display feature.
 {=@ColorCycling Color Cycling} can be used during disk-video modes,
 but only to load or save a color palette.
 
-When using real disk for your disk-video, Fractint will not generate some
-"attractor" types (e.g. lorenz) nor "IFS" images.  These would kill your
-disk drive.  Boundary tracing is allowed - it may give your drive a bit of
-a workout, but is generally tolerable.
+When using real disk for your disk-video, Fractint previously would not 
+generate some "attractor" types (e.g. Lorenz) nor "IFS" images.  These stress
+disk drives with intensive reads and writes, but with the caching algorithm 
+performance may be acceptable. Currently Fractint gives you a warning message 
+but lets you proceed. You can end the calculation with <Esc> if you think your
+hard disk is getting too strenuous a workout.
 
 When using a real disk, and you are not directing the file to a RAM disk,
 and you aren't using a disk caching program on your machine, specifying

@@ -10,28 +10,17 @@
 #include	"fractint.h"
 #include	"prototyp.h"
 
-typedef struct palett {
-   BYTE red;
-   BYTE green;
-   BYTE blue;
-} Palettetype;
-
-extern Palettetype	dacbox[ 256 ];
-extern unsigned far    *tga16;
-extern long	far    *tga32;
-extern char	far    *mapdacbox;
-extern int		colorstate; /* comments in cmdfiles */
-extern char		colorfile[];
-
 /***************************************************************************/
+
+#define dac ((Palettetype *)dacbox)
 
 void SetTgaColors() {
 unsigned	r, g, b, index;
     if (tga16 != NULL)
 	for( index = 0; index < 256; index++ ) {
-		r = dacbox[index].red	<< 2;
-		g = dacbox[index].green << 2;
-		b = dacbox[index].blue	<< 2;
+		r = dac[index].red	<< 2;
+		g = dac[index].green << 2;
+		b = dac[index].blue	<< 2;
 		tga16[index] = ((r&248)<<7) | ((g&248)<<2) | (b>>3);
 		tga32[index] = ((long)r<<16) | (g<<8) | b;
 	}
@@ -41,8 +30,8 @@ int ValidateLuts( char * fn )
 {
 FILE * f;
 unsigned	r, g, b, index;
-CHAR	line[160];
-CHAR	temp[81];
+char	line[160];
+char	temp[81];
 	strcpy (temp,fn);
 	if (strchr(temp,'.') == NULL) /* Did name have an extension? */
 		strcat(temp,".map");  /* No? Then add .map */
@@ -58,13 +47,13 @@ CHAR	temp[81];
 			break;
 		sscanf( line, "%u %u %u", &r, &g, &b );
 		/** load global dac values **/
-		dacbox[index].red   = (r%256) >> 2;	/* maps default to 8 bits */
-		dacbox[index].green = (g%256) >> 2;	/* DAC wants 6 bits */
-		dacbox[index].blue  = (b%256) >> 2;
+		dac[index].red   = (BYTE)((r%256) >> 2);/* maps default to 8 bits */
+		dac[index].green = (BYTE)((g%256) >> 2);/* DAC wants 6 bits */
+		dac[index].blue  = (BYTE)((b%256) >> 2);
 	}
 	fclose( f );
 	while (index < 256)  { /* zap unset entries */
-		dacbox[index].red = dacbox[index].blue = dacbox[index].green = 40;
+		dac[index].red = dac[index].blue = dac[index].green = 40;
 		++index;
 	}
 	SetTgaColors();
@@ -81,7 +70,9 @@ int SetColorPaletteName( char * fn )
 	if( ValidateLuts( fn ) != 0)
 		return 1;
 	if( mapdacbox == NULL && (mapdacbox = farmemalloc(768L)) == NULL) {
-		static char far msg[]={"Insufficient memory for color map."};
+		static FCODE o_msg[]={"Insufficient memory for color map."};
+		char msg[sizeof(o_msg)];
+		far_strcpy(msg,o_msg);
 		stopmsg(0,msg);
 		return 1;
 		}
@@ -89,5 +80,4 @@ int SetColorPaletteName( char * fn )
 	/* PB, 900829, removed atexit(RestoreMap) stuff, goodbye covers it */
 	return 0;
 }
-
 

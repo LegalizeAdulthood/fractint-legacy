@@ -15,28 +15,7 @@
 #define PAL_RED 2
 #define PAL_MAGENTA 3
 
-extern void (_fastcall * standardplot)(int,int,int);
-extern int Targa_Out, sxoffs, syoffs;
-
 int whichimage;
-extern int fractype;
-extern int mapset;
-extern int xadjust;
-extern int yadjust;
-extern int xxadjust;
-extern int yyadjust;
-extern int xshift;
-extern int yshift;
-extern char MAP_name[];
-extern int init3d[];
-extern int xdots;
-extern int ydots;
-extern int colors;
-extern BYTE dacbox[256][3];
-extern int debugflag;
-
-extern int max_colors;
-
 int xxadjust1;
 int yyadjust1;
 int eyeseparation = 0;
@@ -59,7 +38,7 @@ int blue_bright     = 100;
 BYTE T_RED;
 
 /* Bresenham's algorithm for drawing line */
-void _fastcall draw_line (int X1, int Y1, int X2, int Y2, int color)
+void cdecl draw_line (int X1, int Y1, int X2, int Y2, int color)
 
 {               /* uses Bresenham algorithm to draw a line */
     int dX, dY;                     /* vector components */
@@ -69,13 +48,12 @@ void _fastcall draw_line (int X1, int Y1, int X2, int Y2, int color)
         inc1,           /* G increment when row or column doesn't change */
         inc2;               /* G increment when row or column changes */
     char pos_slope;
-    extern int xdots,ydots;
 
     dX = X2 - X1;                   /* find vector components */
     dY = Y2 - Y1;
-    pos_slope = (dX > 0);                   /* is slope positive? */
+    pos_slope = (char)(dX > 0);                   /* is slope positive? */
     if (dY < 0)
-    pos_slope = !pos_slope;
+    pos_slope = (char)!pos_slope;
     if (abs (dX) > abs (dY))                /* shallow line case */
     {
         if (dX > 0)         /* determine start point and last column */
@@ -166,7 +144,7 @@ void _fastcall draw_line (int X1, int Y1, int X2, int Y2, int color)
     }
 }   /* draw_line */
 
-
+#if 0
 /* use this for continuous colors later */
 void _fastcall plot3dsuperimpose16b(int x,int y,int color)
 {
@@ -200,6 +178,8 @@ void _fastcall plot3dsuperimpose16b(int x,int y,int color)
                 targa_color(x, y, color|tmp);
         }
 }
+
+#endif
 
 void _fastcall plot3dsuperimpose16(int x,int y,int color)
 {
@@ -237,7 +217,7 @@ void _fastcall plot3dsuperimpose256(int x,int y,int color)
     int tmp;
     BYTE t_c;
 
-    t_c = 255-color;
+    t_c = (BYTE)(255-color);
 
     if (color != 0)         /* Keeps index 0 still 0 */
     {
@@ -285,7 +265,7 @@ void _fastcall plotIFS3dsuperimpose256(int x,int y,int color)
     int tmp;
     BYTE t_c;
 
-    t_c = 255-color;
+    t_c = (BYTE)(255-color);
 
     if (color != 0)         /* Keeps index 0 still 0 */
     {
@@ -330,10 +310,9 @@ void _fastcall plotIFS3dsuperimpose256(int x,int y,int color)
 
 void _fastcall plot3dalternate(int x,int y,int color)
 {
-    int tmp;
     BYTE t_c;
 
-    t_c = 255-color;
+    t_c = (BYTE)(255-color);
     /* lorez high color red/blue 3D plot function */
     /* if which image = 1, compresses color to lower 128 colors */
 
@@ -367,7 +346,8 @@ void _fastcall plot3dalternate(int x,int y,int color)
 
 void plot_setup()
 {
-    double d_red_bright, d_blue_bright;
+    double d_red_bright  = 0;
+    double d_blue_bright = 0;
     int i;
 
     /* set funny glasses plot function */
@@ -392,36 +372,36 @@ void plot_setup()
         break;
     }
 
-    xshift1 = xshift = (XSHIFT * (double)xdots)/100;
-    yshift1 = yshift = (YSHIFT * (double)ydots)/100;
+    xshift1 = xshift = (int)((XSHIFT * (double)xdots)/100);
+    yshift1 = yshift = (int)((YSHIFT * (double)ydots)/100);
 
     if(glassestype)
     {
-        red_local_left  =   (red_crop_left      * (double)xdots)/100.0;
-        red_local_right =   ((100 - red_crop_right) * (double)xdots)/100.0;
-        blue_local_left =   (blue_crop_left     * (double)xdots)/100.0;
-        blue_local_right =  ((100 - blue_crop_right) * (double)xdots)/100.0;
+        red_local_left  =   (int)((red_crop_left      * (double)xdots)/100.0);
+        red_local_right =   (int)(((100 - red_crop_right) * (double)xdots)/100.0);
+        blue_local_left =   (int)((blue_crop_left     * (double)xdots)/100.0);
+        blue_local_right =  (int)(((100 - blue_crop_right) * (double)xdots)/100.0);
         d_red_bright    =   (double)red_bright/100.0;
         d_blue_bright   =   (double)blue_bright/100.0;
 
         switch(whichimage)
         {
         case 1:
-            xshift  += (eyeseparation* (double)xdots)/200;
-            xxadjust = ((xtrans+xadjust)* (double)xdots)/100;
-            xshift1 -= (eyeseparation* (double)xdots)/200;
-            xxadjust1 = ((xtrans-xadjust)* (double)xdots)/100;
+            xshift  += (int)((eyeseparation* (double)xdots)/200);
+            xxadjust = (int)(((xtrans+xadjust)* (double)xdots)/100);
+            xshift1 -= (int)((eyeseparation* (double)xdots)/200);
+            xxadjust1 = (int)(((xtrans-xadjust)* (double)xdots)/100);
             break;
 
         case 2:
-            xshift  -= (eyeseparation* (double)xdots)/200;
-            xxadjust = ((xtrans-xadjust)* (double)xdots)/100;
+            xshift  -= (int)((eyeseparation* (double)xdots)/200);
+            xxadjust = (int)(((xtrans-xadjust)* (double)xdots)/100);
             break;
         }
     }
     else
-        xxadjust = (xtrans* (double)xdots)/100;
-        yyadjust = -(ytrans* (double)ydots)/100;
+        xxadjust = (int)((xtrans* (double)xdots)/100);
+        yyadjust = (int)(-(ytrans* (double)ydots)/100);
 
     if (mapset)
     {
@@ -444,8 +424,8 @@ void plot_setup()
             }
             for (i=0;i<256;i++)
             {
-                dacbox[i][0] = dacbox[i][0] * d_red_bright;
-                dacbox[i][2] = dacbox[i][2] * d_blue_bright;
+                dacbox[i][0] = (BYTE)(dacbox[i][0] * d_red_bright);
+                dacbox[i][2] = (BYTE)(dacbox[i][2] * d_blue_bright);
             }
         }
         spindac(0,1); /* load it, but don't spin */

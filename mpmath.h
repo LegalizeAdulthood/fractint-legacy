@@ -7,33 +7,8 @@
 #define MPMATH_H
 
 #ifndef _CMPLX_DEFINED
-#define _CMPLX_DEFINED
-
-struct DHyperComplex {
-    double x,y;
-    double z,t;  
-};
-
-struct LHyperComplex {
-    long x,y;
-    long z,t; 
-};
-
-struct DComplex {
-    double x,y;
-};
-
-struct LComplex {
-    long x,y;
-};
-
-typedef struct  DComplex         _CMPLX;
-typedef struct  LComplex         _LCMPLX;
-typedef struct  DHyperComplex    _HCMPLX;
-typedef struct  LHyperComplex    _LHCMPLX;
+#include "cmplx.h"
 #endif
-
-#include <math.h>
 
 #ifdef XFRACT
 #define far
@@ -55,16 +30,13 @@ struct MPC {
         struct MP x, y;
 };
 
-extern struct MP MPTrigTable[2][4][256], InvHalfPi, HalfPi, InvLn2, Ln2;
-extern int MPaccuracy, MPOverflow;
+extern int MPOverflow;
 extern int DivideOverflow;
 
 /* Mark Peterson's expanded floating point operators.  Automatically uses
    either the 8086 or 80386 processor type specified in global 'cpu'. If
    the operation results in an overflow (result < 2**(2**14), or division
    by zero) the global 'MPoverflow' is set to one. */
-
-extern int cpu;
 
 /* function pointer support added by Tim Wegner 12/07/89 */
 extern int         (*pMPcmp)(struct MP , struct MP );
@@ -77,8 +49,8 @@ extern double     *(*pMP2d)(struct MP )             ;
 
 
 /*** Formula Declarations ***/
-typedef enum { D_MATH, M_MATH, L_MATH } MATH_TYPE;
-extern MATH_TYPE MathType;
+enum MATH_TYPE { D_MATH, M_MATH, L_MATH };
+extern enum MATH_TYPE MathType;
 
 #define fDiv(x, y, z) (void)((*(long*)&z) = RegDivFloat(*(long*)&x, *(long*)&y))
 #define fMul16(x, y, z) (void)((*(long*)&z) = r16Mul(*(long*)&x, *(long*)&y))
@@ -91,7 +63,7 @@ extern MATH_TYPE MathType;
 #define fExp14(x, z) (void)((*(long*)&z) = ExpFloat14(*(long*)&x));
 #define fSqrt14(x, z) fLog14(x, z); fShift(z, -1, z); fExp14(z, z)
 
-/* the following are declared 4 dimensional as an experimnent */
+/* the following are declared 4 dimensional as an experiment */
 /* changeing declarations to _CMPLX and _LCMPLX restores the code */
 /* to 2D */
 union Arg {
@@ -163,7 +135,7 @@ extern void (*dtrig3)(void);
    (out).y = multiply((arg).x, (arg).y, bitshiftless1)
 #define LCMPLXsqr_old(out)	 \
    (out).y = multiply(lold.x, lold.y, bitshiftless1);\
-   (out).x = ltempsqrx - ltempsqry\
+   (out).x = ltempsqrx - ltempsqry
 
 #define LCMPLXpwr(arg1,arg2,out)    Arg2->l = (arg1); Arg1->l = (arg2);\
 	 lStkPwr(); Arg1++; Arg2++; (out) = Arg2->l

@@ -3,7 +3,7 @@
 # warnings with make.
 
 all : hc.exe fractint.hlp
-
+# commented out remake of hc.c since it hasn't changed for many moons.
 hc.obj : hc.c helpcom.h
 	$(CC) /AL /W1 /FPi /c $(OptT) hc.c
 

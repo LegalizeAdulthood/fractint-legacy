@@ -10,6 +10,8 @@
    { Biomorphs }
    { Continuous Potential }
    { Starfields }
+   { Bailout Test }
+   { Random Dot Stereograms (RDS) }
 ~Format+
 ;
 ;
@@ -17,14 +19,28 @@
 ~Topic=Drawing Method
 
 The "passes option" (<X> options screen or "passes=" parameter)
-selects single-pass, dual-pass, or solid-guessing
-(default) mode.  This option applies to most fractal types.
+selects one of the single-pass, dual-pass, triple-pass, solid-guessing
+(default), boundary tracing, or tesseral modes.  This option applies 
+to most fractal types.
 
 Single-pass mode ("1") draws the screen pixel by pixel.
 
-Dual-pass ("2") generates a "coarse" screen first as a preview
+Dual-pass ("2") generates a half-resolution screen first as a preview
 using 2x2-pixel boxes, and then generates the rest of the dots with a
-second pass.
+second pass. Dual-pass uses no more time than single-pass.
+
+Triple-pass ("3") generates the coarse first pass of the solidguessing
+mode (see "g" below), then switches to either "1" (with low resolution 
+video modes) or "2" (with higher resolution video modes). The advantage 
+of '3' vs '2' is that when using high resolution modes, the first pass has 
+a much lower resolution (about 160x120) and is therefore much quicker than 
+the first pass of the passes=2 mode. However, with the '2' mode, the first 
+pass does not represent wasted time. The '3' mode wastes the effort of 
+generating the coarse first screen.
+
+The single, dual, and triple pass modes all result in identical images. 
+These modes are for those who desire the highest possible accuracy. Most
+people will want to use the guessing mode, described next.
 
 Solid-guessing ("g") is the default.  It performs from two to four
 visible passes -
@@ -36,15 +52,16 @@ Subsequent passes fill in the display at the next finer resolution,
 skipping blocks which are surrounded by the same color. Solid-guessing can
 guess wrong, but it sure guesses quickly!
 
-Boundary Tracing ("b"), which only
-works with fractal types (such as the Mandelbrot set, but not the Newton
-type) that do not contain "islands" of colors, finds a color "boundary",
-traces it around the screen, and then "blits" in the color over the
-enclosed area.
+Boundary Tracing ("b"), which only works accurately with fractal types 
+(such as the Mandelbrot set, but not the Newton type) that do not contain 
+"islands" of colors, finds a color boundary, traces it around the screen, 
+and then "blits" in the color over the enclosed area.
 
 Tesseral ("t") is a sort of "super-solid-guessing" option that successively
-divides the image into subsections.  It's actually slower than the
-solid-guessing algorithm, but it looks neat, so we left it in.\
+divides the image into subsections and colors in rectangles that have a 
+boundary of a solid color. It's actually slower than the solid-guessing 
+algorithm, but it looks neat, so we left it in. This mode is also subject to
+errors when islands of color appear inside the rectangles.\
 
 The "fillcolor=" option in the <X> screen or on the command line sets a 
 fixed color to be used by the Boundary Tracing and Tesseral calculations 
@@ -206,7 +223,8 @@ a lower value for wider ones.  1000 is a good value to start with.
 The second distance estimator parameter ("width factor") sets the distance
 from the inside of the set which is to be considered as part of the
 inside.  This value is expressed as a percentage of a pixel width, the
-default is 71.
+default is 71.  Negative values are now allowed and give a fraction of a
+percent of the pixel width.  For example: -71 gives 1/71 % of the pixel width.
 
 You should use 1 or 2 pass mode with the distance estimator method, to
 avoid missing some of the thin strands made visible by it.  For the
@@ -554,6 +572,108 @@ try to load ALTERN.MAP and abort if the map file cannot be found.
 ;
 ;
 ;
+~Topic=Random Dot Stereograms (RDS), Label=HELPRDS
+
+Random Dot Stereograms (RDS) are a way of encoding stereo 
+images on a flat screen. Fractint can convert any image to a RDS using 
+either the color number in the current palette or the grayscale value as 
+depth. Try these steps. Generate a plasma fractal using the 640x480x256 video 
+mode. When the image on the screen is complete, press <ctrl-s> ("s" for 
+"Stereo"), and press <Enter> at the "RDS Parameters" screen prompt to accept 
+the defaults. (More on the parameters in a moment.) The screen will be 
+converted into a seemingly random collection of colored dots. Relax your eyes, 
+looking through the screen rather than at the screen surface. The image will 
+(hopefully) resolve itself into the hills and valleys of the 3D Plasma 
+fractal.
+
+Because pressing the two-keyed <ctrl-s> gets tiresome after a while, we have
+made <k> key a synonym for <ctrl-s> for convenience.  Don't get too attached 
+to <k> though; we reserve the right to reuse it for another purpose later.
+
+The RDS feature has five and sometimes six parameters. Pressing <ctrl-s>
+allways takes you to the parameter screen. 
+
+The first parameter allows you to control the depth effect. A larger value 
+(positive or negative) exaggerates the sense of depth. If you make the depth 
+negative, the high and low areas of the image are reversed. If your RDS
+image is streaky try either a lower depth factor or a higher resolution.
+
+The second parameter indicates the overall width in inches of the image on 
+your monitor or printout. The default value of 10 inches is roughly the width 
+of an image on a standard 14" to 16" monitor. This value does not normally
+need to be changed for viewing images on standard monitors. However, if your 
+monitor or image hardcopy is much wider or narrower than 10 inches (25 cm), 
+and you have trouble seeing the image, enter the image width in inches. The 
+issue here is that if the widest separation of left and right pixels is 
+greater than the physical separation of your eyes, you will not be able to 
+fuse the images. Conversely, a too-small separation may cause your eyes to
+hyper-converge (fuse the wrong pixels together). A larger width value reduces 
+the width between left and right pixels. You can use the calibration feature 
+to help set the width parameter - see below. Once you have found a good width
+setting, you can place the value in your SSTOOLS.INI file with the command
+monitorwidth=<nnn>.
+
+The third parameter allows you to control the method use to extract depth
+information from the original image. If your answer "no" at the "Use Grayscale
+value for Depth" prompt, then the color number of each pixel will be used. 
+This value is independent of active color palette. If you answer "yes" and the
+prompt, then the depth values are keyed to the brightness of the color, which 
+will change if you change palettes.
+
+The fourth parameter allows you to set the position of vertical stereo
+calibration bars to the middle or the top of the image, or have the bars
+initially turned off. Use this feature to help you adjust your eye's 
+convergence to see the image. You will see two vertical bars on the screen. 
+You can turn off and on these bars with the <Enter> or <Space> keys after 
+generating the RDS image. If you save an RDS image by pressing <s>, if the 
+bars are turned on at the time, they become a permanent part of the image.
+
+As you relax your eyes and look past the screen, these bars will appear as 
+four bars. When you adjust your eyes so that the two middle bars merge into 
+one bar, the 3D image should appear. The bars are set for the average depth
+in the area near the bars. They should always be closer together than the 
+physical separation of your eyes, but not much less than about 1.5 inches. 
+About 1.75 inches is ideal for many images. The depth and screen width
+controls affect the width of the bars.
+
+At the RDS Parameters screen, you can select bars at the middle of the screen
+or the top. If you select "none", the bars will initially be off, but 
+immediately after generation of the image you can still turn on the bars
+with <Enter> or <Space> before you press any other keys. If the initial 
+setting of the calibration bars is "none", then if the bars are turned on
+later they will appear in the middle. Hint: if you cycle the colors and find
+you can't see the calibration bar, press <Enter> or <Space> twice, and the
+bars will turn to a more visible color.
+
+The fifth parameter asks if you want to use an image map GIF file instead of 
+using random dots. An image map can give your RDS image a more interesting
+texture than the random dots. If you answer "yes", after you press <Enter> 
+Fractint will scan for all the GIF files with the same resolution as your 
+image and present you with a file selection list. After you have selected
+an image map file, the next time you reach the RDS Parameters screen you
+will see an additional prompt asking if you want to use the same image map 
+file again. Answering "yes" avoids the pause during the file scanning and the
+delay of selecting a file. If you changed resolutions since your last image
+map was used, you will need to select a new one.
+
+The best images to use as image maps are detailed textures with no solid 
+spots. The default type=circle fractal works well, as do the barnsley 
+fractals if you zoom in a little way.
+
+The original image you are using for your stereogram is saved, so if you want 
+to modify the stereogram parameters and try again, just press <ctrl-s> (or <k>)
+to get the parameter screen, changes the parameters, and press <Enter>. The
+original image is restored and an RDS transform with the revised parameters is 
+performed. If you press <s> when viewing an RDS image, after the RDS image is 
+saved, the original is restored.
+
+Try the RDS feature with continuous potential Mandelbrots as well as plasma
+fractals.
+
+For a summary of keystrokes in RDS mode, see {RDS Commands}
+;
+;
+;
 ~Topic=Palette Maps, Label=HELPCOLORMAP
 
 If you have a VGA, MCGA, Super-VGA, 8514/A, XGA, TARGA, or TARGA+ video
@@ -597,6 +717,44 @@ Fractint is distributed with some sample .MAP files:
    TOPO.MAP	 Monte Davis's contribution to full color terrain
    VOLCANO.MAP	 an explosion of lava, by Daniel Egnor
 ~Format+
+;
+;
+~Topic=Bailout Test
+
+The bailout test is used to determine if we should stop iterating before the
+maximum iteration count is reached.  This test compares the value determined
+by the test to the "bailout" value set via the <Z> screen.  The default
+bailout test compares the magnitude or modulus of a complex variable to some
+bailout value:\
+~Format-
+
+bailout test = |z| = sqrt(x^2 + y^2) >= 2
+
+As a computational speedup, we square both sides of this equation and the
+bailout test used by Fractint is:
+
+bailout test = |z|^2 = x^2 + y^2 >= 4
+
+Using a "bailout" other than 4 allows us to change when the bailout will occur.
+~OnlineFF
+
+The following bailout tests have been implemented on the <Z> screen:
+
+   mod:     x^2 + y^2 >= bailout
+
+   real:    x^2       >= bailout
+
+   imag:    y^2       >= bailout
+
+   or:      x^2 >= bailout  or   y^2 >= bailout
+
+   and:     x^2 >= bailout  and  y^2 >= bailout
+
+~Format+
+The bailout test feature has not been implemented for all applicable fractal
+types.  This is due to the speedups used for these types.  Some of these
+bailout tests show the limitations of the integer math routines by clipping
+the spiked ends off of the protrusions.
 ;
 ;
 ;
@@ -1086,7 +1244,7 @@ from the viewer, we cheat and use the y value of the original image. So
 the effect really only works if the y-rotation (set earlier) is between
 +/- 30.
 
-Next, you can chose the name under which to save your Targa file. If you
+Next, you can choose the name under which to save your Targa file. If you
 have a RAM disk handy, you might want to create the file on it, for speed.
 So include its  full path name in this option. If you have not set
 "overwrite=yes" then the file name will be incremented to avoid over-writing

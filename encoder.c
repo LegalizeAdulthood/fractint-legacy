@@ -1,6 +1,5 @@
 /*
 	encoder.c - GIF Encoder and associated routines
-	This module is linked as an overlay, use ENTER_OVLY and EXIT_OVLY.
 */
 
 #include <stdlib.h>
@@ -21,122 +20,16 @@
    void CloseStatusBox(void);
 #endif
 
-extern char s_cantopen[];
-extern char s_cantwrite[];
-extern char s_cantcreate[];
-extern char s_cantunderstand[];
-extern char s_cantfind[];
-extern char maxfn;
-static void _fastcall setup_save_info(struct fractal_info *);
 static int inittable(void);
 static int _fastcall shftwrite(BYTE *color,int numcolors);
 static int _fastcall raster(unsigned int);
 static int  _fastcall extend_blk_len(int datalen);
 static int _fastcall put_extend_blk(int block_id,int block_len,char far *block_data);
 static int  _fastcall store_item_name(char *);
+static void _fastcall setup_save_info(struct fractal_info far *save_info);
 
-extern int initbatch;
-extern char far *resume_info;		/* pointer to resume info if allocated */
-extern int  resume_len; 		/* length of resume info */
-extern char LName[];
-extern char FormName[]; 		/* formula name */
-extern char IFSName[];
-extern int  active_system;		/* 0=dos, 1=windows */
-extern int  far *ranges;
-extern int  rangeslen;
-
-extern	int	sxdots,sydots;		/* # of dots on the physical screen    */
-extern	int	sxoffs,syoffs;		/* physical top left of logical screen */
-extern	int	xdots, ydots;		/* # of dots on the logical screen     */
-extern	int	viewwindow;		/* 0 for full screen, 1 for window */
-extern	float	finalaspectratio;	/* for view shape and rotation */
-extern	int	viewxdots,viewydots;	/* explicit view sizing */
-extern	int	colors; 		/* maximum colors available */
-extern	int	dotmode;		/* so we can detect disk-video */
-extern	char overwrite; 		/* overwrite on/off */
-extern	int	resave_flag;		/* resaving after a timed save */
-extern	int	started_resaves;
-extern	int	timedsave;		/* if doing an auto save */
-extern	int	disk16bit;		/* 16 bit continuous potential */
-
-extern BYTE dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
-extern	int	gotrealdac;		/* DAC valid? */
-extern int	daclearn, daccount;	/* used by the color-cyclers */
-extern SEGTYPE	extraseg;		/* used by Save-to-GIF routines */
-extern int	debugflag;
-
-extern int	gif87a_flag;		/* if 1, supress GIF extension blocks */
-
-extern int    calc_status;
-extern long   calctime;
-extern char   stdcalcmode;
-extern int    fractype;
-extern double xxmin,xxmax;
-extern double yymin,yymax;
-extern double xx3rd,yy3rd;
-extern double param[];
-extern int    major_method;		/* inverse julia parms */
-extern int    minor_method;
-extern int    maxit;			/* try this many iterations */
-extern int    fillcolor;		/* fill color: -1 = normal  */
-extern int    inside;			/* inside color: 1=blue     */
-extern int    outside;			/* outside color, if set    */
-extern int    finattract;		/* finite attractor option  */
-extern int    forcesymmetry;
-extern int    LogFlag;			/* non-zero if logarithmic palettes */
-extern int    rflag, rseed;
-extern int    periodicitycheck;
-extern char   useinitorbit;
-extern _CMPLX initorbit;
-extern int    pot16bit;
-extern float  finalaspectratio;
-extern double potparam[3];		/* three potential parameters*/
-extern double inversion[];
-extern int    decomp[];
-extern int    distest;			/* non-zero if distance estimator   */
-extern int    distestwidth;
-extern int    init3d[20];		/* '3d=nn/nn/nn/...' values */
-extern char   floatflag;		/* floating-point fractals? */
-extern int    usr_biomorph;
-extern int    bailout;			/* user input bailout value */
-extern int    previewfactor;
-extern int    xtrans;
-extern int    ytrans;
-extern int    red_crop_left;
-extern int    red_crop_right;
-extern int    blue_crop_left;
-extern int    blue_crop_right;
-extern int    red_bright;
-extern int    blue_bright;
-extern int    xadjust;
-extern int    eyeseparation;
-extern int    glassestype;
-extern int    save_system;
-extern int    save_release;
-extern int    display3d;		/* 3D display flag: 0 = OFF */
-extern int    Ambient;
-extern int    RANDOMIZE;
-extern int    haze;
-extern int    transparent[2];
-extern int    rotate_lo,rotate_hi;
-extern char   busy;
-extern float  screenaspect;
-extern     double mxmaxfp;
-extern     double mxminfp;
-extern     double mymaxfp;
-extern     double myminfp;
-extern     int zdots;		
-extern     float originfp;
-extern     float depthfp;	
-extern     float heightfp;
-extern     float widthfp;	
-extern     float distfp;	
-extern     float eyesfp;	
-extern     int neworbittype;
-extern     short juli3Dmode;
-	
 #ifdef XFRACT
-extern int decode_fractal_info();
+int decode_fractal_info();
 #endif
 
 /*
@@ -176,15 +69,11 @@ elsewhere.  The actual declarations are in the assembler code.
 */
 
 #define MAXTEST   100		/* maximum single string length */
-#define MAXSTRING 64000 	/* total space reserved for strings */
+#define MAXSTRING 64000L 	/* total space reserved for strings */
 				/* maximum number of strings available */
 #define MAXENTRY  5003		/* (a prime number is best for hashing) */
 
-#ifndef XFRACT
-extern unsigned int strlocn[MAXENTRY];
-extern BYTE teststring[MAXTEST];
-extern BYTE block[266];   /* GIF-encoded blocks go here */
-#else
+#ifdef XFRACT
 unsigned int strlocn[10240];
 BYTE teststring[MAXTEST];
 BYTE block[266];   /* GIF-encoded blocks go here */
@@ -205,32 +94,26 @@ static unsigned int hashcode;
 static BYTE blockcount;
 static int startbits, codebits, bytecount, bitcount;
 
-static char paletteBW[] = {			/* B&W palette */
+static BYTE paletteBW[] = {			/* B&W palette */
 	  0,  0,  0, 63, 63, 63,
 	};
-static char paletteCGA[] = {			/* 4-color (CGA) palette  */
+static BYTE paletteCGA[] = {			/* 4-color (CGA) palette  */
 	  0,  0,  0, 21, 63, 63, 63, 21, 63, 63, 63, 63,
 	};
-static char paletteEGA[] = {			/* 16-color (EGA/CGA) pal */
+static BYTE paletteEGA[] = {			/* 16-color (EGA/CGA) pal */
 	  0,  0,  0,  0,  0, 42,  0, 42,  0,  0, 42, 42,
 	 42,  0,  0, 42,  0, 42, 42, 21,  0, 42, 42, 42,
 	 21, 21, 21, 21, 21, 63, 21, 63, 21, 21, 63, 63,
 	 63, 21, 21, 63, 21, 63, 63, 63, 21, 63, 63, 63,
 	};
 
-void encoder_overlay() { }	/* for restore_active_ovly */
-
-int savetodisk(filename)	/* save-to-disk routine */
-   char *filename;
+int savetodisk(char *filename)	/* save-to-disk routine */
    {
    char tmpmsg[41]; /* before openfile in case of overrun */
    char openfile[80], openfiletype[10];
    char tmpfile[80];
    int newfile;
    int i, j, outcolor1, outcolor2, interrupted;
-
-   ENTER_OVLY(OVLY_ENCODER);
-
 restart:
 
    save16bit = disk16bit;
@@ -241,7 +124,7 @@ restart:
    strcpy(openfiletype,DEFAULTFRACTALTYPE);/* determine the file extension */
    if (save16bit)
       strcpy(openfiletype,".pot");
-   for (i = 0; i < strlen(openfile); i++)
+   for (i = 0; i < (int)strlen(openfile); i++)
       if (openfile[i] == '.') {
          strcpy(openfiletype,&openfile[i]);
          openfile[i] = 0;
@@ -266,7 +149,6 @@ restart:
       if (access(openfile,2) != 0) {
          sprintf(tmpmsg,s_cantwrite,openfile);
          stopmsg(0,tmpmsg);
-         EXIT_OVLY;
          return -1;
          }
       newfile = 0;
@@ -283,7 +165,6 @@ restart:
    if ((out=fopen(tmpfile,"wb")) == NULL) {
       sprintf(tmpmsg,s_cantcreate,tmpfile);
       stopmsg(0,tmpmsg);
-      EXIT_OVLY;
       return -1;
       }
 
@@ -353,9 +234,9 @@ restart:
       dvid_status(1,"");
 
    if (interrupted) {
-      texttempmsg(" *interrupted* save ");
-      if (initbatch == 2 || initbatch == 5) initbatch = 3; /* if batch mode, set error level */
-      EXIT_OVLY;
+      static FCODE msg[] = {" *interrupted* save "};
+      texttempmsg(msg);
+      if (initbatch >= 1) initbatch = 3; /* if batch mode, set error level */
       return -1;
       }
    if (timedsave == 0) {
@@ -365,7 +246,8 @@ restart:
          texttempmsg(tmpmsg);
          }
       }
-   EXIT_OVLY;
+   if(initsavetime < 0)
+      goodbye();
    return 0;
    }
 
@@ -379,6 +261,17 @@ unsigned int hashentry;
 BYTE bitsperpixel, x;
 int entrynum;
 struct fractal_info save_info;
+unsigned int maxstring;
+
+ydot = 0;
+/* arbitrary math uses top of extraseg - steal from encoder if necessary */
+if(bf_save_len) 
+{
+   maxstring = (unsigned int)(0x10000l-(bf_save_len+2)*22);
+   maxstring = min((unsigned int)MAXSTRING,maxstring);
+}    
+else
+   maxstring = MAXSTRING;
 
 if(initbatch)			/* flush any impending keystrokes */
    while(keypressed())
@@ -440,7 +333,7 @@ if (save16bit) {
 	}
 if (write2(&width,2,1,out) != 1) goto oops;  /* screen descriptor */
 if (write2(&ydots,2,1,out) != 1) goto oops;
-x = 128 + ((6-1)<<4) + (bitsperpixel-1); /* color resolution == 6 bits worth */
+x = (BYTE)(128 + ((6-1)<<4) + (bitsperpixel-1)); /* color resolution == 6 bits worth */
 if (write1(&x,1,1,out) != 1) goto oops;
 if (fputc(0,out) != 0) goto oops;	/* background color */
 i = 0;
@@ -452,9 +345,9 @@ if ( finalaspectratio < screenaspect-0.01
  **/
 if (viewwindow				    /* less than full screen?  */
   && (viewxdots == 0 || viewydots == 0))    /* and we picked the dots? */
-   i = ((double)sydots / (double)sxdots) * 64.0/screenaspect - 14.5;
+   i = (int)(((double)sydots / (double)sxdots) * 64.0/screenaspect - 14.5);
 else /* must risk loss of precision if numbers low */
-   i = (((double)ydots / (double)xdots) / finalaspectratio) * 64 - 14.5;
+   i = (int)((((double)ydots / (double)xdots) / finalaspectratio) * 64 - 14.5);
 if (i < 1)   i = 1;
 if (i > 255) i = 255;
 if (gif87a_flag) i = 0;    /* for some decoders which can't handle aspect */
@@ -471,11 +364,11 @@ if (colors > 2) {
 #endif
 	 } else {			/* uh oh - better fake it */
 		for (i = 0; i < 256; i += 16)
-			if (!shftwrite((BYTE *)paletteEGA,16)) goto oops;
+			if (!shftwrite(paletteEGA,16)) goto oops;
 		}
 	}
 if (colors == 2) {			/* write out the B&W palette */
-	if (!shftwrite((BYTE *)paletteBW,colors)) goto oops;
+	if (!shftwrite(paletteBW,colors)) goto oops;
 	}
 #ifndef XFRACT
 if (colors == 4) {			/* write out the CGA palette */
@@ -499,7 +392,7 @@ if (write2(&width,2,1,out) != 1) goto oops;
 if (write2(&ydots,2,1,out) != 1) goto oops;
 if (write1(&i,1,1,out) != 1) goto oops;
 
-bitsperpixel = startbits - 1;		/* raster data starts here */
+bitsperpixel = (BYTE)(startbits - 1);		/* raster data starts here */
 if (write1(&bitsperpixel,1,1,out) != 1) goto oops;
 
 codebits = startbits;			/* start encoding */
@@ -519,8 +412,8 @@ for ( rownum = 0; rownum < ydots; rownum++
 			color = getcolor(xdot,ydot);
 		else
 			color = readdisk(xdot+sxoffs,ydot+syoffs);
-		teststring[0] = ++lentest;
-		teststring[lentest] = color;
+		teststring[0] = (BYTE)++lentest;
+		teststring[lentest] = (BYTE)color;
 		if (lentest == 1) {		/* root entry? */
 			lastentry = color;
 			continue;
@@ -554,7 +447,7 @@ for ( rownum = 0; rownum < ydots; rownum++
 			numrealentries++;
 			}
 		teststring[0] = 1;		/* reset current entry */
-		teststring[1] = color;
+		teststring[1] = (BYTE)color;
 		lentest = 1;
 		lastentry = color;
 
@@ -563,7 +456,7 @@ for ( rownum = 0; rownum < ydots; rownum++
 
 		if ( numentries + endcode > 4093 ||	/* out of room? */
 			numrealentries > (MAXENTRY*2)/3 ||
-			nextentry > MAXSTRING-MAXTEST-1-2*sizeof(int)) {
+			nextentry > maxstring-MAXTEST-1-2*sizeof(int)) {
 			if (!raster(lastentry)) goto oops;	/* flush & restart */
 			if (!inittable()) goto oops;
 			}
@@ -631,6 +524,15 @@ if (gif87a_flag == 0) { /* store non-standard fractal info */
 			goto oops;
 #endif
 		}
+	/* Extended parameters block 005 */
+        if(bf_math)
+	{
+	   save_info.tot_extend_len += extend_blk_len(22*(bflength+2));
+	   /* note: this assumes variables allocated in order starting with
+	      bfxmin in init_bf2() in BIGNUM.C */
+	   if (!put_extend_blk(5,22*(bflength+2),(char far *)bfxmin)) 
+	      goto oops;
+        }
 
 	/* main and last block, 001 */
 	save_info.tot_extend_len += extend_blk_len(FRACTAL_INFO_SIZE);
@@ -662,9 +564,9 @@ int i,j;
 for (i = 0; i < numcolors; i++)
 	for (j = 0; j < 3; j++) {
 		thiscolor = color[3*i+j];
-		thiscolor = thiscolor << 2;
-		thiscolor += (thiscolor >> 6);
-		if (fputc(thiscolor,out) != thiscolor) return(0);
+		thiscolor = (BYTE)(thiscolor << 2);
+		thiscolor = (BYTE)(thiscolor + (BYTE)(thiscolor >> 6));
+		if (fputc(thiscolor,out) != (int)thiscolor) return(0);
 		}
 return(1);
 }
@@ -688,8 +590,7 @@ for (i = 0; i < MAXENTRY; i++)
 return(1);
 }
 
-static int _fastcall raster(code)	/* routine to block and output codes */
-unsigned int code;
+static int _fastcall raster(unsigned int code)	/* routine to block and output codes */
 {
 unsigned int icode, i, j;
 
@@ -712,14 +613,14 @@ while (bitcount >= 8) { 		/* locate next starting point */
 	bytecount++;
 	}
 
-if (bytecount > 250 || code == endcode) {	/* time to write a block */
-	if (code == endcode)
+if (bytecount > 250 || code == (unsigned int)endcode) {	/* time to write a block */
+	if (code == (unsigned int)endcode)
 		while (bitcount > 0) {		/* if EOF, find the real end */
 			bitcount -= 8;
 			bytecount++;
 			}
 	i = bytecount;
-	blockcount = i;
+	blockcount = (BYTE)i;
         if (write1(&blockcount,1,1,out) != 1) return(0); /* write the block */
 	if (fwrite(block,i,1,out) != 1) return(0);
 	bytecount = 0;				/* now re-start the block */
@@ -765,31 +666,35 @@ static int _fastcall store_item_name(char *nameptr)
    return(extend_blk_len(40));
 }
 
-static void _fastcall setup_save_info(struct fractal_info *save_info)
+static void _fastcall setup_save_info(struct fractal_info far *save_info)
 {
    int i;
-
    if(fractype != FORMULA && fractype != FFORMULA)
       maxfn = 0;     
    /* set save parameters in save structure */
-   strcpy(save_info->info_id, INFO_ID);
-   save_info->version	      = 9; /* file version, independant of system */
-   save_info->iterations      = maxit;
-   save_info->fractal_type    = fractype;
+   far_strcpy(save_info->info_id, INFO_ID);
+   save_info->version	      = 10; /* file version, independant of system */
+
+   if(maxit <= 32767)
+     save_info->iterationsold      = (short)maxit;
+   else
+     save_info->iterationsold      = 32767;
+
+   save_info->fractal_type    = (short)fractype;
    save_info->xmin	      = xxmin;
    save_info->xmax	      = xxmax;
    save_info->ymin	      = yymin;
    save_info->ymax	      = yymax;
    save_info->creal	      = param[0];
    save_info->cimag	      = param[1];
-   save_info->videomodeax     = videoentry.videomodeax;
-   save_info->videomodebx     = videoentry.videomodebx;
-   save_info->videomodecx     = videoentry.videomodecx;
-   save_info->videomodedx     = videoentry.videomodedx;
-   save_info->dotmode	      = videoentry.dotmode % 100;
-   save_info->xdots	      = videoentry.xdots;
-   save_info->ydots	      = videoentry.ydots;
-   save_info->colors	      = videoentry.colors;
+   save_info->videomodeax     = (short)videoentry.videomodeax;
+   save_info->videomodebx     = (short)videoentry.videomodebx;
+   save_info->videomodecx     = (short)videoentry.videomodecx;
+   save_info->videomodedx     = (short)videoentry.videomodedx;
+   save_info->dotmode	      = (short)(videoentry.dotmode % 100);
+   save_info->xdots	      = (short)videoentry.xdots;
+   save_info->ydots	      = (short)videoentry.ydots;
+   save_info->colors	      = (short)videoentry.colors;
    save_info->parm3	      = 0; /* pre version==7 fields */
    save_info->parm4	      = 0;
    save_info->dparm3	      = param[2];
@@ -800,80 +705,100 @@ static void _fastcall setup_save_info(struct fractal_info *save_info)
    save_info->dparm8	      = param[7];
    save_info->dparm9	      = param[8];
    save_info->dparm10         = param[9];
-   save_info->fillcolor	      = fillcolor;
-   save_info->potential[0]    = potparam[0];
-   save_info->potential[1]    = potparam[1];
-   save_info->potential[2]    = potparam[2];
-   save_info->rflag	      = rflag;
-   save_info->rseed	      = rseed;
-   save_info->inside	      = inside;
-   save_info->logmap	      = LogFlag;
-   save_info->invert[0]       = inversion[0];
-   save_info->invert[1]       = inversion[1];
-   save_info->invert[2]       = inversion[2];
-   save_info->decomp[0]       = decomp[0];
-   save_info->biomorph	      = usr_biomorph;
-   save_info->symmetry	      = forcesymmetry;
+   save_info->fillcolor	      = (short)fillcolor;
+   save_info->potential[0]    = (float)potparam[0];
+   save_info->potential[1]    = (float)potparam[1];
+   save_info->potential[2]    = (float)potparam[2];
+   save_info->rflag	      = (short)rflag;
+   save_info->rseed	      = (short)rseed;
+   save_info->inside	      = (short)inside;
+   save_info->logmap	      = (short)LogFlag;
+   save_info->invert[0]       = (float)inversion[0];
+   save_info->invert[1]       = (float)inversion[1];
+   save_info->invert[2]       = (float)inversion[2];
+   save_info->decomp[0]       = (short)decomp[0];
+   save_info->biomorph	      = (short)usr_biomorph;
+   save_info->symmetry	      = (short)forcesymmetry;
    for (i = 0; i < 16; i++)
-      save_info->init3d[i] = init3d[i];
-   save_info->previewfactor   = previewfactor;
-   save_info->xtrans	      = xtrans;
-   save_info->ytrans	      = ytrans;
-   save_info->red_crop_left   = red_crop_left;
-   save_info->red_crop_right  = red_crop_right;
-   save_info->blue_crop_left  = blue_crop_left;
-   save_info->blue_crop_right = blue_crop_right;
-   save_info->red_bright      = red_bright;
-   save_info->blue_bright     = blue_bright;
-   save_info->xadjust	      = xadjust;
-   save_info->eyeseparation   = eyeseparation;
-   save_info->glassestype     = glassestype;
-   save_info->outside	      = outside;
+      save_info->init3d[i] = (short)init3d[i];
+   save_info->previewfactor   = (short)previewfactor;
+   save_info->xtrans	      = (short)xtrans;
+   save_info->ytrans	      = (short)ytrans;
+   save_info->red_crop_left   = (short)red_crop_left;
+   save_info->red_crop_right  = (short)red_crop_right;
+   save_info->blue_crop_left  = (short)blue_crop_left;
+   save_info->blue_crop_right = (short)blue_crop_right;
+   save_info->red_bright      = (short)red_bright;
+   save_info->blue_bright     = (short)blue_bright;
+   save_info->xadjust	      = (short)xadjust;
+   save_info->yadjust	      = (short)yadjust;
+   save_info->eyeseparation   = (short)eyeseparation;
+   save_info->glassestype     = (short)glassestype;
+   save_info->outside	      = (short)outside;
    save_info->x3rd	      = xx3rd;
    save_info->y3rd	      = yy3rd;
-   save_info->calc_status     = calc_status;
-   save_info->stdcalcmode     = stdcalcmode;
-   save_info->distest	      = distest;
+   save_info->calc_status     = (short)calc_status;
+   save_info->stdcalcmode     = (char)((three_pass&&stdcalcmode=='3')?127:stdcalcmode);
+   save_info->distest	      = (short)distest;
    save_info->floatflag       = floatflag;
-   save_info->bailout	      = bailout;
+
+   if (bailout >= 4 && bailout <= 32000)
+     save_info->bailoutold      = (short)bailout;
+   else
+     save_info->bailoutold      = 0;
+
    save_info->calctime	      = calctime;
    save_info->trigndx[0]      = trigndx[0];
    save_info->trigndx[1]      = trigndx[1];
    save_info->trigndx[2]      = trigndx[2];
    save_info->trigndx[3]      = trigndx[3];
-   save_info->finattract      = finattract;
+   save_info->finattract      = (short)finattract;
    save_info->initorbit[0]    = initorbit.x;
    save_info->initorbit[1]    = initorbit.y;
    save_info->useinitorbit    = useinitorbit;
-   save_info->periodicity     = periodicitycheck;
-   save_info->pot16bit	      = disk16bit;
+   save_info->periodicity     = (short)periodicitycheck;
+   save_info->pot16bit	      = (short)disk16bit;
    save_info->faspectratio    = finalaspectratio;
-   save_info->system	      = save_system;
-   save_info->release	      = save_release;
-   save_info->flag3d	      = display3d;
-   save_info->ambient	      = Ambient;
-   save_info->randomize       = RANDOMIZE;
-   save_info->haze	      = haze;
-   save_info->transparent[0]  = transparent[0];
-   save_info->transparent[1]  = transparent[1];
-   save_info->rotate_lo       = rotate_lo;
-   save_info->rotate_hi       = rotate_hi;
-   save_info->distestwidth    = distestwidth;
+   save_info->system	      = (short)save_system;
+
+/* the following should match code in MISCOVL.C */
+   if (fractype == LYAPUNOV ||
+       fractype == FROTH || fractype == FROTHFP ||
+       fix_bof() || fix_period_bof() || use_old_distest || decomp[0] == 2)
+     save_info->release	      = (short)min(save_release,release);
+   else
+     save_info->release	      = (short)release;
+
+   save_info->flag3d	      = (short)display3d;
+   save_info->ambient	      = (short)Ambient;
+   save_info->randomize       = (short)RANDOMIZE;
+   save_info->haze	      = (short)haze;
+   save_info->transparent[0]  = (short)transparent[0];
+   save_info->transparent[1]  = (short)transparent[1];
+   save_info->rotate_lo       = (short)rotate_lo;
+   save_info->rotate_hi       = (short)rotate_hi;
+   save_info->distestwidth    = (short)distestwidth;
    save_info->mxmaxfp         = mxmaxfp;
    save_info->mxminfp         = mxminfp;
    save_info->mymaxfp         = mymaxfp;
    save_info->myminfp         = myminfp;
-   save_info->zdots           = zdots;		
+   save_info->zdots           = (short)zdots;
    save_info->originfp        = originfp;
    save_info->depthfp         = depthfp;	
    save_info->heightfp        = heightfp;
    save_info->widthfp         = widthfp;	
    save_info->distfp          = distfp;	
    save_info->eyesfp          = eyesfp;	
-   save_info->orbittype       = neworbittype;
-   save_info->juli3Dmode      = juli3Dmode;
+   save_info->orbittype       = (short)neworbittype;
+   save_info->juli3Dmode      = (short)juli3Dmode;
    save_info->maxfn           = maxfn;
-   save_info->inversejulia    = (major_method << 8) + minor_method; /* MVS */
+   save_info->inversejulia    = (short)((major_method << 8) + minor_method); /* MVS */
+   save_info->bailout         = bailout;
+   save_info->bailoutest      = (short)bailoutest;
+   save_info->iterations      = maxit;
+   save_info->bflength        = (short)bnlength;
+   save_info->bf_math         = (short)bf_math;
+   save_info->old_demm_colors = (short)old_demm_colors;
    for (i = 0; i < sizeof(save_info->future)/sizeof(short); i++)
       save_info->future[i] = 0;
 }

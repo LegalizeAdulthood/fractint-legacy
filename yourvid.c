@@ -54,18 +54,21 @@ in assembler.
 */
 
 #include <dos.h>
-#include "port.h"
 #include "prototyp.h"
 
 /* external variables (set in the FRACTINT.CFG file, but findable here */
+/* these are declared in PROTOTYPE.H */
 
-extern	int	dotmode;		/* video access method (= 19)	   */
-extern	int	sxdots, sydots; 	/* total # of dots on the screen   */
-extern	int	colors; 		/* maximum colors available	   */
+#if 0
+   int	dotmode;		/* video access method (= 19)	   */
+   int	sxdots, sydots; 	/* total # of dots on the screen   */
+   int	colors; 		/* maximum colors available	   */
 
 /* the video-palette array (named after the VGA adapter's video-DAC) */
 
-extern BYTE dacbox[256][3];
+   BYTE dacbox[256][3];
+
+#endif
 
 /* for demo purposes, these routines use VGA mode 13h - 320x200x256 */
 
@@ -102,7 +105,7 @@ void writevideo(int x, int y, int color)
 union REGS regs;
 
 regs.h.ah = 0x0c;			/* invoke INT 10H with AH = 0CH */
-regs.h.al = color;
+regs.h.al = (char)color;
 regs.x.bx = 0;
 regs.x.cx = x;
 regs.x.dx = y;

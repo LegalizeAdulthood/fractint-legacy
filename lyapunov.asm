@@ -19,10 +19,10 @@
 overflowcheck EQU 5
 
 EXTRN   Population:QWORD,Rate:QWORD
-EXTRN   colors:WORD, maxit:WORD, lyaLength:WORD
+EXTRN   colors:WORD, maxit:DWORD, lyaLength:WORD
 EXTRN   lyaRxy:WORD, LogFlag:WORD
 EXTRN   fpu:WORD
-EXTRN   filter_cycles:WORD
+EXTRN   filter_cycles:DWORD
 
 .DATA
 ALIGN 2
@@ -206,7 +206,7 @@ ENDM    ; OneMinusExpMacro
 PUBLIC lyapunov_cycles
 lyapunov_cycles  PROC  USES si di, a:QWORD, b:QWORD
     LOCAL color:WORD, i:WORD, lnadjust:WORD
-    LOCAL halfmax:WORD, status_word:WORD
+    LOCAL halfmax:DWORD, status_word:WORD
     LOCAL total:QWORD
 
 
@@ -222,12 +222,20 @@ lyapunov_cycles  PROC  USES si di, a:QWORD, b:QWORD
 
 ; Popalation is left on the stack during most of this procedure
         fld     Population              ; Population
-        mov     dx,1                    ; using dx for overflowcheck counter
-        xor     si, si                  ; using si for i
+        mov     bx,1                    ; using bx for overflowcheck counter
+        mov     ax,word ptr filter_cycles
+        mov     dx,word ptr filter_cycles+2
+        add     ax,1
+        adc     dx,0                    ; add 1 because dec at beginning
+        mov     si, ax                  ; using si for low part of i
+        mov     i, dx
 filter_cycles_top:
-        cmp     si, filter_cycles       ; si < filter_cycles ?
-        jnl     filter_cycles_bottom    ; if not, end loop
-
+        dec     si
+        jne     hop_skip_and_jump       ; si > 0 :
+        cmp     i,0
+        je      filter_cycles_bottom
+        dec     i
+hop_skip_and_jump:
         mov     cx, lyaLength           ; using cx for count
         mov     di,OFFSET lyaRxy        ; use di as lyaRxy[] index
         ; no need to compare cx with lyaLength at top of loop
@@ -249,14 +257,14 @@ filter_cycles_used_a:
         fsubp   st(2),st                ; Rate Population-Population^2
                                         ;      =Population*(1-Population)
         fmul                            ; Rate*Population*(1-Population)
-        dec     dx                      ; decrement overflowcheck counter
+        dec     bx                      ; decrement overflowcheck counter
         jnz     filter_cycles_skip_overflow_check ; can we skip check?
         fld     st                      ; NewPopulation NewPopulation
         fabs                            ; Take absolute value
         fcomp   BigNum                  ; Compare to 100000.0
         fstsw   status_word             ;
         fwait
-        mov     dx,overflowcheck        ; reset overflowcheck counter
+        mov     bx,overflowcheck        ; reset overflowcheck counter
         mov     ax,status_word          ;
         sahf                            ;  NewPopulation
 
@@ -265,7 +273,6 @@ filter_cycles_skip_overflow_check:
         add     di,2                    ; di += sizeof(*lyaRxy)
         loop    filter_cycles_count_top ; if --cx > 0 then loop
 
-        inc     si
         jmp     filter_cycles_top       ; let's do it again
 
 filter_cycles_bottom:
@@ -302,14 +309,24 @@ filter_cycles_bottom:
 ;        }
 
         ; don't forget Population is still on stack
-        mov     ax,maxit                ; calculate halfmax
-        shr     ax,1
-        mov     halfmax,ax
-        xor     si, si                  ; using si for i
+        mov     ax,word ptr maxit       ; calculate halfmax
+        mov     dx,word ptr maxit+2     ; calculate halfmax
+        shr     dx,1
+        rcr     ax,1
+        mov     word ptr halfmax,ax
+        mov     word ptr halfmax+2,dx
+        add     ax,1
+        adc     dx,0                   ; add 1 because dec at beginning
+        mov     i,dx                   ; count down from halfmax
+        mov     si,ax                  ; using si for low part of i
 halfmax_top:
-        cmp     si, halfmax             ; si < halfmax ?
-        ; too far for a short jump, need a near jump here
-        jl      init_halfmax_count      ; yes, continue on with loop
+        dec     si
+        jne     init_halfmax_count     ; si > 0 ?
+        cmp     i,0
+        je      step_to_halfmax_bottom
+        dec     i
+        jmp     short init_halfmax_count      ; yes, continue on with loop
+step_to_halfmax_bottom:
         jmp     halfmax_bottom          ; if not, end loop
 init_halfmax_count:
         mov     cx, lyaLength           ; using cx for count
@@ -334,14 +351,14 @@ halfmax_used_a:
         fsubp   st(2),st                ; Rate Population-Population^2
                                         ;      =Population*(1-Population)
         fmul                            ; Rate*Population*(1-Population)
-        dec     dx                      ; decrement overflowcheck counter
+        dec     bx                      ; decrement overflowcheck counter
         jnz     not_overflowed          ; can we skip overflow check?
         fld     st                      ; NewPopulation NewPopulation
         fabs                            ; Take absolute value
         fcomp   BigNum                  ; Compare to 100000.0
         fstsw   status_word             ;
         fwait
-        mov     dx,overflowcheck        ; reset overflowcheck counter
+        mov     bx,overflowcheck        ; reset overflowcheck counter
         mov     ax,status_word          ;
         sahf                            ;
 
@@ -397,13 +414,12 @@ too_small_top:                          ; total Population
 too_small_bottom:
 
         fstp    total                   ; save as total
-        inc     si
         jmp     halfmax_top             ; let's do it again
 
 halfmax_bottom:
 ; better make another check, just to be sure
                                         ; NewPopulation
-        cmp     dx,overflowcheck        ; was overflow just checked?
+        cmp     bx,overflowcheck        ; was overflow just checked?
         jl      last_overflowcheck      ; if not, better check one last time
         fstp    Population              ; save Population and clear stack
         jmp     short jumpout           ; skip overflowcheck

@@ -1,6 +1,5 @@
 /*
     rotate.c - Routines that manipulate the Video DAC on VGA Adapters
-    This module is linked as an overlay, use ENTER_OVLY and EXIT_OVLY.
 */
 
 #include <stdlib.h>
@@ -14,24 +13,11 @@
 /* routines in this module	*/
 
 static void pauserotate(void);
-static void set_palette(),set_palette2(),set_palette3();
-
-extern char temp1[];
-
-extern	int	colors; 		/* maximum colors available */
-
-extern BYTE dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
-extern	int	gotrealdac;		/* dacbox valid? */
-extern BYTE olddacbox[256][3];
-extern int	daclearn, daccount;	/* used by the color-cyclers */
-extern int	reallyega;		/* == 0 if it's really an EGA */
-extern int	rotate_lo,rotate_hi;	/* range of colors to cycle */
-extern int	colorstate; /* comments in cmdfiles */
-extern char	colorfile[];
-extern int	dotmode;
+static void set_palette(BYTE start[3], BYTE finish[3]);
+static void set_palette2(BYTE start[3], BYTE finish[3]);
+static void set_palette3(BYTE start[3], BYTE middle[3], BYTE finish[3]);
 
 static int paused;			/* rotate-is-paused flag */
-
 static BYTE Red[3]    = {63, 0, 0};	/* for shifted-Fkeys */
 static BYTE Green[3]  = { 0,63, 0};
 static BYTE Blue[3]   = { 0, 0,63};
@@ -42,26 +28,20 @@ static BYTE Brown[3]  = {31,31, 0};
 
 char mapmask[13] = {"*.map"};
 
-
-void rotate_overlay() { }	/* for restore_active_ovly */
-
 void rotate(int direction)	/* rotate-the-palette routine */
 {
 int  kbdchar, more, last, next;
 int fkey, step, fstep, istep, jstep, oldstep;
-int incr, fromred, fromblue, fromgreen, tored, toblue, togreen;
+int incr, fromred=0, fromblue=0, fromgreen=0, tored=0, toblue=0, togreen=0;
 int i, changecolor, changedirection;
 int oldhelpmode;
 int rotate_max,rotate_size;
 
 static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 
-   ENTER_OVLY(OVLY_ROTATE);
-
    if (gotrealdac == 0			/* ??? no DAC to rotate! */
      || colors < 16) {			/* strange things happen in 2x modes */
       buzzer(2);
-      EXIT_OVLY;
       return;
       }
 
@@ -113,9 +93,9 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
                   togreen   = rand15() >> 9;
                   toblue    = rand15() >> 9;
 		  }
-	       dacbox[jstep][0] = fromred   + (((tored	 - fromred  )*incr)/fstep);
-	       dacbox[jstep][1] = fromgreen + (((togreen - fromgreen)*incr)/fstep);
-	       dacbox[jstep][2] = fromblue  + (((toblue  - fromblue )*incr)/fstep);
+	       dacbox[jstep][0] = (BYTE)(fromred   + (((tored	 - fromred  )*incr)/fstep));
+	       dacbox[jstep][1] = (BYTE)(fromgreen + (((togreen - fromgreen)*incr)/fstep));
+	       dacbox[jstep][2] = (BYTE)(fromblue  + (((toblue  - fromblue )*incr)/fstep));
 	       }
 	    }
 	 if (step >= rotate_size) step = oldstep;
@@ -123,7 +103,10 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	 }
       if (step >= rotate_size) step = oldstep;
       kbdchar = getakey();
-      if (paused && (kbdchar != ' ' && kbdchar != 'c' && kbdchar != 'C' ))
+      if (paused && (kbdchar != ' ' 
+                 && kbdchar != 'c' 
+                 && kbdchar != HOME 
+                 && kbdchar != 'C' ))
 	 paused = 0;			/* clear paused condition	*/
       switch (kbdchar) {
 	 case '+':                      /* '+' means rotate forward     */
@@ -229,7 +212,7 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	    if (changedirection == 0) changedirection = 1;
 	    if (reallyega) break;	/* no sense on real EGAs */
 	    for (i = 1; i < 256; i++) {
-	       dacbox[i][changecolor] += changedirection;
+	       dacbox[i][changecolor] = (BYTE)(dacbox[i][changecolor] + changedirection);
 	       if (dacbox[i][changecolor] == 64)
 	       dacbox[i][changecolor] = 63;
 	       if (dacbox[i][changecolor] == 255)
@@ -295,6 +278,10 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
          case ESC:                      /* escape */
 	    more = 0;			/* time to bail out */
 	    break;
+         case HOME:                     /* restore palette */
+            memcpy(dacbox,olddacbox,256*3);
+            pauserotate();		/* pause */
+	    break;
 	 default:			/* maybe a new palette */
 	    if (reallyega) break;	/* no sense on real EGAs */
 	    fkey = 0;			/* disable random generation */
@@ -334,7 +321,6 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
       }
 
    helpmode = oldhelpmode;		/* return to previous help mode */
-   EXIT_OVLY;
 }
 
 static void pauserotate()		/* pause-the-rotate routine */
@@ -355,7 +341,12 @@ BYTE olddac0,olddac1,olddac2;
       dacbox[0][2] = 48;
       spindac(0,1);			/* show white border */
       if (dotmode == 11)
-         dvid_status(100," Paused in \"color cycling\" mode ");
+      {
+         static FCODE o_msg[] = {" Paused in \"color cycling\" mode "};
+         char msg[sizeof(o_msg)];
+         far_strcpy(msg,o_msg);
+         dvid_status(100,msg);
+      }
 #ifndef XFRACT
       while (!keypressed());          /* wait for any key */
 #else
@@ -372,56 +363,59 @@ BYTE olddac0,olddac1,olddac2;
       }
 }
 
-static void set_palette(start, finish)
-BYTE start[3], finish[3];
+static void set_palette(BYTE start[3], BYTE finish[3])
 {
    int i, j;
    dacbox[0][0] = dacbox[0][1] = dacbox[0][2] = 0;
    for(i=1;i<=255;i++)			/* fill the palette	*/
       for (j = 0; j < 3; j++)
-	 dacbox[i][j] = (i*start[j] + (256-i)*finish[j])/255;
+	 dacbox[i][j] = (BYTE)((i*start[j] + (256-i)*finish[j])/255);
 }
 
-static void set_palette2(start, finish)
-BYTE start[3], finish[3];
+static void set_palette2(BYTE start[3], BYTE finish[3])
 {
    int i, j;
    dacbox[0][0] = dacbox[0][1] = dacbox[0][2] = 0;
    for(i=1;i<=128;i++)
       for (j = 0; j < 3; j++) {
-	 dacbox[i][j]	  = (i*finish[j] + (128-i)*start[j] )/128;
-	 dacbox[i+127][j] = (i*start[j]  + (128-i)*finish[j])/128;
+	 dacbox[i][j]	  = (BYTE)((i*finish[j] + (128-i)*start[j] )/128);
+	 dacbox[i+127][j] = (BYTE)((i*start[j]  + (128-i)*finish[j])/128);
       }
 }
 
-static void set_palette3(start, middle, finish)
-BYTE start[3], middle[3], finish[3];
+static void set_palette3(BYTE start[3], BYTE middle[3], BYTE finish[3])
 {
    int i, j;
    dacbox[0][0] = dacbox[0][1] = dacbox[0][2] = 0;
    for(i=1;i<=85;i++)
       for (j = 0; j < 3; j++) {
-	 dacbox[i][j]	  = (i*middle[j] + (86-i)*start[j] )/85;
-	 dacbox[i+85][j]  = (i*finish[j] + (86-i)*middle[j])/85;
-	 dacbox[i+170][j] = (i*start[j]  + (86-i)*finish[j])/85;
+	 dacbox[i][j]	  = (BYTE)((i*middle[j] + (86-i)*start[j] )/85);
+	 dacbox[i+85][j]  = (BYTE)((i*finish[j] + (86-i)*middle[j])/85);
+	 dacbox[i+170][j] = (BYTE)((i*start[j]  + (86-i)*finish[j])/85);
       }
 }
 
 
 void save_palette()
 {
+   char palname[FILE_MAX_PATH];
+   static FCODE o_msg[] = {"Name of map file to write"};
+   char msg[sizeof(o_msg)];
    FILE *dacfile;
    int i,oldhelpmode;
+   far_strcpy(msg,o_msg);
+   strcpy(palname,MAP_name);
    oldhelpmode = helpmode;
    stackscreen();
    temp1[0] = 0;
    helpmode = HELPCOLORMAP;
-   i = field_prompt(0,"Name of map file to write",NULL,temp1,60,NULL);
+   i = field_prompt(0,msg,NULL,temp1,60,NULL);
    unstackscreen();
    if (i != -1 && temp1[0]) {
       if (strchr(temp1,'.') == NULL)
 	 strcat(temp1,".map");
-      dacfile = fopen(temp1,"w");
+      merge_pathnames(palname,temp1,2);
+      dacfile = fopen(palname,"w");
       if (dacfile == NULL)
 	 buzzer(2);
       else {
@@ -449,7 +443,7 @@ void load_palette(void)
    int i,oldhelpmode;
    char filename[80];
    oldhelpmode = helpmode;
-   strcpy(filename,colorfile);
+   strcpy(filename,MAP_name);
    stackscreen();
    helpmode = HELPCOLORMAP;
    i = getafilename("Select a MAP File",mapmask,filename);

@@ -20,10 +20,6 @@ The sample code below is a straightforward Mandelbrot routine.
 
 */
 
-extern int xdots;		/* the screen is this many dots across */
-extern int ydots;		/* the screen is this many dots down */
-extern int colors;		/* the screen has this many colors */
-
 int teststart()     /* this routine is called just before the fractal starts */
 {
     return( 0 );
@@ -36,12 +32,11 @@ void testend()	     /* this routine is called just after the fractal ends */
 		/* this routine is called once for every pixel */
 	/* (note: possibly using the dual-pass / solif-guessing options */
 
-testpt(initreal,initimag,parm1,parm2,maxit,inside)
-double initreal,initimag,parm1,parm2;
-int maxit,inside;
+int testpt(double initreal,double initimag,double parm1,double parm2,
+           long maxit,int inside)
 {
 double oldreal, oldimag, newreal, newimag, magnitude;
-int color;
+long color;
    oldreal=parm1;
    oldimag=parm2;
    magnitude = 0.0;
@@ -55,5 +50,5 @@ int color;
       magnitude = newreal * newreal + newimag * newimag;
       }
 if (color >= maxit) color = inside;
-return(color);
+return((int)color);
 }

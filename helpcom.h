@@ -225,7 +225,7 @@ int _find_token_length(register char far *curr, unsigned len, int *size, int *wi
 	 {
 	 case ' ':    /* it's a run of spaces */
 	    tok = TOK_SPACE;
-	    while ( *curr == ' ' && _size < len )
+	    while ( *curr == ' ' && _size < (int)len )
 	       {
 	       ++curr;
 	       ++_size;
@@ -295,9 +295,9 @@ int _find_token_length(register char far *curr, unsigned len, int *size, int *wi
 
 	 default:   /* it must be a word */
 	    tok = TOK_WORD;
-	    while (1)
+	    for(;;)
 	       {
-	       if ( _size >= len )
+	       if ( _size >= (int)len )
 		  break;
 
 	       else if ( *curr == CMD_LITERAL )
@@ -356,7 +356,7 @@ int find_token_length(int mode, char far *curr, unsigned len, int *size, int *wi
       {
       _size = 0;
 
-      while (1)
+      for(;;)
 	 {
 	 curr  += t;
 	 len   -= t;
@@ -573,7 +573,7 @@ int process_document(PD_FUNC get_info, PD_FUNC output, VOIDPTR info)
 
 		  col = indent;
 
-		  while (1)
+		  for(;;)
 		     {
 		     if ( !output(PD_PERIODIC, &pd, info) )
 			return (0);

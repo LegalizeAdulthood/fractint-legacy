@@ -7,31 +7,30 @@ EXETYPE		DOS
 ; The basics:  The main code and video sections
 
 SEGMENTS	fractint_text ovl:0
-SEGMENTS	general_text ovl:0
-SEGMENTS	video_text ovl:0
+SEGMENTS	general_text  ovl:0
+SEGMENTS	video_text    ovl:0
 
 ; core fractal-generating routines (in the root segment for speed)
 
 SEGMENTS	calcfrac_text ovl:0
 SEGMENTS	fractalp_text ovl:0
 SEGMENTS	fractals_text ovl:0
-SEGMENTS	fracsuba_text ovl:0
+SEGMENTS	fractalb_text ovl:0
 
 ; commonly used math routines (in the root segment for speed)
 
-SEGMENTS	fpu087_text ovl:0
-SEGMENTS	fpu387_text ovl:0
+SEGMENTS	fpu087_text   ovl:0
+SEGMENTS	fpu387_text   ovl:0
 SEGMENTS	mpmath_c_text ovl:0
 SEGMENTS	mpmath_a_text ovl:0
 
 ; specialized video routines (which could be in overlays if needs be)
 
 SEGMENTS	diskvid_text ovl:31
-SEGMENTS	fr8514a_text ovl:32
+SEGMENTS	fr8514a_text ovl:0
 SEGMENTS	hgcfra_text ovl:33
 SEGMENTS	tplus_text ovl:34
 SEGMENTS	tplus_a_text ovl:35
-SEGMENTS	tp3d_text ovl:36
 SEGMENTS	targa_text ovl:37
 SEGMENTS	tgaview_text ovl:38
 SEGMENTS	f16_text ovl:39
@@ -61,21 +60,34 @@ SEGMENTS	slideshw_text ovl:8
 SEGMENTS	loadfile_text ovl:9
 SEGMENTS	loadfdos_text ovl:9
 
-SEGMENTS	line3d_text ovl:0
+SEGMENTS	line3d_text ovl:10
 
 SEGMENTS	rotate_text ovl:11
 SEGMENTS	editpal_text ovl:11
 
 SEGMENTS	printer_text ovl:12
-SEGMENTS	printera_text ovl:12
 
 SEGMENTS	miscovl_text ovl:13
 
 SEGMENTS	zoom_text ovl:14
 
 SEGMENTS	miscres_text ovl:15
-SEGMENTS	realdos_text ovl:15
+SEGMENTS	realdos_text ovl:0
+SEGMENTS	realdos1_text ovl:16
+
+SEGMENTS	biginit_text ovl:41
+SEGMENTS	bigflt_text ovl:0
+SEGMENTS	bigflt1_text ovl:42
+SEGMENTS	bigfltc_text ovl:0
+SEGMENTS	bigflta_text ovl:0
+SEGMENTS	bignum_text ovl:0
+SEGMENTS	bignum1_text ovl:43
+;SEGMENTS	bignumc_text ovl:0
+SEGMENTS	bignuma_text ovl:0
+SEGMENTS	bigsetup_text ovl:44
+
 SEGMENTS	loadmap_text ovl:17
+SEGMENTS	stereo_text ovl:18
 
 ; fractal-specific routines, each in its own overlay.
 
@@ -85,10 +97,13 @@ SEGMENTS	calmanfp_text ovl:21
 SEGMENTS	testpt_text ovl:22
 SEGMENTS	jiim_text ovl:23
 SEGMENTS	parser_text ovl:0
+SEGMENTS	parser1_text ovl:36
 SEGMENTS	parsera_text ovl:0
-SEGMENTS	parserfp_text ovl:0
+SEGMENTS	parserfp_text ovl:24
 SEGMENTS	lsys_text ovl:25
 SEGMENTS	lsysa_text ovl:25
+SEGMENTS	lsysf_text ovl:25
+SEGMENTS	lsysaf_text ovl:25
 SEGMENTS	lorenz_text ovl:26
 SEGMENTS	jb_text ovl:27
 SEGMENTS	hcmplx_text ovl:28
@@ -96,3 +111,7 @@ SEGMENTS	newton_text ovl:29
 SEGMENTS	lyapunov_text ovl:30
 SEGMENTS	miscfrac_text ovl:30
 SEGMENTS	yourvid_text ovl:31
+SEGMENTS	frasetup_text ovl:32
+SEGMENTS	framain2_text ovl:33
+SEGMENTS	calcfra1_text ovl:45
+SEGMENTS	hello_text ovl:50

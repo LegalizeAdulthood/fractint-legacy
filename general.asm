@@ -85,7 +85,7 @@ ENDIF
 
 	extrn	help:far		; help code (in help.c)
 	extrn	tab_display:far 	; TAB display (in fractint.c)
-	extrn	restore_active_ovly:far
+      ; extrn	restore_active_ovly:far
 	extrn	edit_text_colors:far
 	extrn	adapter_init:far	; video adapter init (in video.asm)
 	extrn	slideshw:far
@@ -145,9 +145,13 @@ public		paldata, stbuff 		; 8514A arrays, (FR8514A.ASM)
 ;   64k 3d transforms, line3d.c
 ;   64k credits screen, intro.c
 ;   22k video mode selection (for fractint.cfg, loadfdos, miscovl)
-;    2k .frm .ifs .l .par entry selection (prompts.c)
+;    2k .frm .ifs .l .par entry selection and file selection (prompts.c)
 ;   ??k printing, printer.c
 ;   ??k fractint.doc creation, help.c, not important cause it saves/restores
+;   64K arbitrary precision - critical variables at top, safe from encoder
+;   10K cmdfiles.c input buffer
+;   4K  miscovl.c PAR file buffer
+;
 ; The high 32k is used for graphics image save during text mode; video.asm
 ; and realdos.c.
 
@@ -162,6 +166,12 @@ public		paldata, stbuff 		; 8514A arrays, (FR8514A.ASM)
 ;   solidguess	image gen with "g", not to disk      calcfrac.c
 ;   btm 	image gen with "b", not to disk      calcfrac.c
 ;   editpal	palette editor "heap"                editpal.c
+;   cellular	cellular fractal type generation     misfrac.c
+;   browse	browsing                             loadfile.c
+;   lsystem	lsystem fractal type generation      lsys.c, lsysf.c, lsysa.asm, lsysaf.asm
+; Several arrays used in cmdfiles.c and miscovl.c, but are saved and
+; restored to extraseg so not critical.
+;
 ; Note that decoder using an 8514a is worst case, uses all arrays at once.
 ; Keep db lengths even so that word alignment is preserved for speed.
 
@@ -175,14 +185,16 @@ teststring	label	byte		; encoder(100)
 olddacbox	label	byte		; fractint(768), prompts(768)
 dstack		dw	2048 dup(0)	; decoder(4k), solidguess(4k), btm(2k)
 					;   zoom(2k), printer(2400)
-					;   loadfdos(2000)
+					;   loadfdos(2000), cellular(2025)
 
 strlocn 	label	word		; encoder(10k), editpal(10k)
 prefix		label	word		; decoder(8k), solidguess(6k)
 boxx		dw	2048 dup(0)	; zoom(4k), tgaview(4k), prompts(9k)
 					;   make_batch(8k), parser(8k)
-boxy		dw	2048 dup(0)	; zoom(4k)
-boxvalues	label	byte		; zoom(2k)
+					;   browse(?)
+boxy		dw	2048 dup(0)	; zoom(4k), cellular(2025), browse(?)
+					;   lsystem(1000)
+boxvalues	label	byte		; zoom(2k), browse(?)
 decoderline	db	2050 dup(0)	; decoder(2049), btm(2k)
 
 rlebuf		label	byte		; f16.c(258) .tga save/restore?
@@ -702,17 +714,21 @@ keypressed1:
 	push	ax
 	call	far ptr help			; help!
 	pop	ax
-	call	far ptr restore_active_ovly	; help might've clobbered ovly
+;	call	far ptr restore_active_ovly	; help might've clobbered ovly
 	sub	ax,ax
 	jmp	short keypressedx
 keypressed2:
 	cmp	ax,9				; TAB key hit?
-	jne	keypressedx			;  nope.  no TAB display.
+	je	keypressed3			;  yup.  TAB display.
+	cmp	ax,1148				; CTL_TAB key hit?
+	je	keypressed3			;  yup.  TAB display.
+	jmp	keypressedx			;  nope.  no TAB display.
+keypressed3:
 	cmp	tabmode,0			; tab enabled?
 	je	keypressedx			;  nope
 	mov	keybuffer,0			; say no key hit
 	call	far ptr tab_display		; show the TAB status
-	call	far ptr restore_active_ovly	; tab might've clobbered ovly
+;	call	far ptr restore_active_ovly	; tab might've clobbered ovly
 	sub	ax,ax
 keypressedx:
 	UNFRAME <es,si,di>			; pop frame
@@ -805,7 +821,7 @@ getkeyn6:
 	cmp	ax,'~'                          ; color play requested?
 	jne	getkeyyup			;  nope
 	call	far ptr edit_text_colors	; play
-	call	far ptr restore_active_ovly	; might've clobbered ovly
+;	call	far ptr restore_active_ovly	; might've clobbered ovly
 	jmp	getkeyn0			; done playing, back around
 getkeyyup:
 	stc					; indicate we have a key
@@ -1094,7 +1110,7 @@ GraphVHLimit  equ 14  ; treat angles < 1:14 as straight
 ZoomVHLimit   equ 1   ; treat angles < 1:1  as straight
 JitterMickeys equ 3   ; mickeys to ignore before noticing motion
 
-mouseread proc near
+mouseread proc near USES bx cx dx
 	local	moveaxis:word
 
 	; check if it is time to do an autosave
@@ -2010,7 +2026,7 @@ emmclearpage	endp
 ; Please refer to XMS spec version 2.0 for further information.
 
 .data
-xmscontrol	dd dword ptr (?) ; Address of driver's control function
+xmscontrol	dd dword ptr (0) ; Address of driver's control function
 
 .code
 xmmquery	proc

@@ -8,6 +8,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #ifndef XFRACT
 #include <dos.h>
@@ -19,22 +20,14 @@
 
 /* stuff from fractint */
 
-extern int  lookatmouse;
-extern long timer_start;
-extern int  helpmode;
-extern SEGTYPE  extraseg;
-
-
 #ifdef XFRACT
 extern int slowdisplay;
 #endif
 
-
-void intro_overlay(void) { }
-
-
 void intro(void)
    {
+   /* following overlayed data safe if "putstrings" are resident */
+   static FCODE PRESS_ENTER[] = {"Press ENTER for main menu, F1 for help."};
    int	     toprow, botrow, i, j, delaymax;
    char      oldchar;
    int	     authors[100];		/* this should be enough for awhile */
@@ -42,8 +35,6 @@ void intro(void)
    char far *screen_text;
    int	     oldlookatmouse;
    int	     oldhelpmode;
-
-   ENTER_OVLY(OVLY_INTRO);
 
    timer_start -= clock_ticks();		/* "time out" during help */
    oldlookatmouse = lookatmouse;
@@ -72,9 +63,9 @@ void intro(void)
 #else
    botrow = 20;
    putstringcenter(21,0,80,C_TITLE,
-   "Unix/X port of fractint by Ken Shirriff [shirriff@sprite.Berkeley.EDU]");
+   "Unix/X port of fractint by Ken Shirriff [shirriff@cs.Berkeley.EDU]");
 #endif
-   putstringcenter(1,0,80,C_TITLE, "Press ENTER for main menu, F1 for help.");
+   putstringcenter(1,0,80,C_TITLE, PRESS_ENTER);
    putstring(2,0,C_CONTRIB,screen_text);
    setattr(2,0,C_AUTHDIV1,80);
    setattr(7,0,C_AUTHDIV1,80);
@@ -82,10 +73,10 @@ void intro(void)
    setattr(3,0,C_PRIMARY,320);
    setattr(23,0,C_TITLE_LOW,160);
    for (i = 3; i < 7; ++i)
-      setattr(i,20,C_CONTRIB,60);
+      setattr(i,18,C_CONTRIB,60);
    setattr(toprow,0,C_CONTRIB,14*80);
    i = botrow - toprow;
-   srand(clock_ticks());
+   srand((unsigned int)clock_ticks());
    j = rand15()%(j-(botrow-toprow)); /* first to use */
    i = j+botrow-toprow; /* last to use */
    oldchar = credits[authors[i+1]];
@@ -128,6 +119,5 @@ void intro(void)
 
    lookatmouse = oldlookatmouse;		/* restore the mouse-checking */
    helpmode = oldhelpmode;
-   EXIT_OVLY;
    return ;
    }

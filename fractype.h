@@ -194,14 +194,23 @@
 #define MARKSJULIAFP           158
 #define ICON                   159
 #define ICON3D                 160
+#define PHOENIXCPLX            161
+#define PHOENIXFPCPLX          162
+#define MANDPHOENIXCPLX        163
+#define MANDPHOENIXFPCPLX      164
+#define ANT                    165  
+#define CHIP                   166  
+#define QUADRUPTWO             167  
+#define THREEPLY               168  
+#define VOLTERRALOTKA          169
 
 /* demonstration Mandelbrot and Julia fractals
 
-#define DEMOWALK            161
-#define DEMOMANDEL          162
-#define DEMOJULIA           163
-#define DEMOMANDELFP        164
-#define DEMOJULIAFP         165
+#define DEMOWALK            166
+#define DEMOMANDEL          167
+#define DEMOJULIA           168
+#define DEMOMANDELFP        169
+#define DEMOJULIAFP         170
 
 */
 

@@ -1,20 +1,16 @@
 /* FRACTINT.H - common structures and values for the FRACTINT routines */
 
-#if defined(PUTTHEMHERE)        /* this MUST be defined ONLY in FRACTINT.C */
-struct videoinfo videoentry;
-int helpmode;
-#endif
-
 #ifndef FRACTINT_H
 #define FRACTINT_H
 
-#if !defined(PUTTHEMHERE)  
-extern struct videoinfo videoentry;
-extern int		helpmode;
-#endif
-
 #include <math.h>
+#ifndef PORT_H
 #include "port.h"
+#endif
+#ifndef BIGNUM_DEFINED
+#include "bignum.h"
+#include "bigflt.h"
+#endif
 
 typedef BYTE BOOLEAN;
 
@@ -40,6 +36,7 @@ typedef unsigned USEGTYPE;
 typedef char * SEGTYPE;
 typedef char * USEGTYPE;
 #   define MK_FP(seg,off) (VOIDFARPTR )(seg+off)
+#include <sys/types.h> /* need size_t */
 #endif
 
 
@@ -49,7 +46,17 @@ typedef char * USEGTYPE;
 
 #ifdef XFRACT
 #define _fstrcpy(to,from) strcpy(to,from)
+#define _fmemmove(a,b,c) (bn_t)memmove(a,b,c)
+#define _fmemset(a,b,c) (bn_t)memset(a,b,c)
+#define _fmemcpy(a,b,c) (bn_t)memcpy(a,b,c)
+#define difftime(now,then) ((now)-(then))
 #endif
+
+/* for gotos in former FRACTINT.C pieces */
+#define RESTART           1
+#define IMAGESTART        2
+#define RESTORESTART      3
+#define CONTINUE          4
 
 /* these are used to declare arrays for file names */
 #define FILE_MAX_PATH  80       /* max length of path+filename  */
@@ -58,9 +65,11 @@ typedef char * USEGTYPE;
 #define FILE_MAX_FNAME  9       /* max length of filename       */
 #define FILE_MAX_EXT    5       /* max length of extension      */
 
+#define MAX_CODES   4095        /* for decoder arrays */
+
 #define MAXPARAMS 10		/* maximum number of parameters */
 #define MAXPIXELS 2048		/* Maximum pixel count across/down the screen */
-#define DEFAULTASPECT 0.75	/* Assumed overall screen dimensions, y/x     */
+#define DEFAULTASPECT ((float)0.75)/* Assumed overall screen dimensions, y/x  */
 
 struct videoinfo {		/* All we need to know about a Video Adapter */
 	char	name[26];	/* Adapter name (IBM EGA, etc)		*/
@@ -94,9 +103,9 @@ struct videoinfo {		/* All we need to know about a Video Adapter */
 	int	colors; 	/* number of colors available		*/
 	};
 
-
+typedef struct videoinfo far        VIDEOINFO;
 #define INFO_ID 	"Fractal"
-#define FRACTAL_INFO   struct fractal_info
+typedef    struct fractal_info FRACTAL_INFO;
 
 /*
  * Note: because non-MSDOS machines store structures differently, we have
@@ -113,7 +122,7 @@ struct videoinfo {		/* All we need to know about a Video Adapter */
 struct fractal_info	    /*  for saving data in GIF file     */
 {
     char  info_id[8];	    /* Unique identifier for info block */
-    short iterations;
+    short iterationsold;    /* Pre version 18.24 */
     short fractal_type;	    /* 0=Mandelbrot 1=Julia 2= ... */
     double xmin;
     double xmax;
@@ -166,7 +175,7 @@ struct fractal_info	    /*  for saving data in GIF file     */
     long tot_extend_len;  /* total length of extension blocks in .gif file */
     short distest;
     short floatflag;
-    short bailout;
+    short bailoutold;
     long calctime;
     BYTE trigndx[4];      /* which trig functions selected */
     short finattract;
@@ -213,10 +222,110 @@ struct fractal_info	    /*  for saving data in GIF file     */
     double dparm8;
     double dparm9;
     double dparm10;
-    short future[50];	  /* for stuff we haven't thought of yet */
+			/* version 10 stuff, release 19 */
+    long bailout;
+    short bailoutest;
+    long iterations;
+    short bf_math;
+    short bflength;
+    short yadjust;        /* yikes! we left this out ages ago! */
+    short old_demm_colors;
+    short future[42];	  /* for stuff we haven't thought of yet */
 };
 
+#define ITEMNAMELEN 18	 /* max length of names in .frm/.l/.ifs/.fc */
+struct history_info	
+{
+    short fractal_type;
+    double xmin;
+    double xmax;
+    double ymin;
+    double ymax;
+    double creal;
+    double cimag;
+    double potential[3];
+    short rseed;
+    short rflag;
+    short biomorph;
+    short inside;
+    short logmap;
+    double invert[3];
+    short decomp;
+    short symmetry;
+    short init3d[16];
+    short previewfactor;
+    short xtrans;
+    short ytrans;
+    short red_crop_left;
+    short red_crop_right;
+    short blue_crop_left;
+    short blue_crop_right;
+    short red_bright;
+    short blue_bright;
+    short xadjust;
+    short eyeseparation;
+    short glassestype;
+    short outside;
+    double x3rd;	  
+    double y3rd;
+    char stdcalcmode;
+    char three_pass;
+    char useinitorbit;	  
+    short distest;
+    short bailoutold;
+    BYTE trigndx[4];      
+    short finattract;
+    double initorbit[2];  
+    short periodicity;	  
+    short pot16bit;	  
+    short release;
+    short save_release;
+    short flag3d; 
+    short transparent[2];
+    short ambient;
+    short haze;
+    short randomize;
+    short rotate_lo;
+    short rotate_hi;
+    short distestwidth;
+    double dparm3;
+    double dparm4;
+    short fillcolor;
+    double mxmaxfp;
+    double mxminfp;
+    double mymaxfp;
+    double myminfp;
+    short zdots;
+    float originfp;
+    float depthfp;
+    float heightfp;
+    float widthfp;
+    float distfp;
+    float eyesfp;
+    short orbittype;
+    short juli3Dmode;
+    char  maxfn;
+    short major_method;
+    short minor_method;
+    double dparm5;
+    double dparm6;
+    double dparm7;
+    double dparm8;
+    double dparm9;
+    double dparm10;
+    long bailout;
+    short bailoutest;
+    long iterations;
+    short bf_math;
+    short bflength;
+    short yadjust;
+    short old_demm_colors;
+    char filename[80];
+    char itemname[ITEMNAMELEN+1];
+    unsigned char dac[256][3];
+};
 
+typedef struct history_info HISTORY;
 
 #define MAXVIDEOMODES 300	/* maximum entries in fractint.cfg	  */
 #ifndef XFRACT
@@ -226,6 +335,7 @@ struct fractal_info	    /*  for saving data in GIF file     */
 #endif
 
 #define AUTOINVERT -123456.789
+#define ENDVID 22400   /* video table uses extra seg up to here */
 
 #define N_ATTR 8			/* max number of attractors	*/
 
@@ -236,14 +346,14 @@ extern	double	 f_at_rad;	/* finite attractor radius  */
 #define IFSPARM    7	 /* number of ifs parameters */
 #define IFS3DPARM 13	 /* number of ifs 3D parameters */
 
-#define ITEMNAMELEN 18	 /* max length of names in .frm/.l/.ifs/.fc */
-
 struct moreparams
 {
    int      type;                    	/* index in fractalname of the fractal */
    char     *param[MAXPARAMS-4];	/* name of the parameters */
    double   paramvalue[MAXPARAMS-4]; 	/* default parameter values */
 };
+
+typedef struct moreparams far       MOREPARAMS;
 
 struct fractalspecificstuff
 {
@@ -253,7 +363,7 @@ struct fractalspecificstuff
    double paramvalue[4]; 		/* default parameter values */
    int	 helptext;			/* helpdefs.h HT_xxxx, -1 for none */
    int	 helpformula;			/* helpdefs.h HF_xxxx, -1 for none */
-   int	 flags; 			/* constraints, bits defined below */
+   unsigned flags; 			/* constraints, bits defined below */
    float xmin;				/* default XMIN corner */
    float xmax;				/* default XMAX corner */
    float ymin;				/* default YMIN corner */
@@ -275,12 +385,31 @@ struct fractalspecificstuff
 					   5 = PI (sin/cos) symmetry
 					   6 = NEWTON (power) symmetry
 								*/
-   int (*orbitcalc)();		/* function that calculates one orbit */
-   int (*per_pixel)();		/* once-per-pixel init */
-   int (*per_image)();		/* once-per-image setup */
-   int (*calctype)();		/* name of main fractal function */
+#ifdef XFRACT
+   int (*orbitcalc)();	/* function that calculates one orbit */
+#else
+   int (*orbitcalc)(void);	/* function that calculates one orbit */
+#endif
+   int (*per_pixel)(void);	/* once-per-pixel init */
+   int (*per_image)(void);	/* once-per-image setup */
+   int (*calctype)(void);	/* name of main fractal function */
    int orbit_bailout;		/* usual bailout value for orbit calc */
 };
+
+struct alternatemathstuff
+{
+   int type;			/* index in fractalname of the fractal */
+   int math; 			/* kind of math used */
+#ifdef XFRACT
+   int (*orbitcalc)();	/* function that calculates one orbit */
+#else
+   int (*orbitcalc)(void);	/* function that calculates one orbit */
+#endif
+   int (*per_pixel)(void);	/* once-per-pixel init */
+   int (*per_image)(void);	/* once-per-image setup */
+};
+
+typedef struct alternatemathstuff ALTERNATE;
 
 /* defines for symmetry */
 #define  NOSYM		0
@@ -305,6 +434,7 @@ struct fractalspecificstuff
 #define IMAG        -3
 #define MULT        -4
 #define SUM         -5
+#define ATAN        -6
 #define ZMAG       -59
 #define BOF60      -60
 #define BOF61      -61
@@ -312,21 +442,29 @@ struct fractalspecificstuff
 #define STARTRAIL -101
 #define PERIOD    -102
 
+/* defines for bailoutest */
+enum bailouts { Mod, Real, Imag, Or, And };
+enum Major  {breadth_first, depth_first, random_walk, random_run};
+enum Minor  {left_first, right_first};
+
 /* bitmask defines for fractalspecific flags */
-#define  NOZOOM 	1    /* zoombox not allowed at all	   */
-#define  NOGUESS	2    /* solid guessing not allowed	   */
-#define  NOTRACE	4    /* boundary tracing not allowed	   */
-#define  NOROTATE	8    /* zoombox rotate/stretch not allowed */
-#define  NORESUME      16    /* can't interrupt and resume         */
-#define  INFCALC       32    /* this type calculates forever	   */
-#define  TRIG1	       64    /* number of trig functions in formula*/
+#define  NOZOOM 	1    /* zoombox not allowed at all          */
+#define  NOGUESS	2    /* solid guessing not allowed          */
+#define  NOTRACE	4    /* boundary tracing not allowed        */
+#define  NOROTATE	8    /* zoombox rotate/stretch not allowed  */
+#define  NORESUME      16    /* can't interrupt and resume          */
+#define  INFCALC       32    /* this type calculates forever        */
+#define  TRIG1	       64    /* number of trig functions in formula */
 #define  TRIG2	      128
 #define  TRIG3	      192
 #define  TRIG4	      256
-#define  WINFRAC      512    /* supported in WinFrac		   */
-#define  PARMS3D     1024    /* uses 3d parameters		   */
-#define  OKJB        2048    /* works with Julibrot */
-#define  MORE        4096    /* more than 4 parms */
+#define  WINFRAC      512    /* supported in WinFrac                */
+#define  PARMS3D     1024    /* uses 3d parameters                  */
+#define  OKJB        2048    /* works with Julibrot                 */
+#define  MORE        4096    /* more than 4 parms                   */
+#define  BAILTEST    8192    /* can use different bailout tests     */
+#define  BF_MATH    16384    /* supports arbitrary precision        */
+#define  LD_MATH    32768    /* supports long double                */
 
 extern struct fractalspecificstuff far fractalspecific[];
 extern struct fractalspecificstuff far *curfractalspecific;
@@ -335,30 +473,7 @@ extern struct fractalspecificstuff far *curfractalspecific;
 #define ALTERNATEFRACTALTYPE	".fra"
 
 #ifndef _CMPLX_DEFINED
-#define _CMPLX_DEFINED
-
-struct DHyperComplex {
-    double x,y;
-    double z,t;  
-};
-
-struct LHyperComplex {
-    long x,y;
-    long z,t; 
-};
-
-struct DComplex {
-    double x,y;
-};
-
-struct LComplex {
-    long x,y;
-};
-
-typedef struct  DComplex         _CMPLX;
-typedef struct  LComplex         _LCMPLX;
-typedef struct  DHyperComplex    _HCMPLX;
-typedef struct  LHyperComplex    _LHCMPLX;
+#include "cmplx.h"
 #endif
 
 #ifndef sqr
@@ -449,6 +564,14 @@ is not in the data structure */
 #define DBL_EPSILON 2.2204460492503131e-16
 #endif
 
+/* gcc doesn't like the real DBL_MAX for some reason */
+#ifdef XFRACT
+#ifdef DBL_MAX
+#undef DBL_MAX
+#define DBL_MAX 1.79769313486231e+308
+#endif
+#endif
+
 #ifndef XFRACT
 #define UPARR "\x18"
 #define DNARR "\x19"
@@ -474,7 +597,19 @@ struct workliststuff	/* work list entry for std escape time engines */
 	int sym;	/* if symmetry in window, prevents bad combines */
 	int pass;	/* for 2pass and solid guessing */
 };
+
+typedef struct workliststuff        WORKLIST;
+
+
 #define MAXCALCWORK 12
+
+struct coords {
+    int x,y;
+    };
+
+struct dblcoords {
+    double x,y;
+    };
 
 extern BYTE trigndx[];
 extern void (*ltrig0)(void), (*ltrig1)(void), (*ltrig2)(void), (*ltrig3)(void);
@@ -495,29 +630,7 @@ extern	void   (_fastcall *plot)(int, int, int);
 
 /* for overlay return stack */
 
-#define ENTER_OVLY(ovlyid)\
-   extern int active_ovly;\
-   int prev_ovly;\
-   prev_ovly = active_ovly;\
-   active_ovly = ovlyid
-#define EXIT_OVLY active_ovly = prev_ovly
-
 #define BIG 100000.0
-
-#define OVLY_MISCOVL   1
-#define OVLY_CMDFILES  2
-#define OVLY_HELP      3
-#define OVLY_PROMPTS1  4
-#define OVLY_PROMPTS2  5
-#define OVLY_LOADFILE  6
-#define OVLY_ROTATE    7
-#define OVLY_PRINTER   8
-#define OVLY_LINE3D    9
-#define OVLY_ENCODER  10
-#define OVLY_CALCFRAC 11
-#define OVLY_INTRO    12
-#define OVLY_DECODER  13
-
 
 #define CTL(x) ((x)&0x1f)
 
@@ -551,6 +664,7 @@ extern	void   (_fastcall *plot)(int, int, int);
 #define   CTL_PLUS       1144
 #define   CTL_INSERT     1146
 #define   CTL_DEL        1147
+#define   CTL_BACKSLASH  28
 #define   F1		 1059
 #define   F2		 1060
 #define   F3		 1061
@@ -561,7 +675,11 @@ extern	void   (_fastcall *plot)(int, int, int);
 #define   F8		 1066
 #define   F9		 1067
 #define   F10		 1068
+#define   BACKSPACE	 8
 #define   TAB            9
+#define   CTL_TAB        1148
+#define   ALT_TAB        1165
+#define   BACK_TAB	 1015  /* shift tab */
 #define   ESC            27
 #define   SPACE          32
 #define   SF1            1084
@@ -650,12 +768,14 @@ struct fullscreenvalues
 	       /* 'i' for integer, 'y' for yes=1 no=0              */
 	       /* 0x100+n for string of length n		   */
 	       /* 'l' for one of a list of strings                 */
+	       /* 'L' for long */
    union
    {
       double dval;	/* when type 'd' or 'f'  */
       int    ival;	/* when type is 'i'      */
+      long   Lval;	/* when type is 'L'      */
       char   sval[16];	/* when type is 's'      */
-      char  *sbuf;	/* when type is 0x100+n  */
+      char  far *sbuf;	/* when type is 0x100+n  */
       struct {		/* when type is 'l'      */
 	 int  val;	/*   selected choice	 */
 	 int  vlen;	/*   char len per choice */
@@ -664,4 +784,112 @@ struct fullscreenvalues
       } ch;
    } uval;
 };
+
+#define   FILEATTR	 0x37	   /* File attributes; select all but volume labels */
+#define   HIDDEN	 2
+#define   SYSTEM	 4
+#define   SUBDIR	 16
+
+struct DIR_SEARCH		/* Allocate DTA and define structure */
+{
+     char path[21];		/* DOS path and filespec */
+     char attribute;		/* File attributes wanted */
+     int  ftime;		/* File creation time */
+     int  fdate;		/* File creation date */
+     long size; 		/* File size in bytes */
+     char filename[13]; 	/* Filename and extension */
+};
+
+extern struct DIR_SEARCH DTA;   /* Disk Transfer Area */
+
+typedef struct palett
+{
+   BYTE red;
+   BYTE green;
+   BYTE blue;
+}
+Palettetype;
+
+struct ext_blk_2 {
+   char got_data;
+   int length;
+   char far *resume_data;
+   };
+
+struct ext_blk_3 {
+   char got_data;
+   char form_name[40];
+   };
+
+struct ext_blk_4 {
+   char got_data;
+   int length;
+   int far *range_data;
+   };
+
+struct ext_blk_5 {
+   char got_data;
+   int length;
+   char far *apm_data;
+   };
+
+struct affine
+{
+   /* weird order so a,b,e and c,d,f are vectors */
+   double a;
+   double b;
+   double e;
+   double c;
+   double d;
+   double f;
+};
+
+#define sign(x) (((x) < 0) ? -1 : ((x) != 0)  ? 1 : 0)
+
+#if (_MSC_VER >= 700)
+typedef char __based(__segname("_CODE")) FCODE;
+#else
+typedef char far FCODE;
+#endif
+
+#if (_MSC_VER >= 700)
+typedef BYTE __based(__segname("_CODE")) BFCODE;
+#else
+typedef BYTE far BFCODE;
+#endif
+
+#if (_MSC_VER >= 700)
+typedef int __based(__segname("_CODE")) IFCODE;
+#else
+typedef int far IFCODE;
+#endif
+
+#if (_MSC_VER >= 700)
+typedef unsigned int __based(__segname("_CODE")) UIFCODE;
+#else
+typedef unsigned int far UIFCODE;
+#endif
+
+#if (_MSC_VER >= 700)
+typedef long __based(__segname("_CODE")) LFCODE;
+#else
+typedef long far LFCODE;
+#endif
+
+#if (_MSC_VER >= 700)
+typedef double __based(__segname("_CODE")) DFCODE;
+#else
+typedef double far DFCODE;
+#endif
+#endif
+
+#if _MSC_VER == 800 
+#ifndef FIXTAN_DEFINED
+/* !!!!! stupid MSVC tan(x) bug fix !!!!!!!!            */
+/* tan(x) can return -tan(x) if -pi/2 < x < pi/2       */
+/* if tan(x) has been called before outside this range. */
+double fixtan( double x );
+#define tan fixtan
+#define FIXTAN_DEFINED
+#endif
 #endif

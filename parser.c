@@ -32,14 +32,12 @@
 #include "mpmath.h"
 #include "prototyp.h"
 
-extern int CvtStk(void);	/* CAE fp */
-extern int Transparent3D;                         /* MCP 5-30-91 */
-
+ 
 #ifdef WATCH_MP
 double x1, y1, x2, y2;
 #endif
 
-MATH_TYPE MathType = D_MATH;
+enum MATH_TYPE MathType = D_MATH;
 /* moved _LCMPLX and union ARg to mpmath.h -6-20-90 TIW */
 
 /* PB 910417 added MAX_OPS and MAX_ARGS defines */
@@ -50,7 +48,8 @@ struct PEND_OP {
    int p;
 };
 /* CAE fp added MAX_STORES and LOADS */
-#define MAX_STORES 125  /* at most only half the ops can be stores */
+/* MAX_STORES must be even to make Unix alignment work */
+#define MAX_STORES 128  /* at most only half the ops can be stores */
 #define MAX_LOADS  200  /* and 80% can be loads */
 
 /* PB 901103 made some of the following static for safety */
@@ -66,11 +65,6 @@ union Arg *Arg1, *Arg2;
 union Arg s[20], far * far *Store, far * far *Load;	/* static CAE fp */
 int StoPtr, LodPtr, OpPtr;	/* static CAE fp */
 
-struct fls { /* function, load, store pointers  CAE fp */
-   void (near *function)(void);
-   union Arg near *operand;
-};
-extern struct fls far *pfls; /* init in parserfp.c  CAE fp */
 void (far * far *f)(void) = (void(far * far *)(void))0;	/* static CAE fp */
 
 unsigned vsp, LastOp;	/* CAE fp made non-static */
@@ -85,22 +79,9 @@ static int ShiftBack;     /* TIW 06-18-90 */
 static int SetRandom;     /* MCP 11-21-91 */
 static int Randomized;
 static unsigned long RandNum;
-
-extern int bitshift;
-extern int bitshiftless1;
-extern int symmetry;          /* symmetry flag for calcmand()  */
-extern double param[];
-
-extern int debugflag;         /* BDT for debugging */
-extern char boxx[8192];       /* PB 4-9-91, good place for the formula string */
-extern int row, col, overflow, cpu, fpu;
-extern _CMPLX old, new;
-extern double far *dx0, far *dy0;
-extern long far *lx0, far *ly0;     /* BDT moved these to FAR */
+int uses_p1, uses_p2, uses_p3;
 
 #ifndef TESTING_MATH
-extern double far *dx1, far *dy1;
-extern long far *lx1, far *ly1;
 #define dShiftx dx1[row]
 #define dShifty dy1[col]
 #define lShiftx lx1[row]
@@ -111,11 +92,6 @@ extern long far *lx1, far *ly1;
 #define lShiftx 0L
 #define lShifty 0L
 #endif
-
-extern _LCMPLX lold, lnew;
-extern char FormName[];
-
-extern VOIDFARPTR typespecific_workarea;
 
 #define LastSqr v[4].a
 
@@ -146,6 +122,65 @@ unsigned SkipWhiteSpace(char *Str) {
    }
    return(n - 1);
 }
+
+/* use the following when only float functions are implemented to
+   get MP math and Integer math */
+   
+#ifndef XFRACT
+#define FUNCT
+#ifdef FUNCT /* use function form save space - isn't really slower */  
+static void mStkFunct(void (*fct)(void))   /* call lStk via dStk */
+{
+   Arg1->d = MPC2cmplx(Arg1->m);
+   (*fct)();
+   Arg1->m = cmplx2MPC(Arg1->d);
+}
+
+static void lStkFunct(void (*fct)(void))   /* call lStk via dStk */
+{
+   double y;
+   /* 
+      intermediate variable needed for safety because of 
+      different size of double and long in Arg union
+   */
+   y = (double)Arg1->l.y / fg;
+   Arg1->d.x = (double)Arg1->l.x / fg;
+   Arg1->d.y = y;
+   (*fct)();
+   if(fabs(Arg1->d.x) < fgLimit && fabs(Arg1->d.y) < fgLimit) {
+      Arg1->l.x = (long)(Arg1->d.x * fg);
+      Arg1->l.y = (long)(Arg1->d.y * fg);
+   }
+   else
+      overflow = 1;
+}
+#else  /* use Macro form for (?) greater speed */
+  /* call lStk via dStk */
+#define mStkFunct(fct)  \
+   Arg1->d = MPC2cmplx(Arg1->m);\
+   (*fct)();\
+   Arg1->m = cmplx2MPC(Arg1->d);
+   
+
+/* call lStk via dStk */
+#define lStkFunct(fct) {\
+   double y;\
+   y = (double)Arg1->l.y / fg;\
+   Arg1->d.x = (double)Arg1->l.x / fg;\
+   Arg1->d.y = y;\
+   (*fct)();\
+   if(fabs(Arg1->d.x) < fgLimit && fabs(Arg1->d.y) < fgLimit) {\
+      Arg1->l.x = (long)(Arg1->d.x * fg);\
+      Arg1->l.y = (long)(Arg1->d.y * fg);\
+   }\
+   else\
+      overflow = 1;\
+}
+
+
+#endif
+
+#endif
 
 /* Random number code, MCP 11-21-91 */
 
@@ -363,6 +398,8 @@ void lStkConj(void) {
 }
 #endif
 
+void (*StkConj)(void) = dStkConj;
+
 void dStkZero(void) {
    Arg1->d.y = Arg1->d.x = 0.0;
 }
@@ -374,11 +411,11 @@ void mStkZero(void) {
 }
 
 void lStkZero(void) {
-   Arg1->l.y = Arg1->l.x = 0.0;
+   Arg1->l.y = Arg1->l.x = 0;
 }
 #endif
 
-void (*StkConj)(void) = dStkConj;
+void (*StkZero)(void) = dStkZero;
 
 void dStkReal(void) {
    Arg1->d.y = 0.0;
@@ -495,16 +532,6 @@ void lStkDiv(void) {
 
 void (*StkDiv)(void) = dStkDiv;
 
-void StkSto(void) {
-   *Store[StoPtr++] = *Arg1;
-}
-
-void StkLod(void) {
-   Arg1++;
-   Arg2++;
-   *Arg1 = *Load[LodPtr++];
-}
-
 void dStkMod(void) {
    Arg1->d.x = (Arg1->d.x * Arg1->d.x) + (Arg1->d.y * Arg1->d.y);
    Arg1->d.y = 0.0;
@@ -517,8 +544,11 @@ void mStkMod(void) {
 }
 
 void lStkMod(void) {
-   Arg1->l.x = multiply(Arg2->l.x, Arg1->l.x, bitshift) +
-   multiply(Arg2->l.y, Arg1->l.y, bitshift);
+/*   Arg1->l.x = multiply(Arg2->l.x, Arg1->l.x, bitshift) + */
+/*   multiply(Arg2->l.y, Arg1->l.y, bitshift); */
+/*** I don't understand how this ever worked correctly! JCO 12/31/94 ***/
+   Arg1->l.x = multiply(Arg1->l.x, Arg1->l.x, bitshift) +
+   multiply(Arg1->l.y, Arg1->l.y, bitshift);
    if(Arg1->l.x < 0)
       overflow = 1;
    Arg1->l.y = 0L;
@@ -526,6 +556,16 @@ void lStkMod(void) {
 #endif
 
 void (*StkMod)(void) = dStkMod;
+
+void StkSto(void) {
+   *Store[StoPtr++] = *Arg1;
+}
+
+void StkLod(void) {
+   Arg1++;
+   Arg2++;
+   *Arg1 = *Load[LodPtr++];
+}
 
 void StkClr(void) {
    s[0] = *Arg1;
@@ -576,9 +616,7 @@ void dStkSin(void) {
 
 #ifndef XFRACT
 void mStkSin(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   dStkSin();
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkSin);   /* call lStk via dStk */
 }
 
 void lStkSin(void) {
@@ -611,9 +649,7 @@ void dStkTan(void) {
 
 #ifndef XFRACT
 void mStkTan(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   dStkTan();
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkTan);   /* call lStk via dStk */
 }
 
 void lStkTan(void) {
@@ -647,9 +683,7 @@ void dStkTanh(void) {
 
 #ifndef XFRACT
 void mStkTanh(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   dStkTanh();
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkTanh);   /* call lStk via dStk */
 }
 
 void lStkTanh(void) {
@@ -683,9 +717,7 @@ void dStkCoTan(void) {
 
 #ifndef XFRACT
 void mStkCoTan(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   dStkCoTan();
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkCoTan);   /* call lStk via dStk */
 }
 
 void lStkCoTan(void) {
@@ -719,9 +751,7 @@ void dStkCoTanh(void) {
 
 #ifndef XFRACT
 void mStkCoTanh(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   dStkCoTanh();
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkCoTanh);   /* call lStk via dStk */
 }
 
 void lStkCoTanh(void) {
@@ -759,7 +789,7 @@ void dStkRecip(void) {
 void mStkRecip(void) {
    struct MP mod;
    mod = *MPadd(*MPmul(Arg1->m.x, Arg1->m.x),*MPmul(Arg1->m.y, Arg1->m.y));
-   if(mod.Mant <= 0L) return;
+   if(mod.Mant == 0L) return;
    Arg1->m.x = *MPdiv(Arg1->m.x,mod);
    Arg1->m.y = *MPdiv(Arg1->m.y,mod);
    Arg1->m.y.Exp ^= 0x8000;
@@ -790,9 +820,7 @@ void dStkSinh(void) {
 
 #ifndef XFRACT
 void mStkSinh(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   dStkSinh();
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkSinh);   /* call lStk via dStk */
 }
 
 void lStkSinh(void) {
@@ -820,9 +848,7 @@ void dStkCos(void) {
 
 #ifndef XFRACT
 void mStkCos(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   dStkCos();
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkCos);   /* call lStk via dStk */
 }
 
 void lStkCos(void) {
@@ -848,9 +874,7 @@ void dStkCosXX(void) {
 
 #ifndef XFRACT
 void mStkCosXX(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   dStkCosXX();
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkCosXX);   /* call lStk via dStk */
 }
 
 void lStkCosXX(void) {
@@ -872,9 +896,7 @@ void dStkCosh(void) {
 
 #ifndef XFRACT
 void mStkCosh(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   dStkCosh();
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkCosh);   /* call lStk via dStk */
 }
 
 void lStkCosh(void) {
@@ -890,6 +912,141 @@ void lStkCosh(void) {
 #endif
 
 void (*StkCosh)(void) = dStkCosh;
+
+/* TIW added arc functions here 11-25-94 */
+
+void dStkASin(void) {
+   Arcsinz(Arg1->d, &(Arg1->d));
+}
+
+#ifndef XFRACT
+void mStkASin(void) {
+   mStkFunct(dStkASin);
+}
+
+void lStkASin(void) {
+   lStkFunct(dStkASin);
+}
+#endif
+
+void (*StkASin)(void) = dStkASin;
+
+void dStkASinh(void) {
+   Arcsinhz(Arg1->d, &(Arg1->d));
+}
+
+#ifndef XFRACT
+void mStkASinh(void) {
+   mStkFunct(dStkASinh);
+}
+
+void lStkASinh(void) {
+   lStkFunct(dStkASinh);
+}
+#endif
+
+void (*StkASinh)(void) = dStkASinh;
+
+void dStkACos(void) {
+   Arccosz(Arg1->d, &(Arg1->d));
+}
+
+#ifndef XFRACT
+void mStkACos(void) {
+   mStkFunct(dStkACos);
+}
+
+void lStkACos(void) {
+   lStkFunct(dStkACos);
+}
+#endif
+
+void (*StkACos)(void) = dStkACos;
+
+void dStkACosh(void) {
+   Arccoshz(Arg1->d, &(Arg1->d));
+}
+
+#ifndef XFRACT
+void mStkACosh(void) {
+   mStkFunct(dStkACosh);
+}
+
+void lStkACosh(void) {
+   lStkFunct(dStkACosh);
+}
+#endif
+
+void (*StkACosh)(void) = dStkACosh;
+
+void dStkATan(void) {
+   Arctanz(Arg1->d, &(Arg1->d));
+}
+
+#ifndef XFRACT
+void mStkATan(void) {
+   mStkFunct(dStkATan);
+}
+
+void lStkATan(void) {
+   lStkFunct(dStkATan);
+}
+#endif
+
+void (*StkATan)(void) = dStkATan;
+
+void dStkATanh(void) {
+   Arctanhz(Arg1->d, &(Arg1->d));
+}
+
+#ifndef XFRACT
+void mStkATanh(void) {
+   mStkFunct(dStkATanh);
+}
+
+void lStkATanh(void) {
+   lStkFunct(dStkATanh);
+}
+#endif
+
+void (*StkATanh)(void) = dStkATanh;
+
+void dStkSqrt(void) {
+ /*  Sqrtz(Arg1->d, &(Arg1->d)); */
+   Arg1->d = ComplexSqrtFloat(Arg1->d.x, Arg1->d.y);
+}
+
+#ifndef XFRACT
+void mStkSqrt(void) {
+   mStkFunct(dStkSqrt);
+}
+
+void lStkSqrt(void) {
+   /* lStkFunct(dStkSqrt); */
+   Arg1->l = ComplexSqrtLong(Arg1->l.x, Arg1->l.y);
+}
+#endif
+
+void (*StkSqrt)(void) = dStkSqrt;
+
+void dStkCAbs(void) {
+   Arg1->d.x = sqrt(sqr(Arg1->d.x)+sqr(Arg1->d.y));
+   Arg1->d.y = 0.0;
+}
+
+#ifndef XFRACT
+void mStkCAbs(void) {
+   mStkFunct(dStkCAbs);
+}
+
+void lStkCAbs(void) {
+   lStkFunct(dStkCAbs);
+}
+#endif
+
+void (*StkCAbs)(void) = dStkCAbs;
+
+/* TIW end arc functions 11-25-94 */
 
 void dStkLT(void) {
    Arg2->d.x = (double)(Arg2->d.x < Arg1->d.x);
@@ -907,7 +1064,7 @@ void mStkLT(void) {
 }
 
 void lStkLT(void) {
-   Arg2->l.x = Arg2->l.x < Arg1->l.x;
+   Arg2->l.x = (long)(Arg2->l.x < Arg1->l.x) << bitshift; /* JCO 12/26/94 */
    Arg2->l.y = 0l;
    Arg1--;
    Arg2--;
@@ -932,7 +1089,7 @@ void mStkGT(void) {
 }
 
 void lStkGT(void) {
-   Arg2->l.x = Arg2->l.x > Arg1->l.x;
+   Arg2->l.x = (long)(Arg2->l.x > Arg1->l.x) << bitshift; /* JCO 12/26/94 */
    Arg2->l.y = 0l;
    Arg1--;
    Arg2--;
@@ -960,7 +1117,7 @@ void mStkLTE(void) {
 }
 
 void lStkLTE(void) {
-   Arg2->l.x = Arg2->l.x <= Arg1->l.x;
+   Arg2->l.x = (long)(Arg2->l.x <= Arg1->l.x) << bitshift; /* JCO 12/26/94 */
    Arg2->l.y = 0l;
    Arg1--;
    Arg2--;
@@ -988,7 +1145,7 @@ void mStkGTE(void) {
 }
 
 void lStkGTE(void) {
-   Arg2->l.x = Arg2->l.x >= Arg1->l.x;
+   Arg2->l.x = (long)(Arg2->l.x >= Arg1->l.x) << bitshift; /* JCO 12/26/94 */
    Arg2->l.y = 0l;
    Arg1--;
    Arg2--;
@@ -1016,7 +1173,7 @@ void mStkEQ(void) {
 }
 
 void lStkEQ(void) {
-   Arg2->l.x = Arg2->l.x == Arg1->l.x;
+   Arg2->l.x = (long)(Arg2->l.x == Arg1->l.x) << bitshift; /* JCO 12/26/94 */
    Arg2->l.y = 0l;
    Arg1--;
    Arg2--;
@@ -1044,7 +1201,7 @@ void mStkNE(void) {
 }
 
 void lStkNE(void) {
-   Arg2->l.x = Arg2->l.x != Arg1->l.x;
+   Arg2->l.x = (long)(Arg2->l.x != Arg1->l.x) << bitshift; /* JCO 12/26/94 */
    Arg2->l.y = 0l;
    Arg1--;
    Arg2--;
@@ -1069,7 +1226,7 @@ void mStkOR(void) {
 }
 
 void lStkOR(void) {
-   Arg2->l.x = Arg2->l.x || Arg1->l.x;
+   Arg2->l.x = (long)(Arg2->l.x || Arg1->l.x) << bitshift; /* JCO 12/26/94 */
    Arg2->l.y = 0l;
    Arg1--;
    Arg2--;
@@ -1094,7 +1251,7 @@ void mStkAND(void) {
 }
 
 void lStkAND(void) {
-   Arg2->l.x = Arg2->l.x && Arg1->l.x;
+   Arg2->l.x = (long)(Arg2->l.x && Arg1->l.x) << bitshift; /* JCO 12/26/94 */
    Arg2->l.y = 0l;
    Arg1--;
    Arg2--;
@@ -1102,30 +1259,17 @@ void lStkAND(void) {
 #endif
 
 void (*StkAND)(void) = dStkAND;
-
 void dStkLog(void) {
    FPUcplxlog(&Arg1->d, &Arg1->d);
 }
 
 #ifndef XFRACT
 void mStkLog(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   dStkLog();
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkLog);   /* call lStk via dStk */
 }
 
 void lStkLog(void) {
-   _CMPLX x;
-
-   x.x = (double)Arg1->l.x / fg;
-   x.y = (double)Arg1->l.y / fg;
-   FPUcplxlog(&x, &x);
-   if(fabs(x.x) < fgLimit && fabs(x.y) < fgLimit) {
-      Arg1->l.x = (long)(x.x * fg);
-      Arg1->l.y = (long)(x.y * fg);
-   }
-   else
-      overflow = 1;
+   lStkFunct(dStkLog);
 }
 #endif
 
@@ -1150,23 +1294,11 @@ void FPUcplxexp(_CMPLX *x, _CMPLX *z) {
 
 #ifndef XFRACT
 void mStkExp(void) {
-   Arg1->d = MPC2cmplx(Arg1->m);
-   FPUcplxexp(&Arg1->d, &Arg1->d);
-   Arg1->m = cmplx2MPC(Arg1->d);
+   mStkFunct(dStkExp);   /* call lStk via dStk */
 }
 
 void lStkExp(void) {
-   _CMPLX x;
-
-   x.x = (double)Arg1->l.x / fg;
-   x.y = (double)Arg1->l.y / fg;
-   FPUcplxexp(&x, &x);
-   if(fabs(x.x) < fgLimit && fabs(x.y) < fgLimit) {
-      Arg1->l.x = (long)(x.x * fg);
-      Arg1->l.y = (long)(x.y * fg);
-   }
-   else
-      overflow = 1;
+   lStkFunct(dStkExp);
 }
 #endif
 
@@ -1215,6 +1347,10 @@ void EndInit(void) {
    LastInitOp = OpPtr;
 }
 
+#if (_MSC_VER >= 700)
+#pragma code_seg ("parser1_text")     /* place following in an overlay */
+#endif
+
 struct ConstArg far *isconst(char *Str, int Len) {
    _CMPLX z;
    unsigned n, j;
@@ -1223,8 +1359,14 @@ struct ConstArg far *isconst(char *Str, int Len) {
       if(v[n].len == Len) {
          if(!strnicmp(v[n].s, Str, Len))
          {
+            if(n == 1)        /* The formula uses 'p1'. */
+               uses_p1 = 1;
+            if(n == 2)        /* The formula uses 'p2'. */
+               uses_p2 = 1;
             if(n == 7)        /* The formula uses 'rand'. */
                RandomSeed();
+            if(n == 8)        /* The formula uses 'p3'. */
+               uses_p3 = 1;
             return(&v[n]);
          }
       }
@@ -1232,7 +1374,9 @@ struct ConstArg far *isconst(char *Str, int Len) {
    v[vsp].s = Str;
    v[vsp].len = Len;
    v[vsp].a.d.x = v[vsp].a.d.y = 0.0;
-   if(isdigit(Str[0]) || Str[0] == '.') {
+   if(isdigit(Str[0])
+       || (Str[0] == '-' && (isdigit(Str[1]) || Str[1] == '.'))
+       || Str[0] == '.') {
       if(o[posp-1].f == StkNeg) {
          posp--;
          Str = Str - 1;
@@ -1242,7 +1386,9 @@ struct ConstArg far *isconst(char *Str, int Len) {
       for(n = 1; isdigit(Str[n]) || Str[n] == '.'; n++);
       if(Str[n] == ',') {
          j = n + SkipWhiteSpace(&Str[n+1]) + 1;
-         if(isdigit(Str[j]) || (Str[j] == '-' && isdigit(Str[j+1]))) {
+         if(isdigit(Str[j]) 
+             || (Str[j] == '-' && (isdigit(Str[j+1]) || Str[j+1] == '.'))
+             || Str[j] == '.') {
             z.y = atof(&Str[j]);
             for(; isdigit(Str[j]) || Str[j] == '.' || Str[j] == '-'; j++);
             v[vsp].len = j;
@@ -1272,29 +1418,13 @@ struct ConstArg far *isconst(char *Str, int Len) {
    return(&v[vsp++]);
 }
 
+
 struct FNCT_LIST {
    char far *s;              /* TIW 03-31-91 added far */
    void (**ptr)(void);
 };
 
 /* TIW 03-30-91 START */
-extern BYTE trigndx[];
-
-#if 0
-extern void (*ltrig0)(void);
-extern void (*ltrig1)(void);
-extern void (*ltrig2)(void);
-extern void (*ltrig3)(void);
-extern void (*dtrig0)(void);
-extern void (*dtrig1)(void);
-extern void (*dtrig2)(void);
-extern void (*dtrig3)(void);
-extern void (*mtrig0)(void);
-extern void (*mtrig1)(void);
-extern void (*mtrig2)(void);
-extern void (*mtrig3)(void);
-#endif
-
 void (*StkTrig0)(void) = dStkSin;
 void (*StkTrig1)(void) = dStkSqr;
 void (*StkTrig2)(void) = dStkSinh;
@@ -1304,28 +1434,36 @@ char maxfn = 0;
 /* TIW 03-30-91 STOP */
 
 struct FNCT_LIST far FnctList[] = {   /* TIW 03-31-91 added far */
-   "sin",  &StkSin,
-   "sinh", &StkSinh,
-   "cos",  &StkCos,
-   "cosh", &StkCosh,
-   "sqr",  &StkSqr,
-   "log",  &StkLog,
-   "exp",  &StkExp,
-   "abs",  &StkAbs,
-   "conj", &StkConj,
-   "real", &StkReal,
-   "imag", &StkImag,
-   "fn1",  &StkTrig0,   /* TIW 03-30-91 */
-   "fn2",  &StkTrig1,   /* TIW 03-30-91 */
-   "fn3",  &StkTrig2,   /* TIW 03-30-91 */
-   "fn4",  &StkTrig3,   /* TIW 03-30-91 */
-   "flip", &StkFlip,    /* MCP 4-9-91 */
-   "tan",  &StkTan,     /* TIW 04-22-91 */
-   "tanh", &StkTanh,    /* TIW 04-22-91 */
-   "cotan",  &StkCoTan, /* TIW 04-24-91 */
-   "cotanh", &StkCoTanh,/* TIW 04-24-91 */
-   "cosxx", &StkCosXX,  /* PB  04-28-91 */
-   "srand", &StkSRand,  /* MCP 11-21-91 */
+   s_sin,   &StkSin,
+   s_sinh,  &StkSinh,
+   s_cos,   &StkCos,
+   s_cosh,  &StkCosh,
+   s_sqr,   &StkSqr,
+   s_log,   &StkLog,
+   s_exp,   &StkExp,
+   s_abs,   &StkAbs,
+   s_conj,  &StkConj,
+   s_real,  &StkReal,
+   s_imag,  &StkImag,
+   s_fn1,   &StkTrig0,   /* TIW 03-30-91 */
+   s_fn2,   &StkTrig1,   /* TIW 03-30-91 */
+   s_fn3,   &StkTrig2,   /* TIW 03-30-91 */
+   s_fn4,   &StkTrig3,   /* TIW 03-30-91 */
+   s_flip,  &StkFlip,    /* MCP 4-9-91 */
+   s_tan,   &StkTan,     /* TIW 04-22-91 */
+   s_tanh,  &StkTanh,    /* TIW 04-22-91 */
+   s_cotan, &StkCoTan,   /* TIW 04-24-91 */
+   s_cotanh,&StkCoTanh,  /* TIW 04-24-91 */
+   s_cosxx, &StkCosXX,   /* PB  04-28-91 */
+   s_srand, &StkSRand,   /* MCP 11-21-91 */
+   s_asin,  &StkASin,    /* TIW 11-26-94 */
+   s_asinh, &StkASinh,   /* TIW 11-26-94 */
+   s_acos,  &StkACos,    /* TIW 11-26-94 */
+   s_acosh, &StkACosh,   /* TIW 11-26-94 */
+   s_atan,  &StkATan,    /* TIW 11-26-94 */
+   s_atanh, &StkATanh,   /* TIW 11-26-94 */
+   s_sqrt,  &StkSqrt,    /* TIW 11-26-94 */
+   s_cabs,  &StkCAbs,    /* TIW 11-26-94 */
 };
 
 void NotAFnct(void) { }
@@ -1366,7 +1504,7 @@ int Len;
                /* count function variables */
                if((functnum = whichfn(Str, Len)) != 0)    /* TIW 04-22-91 */
                   if(functnum > maxfn)                  /* TIW 04-22-91 */
-                     maxfn = functnum;                  /* TIW 04-22-91 */
+                     maxfn = (char)functnum;                  /* TIW 04-22-91 */
                return(*FnctList[n].ptr);
             }
          }
@@ -1390,9 +1528,10 @@ static char *Constants[] = {
    "p2",           /* v[2] */
    "z",            /* v[3] */
    "LastSqr",      /* v[4] */
-   "xy",           /* v[5] */
-   "zt",           /* v[6] */
+   "spare1",       /* v[5] */   /* use this slot for next constant */
+   "spare2",       /* v[6] */   /* use this slot for next constant */
    "rand",         /* v[7] */
+   "p3",           /* v[8] */
 };
 
 struct SYMETRY {
@@ -1410,6 +1549,8 @@ struct SYMETRY {
    "ORIGIN",        4,
    "PI_SYM_NOPARM",-5,
    "PI_SYM",        5,
+   "XAXIS_NOIMAG", -6,
+   "XAXIS_NOREAL",  6,
    "NOPLOT",       99,
    "", 0
 };
@@ -1468,6 +1609,15 @@ int ParseStr(char *Str) {
       StkAND = dStkAND;        /* MCP 11-3-91 */
       StkOR  = dStkOR ;        /* MCP 11-3-91 */
       StkSRand = dStkSRand;    /* MCP 11-21-91 */
+      StkASin = dStkASin;      /* TIW 11-25-94 */
+      StkASinh = dStkASinh;    /* TIW 11-25-94 */
+      StkACos = dStkACos;      /* TIW 11-25-94 */
+      StkACosh = dStkACosh;    /* TIW 11-25-94 */
+      StkATan = dStkATan;      /* TIW 11-25-94 */
+      StkATanh = dStkATanh;    /* TIW 11-25-94 */
+      StkCAbs = dStkCAbs;      /* TIW 11-25-94 */
+      StkSqrt = dStkSqrt;      /* TIW 11-25-94 */
+      StkZero = dStkZero;      /* JCO 12-31-94 */
       break;
 #ifndef XFRACT
    case M_MATH:
@@ -1508,6 +1658,14 @@ int ParseStr(char *Str) {
       StkAND = mStkAND;        /* MCP 11-3-91 */
       StkOR  = mStkOR ;        /* MCP 11-3-91 */
       StkSRand = mStkSRand;    /* MCP 11-21-91 */
+      StkASin = mStkASin;      /* TIW 11-25-94 */
+      StkACos = mStkACos;      /* TIW 11-25-94 */
+      StkACosh = mStkACosh;    /* TIW 11-25-94 */
+      StkATan = mStkATan;      /* TIW 11-25-94 */
+      StkATanh = mStkATanh;    /* TIW 11-25-94 */
+      StkCAbs = mStkCAbs;      /* TIW 11-25-94 */
+      StkSqrt = mStkSqrt;      /* TIW 11-25-94 */
+      StkZero = mStkZero;      /* JCO 12-31-94 */
       break;
    case L_MATH:
       Delta16 = bitshift - 16;
@@ -1549,6 +1707,14 @@ int ParseStr(char *Str) {
       StkAND = lStkAND;        /* MCP 11-3-91 */
       StkOR  = lStkOR ;        /* MCP 11-3-91 */
       StkSRand = lStkSRand;    /* MCP 11-21-91 */
+      StkASin = lStkASin;      /* TIW 11-25-94 */
+      StkACos = lStkACos;      /* TIW 11-25-94 */
+      StkACosh = lStkACosh;    /* TIW 11-25-94 */
+      StkATan = lStkATan;      /* TIW 11-25-94 */
+      StkATanh = lStkATanh;    /* TIW 11-25-94 */
+      StkCAbs = lStkCAbs;      /* TIW 11-25-94 */
+      StkSqrt = lStkSqrt;      /* TIW 11-25-94 */
+      StkZero = lStkZero;      /* JCO 12-31-94 */
       break;
 #endif
    }
@@ -1558,15 +1724,20 @@ int ParseStr(char *Str) {
       v[vsp].len = strlen(Constants[vsp]);
    }
 
+   /* 
    v[6].a.d.x = v[6].a.d.y = 0.0;
    v[7].a = v[6].a;
-
+   */
+   v[7].a.d.x = v[7].a.d.y = 0.0;
+   
    switch(MathType) {
    case D_MATH:
       v[1].a.d.x = param[0];
       v[1].a.d.y = param[1];
       v[2].a.d.x = param[2];
       v[2].a.d.y = param[3];
+      v[8].a.d.x = param[4];
+      v[8].a.d.y = param[5];
       break;
 #ifndef XFRACT
    case M_MATH:
@@ -1574,12 +1745,16 @@ int ParseStr(char *Str) {
       v[1].a.m.y = *d2MP(param[1]);
       v[2].a.m.x = *d2MP(param[2]);
       v[2].a.m.y = *d2MP(param[3]);
+      v[8].a.m.x = *d2MP(param[4]);
+      v[8].a.m.y = *d2MP(param[5]);
       break;
    case L_MATH:
       v[1].a.l.x = (long)(param[0] * fg);
       v[1].a.l.y = (long)(param[1] * fg);
       v[2].a.l.x = (long)(param[2] * fg);
       v[2].a.l.y = (long)(param[3] * fg);
+      v[8].a.l.x = (long)(param[4] * fg);
+      v[8].a.l.y = (long)(param[5] * fg);
       break;
 #endif
    }
@@ -1904,6 +2079,10 @@ int ParseStr(char *Str) {
    return(ErrPtr);
 }
 
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
+
 int Formula(void) {
    if(FormName[0] == 0 || overflow) return(1);
 
@@ -1931,7 +2110,7 @@ int Formula(void) {
 
    Arg1 = &s[0];
    Arg2 = Arg1-1;
-   while(OpPtr < LastOp) {
+   while(OpPtr < (int)LastOp) {
       f[OpPtr++]();
 #ifdef WATCH_MP
       x1 = *MP2d(Arg1->m.x);
@@ -1965,30 +2144,55 @@ int form_per_pixel(void) {
    Arg1 = &s[0];
    Arg2 = Arg1;
    Arg2--;
-   if(Transparent3D)
+   /* TW started additions for inversion support here 4/17/94 */
    {
-      TranspPerPixel(MathType, &v[5].a, &v[6].a);
-      v[0].a = v[5].a;
-   }
-   else
-   {
-      switch(MathType)
+      if(invert)
       {
-      case D_MATH:
-         v[5].a.d.x = (v[0].a.d.x = dx0[col]+dShiftx);
-         v[5].a.d.x = (v[0].a.d.y = dy0[row]+dShifty);
-         break;
+         invertz2(&old);
+         switch(MathType)
+         {
+         case D_MATH:
+            v[0].a.d.x = old.x;
+            v[0].a.d.y = old.y;
+            break;
 #ifndef XFRACT
-      case M_MATH:
-         v[5].a.m.x = (v[0].a.m.x = *d2MP(dx0[col]+dShiftx));
-         v[5].a.m.x = (v[0].a.m.y = *d2MP(dy0[row]+dShifty));
-         break;
-      case L_MATH:
-         v[5].a.l.x = (v[0].a.l.x = lx0[col]+lShiftx);
-         v[5].a.l.x = (v[0].a.l.y = ly0[row]+lShifty);
-         break;
+         case M_MATH:
+            v[0].a.m.x = *d2MP(old.x);
+            v[0].a.m.y = *d2MP(old.y);
+            break;
+         case L_MATH:
+            /* watch out for overflow */
+            if(sqr(old.x)+sqr(old.y) >= 127)
+            {
+	       old.x = 8;  /* value to bail out in one iteration */
+	       old.y = 8;
+            }
+            /* convert to fudged longs */
+            v[0].a.l.x = (long)(old.x*fg);
+            v[0].a.l.y = (long)(old.y*fg);
+            break;
 #endif
+         }
       }
+      else
+         /* TW end of inversion support changes here 4/17/94 */
+         switch(MathType)
+         {
+         case D_MATH:
+            v[0].a.d.x = dx0[col]+dShiftx;
+            v[0].a.d.y = dy0[row]+dShifty;
+            break;
+#ifndef XFRACT
+         case M_MATH:
+            v[0].a.m.x = *d2MP(dx0[col]+dShiftx);
+            v[0].a.m.y = *d2MP(dy0[row]+dShifty);
+            break;
+         case L_MATH:
+            v[0].a.l.x = lx0[col]+lShiftx;
+            v[0].a.l.y = ly0[row]+lShifty;
+            break;
+#endif
+         }
    }
 
    if(LastInitOp)
@@ -1999,6 +2203,20 @@ int form_per_pixel(void) {
    InitLodPtr = LodPtr;
    InitStoPtr = StoPtr;
    InitOpPtr = OpPtr;
+   /* Set old variable for orbits TIW 12-18-93 */
+   switch(MathType) {
+   case D_MATH:
+      old = v[3].a.d;
+      break;
+#ifndef XFRACT
+   case M_MATH:
+      old = MPC2cmplx(v[3].a.m);
+      break;
+   case L_MATH:
+      lold = v[3].a.l;
+      break; 
+#endif
+   }
 
    if(overflow)
       return(0);
@@ -2007,9 +2225,9 @@ int form_per_pixel(void) {
 }
 
 char *FormStr;
-
-extern char FormFileName[];   /* BDT file to find the formulas in */
-extern char FormName[];    /* BDT Name of the Formula (if not null) */
+#if (_MSC_VER >= 700)
+#pragma code_seg ("parser1_text")     /* place following in an overlay */
+#endif
 
 char *FindFormula(char *Str) {
    char *FormulaStr = (char *)0;
@@ -2030,6 +2248,7 @@ char *FindFormula(char *Str) {
                if(c == '(') {
                   StrBuff[0]=0; /* TIW 04-22-91 */
                   fscanf(File, "%200[^)]", StrBuff);
+                  despace(StrBuff); /* squeeze out spaces */
                   for(n = 0; SymStr[n].s[0]; n++) {
                      if(!stricmp(SymStr[n].s, StrBuff)) {
                         symmetry = SymStr[n].n;
@@ -2055,7 +2274,7 @@ Exit:
                            we're at it.
             */
 
-            FormulaStr = boxx;
+            FormulaStr = (char *)boxx;
             n = Done = 0;
             while(!Done) {
                switch(c = getc(File)) {
@@ -2085,7 +2304,7 @@ UnexpectedEOF:
                   FormulaStr[n++] = ',';
                   break;
                default:
-                  FormulaStr[n++] = c;
+                  FormulaStr[n++] = (char)c;
                }
                if (n >= 8192) { /* PB 4-9-91, added safety test */
                   static char far msg[]={"Definition too large, missing a '}'?"};
@@ -2096,17 +2315,32 @@ UnexpectedEOF:
             }
             goto Exit;
          }
-
+         else /* TW 5-31-94 add comments support */
+         {
+            c = getc(File);
+            if( c != ';' && c != EOF)
+               ungetc(c,File);
+            else if(c == EOF) 
+               goto UnexpectedEOF;
+            else /* skip comment */
+               while((c = getc(File)) != '\n') {
+                  if(c == EOF)
+                     goto UnexpectedEOF;
+               }
+         }   
+        
          StrBuff[0]=0;  /* TIW 04-22-91 */
          fscanf(File, "%200[ \n\t({]", StrBuff);
-         if(StrBuff[strcspn(StrBuff, "({")]) {
-skipcomments:
-            fscanf(File, "%200[^}]", StrBuff);
-            if (getc(File)!= '}') goto skipcomments;
+         if(StrBuff[strcspn(StrBuff, "{")]) {
+            do /* TW 5-31-94 add EOF loop exit */
+               fscanf(File, "%200[^}]", StrBuff);
+            while((c=getc(File)) != '}' && c != EOF);
          }
       }
+#if 0 /* error message now in find_file_item in MISCRES.C TW 5-31-94 */
       sprintf(fullfilename, "Formula \"%s\" not found", Str);
       stopmsg(0,fullfilename);      /* PB printf -> stopmsg */
+#endif
       FormulaStr = (char *)0;       /* PB 910511 */
       goto Exit;
    }
@@ -2115,7 +2349,7 @@ skipcomments:
    return((char *)0);            /* PB 910511 */
 }
 
-int BadFormula() {
+int BadFormula(void) {
    /*  moved from Parsera.Asm by CAE  12 July 1993  */
 
    /*  this is called when a formula is bad, instead of calling  */
@@ -2135,6 +2369,9 @@ int RunForm(char *Name) {  /*  returns 1 if an error occurred  */
    }
 
    parser_allocate();  /*  ParseStr() will test if this alloc worked  */
+
+   /* TW 5-31-94 add search for FRM files in directory */
+   find_file_item(FormFileName,Name,NULL);
 
    if((FormStr = FindFormula(Name)) != NULL ){
       /*  formula was found  */
@@ -2163,7 +2400,7 @@ int fpFormulaSetup(void) {
       MathType = D_MATH;
       /* CAE changed below for fp */
       RunFormRes = !RunForm(FormName); /* RunForm() returns 1 for failure */
-      if (RunFormRes && fpu >=387 && debugflag != 90 )
+      if (RunFormRes && fpu >=387 && debugflag != 90)  /* && !invert  */
          return CvtStk(); /* run fast assembler code in parsera.asm */
       return RunFormRes;
    }
@@ -2203,6 +2440,7 @@ void init_misc()
    ShiftBack = 32 - bitshift;
    Delta16 = bitshift - 16;
    bitshiftless1 = bitshift-1;
+   uses_p1 = uses_p2 = uses_p3 = 0;
 }
 
 /* PB 910417 here to end changed.
@@ -2233,6 +2471,7 @@ static void parser_allocate(void)
    Load = (union Arg far * far *)(Store + MAX_STORES);
    v = (struct ConstArg far *)(Load + MAX_LOADS);
    pfls = (struct fls far *)(v + MAX_ARGS);
+   uses_p1 = uses_p2 = uses_p3 = 0;
 }
 
 void free_workarea()

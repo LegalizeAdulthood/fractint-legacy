@@ -1,6 +1,5 @@
 /*
 	Various routines that prompt for things.
-	This module is linked as an overlay, use ENTER_OVLY and EXIT_OVLY.
 */
 
 #include <stdlib.h>
@@ -8,6 +7,7 @@
 #include <string.h>
 #include <ctype.h>
 #ifndef XFRACT
+#include <io.h>
 #include <dos.h>
 #elif !defined(__386BSD__)
 #include <sys/types.h>
@@ -30,100 +30,11 @@
 #include "helpdefs.h"
 #include "prototyp.h"
 
-/* Routines defined in prompts1.c */
-
-extern	int prompt_checkkey(int curkey);
-extern	long get_file_entry(int,char *,char *,char *,char *);
-
-/* Routines used in prompts1.c */
-
-	int get_corners(void);
-	int edit_ifs_params(void );
-	int lccompare(VOIDCONSTPTR, VOIDCONSTPTR); /* Needed in prompts1.c PAV */
-
 /* Routines in this module	*/
 
-static	int findfirst(char *path);
 static  int check_f6_key(int curkey,int choice);
-static	int findnext(void );
-	int splitpath(char *template,char *drive,char *dir,char *fname,char *ext);
-        int makepath(char *template,char *drive,char *dir,char *fname,char *ext);
-static	void fix_dirname(char *dirname);
 static	int expand_dirname(char *dirname,char *drive);
 static	int filename_speedstr(int, int, int, char *, int);
-static	int isadirectory(char *s);
-static  int check_f6_key(int curkey,int choice);
-
-extern int dotmode;
-extern int orbit_delay;
-extern char diskfilename[];
-
-extern char *fract_dir1, *fract_dir2;
-
-#ifndef XFRACT
-extern int strncasecmp(char *s,char *t,int ct);
-#endif
-
-extern char temp1[256];   /* temporary strings	      */
-
-extern	double	xxmin,xxmax;	/* initial corner values    */
-extern	double	yymin,yymax;	/* initial corner values    */
-extern	BYTE usemag;
-
-extern	int AntiAliasing;
-extern double zzmin, zzmax, ttmin, ttmax;
-extern int Transparent3D;
-
-extern	double	xx3rd,yy3rd;	/* initial corner values    */
-extern	int	invert; 	/* non-zero if inversion active */
-extern	double	inversion[3];	/* radius, xcenter, ycenter */
-extern	int	pot16bit;
-extern	int	disk16bit;
-extern	double	potparam[3];	/* three potential parameters*/
-extern	int	fractype;	/* if == 0, use Mandelbrot  */
-extern	char	usr_floatflag;	/* floating-point fractals? */
-extern	int	maxit;		/* try this many iterations */
-extern	int	inside; 	/* inside color */
-extern	int	fillcolor; 	/* fill color */
-extern	int	outside;	/* outside color */
-extern	int	finattract;	/* finite attractor switch */
-extern	char	savename[80];	/* save files using this name */
-extern	int	decomp[];	/* decomposition parameters */
-extern	int	usr_distest;	/* distance estimator option */
-extern	int	distestwidth;
-extern	char	usr_stdcalcmode; /* '1', '2', 'g', 'b' */
-extern	char    overwrite; 	/* overwrite= flag */
-extern	int	soundflag;	/* sound option */
-extern	int	LogFlag;	/* non-zero if logarithmic palettes */
-extern	int	usr_biomorph;	/* Biomorph flag */
-#if 0
-//extern	long	xmin, xmax, ymin, ymax; /* screen corner values */
-#endif
-extern	int	xdots, ydots;	/* coordinates of dots on the screen  */
-extern	int	colors; 	/* maximum colors available */
-extern	int	row, col;
-extern	int	viewwindow;
-extern	float	viewreduction;
-extern	int	viewcrop;
-extern	float	finalaspectratio;
-extern	int	viewxdots,viewydots;
-extern	int	textcbase;
-extern	int	textrow,textcol;
-extern	int	resave_flag;	/* resaving after a timed save */
-extern	int	started_resaves;
-extern	char	boxy[];
-extern	int	rotate_lo,rotate_hi;
-extern	int	rangeslen;
-extern float  screenaspect;
-
-extern  int  cmdarg(char *,int);
-
-extern char CommandFile[];
-extern char CommandName[];
-extern float far *ifs_defn;
-extern int ifs_type;
-extern int ifs_changed;
-extern int initbatch;		/* 1 if batch run (no kbd)  */
 
 /* speed key state values */
 #define MATCHING	 0	/* string matches list - speed key mode */
@@ -134,191 +45,17 @@ extern int initbatch;		/* 1 if batch run (no kbd)  */
 #define   HIDDEN	 2
 #define   SYSTEM	 4
 #define   SUBDIR	 16
-#define   MAXNUMFILES	 300
+#define   MAXNUMFILES	 2977L
 
-struct				   /* Allocate DTA and define structure */
-{
-     char path[21];			/* DOS path and filespec */
-     char attribute;			/* File attributes wanted */
-     int  ftime;			/* File creation time */
-     int  fdate;			/* File creation date */
-     long size; 			/* File size in bytes */
-     char filename[13]; 		/* Filename and extension */
-} DTA;				   /* Disk Transfer Area */
+struct DIR_SEARCH DTA;		/* Allocate DTA and define structure */
 
 #define GETFORMULA 0
 #define GETLSYS    1
 #define GETIFS	   2
 #define GETPARM    3
 
-/* --------------------------------------------------------------------- */
-extern char s_iter[];
-extern char s_real[];
-extern char s_mult[];
-extern char s_sum[];
-extern char s_imag[];
-extern char s_zmag[];
-extern char s_bof60[];
-extern char s_bof61[];
-extern char s_maxiter[];
-extern char s_epscross[];
-extern char s_startrail[];
-extern char s_normal[];
-extern char s_period[];
-
 char commandmask[13] = {"*.par"};
 
-void prompts2_overlay() { }	/* for restore_active_ovly */
-
-#if 0
-/* --------------------------------------------------------------------- */
-
-extern int promptfkeys;
-
-int edit_ifs_params()	/* prompt for IFS params */
-{
-   int totcols;
-   int i, j, k, numlines, ret;
-   FILE *tempfile;
-   char msg[81];
-   char filename[81];
-   float ftemp;
-   int oldhelpmode;
-   int low, hi;
-
-   if (!ifs_defn && !ifsload())
-      return(-1);
-
-   totcols = (ifs_type == 0) ? IFSPARM : IFS3DPARM;
-   ret = 0;
-   oldhelpmode = helpmode;
-   helpmode = HT_IFS;
-
-   low = 0;
-
-   for ( ;; ) {
-static char far ifshdg2[]={"2D IFS Parameters"};
-static char far ifshdg3[]={"3D IFS Parameters"};
-static char far ifsparmmsg1[]={"#    a     b     c     d     e     f"};
-static char far ifsparmmsg2[]={"     g     h     i     j     k     l"};
-static char far ifsprompt[]={"\
-Enter the number of the line you want to edit,\n\
-S to save, F6 for corners, or ENTER to end ==>"};
-      int leftcol,promptrow,promptcol;
-#define IFS_NUM 12
-
-      for (numlines = 0; numlines < NUMIFS; numlines++) /* find the first zero entry */
-	 if (ifs_defn[(numlines * totcols) + totcols - 1] <= 0.0001) break;
-
-      helptitle();
-      setattr(1,0,C_PROMPT_BKGRD,24*80); /* init rest of screen to background */
-      putstringcenter(2,0,80,C_GENERAL_HI,(ifs_type == 0) ? ifshdg2 : ifshdg3);
-      leftcol = (ifs_type == 0) ? 15 : 0;
-      putstring(4,leftcol+1,C_GENERAL_HI,ifsparmmsg1);
-      if (ifs_type != 0)
-	 putstring(-1,-1,C_GENERAL_HI,ifsparmmsg2);
-      putstring(-1,-1,C_GENERAL_HI,"   prob \n\n");
-
-      hi = low+IFS_NUM;
-      if (hi>numlines) hi = numlines;
-      for (i = low; i < hi; i++) {
-	 sprintf(msg,"%2d", i+1);
-	 putstring(5+i-low,leftcol,C_GENERAL_HI,msg);
-	 for (j = 0; j < totcols; j++) {
-	    sprintf(msg,"%6.2f",ifs_defn[(i*totcols)+j]);
-	    putstring(-1,-1,C_GENERAL_MED,msg);
-	    }
-	 }
-      if (hi<numlines) {
-	 putstring(5+IFS_NUM,leftcol,C_GENERAL_HI,"(more)");
-      }
-
-      textcbase = 14;
-      putstring(5+i-low+1,0,C_GENERAL_HI,ifsprompt);
-      promptrow = textrow;
-      promptcol = textcol + textcbase + 1;
-      temp1[0] = textcbase = 0;
-      promptfkeys = 1<<6;
-      i = input_field(0,C_GENERAL_INPUT,temp1,2,promptrow,promptcol,
-	      prompt_checkkey);
-      if (i<0) {
-	  break;
-      } else if (i==PAGE_UP) {
-	  low -= IFS_NUM;
-	  if (low<0) low=0;
-      } else if (i==UP_ARROW) {
-	  low -= 1;
-	  if (low<0) low=0;
-      } else if (i==DOWN_ARROW) {
-	  low += 1;
-	  if (low+IFS_NUM>numlines) low=numlines-IFS_NUM;
-	  if (low<0) low=0;
-      } else if (i==PAGE_DOWN) {
-	  low += IFS_NUM;
-	  if (low+IFS_NUM>numlines) low=numlines-IFS_NUM;
-	  if (low<0) low=0;
-      } else if (i==F6) {
-	  if (get_corners()) {
-	      ret = 1;
-	  }
-      } else if (i==0) {
-	  if (temp1[0]==0) break;
-      } else {
-	  continue;
-      }
-
-      putstring(promptrow,promptcol,C_GENERAL_HI,temp1);
-      if (temp1[0] == 's' || temp1[0] == 'S') {
-	 stackscreen();
-	 filename[0] = 0;
-	 i = field_prompt(0,"Enter the name of the .IFS file to save:",
-			 NULL,filename,60,NULL);
-	 unstackscreen();
-	 if (i != -1) {
-	    if (strchr(filename,'.') == NULL)
-	       strcat(filename,".ifs");
-	    if ((tempfile=fopen(filename,"w")) != NULL) {
-	       for (i = 0; i < numlines; i++) {
-		  for (j = 0; j < totcols; j++)
-		     fprintf(tempfile, "%6.2f", (float)ifs_defn[(i*totcols)+j]);
-		  fprintf(tempfile, "\n");
-		  }
-	       fclose(tempfile);
-	       ifs_changed = 0;
-	       }
-	    else {
-	       static char far msg[]={"Could not create file"};
-	       stopmsg(0,msg);
-	       }
-	    }
-	 continue;
-	 }
-      i = atoi(temp1) - 1;
-      if (i >= 0 && i < numlines) {
-	 for (j = 0; j < totcols; j++) {
-	    if (j < totcols-1)
-	       sprintf(msg,"Parameter %c",'a'+j);
-	    else
-	       sprintf(msg,"Probability");
-	    putstring(promptrow+2,25,C_GENERAL_HI,msg);
-	    sprintf(temp1,"%6.2f",(float)ifs_defn[k=(i*totcols)+j]);
-	    if (input_field(1,C_GENERAL_INPUT,temp1,6,
-			    textrow,textcol+1,NULL) < 0)
-	       break;
-	    if (ifs_defn[k] != (ftemp = atof(temp1))) {
-	       ifs_defn[k] = ftemp;
-	       ret = ifs_changed = 1;
-	       }
-	    }
-	 memset(msg,' ',80); msg[81] = 0;
-	 putstring(promptrow+2,0,C_PROMPT_BKGRD,msg);
-	 }
-      }
-
-   helpmode = oldhelpmode;
-   return(ret);
-}
-#endif
 /* --------------------------------------------------------------------- */
 /*
 	get_toggles() is called from FRACTINT.C whenever the 'x' key
@@ -336,47 +73,55 @@ S to save, F6 for corners, or ENTER to end ==>"};
 	for them in the same order!!!
 */
 #define LOADCHOICES(X)     {\
-   static char far tmp[] = { X };\
-   choices[++k]= tmp;\
+   static FCODE tmp[] = { X };\
+   far_strcpy(ptr,(char far *)tmp);\
+   choices[++k]= ptr;\
+   ptr += sizeof(tmp);\
    }
 int get_toggles()
 {
-   static char far hdg[]={"        Basic Options\n\
+   static FCODE o_hdg[]={"        Basic Options\n\
 (not all combinations make sense)"};
+   char hdg[sizeof(o_hdg)];
    char far *choices[20];
+   char far *ptr;
    int oldhelpmode;
    char prevsavename[81];
+   char *savenameptr;
    struct fullscreenvalues uvalues[25];
    int i, j, k;
    char old_usr_stdcalcmode;
-   int old_maxit,old_inside,old_outside,old_soundflag;
+   long old_maxit;
+   int old_inside,old_outside,old_soundflag;
    int old_logflag,old_biomorph,old_decomp;
    int old_fillcolor;
-   static char *calcmodes[] ={"1","2","g","b","t"};
-   static char *soundmodes[5]={"yes","no","x","y","z"};
+   static char *calcmodes[] ={"1","2","3","g","b","t"};
+   static char *soundmodes[5]={s_yes,s_no,s_x,s_y,s_z};
 
-   ENTER_OVLY(OVLY_PROMPTS2);
+   far_strcpy(hdg,o_hdg);
+   ptr = (char far *)MK_FP(extraseg,0);
 
    k = -1;
 
-   LOADCHOICES("Passes (1, 2, g[uessing], b[oundary trace], t[esseral])");
+   LOADCHOICES("Passes (1, 2, 3, g[uessing], b[oundary trace], t[esseral])");
    uvalues[k].type = 'l';
    uvalues[k].uval.ch.vlen = 3;
    uvalues[k].uval.ch.llen = sizeof(calcmodes)/sizeof(*calcmodes);
    uvalues[k].uval.ch.list = calcmodes;
    uvalues[k].uval.ch.val = (usr_stdcalcmode == '1') ? 0
 			  : (usr_stdcalcmode == '2') ? 1
-                          : (usr_stdcalcmode == 'g') ? 2
-                          : (usr_stdcalcmode == 'b') ? 3 :4 ;
+			  : (usr_stdcalcmode == '3') ? 2
+                          : (usr_stdcalcmode == 'g') ? 3
+                          : (usr_stdcalcmode == 'b') ? 4 :5 ;
    old_usr_stdcalcmode = usr_stdcalcmode;
 
    LOADCHOICES("Floating Point Algorithm");
    uvalues[k].type = 'y';
    uvalues[k].uval.ch.val = usr_floatflag;
 
-   LOADCHOICES("Maximum Iterations (2 to 32767)");
-   uvalues[k].type = 'i';
-   uvalues[k].uval.ival = old_maxit = maxit;
+   LOADCHOICES("Maximum Iterations (2 to 2,147,483,647)");
+   uvalues[k].type = 'L';
+   uvalues[k].uval.Lval = old_maxit = maxit;
 
    LOADCHOICES("Inside Color (<nnn>,maxiter,zmag,bof60,bof61,epscr,star,per)");
    uvalues[k].type = 's';
@@ -398,7 +143,7 @@ int get_toggles()
       sprintf(uvalues[k].uval.sval,"%d",inside);
    old_inside = inside;
 
-   LOADCHOICES("Outside Color (<nnn>,iter,real,imag,mult,summ)");
+   LOADCHOICES("Outside Color (<nnn>,iter,real,imag,mult,summ,atan)");
    uvalues[k].type = 's';
    if(outside == -1)
       strcpy(uvalues[k].uval.sval,s_iter);
@@ -410,6 +155,8 @@ int get_toggles()
       strcpy(uvalues[k].uval.sval,s_mult);
    else if(outside == -5)
       strcpy(uvalues[k].uval.sval,s_sum);
+   else if(outside == -6)
+      strcpy(uvalues[k].uval.sval,s_atan);
    else
       sprintf(uvalues[k].uval.sval,"%d",outside);
    old_outside = outside;
@@ -417,7 +164,12 @@ int get_toggles()
    LOADCHOICES("Savename (.GIF implied)");
    uvalues[k].type = 's';
    strcpy(prevsavename,savename);
-   strcpy(uvalues[k].uval.sval,savename);
+   savenameptr = strrchr(savename, SLASHC);
+   if(savenameptr == NULL)
+      savenameptr = savename;
+   else
+      savenameptr++; /* point past slash */   
+   strcpy(uvalues[k].uval.sval,savenameptr);
 
    LOADCHOICES("File Overwrite ('overwrite=')");
    uvalues[k].type = 'y';
@@ -431,7 +183,7 @@ int get_toggles()
    uvalues[k].uval.ch.val = 1 + (old_soundflag = soundflag);
 
    if (rangeslen == 0) {
-      LOADCHOICES("Log Palette (0=no,1=yes,-1=old,+n=cmprsd,-n=sqrt)");
+      LOADCHOICES("Log Palette (0=no,1=yes,-1=old,+n=cmprsd,-n=sqrt, 2=auto)");
       uvalues[k].type = 'i';
       }
    else {
@@ -460,18 +212,11 @@ int get_toggles()
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = orbit_delay;
 
-/*
-   LOADCHOICES("Antialiasing (0 to 8)");
-   uvalues[k].type = 'i';
-   uvalues[k].uval.ival = AntiAliasing;
-*/
-
    oldhelpmode = helpmode;
    helpmode = HELPXOPTS;
-   i = fullscreen_prompt(hdg,k+1,choices,uvalues,0,0,NULL);
+   i = fullscreen_prompt(hdg,k+1,choices,uvalues,0,NULL);
    helpmode = oldhelpmode;
    if (i < 0) {
-      EXIT_OVLY;
       return(-1);
       }
 
@@ -483,12 +228,13 @@ int get_toggles()
    if (old_usr_stdcalcmode != usr_stdcalcmode) j = 1;
 
    if (uvalues[++k].uval.ch.val != usr_floatflag) {
-      usr_floatflag = uvalues[k].uval.ch.val;
+      usr_floatflag = (char)uvalues[k].uval.ch.val;
       j = 1;
       }
 
    ++k;
-   maxit = uvalues[k].uval.ival;
+   maxit = uvalues[k].uval.Lval;
+   if (maxit < 0) maxit = old_maxit;
    if (maxit < 2) maxit = 2;
 
 /* 'maxit' is an int so it is always <= 32767, MCP 12-3-91
@@ -523,17 +269,18 @@ int get_toggles()
       outside = -4;
    else if(strncmp(strlwr(uvalues[k].uval.sval),s_sum,4)==0)
       outside = -5;
+   else if(strncmp(strlwr(uvalues[k].uval.sval),s_atan,4)==0)
+      outside = -6;
    else if(strncmp(strlwr(uvalues[k].uval.sval),s_iter,4)==0)
       outside = -1;
    else
       outside = atoi(uvalues[k].uval.sval);
    if (outside != old_outside) j = 1;
 
-   strcpy(savename,uvalues[++k].uval.sval);
+   strcpy(savenameptr,uvalues[++k].uval.sval);
    if (strcmp(savename,prevsavename))
       resave_flag = started_resaves = 0; /* forget pending increment */
-
-   overwrite = uvalues[++k].uval.ch.val;
+   overwrite = (char)uvalues[++k].uval.ch.val;
 
    soundflag = uvalues[++k].uval.ch.val - 1;
    if (soundflag != old_soundflag && (soundflag > 1 || old_soundflag > 1))
@@ -556,14 +303,6 @@ int get_toggles()
 
    orbit_delay = uvalues[++k].uval.ival;
 
-/*
-   if(AntiAliasing != uvalues[++k].uval.ival) j = 1;
-   AntiAliasing = uvalues[k].uval.ival;
-   if(AntiAliasing < 0) AntiAliasing = 0;
-   if(AntiAliasing > 8) AntiAliasing = 8;
-*/
-
-   EXIT_OVLY;
    return(j);
 }
 
@@ -573,8 +312,10 @@ int get_toggles()
 
 int get_toggles2()
 {
-   static char far hdg[]={"       Extended Options\n\
+   static FCODE o_hdg[]={"       Extended Options\n\
 (not all combinations make sense)"};
+   char hdg[sizeof(o_hdg)];
+   char far *ptr;
    char far *choices[20];
    int oldhelpmode;
 
@@ -585,7 +326,8 @@ int get_toggles2()
    int old_usr_distest,old_distestwidth;
    double old_potparam[3],old_inversion[3];
 
-   ENTER_OVLY(OVLY_PROMPTS2);
+   far_strcpy(hdg,o_hdg);
+   ptr = (char far *)MK_FP(extraseg,0);
 
    /* fill up the choices (and previous values) arrays */
    k = -1;
@@ -596,7 +338,7 @@ int get_toggles2()
 
    LOADCHOICES("Potential Max Color (0 means off)");
    uvalues[k].type = 'i';
-   uvalues[k].uval.ival = old_potparam[0] = potparam[0];
+   uvalues[k].uval.ival = (int)(old_potparam[0] = potparam[0]);
 
    LOADCHOICES("          Slope");
    uvalues[k].type = 'd';
@@ -604,7 +346,7 @@ int get_toggles2()
 
    LOADCHOICES("          Bailout");
    uvalues[k].type = 'i';
-   uvalues[k].uval.ival = old_potparam[2] = potparam[2];
+   uvalues[k].uval.ival = (int)(old_potparam[2] = potparam[2]);
 
    LOADCHOICES("          16 bit values");
    uvalues[k].type = 'y';
@@ -644,10 +386,9 @@ int get_toggles2()
 
    oldhelpmode = helpmode;
    helpmode = HELPYOPTS;
-   i = fullscreen_prompt(hdg,k+1,choices,uvalues,0,0,NULL);
+   i = fullscreen_prompt(hdg,k+1,choices,uvalues,0,NULL);
    helpmode = oldhelpmode;
    if (i < 0) {
-      EXIT_OVLY;
       return(-1);
       }
 
@@ -707,7 +448,6 @@ int get_toggles2()
       rotate_hi = old_rotate_hi;
       }
 
-   EXIT_OVLY;
    return(j);
 }
 
@@ -722,20 +462,21 @@ int get_toggles2()
 
 int get_view_params()
 {
-   static char far hdg[]={"View Window Options"};
+   static FCODE o_hdg[]={"View Window Options"};
+   char hdg[sizeof(o_hdg)];
    char far *choices[8];
+   char far *ptr;
 
    int oldhelpmode;
    struct fullscreenvalues uvalues[25];
    int i, k;
    float old_viewreduction,old_aspectratio;
-   int old_viewwindow,old_viewcrop,old_viewxdots,old_viewydots;
+   int old_viewwindow,old_viewxdots,old_viewydots;
 
-   ENTER_OVLY(OVLY_PROMPTS2);
-   stackscreen();
+   far_strcpy(hdg,o_hdg);
+   ptr = (char far *)MK_FP(extraseg,0);
 
    old_viewwindow    = viewwindow;
-   old_viewcrop      = viewcrop;
    old_viewreduction = viewreduction;
    old_aspectratio   = finalaspectratio;
    old_viewxdots     = viewxdots;
@@ -777,23 +518,15 @@ get_view_restart:
 
    oldhelpmode = helpmode;     /* this prevents HELP from activating */
    helpmode = HELPVIEW;
-   i = fullscreen_prompt(hdg,k+1,choices,uvalues,0,16,NULL);
+   i = fullscreen_prompt(hdg,k+1,choices,uvalues,16,NULL);
    helpmode = oldhelpmode;     /* re-enable HELP */
    if (i < 0) {
-      viewwindow    = old_viewwindow;
-      viewcrop	    = old_viewcrop;
-      viewreduction = old_viewreduction;
-      finalaspectratio = old_aspectratio;
-      viewxdots     = old_viewxdots;
-      viewydots     = old_viewydots;
-      unstackscreen();
-      EXIT_OVLY;
       return(-1);
       }
 
    if (i == F4) {
       viewwindow = viewxdots = viewydots = 0;
-      viewreduction = 4.2;
+      viewreduction = (float)4.2;
       viewcrop = 1;
       finalaspectratio = screenaspect;
       goto get_view_restart;
@@ -804,9 +537,9 @@ get_view_restart:
 
    viewwindow = uvalues[++k].uval.ch.val;
 
-   viewreduction = uvalues[++k].uval.dval;
+   viewreduction = (float)uvalues[++k].uval.dval;
 
-   if ((finalaspectratio = uvalues[++k].uval.dval) == 0)
+   if ((finalaspectratio = (float)uvalues[++k].uval.dval) == 0)
       finalaspectratio = screenaspect;
 
    viewcrop = uvalues[++k].uval.ch.val;
@@ -826,8 +559,6 @@ get_view_restart:
 	    || (viewydots != old_viewydots && viewxdots) ) ) )
       i = 1;
 
-   unstackscreen();
-   EXIT_OVLY;
    return(i);
 }
 
@@ -841,21 +572,21 @@ get_view_restart:
 
 int get_cmd_string()
 {
+   static FCODE o_msg[] = {"Enter command string to use."};
+   char msg[sizeof(o_msg)];
    int oldhelpmode;
    int i;
    char cmdbuf[61];
 
-   ENTER_OVLY(OVLY_PROMPTS2);
-
+   far_strcpy(msg,o_msg);
    oldhelpmode = helpmode;
    helpmode = HELPCOMMANDS;
    cmdbuf[0] = 0;
-   i = field_prompt(0,"Enter command string to use.",NULL,cmdbuf,60,NULL);
+   i = field_prompt(0,msg,NULL,cmdbuf,60,NULL);
    helpmode = oldhelpmode;
    if (i >= 0 && cmdbuf[0] != 0)
        i = cmdarg(cmdbuf, 2);
 
-   EXIT_OVLY;
    return(i);
 }
 
@@ -865,12 +596,8 @@ int get_cmd_string()
 int Distribution = 30, Offset = 0, Slope = 25;
 long con;
 
-static char far sf1[] = {"Star Density in Pixels per Star"};
-static char far sf2[] = {"Percent Clumpiness"};
-static char far sf3[] = {"Ratio of Dim stars to Bright"};
-static char far *starfield_prompts[] = {sf1,sf2,sf3};
 
-static double starfield_values[4] = {
+       double starfield_values[4] = {
 	30.0,100.0,5.0,0.0
 	};
 
@@ -879,7 +606,6 @@ char GreyFile[] = "altern.map";
 int starfield(void)
 {
    int c;
-   extern char busy;
    busy = 1;
    if (starfield_values[0] <   1.0) starfield_values[0] =   1.0;
    if (starfield_values[0] > 100.0) starfield_values[0] = 100.0;
@@ -893,7 +619,7 @@ int starfield(void)
    Slope = (int)(starfield_values[2]);
 
    if (ValidateLuts(GreyFile) != 0) {
-      static char far msg[]={"Unable to load ALTERN.MAP"};
+      static FCODE msg[]={"Unable to load ALTERN.MAP"};
       stopmsg(0,msg);
       busy = 0;
       return(-1);
@@ -918,18 +644,29 @@ int starfield(void)
 }
 
 int get_starfield_params(void) {
-   static char far hdg[]={"Starfield Parameters"};
+   static FCODE o_hdg[]={"Starfield Parameters"};
+   static FCODE o_sf1[] = {"Star Density in Pixels per Star"};
+   static FCODE o_sf2[] = {"Percent Clumpiness"};
+   static FCODE o_sf3[] = {"Ratio of Dim stars to Bright"};
+   char hdg[sizeof(o_hdg)];
+   char sf1[sizeof(o_sf1)];
+   char sf2[sizeof(o_sf2)];
+   char sf3[sizeof(o_sf3)];
    struct fullscreenvalues uvalues[3];
-   int oldhelpmode, status;
+   int oldhelpmode;
    int i;
-
-   ENTER_OVLY(OVLY_PROMPTS2);
+   char far *starfield_prompts[3];
+   far_strcpy(hdg,o_hdg);
+   far_strcpy(sf1,o_sf1);
+   far_strcpy(sf2,o_sf2);
+   far_strcpy(sf3,o_sf3);
+   starfield_prompts[0] = sf1;
+   starfield_prompts[1] = sf2;
+   starfield_prompts[2] = sf3;
 
    if(colors < 255) {
-      static char far msg[]={"starfield requires 256 color mode"};
+      static FCODE msg[]={"starfield requires 256 color mode"};
       stopmsg(0,msg);
-
-      EXIT_OVLY;
       return(-1);
    }
    for (i = 0; i < 3; i++) {
@@ -939,34 +676,154 @@ int get_starfield_params(void) {
    stackscreen();
    oldhelpmode = helpmode;
    helpmode = HELPSTARFLD;
-   i = fullscreen_prompt(hdg,3,starfield_prompts,uvalues,0,0,NULL);
+   i = fullscreen_prompt(hdg,3,starfield_prompts,uvalues,0,NULL);
    helpmode = oldhelpmode;
+   unstackscreen();
    if (i < 0) {
-      unstackscreen();
-      EXIT_OVLY;
       return(-1);
       }
-   unstackscreen();
-
    for (i = 0; i < 3; i++)
       starfield_values[i] = uvalues[i].uval.dval;
 
-   EXIT_OVLY;
    return(0);
+}
+
+static char *masks[] = {"*.pot","*.gif"};
+
+int get_rds_params(void) {
+   static FCODE o_hdg[] =  {"Random Dot Stereogram Parameters"};
+   static FCODE o_rds0[] = {"Depth Effect (negative reverses front and back)"};
+   static FCODE o_rds1[] = {"Image width in inches"};
+   static FCODE o_rds2[] = {"Use grayscale value for depth? (if \"no\" uses color number)"};
+   static FCODE o_rds3[] = {"Calibration bars"};
+   static FCODE o_rds4[] = {"Use image map? (if \"no\" uses random dots)"};
+   static FCODE o_rds5[] = {"  If yes, use current image map name? (see below)"};
+   
+   char hdg[sizeof(o_hdg)];
+   char rds0[sizeof(o_rds0)];
+   char rds1[sizeof(o_rds1)];
+   char rds2[sizeof(o_rds2)];
+   char rds3[sizeof(o_rds3)];
+   char rds4[sizeof(o_rds4)];
+   char rds5[sizeof(o_rds5)];
+   char rds6[60];
+   static char *stereobars[] = {"none", "middle", "top"};
+   struct fullscreenvalues uvalues[7];
+   char far *rds_prompts[7];
+   int oldhelpmode;
+   int i,k;
+   int ret;
+   static char reuse = 0;
+   stackscreen();
+   for(;;)
+   {
+      ret = 0;
+      /* copy to make safe from overlay change */
+      far_strcpy(hdg,o_hdg);
+      far_strcpy(rds0,o_rds0);
+      far_strcpy(rds1,o_rds1);
+      far_strcpy(rds2,o_rds2);
+      far_strcpy(rds3,o_rds3);
+      far_strcpy(rds4,o_rds4);
+      far_strcpy(rds5,o_rds5);
+      rds_prompts[0] = rds0;
+      rds_prompts[1] = rds1;
+      rds_prompts[2] = rds2;
+      rds_prompts[3] = rds3;
+      rds_prompts[4] = rds4;
+      rds_prompts[5] = rds5;
+      rds_prompts[6] = rds6;
+      
+      k=0;
+      uvalues[k].uval.ival = AutoStereo_depth;
+      uvalues[k++].type = 'i';
+
+      uvalues[k].uval.dval = AutoStereo_width;
+      uvalues[k++].type = 'f';
+
+      uvalues[k].uval.ch.val = grayflag;
+      uvalues[k++].type = 'y';
+
+      uvalues[k].type = 'l';
+      uvalues[k].uval.ch.list = stereobars;
+      uvalues[k].uval.ch.vlen = 6;
+      uvalues[k].uval.ch.llen = 3;
+      uvalues[k++].uval.ch.val  = calibrate;
+
+      uvalues[k].uval.ch.val = image_map;
+      uvalues[k++].type = 'y';
+
+
+      if(isagif(stereomapname,xdots,ydots))
+      {
+         char *p;
+         uvalues[k].uval.ch.val = reuse;
+         uvalues[k++].type = 'y';
+
+         uvalues[k++].type = '*';
+         for(i=0;i<sizeof(rds6);i++)
+            rds6[i] = ' ';
+         if((p = strrchr(stereomapname,'\\'))==NULL || 
+                 strlen(stereomapname) < sizeof(rds6)-2)
+            p = strlwr(stereomapname);
+         else
+            p++;
+         /* center file name */
+         rds6[(sizeof(rds6)-strlen(p)+2)/2] = 0;
+         strcat(rds6,"[");
+         strcat(rds6,p);
+         strcat(rds6,"]");
+      }
+      else
+         *stereomapname = 0;
+      oldhelpmode = helpmode;
+      helpmode = HELPRDS;
+      i = fullscreen_prompt(hdg,k,rds_prompts,uvalues,0,NULL);
+      helpmode = oldhelpmode;
+      if (i < 0) {
+         ret = -1;
+         break;
+         }
+      else
+      {
+         k=0;
+         AutoStereo_depth = uvalues[k++].uval.ival;
+         AutoStereo_width = uvalues[k++].uval.dval;
+         grayflag         = (char)uvalues[k++].uval.ch.val;
+         calibrate        = (char)uvalues[k++].uval.ch.val;
+         image_map        = (char)uvalues[k++].uval.ch.val;
+         if(*stereomapname)
+            reuse         = (char)uvalues[k++].uval.ch.val;
+         else
+            reuse = 0;   
+         if(image_map && !reuse)
+         {
+            static FCODE tmp[] = {"Select an Imagemap File\n(showing only "};
+            /* rds3 only a convenient buffer */
+            sprintf(rds3,"%Fs %dx%d GIFs)",(char far *)tmp,xdots,ydots);
+            if(getafilename(rds3,masks[1],stereomapname))
+               continue;
+         }            
+      }
+      break;      
+   }
+   unstackscreen();
+   return(ret);
 }
 
 int get_a_number(double *x, double *y)
 {
-   static char far hdg[]={"Set Cursor Coordinates"};
-   double x1,y2;
+   static FCODE o_hdg[]={"Set Cursor Coordinates"};
+   char hdg[sizeof(o_hdg)];
+   char far *ptr;
    char far *choices[2];
 
-   int oldhelpmode;
    struct fullscreenvalues uvalues[2];
    int i, k;
 
-   ENTER_OVLY(OVLY_PROMPTS2);
    stackscreen();
+   far_strcpy(hdg,o_hdg);
+   ptr = (char far *)MK_FP(extraseg,0);
 
    /* fill up the previous values arrays */
    k = -1;
@@ -979,10 +836,9 @@ int get_a_number(double *x, double *y)
    uvalues[k].type = 'd';
    uvalues[k].uval.dval = *y;
 
-   i = fullscreen_prompt(hdg,k+1,choices,uvalues,0,25,NULL);
+   i = fullscreen_prompt(hdg,k+1,choices,uvalues,25,NULL);
    if (i < 0) {
       unstackscreen();
-      EXIT_OVLY;
       return(-1);
       }
 
@@ -993,7 +849,6 @@ int get_a_number(double *x, double *y)
    *y = uvalues[++k].uval.dval;
 
    unstackscreen();
-   EXIT_OVLY;
    return(i);
 }
 
@@ -1005,18 +860,16 @@ int get_commands()		/* execute commands from file */
    FILE *parmfile;
    long point;
    int oldhelpmode;
-   ENTER_OVLY(OVLY_PROMPTS2);
    ret = 0;
    oldhelpmode = helpmode;
    helpmode = HELPPARMFILE;
    if ((point = get_file_entry(GETPARM,"Parameter Set",
 			       commandmask,CommandFile,CommandName)) >= 0
-     && (parmfile = fopen(CommandFile,"rb"))) {
+     && (parmfile = fopen(CommandFile,"rb")) != NULL) {
       fseek(parmfile,point,SEEK_SET);
       ret = load_commands(parmfile);
       }
    helpmode = oldhelpmode;
-   EXIT_OVLY;
    return(ret);
 }
 
@@ -1024,42 +877,41 @@ int get_commands()		/* execute commands from file */
 
 void goodbye()			/* we done.  Bail out */
 {
-   static char far goodbyemessage[]={"   Thank You for using FRACTINT"};
-   extern BYTE exitmode;
-   extern int mode7text;
-   extern int made_dsktemp;
+   char goodbyemessage[40];
+   int ret;
+   static FCODE gbm[]={"   Thank You for using FRACTINT"};
 #ifndef XFRACT
    union REGS r;
 #endif
-
+   far_strcpy(goodbyemessage, gbm);
 #ifdef WINFRACT
    return;
 #endif
-
+   
    setvideotext();
 #ifdef XFRACT
    UnixDone();
    printf("\n\n\n%s\n",goodbyemessage); /* printf takes far pointer */
 #else
-   r.h.al = (mode7text == 0) ? exitmode : 7;
+   r.h.al = (char)((mode7text == 0) ? exitmode : 7);
    r.h.ah = 0;
    int86(0x10, &r, &r);
-   printf("\n\n\n%Fs\n",goodbyemessage); /* printf takes far pointer */
+   printf("\n\n\n%s\n",goodbyemessage); /* printf takes far pointer */
 #endif
    movecursor(6,0);
    discardgraphics(); /* if any emm/xmm tied up there, release it */
    stopslideshow();
 #ifndef XFRACT
    if (made_dsktemp)
-      remove(diskfilename);
+      dir_remove(tempdir,diskfilename);
 #endif
    end_help();
+   ret = 0;
    if (initbatch == 3) /* exit with error code for batch file */
-     exit(2);
+     ret = 2;
    else if (initbatch == 4)
-     exit(1);
-   else
-     exit(0);
+     ret = 1;
+   exit(ret);
 }
 
 
@@ -1071,7 +923,7 @@ static char searchname[FILE_MAX_PATH];
 static char searchext[FILE_MAX_EXT];
 static DIR *currdir = NULL;
 #endif
-static int  findfirst(char *path)       /* Find 1st file (or subdir) meeting path/filespec */
+int  fr_findfirst(char *path)       /* Find 1st file (or subdir) meeting path/filespec */
 {
 #ifndef XFRACT
      union REGS regs;
@@ -1097,12 +949,12 @@ static int  findfirst(char *path)       /* Find 1st file (or subdir) meeting pat
      if (currdir==NULL) {
          return -1;
      } else {
-         return findnext();
+         return fr_findnext();
      }
 #endif
 }
 
-static int  findnext()		/* Find next file (or subdir) meeting above path/filespec */
+int  fr_findnext()		/* Find next file (or subdir) meeting above path/filespec */
 {
 #ifndef XFRACT
      union REGS regs;
@@ -1120,7 +972,7 @@ static int  findnext()		/* Find next file (or subdir) meeting above path/filespe
      char thisname[FILE_MAX_PATH];
      char tmpname[FILE_MAX_PATH];
      char thisext[FILE_MAX_EXT];
-     while (1) {
+     for(;;) {
          dirEntry = readdir(currdir);
          if (dirEntry == NULL) {
              closedir(currdir);
@@ -1151,17 +1003,129 @@ static int  findnext()		/* Find next file (or subdir) meeting above path/filespe
 #endif
 }
 
-int lccompare(VOIDCONSTPTR arg1, VOIDCONSTPTR arg2) /* for qsort */
+
+#if 0
+void heap_sort(void far *ra1, int n, unsigned sz, int (__cdecl *fct)(VOIDFARPTR arg1,VOIDFARPTR arg2))
 {
-   return(strncasecmp(*((char **)arg1),*((char **)arg2),40));
+   int ll,j,ir,i;
+   void far *rra;
+   char far *ra;
+   ra = (char far *)ra1;
+   ra -= sz;
+   ll=(n>>1)+1;
+   ir=n;
+   
+   for(;;)
+   {
+      if(ll>1)
+         rra = *((char far *far *)(ra+(--ll)*sz));
+      else
+      {
+         rra = *((char far * far *)(ra+ir*sz));
+         *((char far * far *)(ra+ir*sz))=*((char far * far *)(ra+sz));
+         if(--ir == 1)
+         {
+            *((char far * far *)(ra+sz))=rra;
+            return;
+         }   
+      }
+      i = ll;
+      j = ll <<1;
+      while (j <= ir)
+      {
+         if(j<ir && (fct(ra+j*sz,ra+(j+1)*sz) < 0))
+            ++j;
+         if(fct(&rra,ra+j*sz) < 0)
+         {
+            *((char far * far *)(ra+i*sz)) = *((char far * far *)(ra+j*sz));
+            j += (i=j);
+         }   
+         else
+            j=ir+1;
+      }
+      *((char far * far *)(ra+i*sz))=rra;   
+   }
+}
+#endif
+
+int lccompare(VOIDFARPTR arg1, VOIDFARPTR arg2) /* for sort */
+{
+   return(strncasecmp(*((char far * far *)arg1),*((char far *far *)arg2),40));
 }
 
-static char *masks[] = {"*.pot","*.gif"};
-static int speedstate;
+void far_strncpy(char far *t, char far *s, int len)
+{
+   while((len-- && (*t++ = *s++) != 0));
+}
 
+char far *far_strchr(char far *str, char c)
+{
+   int len,i;
+   len = far_strlen(str);
+   i= -1;
+   while (++i < len && c != str[i]);
+   if(i == len)
+      return(NULL);
+   else
+      return(&str[i]);   
+}
+
+char far *far_strrchr(char far *str, char c)
+{
+   int len;
+   len = far_strlen(str);
+   while (--len > -1 && c != str[len]);
+   if(len == -1)
+      return(NULL);
+   else
+      return(&str[len]);
+}
+
+/* returns 1 if name a GIF with dimensions x,y */
+int isagif(char *name, int x, int y)
+{
+   BYTE buffer[13];
+   FILE *fp;
+   int width, height, i;
+ 
+   if(name == NULL)
+      return(0);
+   if(*name == 0)
+      return(0);      
+   if((fp = fopen(name,"rb"))==NULL)
+      return(0);
+   /* Get the screen description */
+   for (i = 0; i < 13; i++)
+   {
+      int tmp;
+      buffer[i] = (BYTE)(tmp = getc(fp));
+      if (tmp < 0)
+      {
+         fclose(fp);
+         return(0);
+      }
+   }
+   fclose(fp);
+   width  = buffer[6] | (buffer[7] << 8);
+   height = buffer[8] | (buffer[9] << 8);
+
+   if(strncmp((char *)buffer,"GIF87a",3) || 
+      buffer[3] < '0' || buffer[3] > '9' ||
+      buffer[4] < '0' || buffer[4] > '9' ||
+      buffer[5] < 'A' || buffer[5] > 'z' ||
+      width != x || 
+      height != y )
+      return(0);
+   else
+      return(1);
+}
+
+static int speedstate;
 int getafilename(char *hdg,char *template,char *flname)
 {
-   static char far instr[]={"Press F6 for default or environment directory"};
+   int rds;  /* if getting an RDS image map */ 
+   static FCODE o_instr[]={"Press F6 for default directory, F4 to toggle sort "};
+   char far *instr;
    int masklen;
    char filename[13];
    char speedstr[81];
@@ -1170,13 +1134,13 @@ int getafilename(char *hdg,char *template,char *flname)
    int i,j;
    int out;
    int retried;
-   struct CHOICE
+   static struct CHOICE
    {
       char name[13];
       char type;
    }
-   *choices[MAXNUMFILES];
-   int attributes[MAXNUMFILES];
+   far *far*choices;
+   int far *attributes;
    int filecount;   /* how many files */
    int dircount;    /* how many directories */
    int notroot;     /* not the root directory */
@@ -1185,13 +1149,27 @@ int getafilename(char *hdg,char *template,char *flname)
    char dir[FILE_MAX_DIR];
    char fname[FILE_MAX_FNAME];
    char ext[FILE_MAX_EXT];
+   static int dosort = 1;
+   int options = 8;
 
-   ENTER_OVLY(OVLY_PROMPTS2);
-
+   rds = (stereomapname == flname)?1:0;
+   if(rds)
+   {
+      setclear();
+      sprintf(speedstr,"Scanning for %dx%d file names...",xdots,ydots);
+      putstringcenter(0,0,80,C_GENERAL_INPUT,speedstr);
+   }     
    /* steal existing array for "choices" */
-   choices[0] = (struct CHOICE *)boxy;
+   choices = (struct CHOICE far *far*)MK_FP(extraseg,0);
+   choices[0] = (struct CHOICE far *)(choices + MAXNUMFILES+1);
+   attributes = (int far *)(choices[0] + MAXNUMFILES+1);
+   instr = (char far *)(attributes + MAXNUMFILES +1);
+#if 0 /* not needed if no farmemalloc */
+   if(choices[0] == NULL)
+      stopmsg(0, "farmemalloc failed in getafilename");
+#endif
    attributes[0] = 1;
-   for(i=1;i<MAXNUMFILES;i++)
+   for(i=1;i<MAXNUMFILES+1;i++)
    {
       choices[i] = choices[i-1] + 1;
       attributes[i] = 1;
@@ -1215,7 +1193,7 @@ retry_dir:
    {
       tmpmask[(j = strlen(tmpmask) - 1)] = 0; /* strip trailing \ */
       if (strchr(tmpmask,'*') || strchr(tmpmask,'?')
-	|| findfirst(tmpmask) != 0
+	|| fr_findfirst(tmpmask) != 0
 	|| (DTA.attribute & SUBDIR) == 0)
       {
          strcpy(dir,DOTSLASH);
@@ -1237,7 +1215,7 @@ retry_dir:
    j = 0;
    masklen = strlen(tmpmask);
    strcat(tmpmask,"*.*");
-   out = findfirst(tmpmask);
+   out = fr_findfirst(tmpmask);
    while(out == 0 && filecount < MAXNUMFILES)
    {
       if((DTA.attribute & SUBDIR) && strcmp(DTA.filename,"."))
@@ -1247,14 +1225,14 @@ retry_dir:
 #endif
 	 if(strcmp(DTA.filename,".."))
             strcat(DTA.filename,SLASH);
-	 strncpy(choices[++filecount]->name,DTA.filename,13);
+	 far_strncpy(choices[++filecount]->name,DTA.filename,13);
 	 choices[filecount]->name[12] = '\0';
 	 choices[filecount]->type = 1;
 	 dircount++;
 	 if(strcmp(DTA.filename,"..")==0)
 	    notroot = 1;
       }
-      out = findnext();
+      out = fr_findnext();
    }
    tmpmask[masklen] = 0;
    if(template[0])
@@ -1263,26 +1241,52 @@ retry_dir:
    {
       if(numtemplates > 1)
 	 strcpy(&(tmpmask[masklen]),masks[j]);
-      out = findfirst(tmpmask);
+      out = fr_findfirst(tmpmask);
       while(out == 0 && filecount < MAXNUMFILES)
       {
 	 if(!(DTA.attribute & SUBDIR))
 	 {
-	    strlwr(DTA.filename);
-	    strncpy(choices[++filecount]->name,DTA.filename,13);
-	    choices[filecount]->type = 0;
+	    if(rds)
+	    {
+               sprintf(speedstr,"%s",DTA.filename);
+               putstringcenter(2,0,80,C_GENERAL_INPUT,speedstr);
+
+               splitpath(DTA.filename,NULL,NULL,fname,ext);
+               /* just using speedstr as a handy buffer */
+               makepath(speedstr,drive,dir,fname,ext);
+               if(isagif(speedstr,xdots,ydots))
+               {
+                  strlwr(DTA.filename);
+	          far_strncpy(choices[++filecount]->name,DTA.filename,13);
+	          choices[filecount]->type = 0;
+               }
+	    }
+	    else
+	    {
+	       strlwr(DTA.filename);
+	       far_strncpy(choices[++filecount]->name,DTA.filename,13);
+	       choices[filecount]->type = 0;
+            }
 	 }
-	 out = findnext();
+	 out = fr_findnext();
       }
    }
    while (++j < numtemplates);
    if (++filecount == 0)
    {
-      strcpy(choices[filecount]->name,"*nofiles*");
+      far_strcpy(choices[filecount]->name,"*nofiles*");
       choices[filecount]->type = 0;
       ++filecount;
    }
-   qsort(choices,filecount,sizeof(char *),lccompare); /* sort type list */
+   
+   far_strcpy(instr,o_instr);
+   if(dosort)
+   {
+      far_strcat(instr,"off");
+      shell_sort((void far *far*)choices,filecount,sizeof(char far *),lccompare); /* sort file list */
+   }
+   else
+      far_strcat(instr,"on");
    if(notroot == 0 && dir[0] && dir[0] != SLASHC) /* must be in root directory */
    {
       splitpath(tmpmask,drive,dir,fname,ext);
@@ -1290,7 +1294,10 @@ retry_dir:
       makepath(tmpmask,drive,dir,fname,ext);
    }
    if(numtemplates > 1)
-      strcat(tmpmask," *.pot");
+   {
+      strcat(tmpmask," ");
+      strcat(tmpmask,masks[0]);
+   }
    strcpy(temp1,hdg);
    strcat(temp1,"\nTemplate: ");
    strcat(temp1,tmpmask);
@@ -1303,8 +1310,17 @@ retry_dir:
       if (i >= filecount)
 	 i = 0;
    }
-   i = fullscreen_choice(8,temp1,NULL,instr,filecount,(char **)choices,
+   if(dosort)
+      options = 8;
+   else
+      options = 8+32;   
+   i = fullscreen_choice(options,temp1,NULL,instr,filecount,(char far *far*)choices,
           attributes,5,99,12,i,NULL,speedstr,filename_speedstr,check_f6_key);
+   if (i==-F4)
+   {
+      dosort = 1 - dosort;
+      goto restart;
+   }
    if (i==-F6)
    {
       static int lastdir=0;
@@ -1317,36 +1333,35 @@ retry_dir:
 	 strcpy(dir,fract_dir2);
       }
       fix_dirname(dir);
-       makepath(flname,drive,dir,"","");
-       lastdir = 1-lastdir;
-       goto restart;
+      makepath(flname,drive,dir,"","");
+      lastdir = 1-lastdir;
+      goto restart;
    }
    if (i < 0)
    {
-      EXIT_OVLY;
       return(-1);
    }
    if(speedstr[0] == 0 || speedstate == MATCHING)
    {
       if(choices[i]->type)
       {
-	 if(strcmp(choices[i]->name,"..") == 0) /* go up a directory */
+	 if(far_strcmp(choices[i]->name,"..") == 0) /* go up a directory */
 	 {
 	    if(strcmp(dir,DOTSLASH) == 0)
 	       strcpy(dir,DOTDOTSLASH);
 	    else
 	    {
 	       char *s;
-	       if(s = strrchr(dir,SLASHC)) /* trailing slash */
+	       if((s = strrchr(dir,SLASHC)) != NULL) /* trailing slash */
 	       {
 		  *s = 0;
-		  if(s = strrchr(dir,SLASHC))
+		  if((s = strrchr(dir,SLASHC)) != NULL)
 		     *(s+1) = 0;
 	       }
 	    }
 	 }
 	 else  /* go down a directory */
-	    strcat(dir,choices[i]->name);
+	    far_strcat(dir,choices[i]->name);
 	 fix_dirname(dir);
 	 makepath(flname,drive,dir,"","");
 	 goto restart;
@@ -1358,9 +1373,10 @@ retry_dir:
    {
       if (speedstate == SEARCHPATH
 	&& strchr(speedstr,'*') == 0 && strchr(speedstr,'?') == 0
-	&& findfirst(speedstr) == 0
-	&& (DTA.attribute & SUBDIR)) /* it is a directory */
+	&& ((fr_findfirst(speedstr) == 0
+	&& (DTA.attribute & SUBDIR))|| strcmp(speedstr,SLASH)==0)) /* it is a directory */
 	 speedstate = TEMPLATE;
+	 
       if(speedstate == TEMPLATE)
       {
 	 /* extract from tempstr the pathname and template information,
@@ -1387,7 +1403,7 @@ retry_dir:
       {
 	 char fullpath[80];
       /* if (strchr(speedstr,'.') == NULL)
-	    strcat(speedstr,".gif"); */
+	    strcat(speedstr,masks[1]); */
 	 findpath(speedstr,fullpath);
 	 if(fullpath[0])
 	    strcpy(flname,fullpath);
@@ -1402,21 +1418,27 @@ retry_dir:
 	 }
       }
    }
-   EXIT_OVLY;
+   makepath(browsename,"","",fname,ext);
    return(0);
 }
 
+#ifdef __CLINT__
+#pragma argsused
+#endif
+
 static int check_f6_key(int curkey,int choice)
-{
+{ /* choice is dummy used by other routines called by fullscreen_choice() */
+   choice = 0; /* to suppress warning only */
    if (curkey == F6)
       return 0-F6;
+   else if (curkey == F4)
+      return 0-F4;
    return 0;
 }
 
 static int filename_speedstr(int row, int col, int vid,
 			     char *speedstring, int speed_match)
 {
-   extern char speed_prompt[];
    char *prompt;
    if ( strchr(speedstring,':')
      || strchr(speedstring,'*') || strchr(speedstring,'*')
@@ -1436,11 +1458,42 @@ static int filename_speedstr(int row, int col, int vid,
    return(strlen(prompt));
 }
 
-static int isadirectory(char *s)
+int isadirectory(char *s)
 {
+   int len;
+   char sv;
+#ifdef _MSC_VER
+   unsigned attrib = 0;
+#endif
+   despace(s);  /* scrunch out white space */
    if(strchr(s,'*') || strchr(s,'?'))
       return(0); /* for my purposes, not a directory */
-   if(findfirst(s) != 0) /* couldn't find it */
+
+   len = strlen(s);
+   if(len > 0)
+      sv = s[len-1];   /* last char */
+   else
+      sv = 0;
+
+#ifdef _MSC_VER
+   if(_dos_getfileattr(s, &attrib) == 0 && ((attrib&_A_SUBDIR) != 0))
+   {
+      return(1);  /* not a directory or doesn't exist */
+   }
+   else if(sv == SLASHC)
+   {
+      /* strip trailing slash and try again */
+      s[len-1] = 0;
+      if(_dos_getfileattr(s, &attrib) == 0 && ((attrib&_A_SUBDIR) != 0))
+      {
+         s[len-1] = sv;
+         return(1);  
+      }
+      s[len-1] = sv;
+   }
+   return(0);
+#else
+   if(fr_findfirst(s) != 0) /* couldn't find it */
    {
       /* any better ideas?? */
       if(strchr(s,SLASHC)) /* we'll guess it is a directory */
@@ -1452,17 +1505,18 @@ static int isadirectory(char *s)
       return(1);   /* we're SURE it's a directory */
    else
       return(0);
+#endif
 }
 
 
 #ifndef XFRACT	/* This routine moved to unix.c so we can use it in hc.c */
-int splitpath(char *template,char *drive,char *dir,char *fname,char *ext)
+
+int splitpath(char far *template,char *drive,char *dir,char *fname,char *ext)
 {
    int length;
    int len;
    int offset;
-   char *tmp;
-
+   char far *tmp;
    if(drive)
       drive[0] = 0;
    if(dir)
@@ -1472,8 +1526,9 @@ int splitpath(char *template,char *drive,char *dir,char *fname,char *ext)
    if(ext)
       ext[0]   = 0;
 
-   if((length = strlen(template)) == 0)
+   if((length = far_strlen(template)) == 0)
       return(0);
+
    offset = 0;
 
    /* get drive */
@@ -1496,14 +1551,14 @@ int splitpath(char *template,char *drive,char *dir,char *fname,char *ext)
    /* get dir */
    if(offset < length)
    {
-      tmp = strrchr(template,SLASHC);
+      tmp = far_strrchr(template,SLASHC);
       if(tmp)
       {
 	 tmp++;  /* first character after slash */
-	 len = tmp - &template[offset];
-	 if(len >=0 && len < 80 && dir)
-	    strncpy(dir,&template[offset],len);
-	 if(len < 80 && dir)
+	 len = tmp - (char far *)&template[offset];
+	 if(len >= 0 && len < FILE_MAX_DIR && dir)
+	    far_strncpy(dir,&template[offset],min(len,FILE_MAX_DIR));
+	 if(len < FILE_MAX_DIR && dir)
 	    dir[len] = 0;
 	 offset += len;
       }
@@ -1514,24 +1569,33 @@ int splitpath(char *template,char *drive,char *dir,char *fname,char *ext)
    /* get fname */
    if(offset < length)
    {
-      tmp = strrchr(template,'.');
-      if(tmp < strrchr(template,SLASHC) || tmp < strrchr(template,':'))
+      tmp = far_strrchr(template,'.');
+      if(tmp < far_strrchr(template,SLASHC) || tmp < far_strrchr(template,':'))
 	 tmp = 0; /* in this case the '.' must be a directory */
       if(tmp)
       {
-	 tmp++; /* first character past "." */
-	 len = tmp - &template[offset];
+	 /* tmp++; */ /* first character past "." */
+	 len = tmp - (char far *)&template[offset];
 	 if((len > 0) && (offset+len < length) && fname)
 	 {
-	    strncpy(fname,&template[offset],len);
-	    fname[len] = 0;
+	    far_strncpy(fname,&template[offset],min(len,FILE_MAX_FNAME));
+	    if(len < FILE_MAX_FNAME)
+	       fname[len] = 0;
+	    else
+	       fname[FILE_MAX_FNAME-1] = 0;   
 	 }
 	 offset += len;
 	 if((offset < length) && ext)
-	    strcpy(ext,&template[offset]);
+         {
+	    far_strncpy(ext,&template[offset],FILE_MAX_EXT);
+            ext[FILE_MAX_EXT-1] = 0;
+         }
       }
       else if((offset < length) && fname)
-	 strcpy(fname,&template[offset]);
+      {
+	 far_strncpy(fname,&template[offset],FILE_MAX_FNAME);
+         fname[FILE_MAX_FNAME-1] = 0;   
+      }
    }
    return(0);
 }
@@ -1539,31 +1603,71 @@ int splitpath(char *template,char *drive,char *dir,char *fname,char *ext)
 
 makepath(char *template,char *drive,char *dir,char *fname,char *ext)
 {
+   if(template)
+      *template = 0;
+   else
+      return(-1);   
 #ifndef XFRACT
-   strcpy(template,drive);
-   strcat(template,dir);
-#else
-   strcpy(template,dir);
+   if(drive)
+      strcpy(template,drive);
 #endif
-   strcat(template,fname);
-   strcat(template,ext);
+   if(dir)
+      strcat(template,dir);
+   if(fname)
+      strcat(template,fname);
+   if(ext)
+      strcat(template,ext);
    return(0);
 }
 
 
 /* fix up directory names */
-static void fix_dirname(char *dirname)
+void fix_dirname(char *dirname)
 {
    int length;
-   /* scrub white space from end for safety */
+   despace(dirname);
    length = strlen(dirname); /* index of last character */
-   while (--length >= 0 && isspace(dirname[length])) { }
-   dirname[++length] = 0;
+
    /* make sure dirname ends with a slash */
-   if(length == 0 || dirname[length-1] != SLASHC)
-      strcat(dirname,SLASH);
+   if(length > 0)
+      if(dirname[length-1] == SLASHC)
+         return;
+   strcat(dirname,SLASH);
 }
 
+static void dir_name(char *target, char *dir, char *name)
+{
+   *target = 0;
+   if(*dir != 0)
+      strcpy(target,dir);
+   strcat(target,name);
+}
+
+/* opens file in dir directory */ 
+int dir_open(char *dir, char *filename, int oflag, int pmode)
+{
+   char tmp[FILE_MAX_PATH];
+   dir_name(tmp,dir,filename);
+   return(open(tmp,oflag,pmode));
+}
+
+/* removes file in dir directory */ 
+int dir_remove(char *dir,char *filename)
+{
+   char tmp[FILE_MAX_PATH];
+   dir_name(tmp,dir,filename);
+   return(remove(tmp));
+}
+
+/* fopens file in dir directory */ 
+FILE *dir_fopen(char *dir, char *filename, char *mode )
+{
+   char tmp[FILE_MAX_PATH];
+   dir_name(tmp,dir,filename);
+   return(fopen(tmp,mode));
+}
+
+/* converts relative path to absolute path */
 static int expand_dirname(char *dirname,char *drive)
 {
    fix_dirname(dirname);
@@ -1576,7 +1680,7 @@ static int expand_dirname(char *dirname,char *drive)
       regs.h.ah = 0x47; /* get current directory */
       regs.h.dl = 0;
       if (drive[0] && drive[0] != ' ')
-	 regs.h.dl = tolower(drive[0])-'a'+1;
+	 regs.h.dl = (char)(tolower(drive[0])-'a'+1);
       regs.x.si = (unsigned int) &curdir[0];
       segread(&sregs);
       intdosx(&regs, &regs, &sregs);
@@ -1591,7 +1695,7 @@ static int expand_dirname(char *dirname,char *drive)
       while (strncmp(dirname,DOTDOTSLASH,3) == 0) {
 	 char *s;
 	 curdir[strlen(curdir)-1] = 0; /* strip trailing slash */
-	 if (s = strrchr(curdir,SLASHC))
+	 if ((s = strrchr(curdir,SLASHC)) != NULL)
 	    *s = 0;
 	 strcat(curdir,SLASH);
 	 strcpy(buf,&dirname[3]);
@@ -1607,41 +1711,70 @@ static int expand_dirname(char *dirname,char *drive)
    return(0);
 }
 
+   
+/* 
+   See if double value was changed by input screen. Problem is that the 
+   conversion from double to string and back can make small changes
+   in the value, so will it twill test as "different" even though it
+   is not
+*/
+int cmpdbl(double old, double new)
+{
+   char buf[81];
+   struct fullscreenvalues val;
+
+   /* change the old value with the same torture the new value had */
+   val.type = 'd'; /* most values on this screen are type d */
+   val.uval.dval = old;
+   prompt_valuestring(buf,&val);   /* convert "old" to string */
+
+   old = atof(buf);                /* convert back */
+   return(fabs(old-new)<DBL_EPSILON?0:1);  /* zero if same */  
+}
+
 #define LOADPROMPTS(X)     {\
-   static char far tmp[] = { X };\
-   prompts[++nump]= tmp;\
+   static FCODE tmp[] = { X };\
+   far_strcpy(ptr,(char far *)tmp);\
+   prompts[++nump]= ptr;\
+   ptr += sizeof(tmp);\
    }
 
 int get_corners()
 {
+   char far *ptr;
    struct fullscreenvalues values[15];
    char far *prompts[15];
-   static char far xprompt[]={"          X"};
-   static char far yprompt[]={"          Y"};
-   static char far zprompt[]={"          Z"};
+   static FCODE o_xprompt[]={"          X"};
+   static FCODE o_yprompt[]={"          Y"};
+   static FCODE o_zprompt[]={"          Z"};
+   char xprompt[sizeof(o_xprompt)];
+   char yprompt[sizeof(o_yprompt)];
+   char zprompt[sizeof(o_zprompt)];
    int i,nump,prompt_ret;
-   int cmag,transp3d;
-   double Xctr,Yctr,Mag;
+   int cmag;
+   double Xctr,Yctr;
+   LDBL Magnification; /* LDBL not really needed here, but used to match function parameters */
+   double Xmagfactor,Rotation,Skew;
    BYTE ousemag;
    double oxxmin,oxxmax,oyymin,oyymax,oxx3rd,oyy3rd;
-   double ozzmin,ozzmax,ottmin,ottmax;
-   /* note that hdg[15] is used for non-transparent heading: */
-   static char far hdg[]={"Transparent 3d Image Coordinates"};
+   static FCODE hdg[]={"Image Coordinates"};
    int oldhelpmode;
 
-   transp3d = (Transparent3D && fractalspecific[fractype].orbitcalc == Formula);
+   far_strcpy(xprompt,o_xprompt);
+   far_strcpy(yprompt,o_yprompt);
+   far_strcpy(zprompt,o_zprompt);
+   ptr = (char far *)MK_FP(extraseg,0);
    oldhelpmode = helpmode;
    ousemag = usemag;
    oxxmin = xxmin; oxxmax = xxmax;
    oyymin = yymin; oyymax = yymax;
    oxx3rd = xx3rd; oyy3rd = yy3rd;
-   ozzmin = zzmin; ozzmax = zzmax;
-   ottmin = ttmin; ottmax = ttmax;
 
 gc_loop:
    for (i = 0; i < 15; ++i)
       values[i].type = 'd'; /* most values on this screen are type d */
-   cmag = (!transp3d && usemag && cvtcentermag(&Xctr, &Yctr, &Mag));
+   cmag = usemag;
+   cvtcentermag(&Xctr, &Yctr, &Magnification, &Xmagfactor, &Rotation, &Skew);
 
    nump = -1;
    if (cmag) {
@@ -1650,7 +1783,13 @@ gc_loop:
       LOADPROMPTS("Center Y");
       values[nump].uval.dval = Yctr;
       LOADPROMPTS("Magnification");
-      values[nump].uval.dval = Mag;
+      values[nump].uval.dval = (double)Magnification;
+      LOADPROMPTS("X Magnification Factor");
+      values[nump].uval.dval = Xmagfactor;
+      LOADPROMPTS("Rotation Angle (degrees)");
+      values[nump].uval.dval = Rotation;
+      LOADPROMPTS("Skew Angle (degrees)");
+      values[nump].uval.dval = Skew;
       LOADPROMPTS("");
       values[nump].type = '*';
       LOADPROMPTS("Press F7 to switch to \"corners\" mode");
@@ -1664,51 +1803,30 @@ gc_loop:
       values[nump].uval.dval = xxmin;
       prompts[++nump] = yprompt;
       values[nump].uval.dval = yymax;
-      if (transp3d) {
-    	 prompts[++nump] = zprompt;
-	     values[nump].uval.dval = zzmin;
-	  }
       LOADPROMPTS("Bottom-Right Corner");
       values[nump].type = '*';
       prompts[++nump] = xprompt;
       values[nump].uval.dval = xxmax;
       prompts[++nump] = yprompt;
       values[nump].uval.dval = yymin;
-      if (transp3d) {
-	 prompts[++nump] = zprompt;
-	 values[nump].uval.dval = zzmax;
-	 }
-      if (transp3d) {
-	 LOADPROMPTS("Time Step");
-	 values[nump].type = '*';
-	 LOADPROMPTS("          From");
-	 values[nump].uval.dval = ttmin;
-	 LOADPROMPTS("          To");
-	 values[nump].uval.dval = ttmax;
-	 }
-      else {
-	 if (xxmin == xx3rd && yymin == yy3rd)
-	    xx3rd = yy3rd = 0;
-	 LOADPROMPTS("Bottom-left (zeros for top-left X, bottom-right Y)");
-	 values[nump].type = '*';
-	 prompts[++nump] = xprompt;
-	 values[nump].uval.dval = xx3rd;
-	 prompts[++nump] = yprompt;
-	 values[nump].uval.dval = yy3rd;
-	 LOADPROMPTS("Press F7 to switch to \"center-mag\" mode");
-	 values[nump].type = '*';
-	 }
-      }
+      if (xxmin == xx3rd && yymin == yy3rd)
+         xx3rd = yy3rd = 0;
+      LOADPROMPTS("Bottom-left (zeros for top-left X, bottom-right Y)");
+      values[nump].type = '*';
+      prompts[++nump] = xprompt;
+      values[nump].uval.dval = xx3rd;
+      prompts[++nump] = yprompt;
+      values[nump].uval.dval = yy3rd;
+      LOADPROMPTS("Press F7 to switch to \"center-mag\" mode");
+      values[nump].type = '*';
+   }
 
    LOADPROMPTS("Press F4 to reset to type default values");
    values[nump].type = '*';
 
    oldhelpmode = helpmode;
    helpmode = HELPCOORDS;
-   prompt_ret = fullscreen_prompt((transp3d) ? hdg : &hdg[15],
-		     nump+1, prompts, values, 0,
-		     (transp3d) ? 0x10 : 0x90, /* function keys */
-		     NULL);
+   prompt_ret = fullscreen_prompt(hdg,nump+1, prompts, values, 0x90, NULL);
    helpmode = oldhelpmode;
 
    if (prompt_ret < 0) {
@@ -1716,9 +1834,7 @@ gc_loop:
       xxmin = oxxmin; xxmax = oxxmax;
       yymin = oyymin; yymax = oyymax;
       xx3rd = oxx3rd; yy3rd = oyy3rd;
-      zzmin = ozzmin; zzmax = ozzmax;
-      ttmin = ottmin; ttmax = ottmax;
-      return -1;
+      return(-1);
       }
 
    if (prompt_ret == F4) { /* reset to type defaults */
@@ -1732,63 +1848,298 @@ gc_loop:
       }
 
    if (cmag) {
-      if ( values[0].uval.dval != Xctr
-	|| values[1].uval.dval != Yctr
-	|| values[2].uval.dval != Mag) {
-	 double radius,width;
-	 radius = 1.0 / values[2].uval.dval;
-	 width = radius * (1.0 / screenaspect);
-	 yymax	       = values[1].uval.dval + radius;
-	 yy3rd = yymin = values[1].uval.dval - radius;
-	 xxmax	       = values[0].uval.dval + width;
-	 xx3rd = xxmin = values[0].uval.dval - width;
-	 }
+      if ( cmpdbl(Xctr         , values[0].uval.dval)
+        || cmpdbl(Yctr         , values[1].uval.dval)
+        || cmpdbl((double)Magnification, values[2].uval.dval)
+        || cmpdbl(Xmagfactor   , values[3].uval.dval)
+        || cmpdbl(Rotation     , values[4].uval.dval)
+        || cmpdbl(Skew         , values[5].uval.dval))
+      {
+         Xctr          = values[0].uval.dval;
+         Yctr          = values[1].uval.dval;
+         Magnification = values[2].uval.dval;
+         Xmagfactor    = values[3].uval.dval;
+         Rotation      = values[4].uval.dval;
+         Skew          = values[5].uval.dval;
+         if (Xmagfactor == 0)
+            Xmagfactor = 1;
+         cvtcorners(Xctr, Yctr, Magnification, Xmagfactor, Rotation, Skew);
       }
+   }
 
    else {
       nump = 1;
       xxmin = values[nump++].uval.dval;
       yymax = values[nump++].uval.dval;
-      if (transp3d)
-	 zzmin = values[nump++].uval.dval;
       nump++;
       xxmax = values[nump++].uval.dval;
       yymin = values[nump++].uval.dval;
-      if (transp3d)
-	 zzmax = values[nump++].uval.dval;
       nump++;
-      if (transp3d) {
-	 ttmin = values[nump++].uval.dval;
-	 ttmax = values[nump++].uval.dval;
-	 }
-      else {
-	 xx3rd = values[nump++].uval.dval;
-	 yy3rd = values[nump++].uval.dval;
-	 if (xx3rd == 0 && yy3rd == 0) {
-	    xx3rd = xxmin;
-	    yy3rd = yymin;
-	    }
-	 }
+      xx3rd = values[nump++].uval.dval;
+      yy3rd = values[nump++].uval.dval;
+      if (xx3rd == 0 && yy3rd == 0) {
+         xx3rd = xxmin;
+         yy3rd = yymin;
       }
+   }
 
    if (prompt_ret == F7) { /* toggle corners/center-mag mode */
       if (usemag == 0)
-	 if (cvtcentermag(&Xctr, &Yctr, &Mag) == 0)
-	 {
-	    static char far msg[] = 
-	       {"Corners rotated or stretched, can't use center-mag"};
-	    stopmsg(0,msg);
-	 }   
-	 else
+      {
+         cvtcentermag(&Xctr, &Yctr, &Magnification, &Xmagfactor, &Rotation, &Skew);
 	    usemag = 1;
+      }
       else
 	 usemag = 0;
       goto gc_loop;
       }
 
-   return((xxmin == oxxmin && xxmax == oxxmax
-	&& yymin == oyymin && yymax == oyymax
-	&& xx3rd == oxx3rd && yy3rd == oyy3rd
-	&& zzmin == ozzmin && zzmax == ozzmax
-	&& ttmin == ottmin && ttmax == ottmax) ? 0 : 1);
+   if(!cmpdbl(oxxmin,xxmin) && !cmpdbl(oxxmax,xxmax) && !cmpdbl(oyymin,yymin) && 
+      !cmpdbl(oyymax,yymax) && !cmpdbl(oxx3rd,xx3rd) && !cmpdbl(oyy3rd,yy3rd))
+   {
+     /* no change, restore values to avoid drift */ 
+      xxmin = oxxmin; xxmax = oxxmax;
+      yymin = oyymin; yymax = oyymax;
+      xx3rd = oxx3rd; yy3rd = oyy3rd;
+      return 0;
+   }
+   else
+      return(1);
+}
+
+/* get browse parameters , called from fractint.c and loadfile.c
+   returns 3 if anything changes.  code pinched from get_view_params */
+
+int get_browse_params()
+{
+   static FCODE o_hdg[]={"Browse ('L'ook) Mode Options"};
+   char hdg[sizeof(o_hdg)];
+   char far *ptr;
+   char far *choices[10];
+
+   int oldhelpmode;
+   struct fullscreenvalues uvalues[25];
+   int i, k;
+   int old_autobrowse,old_brwschecktype,old_brwscheckparms,old_doublecaution;
+   int old_minbox;
+   double old_toosmall;
+   char old_browsemask[13];
+
+   far_strcpy(hdg,o_hdg);
+   ptr = (char far *)MK_FP(extraseg,0);
+   old_autobrowse     = autobrowse;
+   old_brwschecktype  = brwschecktype;
+   old_brwscheckparms = brwscheckparms;
+   old_doublecaution  = doublecaution;
+   old_minbox         = minbox;
+   old_toosmall       = toosmall;
+   strcpy(old_browsemask,browsemask);
+
+get_brws_restart:
+   /* fill up the previous values arrays */
+   k = -1;
+
+   LOADCHOICES("Autobrowsing? (y/n)");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = autobrowse;
+
+   LOADCHOICES("Ask about GIF video mode? (y/n)");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = askvideo;
+
+   LOADCHOICES("Check fractal type? (y/n)");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = brwschecktype;
+
+   LOADCHOICES("Check fractal parameters (y/n)");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = brwscheckparms;
+
+   LOADCHOICES("Confirm file deletes (y/n)" );
+   uvalues[k].type='y';
+   uvalues[k].uval.ch.val = doublecaution;
+
+   LOADCHOICES("Smallest window to display (size in pixels)");
+   uvalues[k].type = 'f';
+   uvalues[k].uval.dval = toosmall;
+
+   LOADCHOICES("Smallest box size shown before crosshairs used (pix)");
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = minbox;
+    LOADCHOICES("Browse search filename mask ");
+   uvalues[k].type = 's';
+   strcpy(uvalues[k].uval.sval,browsemask);
+
+   LOADCHOICES("");
+   uvalues[k].type = '*';
+
+   LOADCHOICES("Press F4 to reset browse parameters to defaults.");
+   uvalues[k].type = '*';
+
+   oldhelpmode = helpmode;     /* this prevents HELP from activating */
+   helpmode = HELPBRWSPARMS;
+   i = fullscreen_prompt(hdg,k+1,choices,uvalues,16,NULL);
+   helpmode = oldhelpmode;     /* re-enable HELP */
+   if (i < 0) {
+      return(0);
+      }
+
+   if (i == F4) {
+      toosmall = 6;
+      autobrowse = FALSE;
+      askvideo = TRUE;
+      brwscheckparms = TRUE;
+      brwschecktype  = TRUE;
+      doublecaution  = TRUE;
+      minbox = 3;
+      strcpy(browsemask,"*.gif");
+      goto get_brws_restart;
+      }
+
+   /* now check out the results (*hopefully* in the same order <grin>) */
+   k = -1;
+
+   autobrowse = uvalues[++k].uval.ch.val;
+
+   askvideo = uvalues[++k].uval.ch.val;
+
+   brwschecktype = (char)uvalues[++k].uval.ch.val;
+
+   brwscheckparms = (char)uvalues[++k].uval.ch.val;
+
+   doublecaution = uvalues[++k].uval.ch.val;
+
+   toosmall  = uvalues[++k].uval.dval;
+   if (toosmall < 0 ) toosmall = 0 ;
+
+   minbox = uvalues[++k].uval.ival;
+     if (minbox < 1 ) minbox = 1;
+     if (minbox > 10) minbox = 10;
+
+   strcpy(browsemask,uvalues[++k].uval.sval);
+
+   i = 0;
+   if (autobrowse != old_autobrowse ||
+       brwschecktype != old_brwschecktype ||
+       brwscheckparms != old_brwscheckparms ||
+       doublecaution != old_doublecaution ||
+       toosmall != old_toosmall ||
+       minbox != old_minbox ||
+       !stricmp(browsemask,old_browsemask) )
+        i = -3;
+
+   return(i);
+}
+
+/* merge existing full path with new one  */
+/* attempt to detect if file or directory */
+
+#define ATFILENAME 0
+#define SSTOOLSINI 1
+#define ATCOMMANDINTERACTIVE 2
+#define ATFILENAMESETNAME  3
+
+#define GETPATH (mode < 2) 
+
+/* copies the proposed new filename to the fullpath variable */
+/* does not copy directories for PAR files (modes 2 and 3)   */
+/* attempts to extract directory and test for existence (modes 0 and 1) */
+int merge_pathnames(char *oldfullpath, char *newfilename, int mode)
+{
+   int isadir = 0;
+   int isafile = 0;
+   int len;
+   char drive[FILE_MAX_DRIVE];
+   char dir[FILE_MAX_DIR];
+   char fname[FILE_MAX_FNAME];
+   char ext[FILE_MAX_EXT];
+
+   char drive1[FILE_MAX_DRIVE];
+   char dir1[FILE_MAX_DIR];
+   char fname1[FILE_MAX_FNAME];
+   char ext1[FILE_MAX_EXT];
+
+   /* no dot or slash so assume a file */
+   if(strchr(newfilename,'.')==NULL && strchr(newfilename,SLASHC) == NULL)  
+      isafile=1;
+   /* if slash by itself, it's a directory */
+   if(strcmp(newfilename,SLASH)==0)
+      isadir = 1;
+#ifndef XFRACT
+   /* if drive, colon, slash, is a directory */
+   if(strlen(newfilename) == 3 && 
+           newfilename[1] == ':' && 
+           newfilename[2] == SLASHC)
+      isadir = 1;
+#endif
+   /* check existence */
+   if(isadir==0 || isafile==1)
+   {
+       if(fr_findfirst(newfilename) == 0)
+          if(DTA.attribute & SUBDIR) /* exists and is dir */
+          {   
+             fix_dirname(newfilename);  /* add trailing slash */   
+             isadir = 1;
+             isafile = 0;
+          }
+          else
+             isafile = 1;
+   }
+
+   splitpath(newfilename,drive,dir,fname,ext);
+   splitpath(oldfullpath,drive1,dir1,fname1,ext1);
+   if(strlen(drive) != 0 && GETPATH)
+      strcpy(drive1,drive);
+   if(strlen(dir) != 0 && GETPATH)
+      strcpy(dir1,dir);
+   if(strlen(fname) != 0)
+      strcpy(fname1,fname);
+   if(strlen(ext) != 0)
+      strcpy(ext1,ext);
+   if(isadir == 0 && isafile == 0 && GETPATH)
+   {
+      makepath(oldfullpath,drive1,dir1,NULL,NULL);
+      len = strlen(oldfullpath);
+      if(len > 0)
+      {
+         char save;
+         /* strip trailing slash */
+         save = oldfullpath[len-1];
+         if(save == SLASHC)
+            oldfullpath[len-1] = 0;
+         if(access(oldfullpath,0))
+            isadir = -1;
+         oldfullpath[len-1] = save;
+      }
+   }  
+   makepath(oldfullpath,drive1,dir1,fname1,ext1);
+   return(isadir);
+}
+
+/* extract just the filename/extension portion of a path */
+void extract_filename(char *target, char *source)
+{
+   char fname[FILE_MAX_FNAME];
+   char ext[FILE_MAX_EXT];
+   splitpath(source,NULL,NULL,fname,ext);
+   makepath(target,"","",fname,ext);
+}
+
+/* I tried heap sort also - this is faster! */
+void shell_sort(void far *v1, int n, unsigned sz, int (__cdecl *fct)(VOIDFARPTR arg1,VOIDFARPTR arg2))
+{
+   int gap,i,j;
+   void far *temp;
+   char far *v;
+   v = (char far *)v1;
+   for(gap = n/2; gap > 0; gap /= 2)
+      for(i = gap; i<n; i++)
+         for(j=i-gap;j>=0; j -= gap)
+         {
+            if(fct((char far *far*)(v+j*sz),(char far *far*)(v+(j+gap)*sz)) <= 0)
+               break;
+            temp = *(char far *far*)(v+j*sz);
+            *(char far *far*)(v+j*sz) = *(char far *far*)(v+(j+gap)*sz);
+            *(char far *far*)(v+(j+gap)*sz) = temp;   
+         }
 }

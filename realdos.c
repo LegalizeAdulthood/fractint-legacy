@@ -20,43 +20,23 @@
 #include "helpdefs.h"
 #include "prototyp.h"
 
-/* routines in this module	*/
-
 static int menu_checkkey(int curkey,int choice);
 
 /* uncomment following for book version */
 /* #define WAITE */
 
-int release=1820; /* this has 2 implied decimals; increment it every synch */
+int release=1900; /* this has 2 implied decimals; increment it every synch */
 int patchlevel=0; /* patchlevel for DOS version */
-int xrelease=202;
+#ifdef XFRACT
+int xrelease=300;
+#endif
 
 /* fullscreen_choice options */
 #define CHOICERETURNKEY 1
 #define CHOICEMENU	2
 #define CHOICEHELP	4
-
-extern char diskfilename[];
-extern int using_jiim;
-extern int  xdots, ydots, sxdots, sydots, sxoffs, syoffs, vxdots;
-extern int  colors;
-extern int  dotmode;
-extern int  oktoprint;
-extern int  textrow, textcol, textrbase, textcbase;
-extern int  debugflag;
-extern int  fractype;
-extern int  calc_status;
-extern double param[];
-extern int  tabmode;
-extern int  color_dark,color_medium,color_bright;
-extern int  lookatmouse;
-extern int  gotrealdac;
-extern int  reallyega;
-extern SEGTYPE  extraseg;
-extern int  active_system;
-extern int  first_init;
-extern int initbatch;		/* 1 if batch run (no kbd)  */
-
+#define CHOICESCRUNCH	16
+#define CHOICESNOTSORTED 32
 
 /* int stopmsg(flags,message) displays message and waits for a key:
      message should be a max of 9 lines with \n's separating them;
@@ -73,24 +53,52 @@ extern int initbatch;		/* 1 if batch run (no kbd)  */
        &8 for Fractint for Windows & parser - use a fixed pitch font
       &16 for info only message (green box instead of red in DOS vsn)
    */
-int stopmsg (int flags, CHAR far *msg)
+#ifdef XFRACT   
+static char far s_errorstart[] = {"*** Error during startup:"};   
+#endif
+static char far s_escape_cancel[] = {"Escape to cancel, any other key to continue..."};
+static char far s_anykey[] = {"Any key to continue..."};
+static char far s_custom[] = {"Customized Version"}; 
+static char far s_notpublic[] = {"Not for Public Release"}; 
+int stopmsg (int flags, char far *msg)
 {
    int ret,toprow,color,savelookatmouse;
+   static unsigned char batchmode = 0;
+   if(debugflag != 0)
+   {
+      static FILE *fp = NULL;
+      if(fp==NULL)
+         fp=dir_fopen(workdir,"stopmsg.txt","w");
+      else
+         fp=dir_fopen(workdir,"stopmsg.txt","a");
+      if(fp != NULL)
+#ifndef XRACT
+      fprintf(fp,"%Fs\n",msg);
+#else
+      fprintf(fp,"%s\n",msg);
+#endif    
+      fclose(fp);
+   }
    if (active_system == 0 /* DOS */
      && first_init) {	  /* & cmdfiles hasn't finished 1st try */
+#ifdef XFRACT
       setvideotext();
       buzzer(2);
-      putstring(0,0,15,"*** Error during startup:");
+      putstring(0,0,15,s_errorstart);
       putstring(2,0,15,msg);
       movecursor(8,0);
-#ifdef XFRACT
       sleep(1);
       UnixDone();
-#endif
       exit(1);
+#else
+      printf("%Fs\n",msg);
+      dopause(1); /* pause deferred until after cmdfiles */
+      return(0);
+#endif
       }
-   if (initbatch == 1) { /* in batch mode */
+   if (initbatch >= 1 || batchmode) { /* in batch mode */
       initbatch = 4; /* used to set errorlevel */
+      batchmode = 1; /* fixes *second* stopmsg in batch mode bug */
       return (-1);
       }
    ret = 0;
@@ -106,9 +114,9 @@ int stopmsg (int flags, CHAR far *msg)
    textcbase = 2; /* left margin is 2 */
    putstring(toprow,0,7,msg);
    if (flags & 2)
-      putstring(textrow+2,0,7,"Escape to cancel, any other key to continue...");
+      putstring(textrow+2,0,7,s_escape_cancel);
    else
-      putstring(textrow+2,0,7,"Any key to continue...");
+      putstring(textrow+2,0,7,s_anykey);
    textcbase = 0; /* back to full line */
    color = (flags & 16) ? C_STOP_INFO : C_STOP_ERR;
    setattr(toprow,0,color,(textrow+1-toprow)*80);
@@ -117,8 +125,9 @@ int stopmsg (int flags, CHAR far *msg)
       buzzer((flags & 16) ? 0 : 2);
    while (keypressed()) /* flush any keyahead */
       getakey();
-   if (getakeynohelp() == ESC)
-      ret = -1;
+   if(debugflag != 324)
+      if (getakeynohelp() == ESC)
+         ret = -1;
    if ((flags & 1))
       blankrows(toprow,10,7);
    else
@@ -136,12 +145,12 @@ static int  textxdots,textydots;
       eating the key).
       It works in almost any video mode - does nothing in some very odd cases
       (HCGA hi-res with old bios), or when there isn't 10k of temp mem free. */
-int texttempmsg(char *msgparm)
+int texttempmsg(char far *msgparm)
 {
    if (showtempmsg(msgparm))
       return(-1);
 #ifndef XFRACT
-   while (!keypressed()) {} /* wait for a keystroke but don't eat it */
+   while (!keypressed()) ; /* wait for a keystroke but don't eat it */
 #else
    waitkeypressed(0); /* wait for a keystroke but don't eat it */
 #endif
@@ -156,23 +165,30 @@ void freetempmsg()
    temptextsave = NULL;
 }
 
-int showtempmsg(char *msgparm)
+int showtempmsg(char far *msgparm)
 {
    static long size = 0;
-   extern int color_dark,color_medium;
-   CHAR msg[41];
+   char msg[41];
    BYTE buffer[640];
    char far *fartmp;
    BYTE far *fontptr;
    BYTE *bufptr;
-   int i,j,k,xrepeat,yrepeat,fontchar,charnum;
+   int i,j,k,fontchar,charnum;
+   int xrepeat = 0;
+   int yrepeat = 0;
    int save_sxoffs,save_syoffs;
-   strncpy(msg,msgparm,40);
+   far_strncpy(msg,msgparm,40);
    msg[40] = 0; /* ensure max message len of 40 chars */
    if (dotmode == 11) { /* disk video, screen in text mode, easy */
       dvid_status(0,msg);
       return(0);
       }
+   if (active_system == 0 /* DOS */
+     && first_init) {	  /* & cmdfiles hasn't finished 1st try */
+      printf("%s\n",msg);
+      return(0);
+      }
+
    if ((fontptr = findfont(0)) == NULL) { /* old bios, no font table? */
       if (oktoprint == 0	       /* can't printf */
 	|| sxdots > 640 || sydots > 200) /* not willing to trust char cell size */
@@ -187,9 +203,9 @@ int showtempmsg(char *msgparm)
       textydots = yrepeat * 8;
       }
    /* worst case needs 10k */
-   if(temptextsave !=NULL)
+   if(temptextsave != NULL)
       if(size != (long)textxdots * (long)textydots)
-         freetempmsg();      
+         freetempmsg();
    size = (long)textxdots * (long)textydots;
    save_sxoffs = sxoffs;
    save_syoffs = syoffs;
@@ -220,7 +236,7 @@ int showtempmsg(char *msgparm)
 	    for (j = 0; j < 8; ++j) {
 	       for (k = 0; k < xrepeat; ++k) {
 		  if ((fontchar & 0x80) != 0)
-		     *bufptr = color_medium;
+		     *bufptr = (BYTE)color_medium;
 		  ++bufptr;
 		  }
 	       fontchar <<= 1;
@@ -284,12 +300,13 @@ void helptitle()
    putstringcenter(0,0,80,C_TITLE,msg);
 #else
 #ifdef WAITE
-   release=1821;
+   release=1900;
    patchlevel = 0;
-   sprintf(msg,"Special FRACTINT Version %d.%01d",release/100,(release%100)/10);
-#else
-   sprintf(msg,"FRACTINT Version %d.%01d",release/100,(release%100)/10);
 #endif
+   /*
+   sprintf(msg,"Special FRACTINT Version %d.%01d",release/100,(release%100)/10);
+   */
+   sprintf(msg,"FRACTINT Version %d.%01d",release/100,(release%100)/10);
    if (release%10) {
       sprintf(buf,"%01d",release%10);
       strcat(msg,buf);
@@ -300,8 +317,8 @@ void helptitle()
       strcat(msg,buf);
       }
 #endif
-#ifdef WAITE /* realdos.c */
-   strcat(msg," for the Waite Group's Fractal Creations 2nd Ed.");
+#if 0 /*WAITE*/ /* realdos.c */
+   strcat(msg," for the Waite Group's Image Lab 2nd Edition");
 #endif /* WAITE - realdos.c */
    putstringcenter(0,0,80,C_TITLE,msg);
 #ifdef WAITE
@@ -309,13 +326,13 @@ void helptitle()
 #endif
 #endif
 /* uncomment next for production executable: */
-   /* return;  */
+   /* return; */ 
    /*NOTREACHED*/
    if (debugflag == 3002) return;
 /* putstring(0,2,C_TITLE_DEV,"Development Version"); */
 /* replace above by next after creating production release, for release source */
-   putstring(0,3,C_TITLE_DEV, "Customized Version"); 
-   putstring(0,55,C_TITLE_DEV,"Not for Public Release");
+   putstring(0,3,C_TITLE_DEV, s_custom); 
+   putstring(0,55,C_TITLE_DEV,s_notpublic); 
 }
 
 
@@ -342,17 +359,15 @@ int putstringcenter(int row, int col, int width, int attr, char far *msg)
 
 
 #ifndef XFRACT
-static int screenctr=-1;
+static int screenctr = -1;
 #else
-static int screenctr=0;
+static int screenctr = 0;
 #endif
 #define MAXSCREENS 3
 static BYTE far *savescreen[MAXSCREENS];
 static int saverc[MAXSCREENS+1];
-static FILE *savescf=NULL;
+static FILE *savescf = NULL;
 static char scsvfile[]="fractscr.tmp";
-extern int text_type;
-extern int textaddr;
 
 void stackscreen()
 {
@@ -361,7 +376,8 @@ void stackscreen()
    int savebytes;
    int i;
    BYTE far *ptr;
-   char buf[100];
+   char buf[256];
+   memcpy(buf,suffix,256);
    saverc[screenctr+1] = textrow*80 + textcol;
    if (++screenctr) { /* already have some stacked */
 	 static char far msg[]={"stackscreen overflow"};
@@ -371,16 +387,16 @@ void stackscreen()
 	 }
       vidmem = MK_FP(textaddr,0);
       savebytes = (text_type == 0) ? 4000 : 16384;
-      if ((ptr = savescreen[i] = farmemalloc((long)savebytes)))
+      if ((ptr = savescreen[i] = farmemalloc((long)savebytes)) != NULL)
 	 far_memcpy(ptr,vidmem,savebytes);
       else {
 	 if (savescf == NULL) { /* create file just once */
-	    if ((savescf = fopen(scsvfile,"wb")) == NULL)
+	    if ((savescf = dir_fopen(tempdir,scsvfile,"wb")) == NULL)
 	       goto fileproblem;
 	    if (fwrite(buf,MAXSCREENS,16384,savescf) != 16384)
 	       goto fileproblem;
 	    fclose(savescf);
-	    if ((savescf = fopen(scsvfile,"r+b")) == NULL) {
+	    if ((savescf = dir_fopen(tempdir,scsvfile,"r+b")) == NULL) {
 	    static char far msg[]={"insufficient memory, aborting"};
 fileproblem:   stopmsg(1,msg);
 	       exit(1);
@@ -394,6 +410,7 @@ fileproblem:   stopmsg(1,msg);
       }
    else
       setfortext();
+   memcpy(suffix,buf,256);
 #else
    int i;
    BYTE far *ptr;
@@ -423,24 +440,27 @@ void unstackscreen()
    char far *vidmem;
    int savebytes;
    BYTE far *ptr;
+   char buf[256];
+   memcpy(buf,suffix,256);
    textrow = saverc[screenctr] / 80;
    textcol = saverc[screenctr] % 80;
    if (--screenctr >= 0) { /* unstack */
       vidmem = MK_FP(textaddr,0);
       savebytes = (text_type == 0) ? 4000 : 16384;
-      if ((ptr = savescreen[screenctr])) {
+      if ((ptr = savescreen[screenctr]) != NULL) {
 	 far_memcpy(vidmem,ptr,savebytes);
 	 farmemfree(ptr);
 	 }
       else {
 	 fseek(savescf,(long)(savebytes*screenctr),SEEK_SET);
 	 while (--savebytes >= 0)
-	    *(vidmem++) = getc(savescf);
+	    *(vidmem++) = (BYTE)getc(savescf);
 	 }
       }
    else
       setforgraphics();
    movecursor(-1,-1);
+   memcpy(suffix,buf,256);
 #else
    BYTE far *ptr;
    textrow = saverc[screenctr] / 80;
@@ -467,35 +487,36 @@ void discardscreen()
 }
 
 
-/* --------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------ */
 
 char speed_prompt[]="Speed key string";
 
 int fullscreen_choice(
-	int options,	     /* &2 use menu coloring scheme	       */
-			     /* &4 include F1 for help in instructions */
-			     /* &8 add caller's instr after normal set */
-	char far *hdg,	     /* heading info, \n delimited	       */
-	char far *hdg2,	     /* column heading or NULL		       */
-	char far *instr,     /* instructions, \n delimited, or NULL    */
-	int numchoices,      /* How many choices in list	       */
-	char **choices,      /* array of choice strings 	       */
-	int *attributes,     /* &3: 0 normal color, 1,3 highlight      */
-			     /* &256 marks a dummy entry	       */
-	int boxwidth,	     /* box width, 0 for calc (in items)       */
-	int boxdepth,	     /* box depth, 0 for calc, 99 for max      */
-	int colwidth,	     /* data width of a column, 0 for calc     */
-	int current,	     /* start with this item		       */
-	void (*formatitem)(),/* routine to display an item or NULL     */
-	char *speedstring,   /* returned speed key value, or NULL >[30]*/
-	int (*speedprompt)(),/* routine to display prompt or NULL      */
-	int (*checkkey)()    /* routine to check keystroke or NULL     */
+    int options,	          /* &2 use menu coloring scheme            */
+                                  /* &4 include F1 for help in instructions */
+                                  /* &8 add caller's instr after normal set */
+                                  /* &16 menu items up one line             */
+    char far *hdg,	          /* heading info, \n delimited             */
+    char far *hdg2,	          /* column heading or NULL                 */
+    char far *instr,              /* instructions, \n delimited, or NULL    */
+    int numchoices,               /* How many choices in list               */
+    char far*far*choices,         /* array of choice strings                */
+    int far *attributes,          /* &3: 0 normal color, 1,3 highlight      */
+                                  /* &256 marks a dummy entry               */
+    int boxwidth,	          /* box width, 0 for calc (in items)       */
+    int boxdepth,	          /* box depth, 0 for calc, 99 for max      */
+    int colwidth,	          /* data width of a column, 0 for calc     */
+    int current,                  /* start with this item                   */
+    void (*formatitem)(int,char*),/* routine to display an item or NULL     */
+    char *speedstring,            /* returned speed key value, or NULL      */
+    int (*speedprompt)(int,int,int,char *,int),/* routine to display prompt or NULL      */
+    int (*checkkey)(int,int)      /* routine to check keystroke or NULL     */
 )
-   /* return is: n>=0 for choice n selected,
-		 -1 for escape
-		  k for checkkey routine return value k (if not 0 nor -1)
-      speedstring[0] != 0 on return if string is present
-      */
+    /* return is: n>=0 for choice n selected,
+                  -1 for escape
+                  k for checkkey routine return value k (if not 0 nor -1)
+                  speedstring[0] != 0 on return if string is present
+    */
 {
 static char far choiceinstr1a[]="Use the cursor keys to highlight your selection";
 static char far choiceinstr1b[]="Use the cursor keys or type a value to make a selection";
@@ -507,34 +528,50 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
    int reqdrows;
    int topleftrow,topleftcol;
    int topleftchoice;
-   int speedrow;  /* speed key prompt */
-   int boxitems;  /* boxwidth*boxdepth */
-   int curkey,increment,rev_increment;
+   int speedrow = 0;  /* speed key prompt */
+   int boxitems;      /* boxwidth*boxdepth */
+   int curkey,increment,rev_increment = 0;
    int redisplay;
-   int i,j,k;
+   int i,j,k = 0;
    char far *charptr;
    char buf[81];
    int speed_match = 0;
    char curitem[81];
-   char *itemptr;
+   char far *itemptr;
    int ret,savelookatmouse;
-
+   int scrunch;  /* scrunch up a line */
+ 
+   if(options&CHOICESCRUNCH)
+      scrunch = 1;
+   else
+      scrunch = 0;
    savelookatmouse = lookatmouse;
    lookatmouse = 0;
    ret = -1;
    if (speedstring
      && (i = strlen(speedstring)) > 0) { /* preset current to passed string */
       current = 0;
-      while (current < numchoices
-	&& (k = strncasecmp(speedstring,choices[current],i)) > 0)
-	 ++current;
-      if (k < 0 && current > 0)  /* oops - overshot */
-	 --current;
+      if(options&CHOICESNOTSORTED)
+      { 
+         while (current < numchoices
+	     && (k = strncasecmp(speedstring,choices[current],i)) != 0)
+	    ++current;
+         if(k != 0)
+            current = 0;
+      }
+      else
+      {
+         while (current < numchoices
+	     && (k = strncasecmp(speedstring,choices[current],i)) > 0)
+	    ++current;
+         if (k < 0 && current > 0)  /* oops - overshot */
+	    --current;
+      }
       if (current >= numchoices) /* bumped end of list */
 	 current = numchoices - 1;
-      }
+   }
 
-   while (1) {
+   for(;;) {
       if (current >= numchoices)  /* no real choice in the list? */
 	 goto fs_choice_end;
       if ((attributes[current] & 256) == 0)
@@ -559,11 +596,13 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
 
    if (colwidth == 0)		  /* find widest column */
       for (i = 0; i < numchoices; ++i)
-	 if (strlen(choices[i]) > colwidth)
-	    colwidth = strlen(choices[i]);
-
+      {
+         int len;
+	 if ((len=far_strlen(choices[i])) > colwidth)
+	    colwidth = len;
+      }
    /* title(1), blank(1), hdg(n), blank(1), body(n), blank(1), instr(?) */
-   reqdrows = 3;		  /* calc rows available */
+   reqdrows = 3 - scrunch;		  /* calc rows available */
    if (hdg)
       reqdrows += titlelines + 1;
    if (instr) { 		  /* count instructions lines */
@@ -612,7 +651,7 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
    i = (25 - reqdrows - boxdepth) / 2;
    i -= i / 4;				   /* higher is better if lots extra */
    topleftrow = 3 + titlelines + i;	   /* row of topleft choice */
-
+    
    /* now set up the overall display */
    helptitle(); 			   /* clear, display title line */
    setattr(1,0,C_PROMPT_BKGRD,24*80);	   /* init rest to background */
@@ -634,6 +673,7 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
 	 *speedstring = 0;
 	 if (++i < 22) ++i;
 	 }
+      i -= scrunch;
       putstringcenter(i++,0,80,C_PROMPT_BKGRD,
 	    (speedstring) ? choiceinstr1b : choiceinstr1a);
       putstringcenter(i++,0,80,C_PROMPT_BKGRD,
@@ -643,7 +683,7 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
    if (instr) { 			   /* display caller's instructions */
       charptr = instr;
       j = -1;
-      while ((buf[++j] = *(charptr++)))
+      while ((buf[++j] = *(charptr++)) != 0)
 	 if (buf[j] == '\n') {
 	    buf[j] = 0;
 	    putstringcenter(i++,0,80,C_PROMPT_BKGRD,buf);
@@ -659,8 +699,8 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
 	 && topleftchoice + boxitems < numchoices))
       topleftchoice += boxwidth;
    redisplay = 1;
-
-   while (1) { /* main loop */
+   topleftrow -= scrunch;
+   for(;;) { /* main loop */
 
       if (redisplay) {			     /* display the current choices */
 	 if ((options & CHOICEMENU) == 0) {
@@ -678,7 +718,10 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
 	    else
 	       k = C_PROMPT_MED;
 	    if (formatitem)
-	       (*formatitem)(j,charptr=buf);
+	    {
+	       (*formatitem)(j,buf);
+	       charptr=buf;
+	    }   
 	    else
 	       charptr = choices[j];
 	    putstring(topleftrow+i/boxwidth,topleftcol+(i%boxwidth)*colwidth,
@@ -698,7 +741,10 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
 
       i = current - topleftchoice;	     /* highlight the current choice */
       if (formatitem)
-	 (*formatitem)(current,itemptr=curitem);
+      {
+	 (*formatitem)(current,curitem);
+	 itemptr=curitem;
+      }
       else
 	 itemptr = choices[current];
       putstring(topleftrow+i/boxwidth,topleftcol+(i%boxwidth)*colwidth,
@@ -819,7 +865,7 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
 		  speedstring[--i] = 0;
 	       if (33 <= curkey && curkey <= 126 && i < 30) {
 		  curkey = tolower(curkey);
-		  speedstring[i] = curkey;
+		  speedstring[i] = (char)curkey;
 		  speedstring[++i] = 0;
 		  }
 	       if (i > 0) {		 /* locate matching type */
@@ -841,7 +887,7 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
 	 if (speedstring)		/* zap speedstring */
 	    speedstring[0] = 0;
 	 }
-      while (1) {			/* adjust to a non-comment choice */
+      for(;;) {			/* adjust to a non-comment choice */
 	 if (current < 0 || current >= numchoices)
 	     increment = rev_increment;
 	 else if ((attributes[current] & 256) == 0)
@@ -868,10 +914,27 @@ fs_choice_end:
 
 }
 
+#if (_MSC_VER >= 700)
+#pragma code_seg ("realdos1_text")     /* place following in an overlay */
+#endif
+
+/* squeeze space out of string */
+char *despace(char *str)
+{
+      char *obuf, *nbuf;
+
+      for (obuf = str, nbuf = str; *obuf && obuf; ++obuf)
+      {
+            if (!isspace(*obuf))
+                  *nbuf++ = *obuf;
+      }
+      *nbuf = 0;
+      return str;
+}
 
 #ifndef XFRACT
 /* case independent version of strncmp */
-int strncasecmp(char *s,char *t,int ct)
+int strncasecmp(char far *s,char far *t,int ct)
 {
    for(; (tolower(*s) == tolower(*t)) && --ct ; s++,t++)
       if(*s == '\0')
@@ -880,6 +943,10 @@ int strncasecmp(char *s,char *t,int ct)
 }
 #endif
 
+#define LOADPROMPTSCHOICES(X,Y)     {\
+   static FCODE tmp[] = { Y };\
+   choices[X]= (char far *)tmp;\
+   }
 
 static int menutype;
 #define MENU_HDG 3
@@ -887,17 +954,20 @@ static int menutype;
 
 int main_menu(int fullmenu)
 {
-   char *choices[44]; /* 2 columns * 22 rows */
+   char far *choices[44]; /* 2 columns * 22 rows */
    int attributes[44];
    int choicekey[44];
    int i;
    int nextleft,nextright;
-   int oldtabmode,oldhelpmode;
+   int oldtabmode /* ,oldhelpmode */;
+   static char far MAIN_MENU[] = {"MAIN MENU"};
+   int showjuliatoggle; 
    oldtabmode = tabmode;
-   oldhelpmode = helpmode;
+   /* oldhelpmode = helpmode; */
 top:
    menutype = fullmenu;
    tabmode = 0;
+   showjuliatoggle = 0;
    for (i = 0; i < 44; ++i) {
       attributes[i] = 256;
       choices[i] = "";
@@ -907,135 +977,153 @@ top:
    nextright = -1;
 
    if (fullmenu) {
-      choices[nextleft+=2] = "      CURRENT IMAGE";
+      LOADPROMPTSCHOICES(nextleft+=2,"      CURRENT IMAGE");
       attributes[nextleft] = 256+MENU_HDG;
       choicekey[nextleft+=2] = 13; /* enter */
       attributes[nextleft] = MENU_ITEM;
       if (calc_status == 2)
-	 choices[nextleft] = "continue calculation";
+      {
+	 LOADPROMPTSCHOICES(nextleft,"continue calculation");
+      }
       else
-	 choices[nextleft] = "return to image";
+      {
+	 LOADPROMPTSCHOICES(nextleft,"return to image");
+      }
       choicekey[nextleft+=2] = 9; /* tab */
       attributes[nextleft] = MENU_ITEM;
-      choices[nextleft] = "info about image      <tab>";
+      LOADPROMPTSCHOICES(nextleft,"info about image      <tab>");
       choicekey[nextleft+=2] = -10;
       attributes[nextleft] = MENU_ITEM;
-      choices[nextleft] = "zoom box functions...";
+      LOADPROMPTSCHOICES(nextleft,"zoom box functions...");
       choicekey[nextleft+=2] = 'o';
       attributes[nextleft] = MENU_ITEM;
-      choices[nextleft] = "orbits window          <o>";
+      LOADPROMPTSCHOICES(nextleft,"orbits window          <o>");
       if(!(fractype==JULIA || fractype==JULIAFP || fractype==INVERSEJULIA))
           nextleft+=2; 
       }
-   choices[nextleft+=2] = "      NEW IMAGE";
+   LOADPROMPTSCHOICES(nextleft+=2,"      NEW IMAGE");
    attributes[nextleft] = 256+MENU_HDG;
    choicekey[nextleft+=2] = DELETE;
    attributes[nextleft] = MENU_ITEM;
-   choices[nextleft] = "select video mode...  <del>";
+   LOADPROMPTSCHOICES(nextleft,"select video mode...  <del>");
    choicekey[nextleft+=2] = 't';
    attributes[nextleft] = MENU_ITEM;
-   choices[nextleft] = "select fractal type    <t>";
+   LOADPROMPTSCHOICES(nextleft,"select fractal type    <t>");
    if (fullmenu) {
       if ((curfractalspecific->tojulia != NOFRACTAL
 	  && param[0] == 0.0 && param[1] == 0.0)
 	  || curfractalspecific->tomandel != NOFRACTAL) {
 	     choicekey[nextleft+=2] = ' ';
 	     attributes[nextleft] = MENU_ITEM;
-	     choices[nextleft] = "toggle to/from julia <space>";
+	     LOADPROMPTSCHOICES(nextleft,"toggle to/from julia <space>");
+             showjuliatoggle = 1;
 	  }    
       if(fractype==JULIA || fractype==JULIAFP || fractype==INVERSEJULIA) {
 	     choicekey[nextleft+=2] = 'j';
 	     attributes[nextleft] = MENU_ITEM;
-	     choices[nextleft] = "toggle to/from inverse <j>";
+	     LOADPROMPTSCHOICES(nextleft,"toggle to/from inverse <j>");
+	     showjuliatoggle = 1;
 	  }
-      choicekey[nextleft+=2] = '\\';
+      choicekey[nextleft+=2] = 'h';
       attributes[nextleft] = MENU_ITEM;
-      choices[nextleft] = "return to prior image  <\\>";
+      LOADPROMPTSCHOICES(nextleft,"return to prior image  <h>");
+
+      choicekey[nextleft+=2] = 8;
+      attributes[nextleft] = MENU_ITEM;
+      LOADPROMPTSCHOICES(nextleft,"reverse thru history <ctl-h>");
    }
-   nextleft += 2;
-   choices[nextleft+=2] = "      OPTIONS";
+   else
+      nextleft += 2;
+   LOADPROMPTSCHOICES(nextleft+=2,"      OPTIONS");
    attributes[nextleft] = 256+MENU_HDG;
    choicekey[nextleft+=2] = 'x';
    attributes[nextleft] = MENU_ITEM;
-   choices[nextleft] = "basic options...       <x>";
+   LOADPROMPTSCHOICES(nextleft,"basic options...       <x>");
    choicekey[nextleft+=2] = 'y';
    attributes[nextleft] = MENU_ITEM;
-   choices[nextleft] = "extended options...    <y>";
+   LOADPROMPTSCHOICES(nextleft,"extended options...    <y>");
    choicekey[nextleft+=2] = 'z';
    attributes[nextleft] = MENU_ITEM;
-   choices[nextleft] = "type-specific parms... <z>";
+   LOADPROMPTSCHOICES(nextleft,"type-specific parms... <z>");
    choicekey[nextleft+=2] = 'v';
    attributes[nextleft] = MENU_ITEM;
-   choices[nextleft] = "view window options... <v>";
-   choicekey[nextleft+=2] = 'i';
+   LOADPROMPTSCHOICES(nextleft,"view window options... <v>");
+   if(showjuliatoggle == 0)
+   {
+      choicekey[nextleft+=2] = 'i';
+      attributes[nextleft] = MENU_ITEM;
+      LOADPROMPTSCHOICES(nextleft,"fractal 3D parms...    <i>");
+   }
+   choicekey[nextleft+=2] = 2;
    attributes[nextleft] = MENU_ITEM;
-   choices[nextleft] = "fractal 3D parms...    <i>";
+   LOADPROMPTSCHOICES(nextleft,"browse parms...      <ctl-b>");
 
-   choices[nextright+=2] = "        FILE";
+   LOADPROMPTSCHOICES(nextright+=2,"        FILE");
    attributes[nextright] = 256+MENU_HDG;
    choicekey[nextright+=2] = '@';
    attributes[nextright] = MENU_ITEM;
-   choices[nextright] = "run saved command set... <@>";
+   LOADPROMPTSCHOICES(nextright,"run saved command set... <@>");
    if (fullmenu) {
       choicekey[nextright+=2] = 's';
       attributes[nextright] = MENU_ITEM;
-      choices[nextright] = "save image to file       <s>";
+      LOADPROMPTSCHOICES(nextright,"save image to file       <s>");
       }
    choicekey[nextright+=2] = 'r';
    attributes[nextright] = MENU_ITEM;
-   choices[nextright] = "load image from file...  <r>";
+   LOADPROMPTSCHOICES(nextright,"load image from file...  <r>");
    choicekey[nextright+=2] = '3';
    attributes[nextright] = MENU_ITEM;
-   choices[nextright] = "3d transform from file...<3>";
+   LOADPROMPTSCHOICES(nextright,"3d transform from file...<3>");
    if (fullmenu) {
       choicekey[nextright+=2] = '#';
       attributes[nextright] = MENU_ITEM;
-      choices[nextright] = "3d overlay from file.....<#>";
+      LOADPROMPTSCHOICES(nextright,"3d overlay from file.....<#>");
       choicekey[nextright+=2] = 'b';
       attributes[nextright] = MENU_ITEM;
-      choices[nextright] = "save current parameters..<b>";
+      LOADPROMPTSCHOICES(nextright,"save current parameters..<b>");
       choicekey[nextright+=2] = 'p';
       attributes[nextright] = MENU_ITEM;
-      choices[nextright] = "print image              <p>";
+      LOADPROMPTSCHOICES(nextright,"print image              <p>");
       }
    choicekey[nextright+=2] = 'd';
    attributes[nextright] = MENU_ITEM;
-   choices[nextright] = "shell to dos             <d>";
+   LOADPROMPTSCHOICES(nextright,"shell to dos             <d>");
    choicekey[nextright+=2] = 'g';
    attributes[nextright] = MENU_ITEM;
-   choices[nextright] = "give command string      <g>";
+   LOADPROMPTSCHOICES(nextright,"give command string      <g>");
    choicekey[nextright+=2] = ESC;
    attributes[nextright] = MENU_ITEM;
-   choices[nextright] = "quit Fractint           <esc>";
+   LOADPROMPTSCHOICES(nextright,"quit Fractint           <esc>");
    choicekey[nextright+=2] = INSERT;
    attributes[nextright] = MENU_ITEM;
-   choices[nextright] = "restart Fractint        <ins>";
+   LOADPROMPTSCHOICES(nextright,"restart Fractint        <ins>");
    if (fullmenu && gotrealdac && colors >= 16) {
-      nextright += 2;
-      choices[nextright+=2] = "       COLORS";
+      /* nextright += 2; */
+      LOADPROMPTSCHOICES(nextright+=2,"       COLORS");
       attributes[nextright] = 256+MENU_HDG;
-      /*** choicekey[nextright+=2] = -12;
-	    attributes[nextright] = MENU_ITEM;
-	    choices[nextright] = "color cycling menu...";
-	    choicekey[nextright+=2] = -13;
-	    attributes[nextright] = MENU_ITEM;
-	    choices[nextright] = "palette editing menu..."; ***/
       choicekey[nextright+=2] = 'c';
       attributes[nextright] = MENU_ITEM;
-      choices[nextright] = "color cycling mode       <c>";
+      LOADPROMPTSCHOICES(nextright,"color cycling mode       <c>");
       choicekey[nextright+=2] = '+';
       attributes[nextright] = MENU_ITEM;
-      choices[nextright] = "rotate palette      <+>, <->";
+      LOADPROMPTSCHOICES(nextright,"rotate palette      <+>, <->");
       if (colors > 16) {
 	 if (!reallyega) {
 	    choicekey[nextright+=2] = 'e';
 	    attributes[nextright] = MENU_ITEM;
-	    choices[nextright] = "palette editing mode     <e>";
+	    LOADPROMPTSCHOICES(nextright,"palette editing mode     <e>");
 	    }
 	 choicekey[nextright+=2] = 'a';
 	 attributes[nextright] = MENU_ITEM;
-	 choices[nextright] = "make starfield           <a>";
+	 LOADPROMPTSCHOICES(nextright,"make starfield           <a>");
 	 }
+      choicekey[nextright+=2] = 1;
+      attributes[nextright] = MENU_ITEM;
+      LOADPROMPTSCHOICES(nextright,   "ant automaton          <ctl-a>");
+
+      choicekey[nextright+=2] = 19;
+      attributes[nextright] = MENU_ITEM;
+      LOADPROMPTSCHOICES(nextright,   "stereogram             <ctl-s>");
       }
 
    i = (keypressed()) ? getakey() : 0;
@@ -1043,9 +1131,9 @@ top:
       helpmode = HELPMAIN;	   /* switch help modes */
       if ((nextleft += 2) < nextright)
 	 nextleft = nextright + 1;
-      i = fullscreen_choice(CHOICEMENU,
-	  "MAIN MENU",
-	  NULL,NULL,nextleft,choices,attributes,
+      i = fullscreen_choice(CHOICEMENU+CHOICESCRUNCH,
+	  MAIN_MENU,
+	  NULL,NULL,nextleft,(char far * far *)choices,attributes,
 	  2,nextleft/2,29,0,NULL,NULL,NULL,menu_checkkey);
       if (i == -1)     /* escape */
 	 i = ESC;
@@ -1086,19 +1174,24 @@ top:
    return(i);
 }
 
+#if (_MSC_VER >= 700)
+#pragma code_seg ()         /* back to normal segment */
+#endif
+
 static int menu_checkkey(int curkey,int choice)
-{
+{ /* choice is dummy used by other routines called by fullscreen_choice() */
    int testkey;
+   testkey = choice; /* for warning only */
    testkey = (curkey>='A' && curkey<='Z') ? curkey+('a'-'A') : curkey;
 #ifdef XFRACT
    /* We use F2 for shift-@, annoyingly enough */
    if (testkey == F2) return(0-testkey);
 #endif
-   if (strchr("@txyzgvir3dj",testkey) || testkey == INSERT
+   if (strchr("@txyzgvir3dj",testkey) || testkey == INSERT
      || testkey == ESC || testkey == DELETE)
       return(0-testkey);
    if (menutype) {
-      if (strchr("\\sobp",testkey) || testkey == 9)
+      if (strchr("\\sobpkrh",testkey) || testkey == TAB)
 	 return(0-testkey);
       if (testkey == ' ')
 	 if ((curfractalspecific->tojulia != NOFRACTAL
@@ -1112,6 +1205,9 @@ static int menu_checkkey(int curkey,int choice)
 	   && (testkey == 'a' || (!reallyega && testkey == 'e')))
 	    return(0-testkey);
 	 }
+      /* Alt-A and Alt-S */
+      if (testkey == 1030 || testkey == 1031 ) 
+	 return(0-testkey);
       }
    if (check_vidmode_key(0,testkey) >= 0)
       return(0-testkey);
@@ -1140,7 +1236,7 @@ int input_field(
    strcpy(savefld,fld);
    insert = started = offset = 0;
    display = 1;
-   while (1) {
+   for(;;) {
       strcpy(buf,fld);
       i = strlen(buf);
       while (i < len)
@@ -1203,12 +1299,12 @@ int input_field(
 	    break;
 	 default:
             if (nonalpha(curkey)) {
-	       if (checkkey && (ret = (*checkkey)(curkey)))
+	       if (checkkey && (ret = (*checkkey)(curkey)) != 0)
 		  goto inpfld_end;
 	       break;				     /* non alphanum char */
 	       }
 	    if (offset >= len) break;		     /* at end of field */
-	    if (insert && started && strlen(fld) >= len)
+	    if (insert && started && strlen(fld) >= (size_t)len)
 	       break;				     /* insert & full */
 	    if ((options & 1)
 	      && (curkey < '0' || curkey > '9')
@@ -1230,9 +1326,9 @@ int input_field(
 		  --j;
 		  }
 	       }
-	    if (offset >= strlen(fld))
+	    if ((size_t)offset >= strlen(fld))
 	       fld[offset+1] = 0;
-	    fld[offset++] = curkey;
+	    fld[offset++] = (char)curkey;
 	    /* if "e" or "p" in first col make number e or pi */
 	    if ((options & 3) == 1) { /* floating point */
 	       double tmpd;
@@ -1266,14 +1362,14 @@ inpfld_end:
 
 int field_prompt(
 	int options,	    /* &1 numeric value, &2 integer */
-	char *hdg,	    /* heading, \n delimited lines */
-	char *instr,	    /* additional instructions or NULL */
+	char far *hdg,	    /* heading, \n delimited lines */
+	char far *instr,    /* additional instructions or NULL */
 	char *fld,	    /* the field itself */
 	int len,	    /* field length (declare as 1 larger for \0) */
 	int (*checkkey)(int)   /* routine to check non data keys, or NULL */
 	)
 {
-   char *charptr;
+   char far *charptr;
    int boxwidth,titlelines,titlecol,titlerow;
    int promptcol;
    int i,j;
@@ -1313,7 +1409,7 @@ int field_prompt(
    if (instr) { 			  /* display caller's instructions */
       charptr = instr;
       j = -1;
-      while ((buf[++j] = *(charptr++)))
+      while ((buf[++j] = *(charptr++)) != 0)
 	 if (buf[j] == '\n') {
 	    buf[j] = 0;
 	    putstringcenter(i++,0,80,C_PROMPT_BKGRD,buf);
@@ -1342,7 +1438,7 @@ int thinking(int options,char *msg)
    static int thinkstate = -1;
    static char *wheel[] = {"-","\\","|","/"};
    static int thinkcol;
-   static int count=0;
+   static int count = 0;
    char buf[81];
    if (options == 0) {
       if (thinkstate >= 0) {
@@ -1388,9 +1484,7 @@ BYTE far *swapvidbuf;
 int swaplength;
 static int swaptype = -1;
 static int swapblklen; /* must be a power of 2 */
-#ifndef XFRACT
-extern BYTE suffix[4096];
-#else
+#ifdef XFRACT
 BYTE suffix[4096];
 #endif
 
@@ -1398,7 +1492,6 @@ BYTE suffix[4096];
 
 int savegraphics()
 {
-   extern int made_dsktemp;
    int i;
    struct XMM_Move   xmmparms;
 
@@ -1418,7 +1511,7 @@ int savegraphics()
       swapblklen = 16384;
       }
    else if (debugflag != 420
-     && xmmquery() !=0
+     && xmmquery() != 0
      && (memhandle = xmmallocate((unsigned int)((swaptotlen + 1023) >> 10)))
 	 != 0) {
       swaptype = 1; /* use extended memory */
@@ -1431,10 +1524,10 @@ int savegraphics()
    /* MCP 7-7-91, If 'memhandle' is an 'unsigned int', how is it ever going
       to be equal to -1?
 
-      if ((memhandle = open(diskfilename,O_CREAT|O_WRONLY|O_BINARY,S_IWRITE))
+      if ((memhandle = dir_open(tempdir,diskfilename,O_CREAT|O_WRONLY|O_BINARY,S_IWRITE))
 	 == -1) {
    */
-      if ((memhandle = open(diskfilename,O_CREAT|O_WRONLY|O_BINARY,S_IWRITE))
+      if ((memhandle = dir_open(tempdir,diskfilename,O_CREAT|O_WRONLY|O_BINARY,S_IWRITE))
 	 == 0xffff) {
 
 
@@ -1442,7 +1535,6 @@ dskfile_error:
 	 setvideotext(); /* text mode */
 	 setclear();
          {
-            extern char diskfilename[];
             static char far s1[] = {"error in temp file "};
             static char far s2[] = { " (disk full?) - aborted\n\n"};
 	    printf("%Fs%s%Fs",s1,diskfilename,s2);
@@ -1454,9 +1546,9 @@ dskfile_error:
    while (swapoffset < swaptotlen) {
       swaplength = swapblklen;
       if ((swapoffset & (swapblklen-1)) != 0)
-	 swaplength = swapblklen - (swapoffset & (swapblklen-1));
-      if (swaplength > swaptotlen - swapoffset)
-	 swaplength = swaptotlen - swapoffset;
+	 swaplength = (int)(swapblklen - (swapoffset & (swapblklen-1)));
+      if ((unsigned long)swaplength > (swaptotlen - swapoffset))
+	 swaplength = (int)(swaptotlen - swapoffset);
       (*swapsetup)(); /* swapoffset,swaplength -> sets swapvidbuf,swaplength */
       switch(swaptype) {
 	 case 0:
@@ -1484,20 +1576,22 @@ dskfile_error:
    return 0;
 }
 
-void restoregraphics()
+int restoregraphics()
 {
    struct XMM_Move   xmmparms;
 
+   if(swaptype == -1)
+      return(-1);
    swapoffset = 0;
    if (swaptype == 2)
-      memhandle = open(diskfilename,O_RDONLY|O_BINARY,S_IREAD);
+      memhandle = dir_open(tempdir,diskfilename,O_RDONLY|O_BINARY,S_IREAD);
    swapvidbuf = MK_FP(extraseg+0x1000,0); /* for swapnormwrite case */
    while (swapoffset < swaptotlen) {
       swaplength = swapblklen;
       if ((swapoffset & (swapblklen-1)) != 0)
-	 swaplength = swapblklen - (swapoffset & (swapblklen-1));
-      if (swaplength > swaptotlen - swapoffset)
-	 swaplength = swaptotlen - swapoffset;
+	 swaplength = (int)(swapblklen - (swapoffset & (swapblklen-1)));
+      if ((unsigned long)swaplength > (swaptotlen - swapoffset))
+	 swaplength = (int)(swaptotlen - swapoffset);
       if (swapsetup != swapnormread)
 	 (*swapsetup)(); /* swapoffset,swaplength -> sets swapvidbuf,swaplength */
       switch(swaptype) {
@@ -1525,8 +1619,12 @@ void restoregraphics()
    if (swaptype == 2)
       close(memhandle);
    discardgraphics();
+   return(0);
 }
 
+#else
+int savegraphics() {return 0;}
+int restoregraphics() {return 0;}
 #endif
 
 void discardgraphics() /* release expanded/extended memory if any in use */
@@ -1543,10 +1641,19 @@ void discardgraphics() /* release expanded/extended memory if any in use */
 #endif
 }
 
-extern int badconfig;
-extern struct videoinfo far videotable[];
-struct videoinfo far *vidtbl;  /* temporarily loaded fractint.cfg info */
+#if (_MSC_VER >= 700)
+#pragma code_seg ("realdos1_text")     /* place following in an overlay */
+#endif
+
+VIDEOINFO *vidtbl;  /* temporarily loaded fractint.cfg info */
 int vidtbllen;		       /* number of entries in above	       */
+
+int showvidlength()
+{
+   int sz;
+   sz = (sizeof(VIDEOINFO)+sizeof(int))*MAXVIDEOMODES;
+   return(sz);
+}
 
 int load_fractint_cfg(int options)
 {
@@ -1559,7 +1666,7 @@ int load_fractint_cfg(int options)
    /* zero) and uses the hard-coded table.			   */
 
    FILE *cfgfile;
-   struct videoinfo far *vident;
+   VIDEOINFO *vident;
    int far *cfglinenums;
    int linenum;
    int i, j, keynum, ax, bx, cx, dx, dotmode, xdots, ydots, colors;
@@ -1593,7 +1700,7 @@ int load_fractint_cfg(int options)
       tempstring[strlen(tempstring)-1] = 0; /* zap trailing \n */
       memset(commas,0,20);
       i = j = -1;
-      while (1) {
+      for(;;) {
 	 if (tempstring[++i] < ' ') {
 	    if (tempstring[i] == 0) break;
 	    tempstring[i] = ' '; /* convert tab (or whatever) to blank */
@@ -1772,3 +1879,7 @@ void vidmode_keyname(int k,char *buf)
       sprintf(buf,"F%d",k);
       }
 }
+
+#if (_MSC_VER >= 700)
+#pragma code_seg ()      /* back to normal segment */
+#endif
