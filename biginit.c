@@ -1,7 +1,9 @@
 /* biginit.c - C routines for bignumbers */
 
 /*
-Wesley Loewer's Big Numbers.        (C) 1994, Wesley B. Loewer
+Note: This is NOT the biginit.c file that come the standard BigNum library,
+but is a customized version specific to Fractint.  The biggest difference
+is in the allocations of memory for the big numbers.
 */
 
 #include <stdlib.h>
@@ -12,7 +14,7 @@ Wesley Loewer's Big Numbers.        (C) 1994, Wesley B. Loewer
 #include "fractint.h"
 #include "fractype.h"
 #include "prototyp.h"
-#include "biginit.h"
+#include "big.h"
 
 /* appears to me that avoiding the start of extraseg is unnecessary. If
    correct, later we can eliminate ENDVID here. */
@@ -22,11 +24,12 @@ Wesley Loewer's Big Numbers.        (C) 1994, Wesley B. Loewer
 #define ENDVID 0
 
 /* globals */
+_segment bignum_seg;
 int bnstep, bnlength, intlength, rlength, padding, shiftfactor, decimals;
-int bflength, rbflength, bfshiftfactor, bfdecimals;
+int bflength, rbflength, bfdecimals;
 
 /* used internally by bignum.c routines */
-static bn_t bnroot=NULL;
+static bn_t bnroot=BIG_NULL;
 static bn_t stack_ptr; /* memory allocator base after global variables */
 bn_t bntmp1, bntmp2, bntmp3, bntmp4, bntmp5, bntmp6; /* rlength  */
 bn_t bntmpcpy1, bntmpcpy2;                           /* bnlength */
@@ -56,15 +59,13 @@ bf_t bfsxmin, bfsxmax, bfsymin, bfsymax, bfsx3rd, bfsy3rd;/* bflength+2 */
 bf_t bfparms[10];                                    /* (bflength+2)*10 */
 bf_t bftmp;
 
+bf_t bf10tmp;                                              /* dec+4 */
+
 #define LOG10_256 2.4082399653118
 #define LOG_256   5.5451774444795
 
 static int save_bf_vars(void);
 static int restore_bf_vars(void);
-
-#if CALCULATING_BIG_PI  /* normally used */
-static void generate_big_pi(void);
-#endif
 
 /*********************************************************************/
 /* given bnlength, calc_lengths will calculate all the other lengths */
@@ -98,7 +99,6 @@ void calc_lengths(void)
     bflength = bnlength+bnstep; /* one extra step for added precision */
     rbflength = bflength + padding;
     bfdecimals = (int)((bflength-2)*LOG10_256);
-    bfshiftfactor = padding - 2;
     }
 
 /************************************************************************/
@@ -121,10 +121,15 @@ static void init_bf_2(void)
     calc_lengths();
 
     /* allocate all the memory at once within the same segment (DOS) */
-    bnroot = (bf_t)MK_FP(extraseg,ENDVID);  /* ENDVID is to avoid videotable */
+#ifdef BIG_FAR /* for testing */
+    bnroot = (bf_t)MK_FP(extraseg,ENDVID); /* ENDVID is to avoid videotable */
+#else /* BASED, NEAR, or ANSI_C */
+    bnroot = (bf_t)ENDVID;  /* ENDVID is to avoid videotable */
+#endif
+    bignum_seg = (_segment)extraseg;
 
     /* at present time one call would suffice, but this logic allows
-       mulytiple kinds of alternate math eg long double */ 
+       mulytiple kinds of alternate math eg long double */
     if((i = find_alternate_math(fractype, BIGNUM)) > -1)
        bf_math = alternatemath[i].math;
     else if((i = find_alternate_math(fractype, BIGFLT)) > -1)
@@ -138,7 +143,7 @@ static void init_bf_2(void)
     /* internal pointers */
     ptr        = 0;
     bntmp1     = bnroot+ptr; ptr += rlength;
-    bntmp2     = bnroot+ptr; ptr += rlength;  
+    bntmp2     = bnroot+ptr; ptr += rlength;
     bntmp3     = bnroot+ptr; ptr += rlength;
     bntmp4     = bnroot+ptr; ptr += rlength;
     bntmp5     = bnroot+ptr; ptr += rlength;
@@ -202,13 +207,15 @@ static void init_bf_2(void)
     big_pi     = bnroot+ptr; ptr += bflength+2;
     bftmp      = bnroot+ptr; ptr += rbflength+2;
     }
-    stack_ptr  = bnroot + ptr;    
+    bf10tmp    = bnroot+ptr; ptr += bfdecimals+4;
+
+    stack_ptr  = bnroot + ptr;
     startstack = ptr;
 
     /* max stack offset from bnroot */
     maxstack = (long)0x10000l-(bflength+2)*22-ENDVID;
 
-    /* sanity check */ 
+    /* sanity check */
     /* leave room for NUMVARS variables allocated from stack */
     /* also leave room for the safe area at top of segment */
     if(ptr + NUMVARS*(bflength+2) > (long)0x10000l -(bflength+2)*22-ENDVID)
@@ -232,17 +239,17 @@ static void init_bf_2(void)
     bfymax     = bnroot+ptr; ptr += bflength+2;
     bfx3rd     = bnroot+ptr; ptr += bflength+2;
     bfy3rd     = bnroot+ptr; ptr += bflength+2;
-    for(i=0;i<10;i++) 
+    for(i=0;i<10;i++)
        {
        bfparms[i]  = bnroot+ptr; ptr += bflength+2;
-       }    
+       }
     bfsxmin    = bnroot+ptr; ptr += bflength+2;
     bfsxmax    = bnroot+ptr; ptr += bflength+2;
     bfsymin    = bnroot+ptr; ptr += bflength+2;
     bfsymax    = bnroot+ptr; ptr += bflength+2;
     bfsx3rd    = bnroot+ptr; ptr += bflength+2;
     bfsy3rd    = bnroot+ptr; ptr += bflength+2;
-    /* end safe vars */     
+    /* end safe vars */
 
     /* good citizens initialize variables */
     if(bf_save_len)  /* leave save area */
@@ -253,13 +260,9 @@ static void init_bf_2(void)
        far_memset(bnroot+((long)0x10000l-(bflength+2)*22-ENDVID),0,(bflength+2)*22);
        /* low variables */
        far_memset(bnroot,0,(unsigned)startstack);
-       } 
+       }
 
     restore_bf_vars();
-
-#if CALCULATING_BIG_PI  /* not normally used */
-    generate_big_pi();
-#endif
 
     /* Initialize the value of pi.  Needed for trig functions. */
     /* init_big_pi(); */
@@ -276,7 +279,7 @@ static int save_bf_vars(void)
    {
    int ret;
    unsigned int mem;
-   if(bnroot != NULL)
+   if(bnroot != BIG_NULL)
       {
       mem = (bflength+2)*22;  /* 6 corners + 6 save corners + 10 params */
       bf_save_len = bflength;
@@ -285,12 +288,12 @@ static int save_bf_vars(void)
       far_memset(bfxmin,0,mem);
       ret = 0;
       }
-   else 
+   else
       {
-      bf_save_len = 0;   
+      bf_save_len = 0;
       ret = -1;
       }
-   return(ret);   
+   return(ret);
    }
 
 /************************************************************************/
@@ -312,7 +315,7 @@ static int restore_bf_vars(void)
       {
       convert_bf(bfparms[i],ptr,bflength,bf_save_len);
       ptr += bf_save_len+2;
-      }     
+      }
    convert_bf(bfsxmin,ptr,bflength,bf_save_len); ptr += bf_save_len+2;
    convert_bf(bfsxmax,ptr,bflength,bf_save_len); ptr += bf_save_len+2;
    convert_bf(bfsymin,ptr,bflength,bf_save_len); ptr += bf_save_len+2;
@@ -331,9 +334,9 @@ void free_bf_vars()
    {
    bf_save_len = bf_math = 0;
    bnstep=bnlength=intlength=rlength=padding=shiftfactor=decimals=0;
-   bflength=rbflength=bfshiftfactor=bfdecimals=0;
+   bflength=rbflength=bfdecimals=0;
    }
-      
+
 #pragma optimize( "", on )
 
 
@@ -351,20 +354,20 @@ bn_t alloc_stack(size_t size)
       return(0);
       }
    stack_addr = (long)(stack_ptr-bnroot)+size+ENDVID;
-   
+
    if((stack_addr) > ((long)0x10000l-(bflength+2)*22))
       {
       static FCODE msg[] = {"Aborting, Out of Bignum Stack Space"};
       stopmsg(0,msg);
-      goodbye();     
+      goodbye();
       }
    /* keep track of max ptr */
-   if(stack_addr > maxptr) 
+   if(stack_addr > maxptr)
       maxptr = stack_addr;
    stack_ptr += size;   /* increment stack pointer */
    return(stack_ptr - size);
    }
-   
+
 /************************************************************************/
 /* Returns stack pointer offset so it can be saved.                            */
 int save_stack(void)
@@ -393,7 +396,7 @@ void init_bf_dec(int dec)
     {
     if(bfdigits)
        decimals=bfdigits;   /* blindly force */
-    else   
+    else
        decimals = dec;
     if (fractype == FPMANDELZPOWER || fractype == FPJULIAZPOWER)
        intlength = 2;
@@ -401,7 +404,7 @@ void init_bf_dec(int dec)
     else if(bailoutest == Real || bailoutest == Imag || bailoutest == And)
        intlength = 2;
     else
-       intlength = 1;   
+       intlength = 1;
     /* conservative estimate */
     bnlength = intlength + (int)(decimals/LOG10_256) + 1; /* round up */
     init_bf_2();
@@ -421,7 +424,7 @@ void init_bf_length(int bnl)
     else if(bailoutest == Real || bailoutest == Imag || bailoutest == And)
        intlength = 2;
     else
-       intlength = 1;   
+       intlength = 1;
     /* conservative estimate */
     decimals = (int)((bnlength-intlength)*LOG10_256);
     init_bf_2();
@@ -518,60 +521,3 @@ void init_big_pi(void)
     bn_pi = big_pi + (bflength-2) - (bnlength-intlength);
     return;
     }
-
-
-#if CALCULATING_BIG_PI
-/***********************************************************************/
-/* This is a sort of recursive process.  To calculate pi/4,            */
-/* atan_bf() will be called, which in turn calls sincos_bf(), which in */
-/* turn uses pi/4.  The CALCULATING_BIG_PI is set to 1                 */
-/* so that it won't get used by sincos_bf().                           */
-/* uses bftmp1 - bftmp6 - global temp bigfloats                        */
-
-void generate_big_pi(void)
-    {
-
-    FILE *f;
-    int i, c;
-    char str[1710];
-    char *s;
-
-    /* the following code is used to generate the table of pi */
-    stopmsg(0,"Pi is about to be calculated.  This may take a while, so be patient.");
-    bf_pi = big_pi;
-    inttobf(bf_pi,1);   /* set bf_pi to some value greater than pi/4 */
-    inttobf(bftmp6,1);
-    unsafe_atan_bf(bf_pi,bftmp6);  /* pi/4 = atan(1) */
-    double_a_bf(bf_pi);
-    double_a_bf(bf_pi);
-
-    /* print in base 256 in reverse order */
-    f = fopen("pi256.dat", "wt");
-    for (i=0; i<bflength; )
-       {
-       fprintf(f,"0x%.2X, ", bf_pi[i]);
-       if (++i % 10 == 0)
-          fprintf(f,"\n");
-       }
-    fprintf(f,"\n");
-    fclose(f);
-
-    /* print in base 10 in normal order */
-    f = fopen("pi10.dat", "wt");
-    bftostr_f(str, 0, bf_pi);
-    s = str;
-    fprintf(f,"%c", *s++);
-    fprintf(f,"%c\n", *s++);
-    i = 0;
-    while (*s != '\0')
-       {
-       fprintf(f,"%c", *s++);
-       if (++i % 50 == 0)
-          fprintf(f,"\n");
-       }
-    fclose(f);
-    stopmsg(0,"Pi calculated and stored in PI256.DAT and PI10.DAT");
-    goodbye();
-
-    }
-#endif

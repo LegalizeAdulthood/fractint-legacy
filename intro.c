@@ -28,18 +28,18 @@ void intro(void)
    {
    /* following overlayed data safe if "putstrings" are resident */
    static FCODE PRESS_ENTER[] = {"Press ENTER for main menu, F1 for help."};
-   int	     toprow, botrow, i, j, delaymax;
+   int       toprow, botrow, i, j, delaymax;
    char      oldchar;
-   int	     authors[100];		/* this should be enough for awhile */
+   int       authors[100];              /* this should be enough for awhile */
    char far *credits;
    char far *screen_text;
-   int	     oldlookatmouse;
-   int	     oldhelpmode;
+   int       oldlookatmouse;
+   int       oldhelpmode;
 
-   timer_start -= clock_ticks();		/* "time out" during help */
+   timer_start -= clock_ticks();                /* "time out" during help */
    oldlookatmouse = lookatmouse;
    oldhelpmode = helpmode;
-   lookatmouse = 0;			/* de-activate full mouse checking */
+   lookatmouse = 0;                     /* de-activate full mouse checking */
 
    screen_text = MK_FP(extraseg, 0);
 
@@ -50,10 +50,10 @@ void intro(void)
    credits[i++] = '\0';
 
    j = 0;
-   authors[j] = 0;		/* find the start of each credit-line */
+   authors[j] = 0;              /* find the start of each credit-line */
    for (i = 0; credits[i] != 0; i++)
       if (credits[i] == 10)
-	 authors[++j] = i+1;
+         authors[++j] = i+1;
    authors[j+1] = i;
 
    helptitle();
@@ -92,23 +92,23 @@ void intro(void)
       if (slowdisplay) delaymax *= 15;
 #endif
       for (j = 0; j < delaymax && !(keypressed()); j++)
-	 delay(100);
+         delay(100);
       if (keypressed() == 32)
-	 {	/* spacebar pauses */
-	 getakey();
+         {      /* spacebar pauses */
+         getakey();
 #ifndef XFRACT
          while (!keypressed()) ;
 #else
          waitkeypressed(0);
 #endif
-	 if (keypressed() == 32)
-	    getakey();
-	 }
+         if (keypressed() == 32)
+            getakey();
+         }
       delaymax = 15;
       scrollup(toprow, botrow);
       i++;
       if (credits[authors[i]] == 0)
-	 i = 0;
+         i = 0;
       oldchar = credits[authors[i+1]];
       credits[authors[i+1]] = 0;
       putstring(botrow,0,C_CONTRIB,&credits[authors[i]]);
@@ -117,7 +117,7 @@ void intro(void)
       movecursor(25,80); /* turn it off */
       }
 
-   lookatmouse = oldlookatmouse;		/* restore the mouse-checking */
+   lookatmouse = oldlookatmouse;                /* restore the mouse-checking */
    helpmode = oldhelpmode;
    return ;
    }

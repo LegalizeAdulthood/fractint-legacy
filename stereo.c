@@ -13,7 +13,7 @@
       28 Sep  94 - Added image map                                   TW
       20 Mar  95 - Fixed endless loop bug with bad depth values      TW
       23 Mar  95 - Allow arbitrary dimension image maps              TW
-      
+
       (TW is Tim Wegner, PDL is Paul de Leeuw)
 */
 
@@ -36,7 +36,7 @@ char image_map = 0;
 /* this structure permits variables to be temporarily static and visible
    to routines in this file without permanently hogging memory */
 
-static struct static_vars 
+static struct static_vars
 {
    long avg;
    long avgct;
@@ -96,8 +96,8 @@ static int getdepth(int xd, int yd)
    if (grayflag)
    {
       /* effectively (30*R + 59*G + 11*B)/100 scaled 0 to 255 */
-      pal = ((int) dac[pal][0] * 77 + 
-             (int) dac[pal][1] * 151 + 
+      pal = ((int) dac[pal][0] * 77 +
+             (int) dac[pal][1] * 151 +
              (int) dac[pal][2] * 28);
       pal >>= 6;
    }
@@ -105,7 +105,7 @@ static int getdepth(int xd, int yd)
 }
 
 /*
-   Get min and max DEPTH value in picture 
+   Get min and max DEPTH value in picture
 */
 
 static int get_min_max(void)
@@ -125,10 +125,10 @@ static int get_min_max(void)
          if ( ldepth < MINC)
             MINC = ldepth;
          if (ldepth > MAXC)
-            MAXC = ldepth;   
+            MAXC = ldepth;
       }
    }
-   cleartempmsg();   
+   cleartempmsg();
    return(0);
 }
 
@@ -156,7 +156,7 @@ void toggle_bars(int *bars, int barwidth, int far *colour)
 
 int outline_stereo(BYTE * pixels, int linelen)
 {
-   int i, j, x, s; 
+   int i, j, x, s;
    int far *same;
    int far *colour;
    if((Y) >= ydots)
@@ -185,7 +185,7 @@ int outline_stereo(BYTE * pixels, int linelen)
       if (0 <= i && j < xdots)
       {
          /* there are cases where next never terminates so we timeout */
-         int ct = 0; 
+         int ct = 0;
          for (s = same[i]; s != i && s != j && ct++ < xdots; s = same[i])
          {
             if (s > j)
@@ -196,7 +196,7 @@ int outline_stereo(BYTE * pixels, int linelen)
             }
             else
                i = s;
-         }      
+         }
          same[i] = j;
       }
    }
@@ -227,7 +227,7 @@ int do_AutoStereo(void)
    int bars, ct, kbdchar, barwidth;
    time_t ltime;
    unsigned char *buf = (unsigned char *)decoderline;
-         
+
    /* int same[MAXPIXELS],colour[MAXPIXELS] */
 
    /* following two lines re-use existing arrays in Fractint */
@@ -235,10 +235,10 @@ int do_AutoStereo(void)
    int far *colour;
    same   = (int far *)MK_FP(extraseg,0);
    colour = &same[ydots];
-   
+
    pv = &v;   /* set static vars to stack structure */
    pv->savedac = savedacbox;
-   
+
    /* Use the current time to randomize the random number sequence. */
    time(&ltime);
    srand((unsigned int)ltime);
@@ -257,7 +257,7 @@ int do_AutoStereo(void)
    if(AutoStereo_depth < 0)
       REVERSE = 1;
    else
-      REVERSE = 0;   
+      REVERSE = 0;
    DEPTH = ((long) xdots * (long) AutoStereo_depth) / 4000L;
    DEPTH = labs(DEPTH) + 1;
    if(get_min_max())
@@ -281,7 +281,7 @@ int do_AutoStereo(void)
    X2 = XCEN + xdots/16;
    Y1 = YCEN - BARHEIGHT/2;
    Y2 = YCEN + BARHEIGHT/2;
-      
+
    Y = 0;
    if(image_map)
    {
@@ -291,7 +291,7 @@ int do_AutoStereo(void)
          {
             ret = 1;
             goto exit_stereo;
-         }   
+         }
    }
    else
    {
@@ -304,12 +304,12 @@ int do_AutoStereo(void)
           }
           for(i=0;i<xdots;i++)
              buf[i] = (unsigned char)(rand()%colors);
-          outline_stereo(buf,xdots);    
+          outline_stereo(buf,xdots);
       }
-   }   
-   
+   }
+
    find_special_colors();
-   AVG /= AVGCT;   
+   AVG /= AVGCT;
    AVG /= 2;
    ct = 0;
    for (i = XCEN; i < XCEN + barwidth; i++)
@@ -340,19 +340,20 @@ int do_AutoStereo(void)
             rotate((kbdchar == 'c') ? 0 : ((kbdchar == '+') ? 1 : -1));
             break;
          case 's':
-            diskisactive = 1;		/* flag for disk-video routines */
+         case 'S':
+            diskisactive = 1;           /* flag for disk-video routines */
             savetodisk(savename);
-            diskisactive = 0;	
+            diskisactive = 0;
             break;
          default:
             if(kbdchar == 27)   /* if ESC avoid returning to menu */
-               kbdchar = 255;   
+               kbdchar = 255;
             ungetakey(kbdchar);
             buzzer(0);
             done = 1;
-            break;   
+            break;
        }
-   }   
+   }
 
    exit_stereo:
    helpmode = oldhelpmode;

@@ -8,12 +8,12 @@
 
 struct DHyperComplex {
     double x,y;
-    double z,t;  
+    double z,t;
 };
 
 struct LHyperComplex {
     long x,y;
-    long z,t; 
+    long z,t;
 };
 
 struct DComplex {

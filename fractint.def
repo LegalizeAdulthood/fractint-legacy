@@ -78,13 +78,11 @@ SEGMENTS	realdos1_text ovl:16
 SEGMENTS	biginit_text ovl:41
 SEGMENTS	bigflt_text ovl:0
 SEGMENTS	bigflt1_text ovl:42
-SEGMENTS	bigfltc_text ovl:0
-SEGMENTS	bigflta_text ovl:0
 SEGMENTS	bignum_text ovl:0
 SEGMENTS	bignum1_text ovl:43
-;SEGMENTS	bignumc_text ovl:0
-SEGMENTS	bignuma_text ovl:0
 SEGMENTS	bigsetup_text ovl:44
+SEGMENTS        bignuma_text ovl:0
+;SEGMENTS       bignumc_text ovl:0
 
 SEGMENTS	loadmap_text ovl:17
 SEGMENTS	stereo_text ovl:18

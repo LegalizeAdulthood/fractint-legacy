@@ -1,5 +1,5 @@
 /*
-	Overlayed odds and ends that don't fit anywhere else.
+        Overlayed odds and ends that don't fit anywhere else.
 */
 
 #include <stdlib.h>
@@ -20,7 +20,7 @@
 #include "helpdefs.h"
 #include "prototyp.h"
 
-/* routines in this module	*/
+/* routines in this module      */
 
 static void write_batch_parms(char *colorinf,int maxcolor);
 
@@ -39,11 +39,12 @@ static void put_filename(char *keyword,char *fname);
 static int check_modekey(int curkey,int choice);
 static int entcompare(VOIDCONSTPTR p1,VOIDCONSTPTR p2);
 static void update_fractint_cfg(void);
+static void strip_zeros(char *buf);
 
 /* fullscreen_choice options */
 #define CHOICERETURNKEY 1
-#define CHOICEMENU	2
-#define CHOICEHELP	4
+#define CHOICEMENU      2
+#define CHOICEHELP      4
 
 char s_yes[]      = "yes";
 char s_no[]       = "no";
@@ -51,7 +52,7 @@ char s_seqs[]     = " %s=%s";
 char s_seqd[]     = " %s=%d";
 char s_seqdd[]    = " %s=%d/%d";
 char s_seqddd[]   = " %s=%d/%d/%d";
-char s_seqdddd[]  = " %s=%d/%d/%d/%d";
+char s_seqldddd[]  = " %s=%ld/%d/%d/%d";
 char s_x[]        = "x";
 char s_y[]        = "y";
 char s_z[]        = "z";
@@ -85,7 +86,7 @@ void make_batch_file()
    double pdely2;
    unsigned int j, pxdots, pydots, xm, ym;
    double pxxmin, pyymax;
-   char vidmde[4];
+   char vidmde[5];
    int promptnum;
    int piecespromts;
    int have3rd;
@@ -114,14 +115,14 @@ void make_batch_file()
    inpcomment2    = inpcomment1 + 57;
    inpcomment3    = inpcomment2 + 57;
    inpcomment4    = inpcomment3 + 57;
-   
+
    /* steal existing array for "choices" */
    ptr = (char far *)(inpcomment4 + 57);
    stackscreen();
    oldhelpmode = helpmode;
    helpmode = HELPPARMFILE;
 
-   strcpy(colorspec, "n");
+   strcpy(colorspec, "y");
    maxcolor = colors;
    if (gotrealdac && !reallyega)
    {
@@ -133,7 +134,7 @@ void make_batch_file()
       if (outside > 0 && outside > maxcolor)
          maxcolor = outside;
       if (distest < 0 && 0 - distest > maxcolor)
-         maxcolor = 0 - distest;
+         maxcolor = (int)(0 - distest);
       if (decomp[0] > maxcolor)
          maxcolor = decomp[0] - 1;
       if (potflag && potparam[0] >= maxcolor)
@@ -174,13 +175,14 @@ void make_batch_file()
    far_strcpy(inpcomment4, CommandComment4);
    if (CommandName[0] == 0)
       far_strcpy(inpcommandname, "test");
-      /* TW added these  - and Bert moved them */
-      pxdots = xdots;
-      pydots = ydots;
-      vidmode_keyname(videoentry.keynum, vidmde);
+   /* TW added these  - and Bert moved them */
+   pxdots = xdots;
+   pydots = ydots;
+   xm = ym = 1;
+   if(*s_makepar == 0)
+      goto skip_UI;
 
-      xm = ym = 1;
-
+   vidmode_keyname(videoentry.keynum, vidmde);
    for(;;)
    {
 prompt_user:
@@ -293,7 +295,15 @@ prompt_user:
           goto prompt_user;
           }
       }
-
+skip_UI:
+      if(*s_makepar == 0)
+      {
+         if(filecolors > 0)
+            strcpy(colorspec, "y");
+         else
+            strcpy(colorspec, "n");
+         maxcolor = filecolors;
+      }
       strcpy(outname, CommandFile);
       gotinfile = 0;
       if (access(CommandFile, 0) == 0)
@@ -334,9 +344,13 @@ prompt_user:
                static FCODE s1[] = {"File already has an entry named "};
                static FCODE s2[] = {"\n\
 Continue to replace it, Cancel to back out"};
+               static FCODE s2a[] = {"... Replacing ..."};
                far_strcpy(buf2,s1);
                far_strcat(buf2,CommandName);
-               far_strcat(buf2,s2);
+               if(*s_makepar == 0)
+                   far_strcat(buf2,s2a);
+               else
+                   far_strcat(buf2,s2);
                if (stopmsg(18, buf2) < 0)
                {                /* cancel */
                   fclose(infile);
@@ -428,6 +442,9 @@ Continue to replace it, Cancel to back out"};
                fprintf(parmfile, "%s%s\n", buf, CommandComment3);
             if (CommandComment4[0])
                fprintf(parmfile, "%s%s\n", buf, CommandComment4);
+            if (patchlevel != 0)
+               fprintf(parmfile, "%s Version %d Patchlevel %d\n", buf,
+                  release, patchlevel);
          }
          write_batch_parms(colorspec, maxcolor);   /* write the parameters */
          if(xm > 1 || ym > 1)
@@ -506,14 +523,12 @@ static void write_batch_parms(char *colorinf,int maxcolor)
    far_memcpy(saveshared,boxx,10000);
    far_memset(boxx,0,10000);
    wb_data.buf = (char *)boxx;
- 
+
    if (display3d <= 0) { /* a fractal was generated */
 
       /****** fractal only parameters in this section *******/
-      put_parm(" reset"); /* the following should match code in ENCODER.C */
-      if (fractype == LYAPUNOV ||
-          fractype == FROTH || fractype == FROTHFP ||
-          fix_bof() || fix_period_bof() || use_old_distest || decomp[0] == 2)
+      put_parm(" reset");
+      if (check_back())
         put_parm("=%d",min(save_release,release));
       else
         put_parm("=%d",release);
@@ -523,8 +538,8 @@ static void write_batch_parms(char *colorinf,int maxcolor)
 
       if (fractype == JULIBROT || fractype == JULIBROTFP)
       {
-      	 put_parm(" %s=%.15g/%.15g/%.15g/%.15g",
-      	     s_julibrotfromto,mxmaxfp,mxminfp,mymaxfp,myminfp);
+         put_parm(" %s=%.15g/%.15g/%.15g/%.15g",
+             s_julibrotfromto,mxmaxfp,mxminfp,mymaxfp,myminfp);
          /* these rarely change */
          if(originfp != 8 || heightfp != 7 || widthfp != 10 || distfp != 24
                           || depthfp != 8 || zdots != 128)
@@ -545,28 +560,31 @@ static void write_batch_parms(char *colorinf,int maxcolor)
       }
       if (fractype == FORMULA || fractype == FFORMULA)
       {
-	 put_filename(s_formulafile,FormFileName);
-	 put_parm( s_seqs,s_formulaname,FormName);
+         put_filename(s_formulafile,FormFileName);
+         put_parm( s_seqs,s_formulaname,FormName);
       }
       if (fractype == LSYSTEM)
       {
-	 put_filename(s_lfile,LFileName);
-	 put_parm( s_seqs,s_lname,LName);
+         put_filename(s_lfile,LFileName);
+         put_parm( s_seqs,s_lname,LName);
       }
       if (fractype == IFS || fractype == IFS3D)
       {
-	 put_filename(s_ifsfile,IFSFileName);
-	 put_parm( s_seqs,s_ifs,IFSName);
+         put_filename(s_ifsfile,IFSFileName);
+         put_parm( s_seqs,s_ifs,IFSName);
       }
       if (fractype == INVERSEJULIA || fractype == INVERSEJULIAFP)
-	 put_parm( " %s=%s/%s",s_miim,JIIMmethod[major_method], JIIMleftright[minor_method]);
+         put_parm( " %s=%s/%s",s_miim,JIIMmethod[major_method], JIIMleftright[minor_method]);
 
       showtrig(buf); /* this function is in miscres.c */
       if (buf[0])
-	 put_parm(buf);
+         put_parm(buf);
 
       if (usr_stdcalcmode != 'g')
-	 put_parm(" %s=%c",s_passes,usr_stdcalcmode);
+         put_parm(" %s=%c",s_passes,usr_stdcalcmode);
+
+      if (stoppass != 0)
+         put_parm(" %s=%c%c",s_passes,usr_stdcalcmode,(char)stoppass + '0');
 
       if (usemag)
       {
@@ -619,38 +637,38 @@ static void write_batch_parms(char *colorinf,int maxcolor)
          }
       }
       else /* not usemag */
-      {	     
+      {
          put_parm( " %s=",s_corners);
          if(bf_math)
          {
             int digits;
             digits = getprecbf(MAXREZ);
             put_bf(0,bfxmin,digits);
-	    put_bf(1,bfxmax,digits);
-	    put_bf(1,bfymin,digits);
-	    put_bf(1,bfymax,digits);
-	    if (cmp_bf(bfx3rd,bfxmin) || cmp_bf(bfy3rd,bfymin)) 
-	    {
-	       put_bf(1,bfx3rd,digits);
-	       put_bf(1,bfy3rd,digits);
-	    }
-	 }   
-         else 
+            put_bf(1,bfxmax,digits);
+            put_bf(1,bfymin,digits);
+            put_bf(1,bfymax,digits);
+            if (cmp_bf(bfx3rd,bfxmin) || cmp_bf(bfy3rd,bfymin))
+            {
+               put_bf(1,bfx3rd,digits);
+               put_bf(1,bfy3rd,digits);
+            }
+         }
+         else
          {
             int xdigits,ydigits;
             xdigits = getprec(xxmin,xxmax,xx3rd);
             ydigits = getprec(yymin,yymax,yy3rd);
-	    put_float(0,xxmin,xdigits);
-	    put_float(1,xxmax,xdigits);
-	    put_float(1,yymin,ydigits);
-	    put_float(1,yymax,ydigits);
-	    if (xx3rd != xxmin || yy3rd != yymin) 
-	    {
-	       put_float(1,xx3rd,xdigits);
-	       put_float(1,yy3rd,ydigits);
-	    }
+            put_float(0,xxmin,xdigits);
+            put_float(1,xxmax,xdigits);
+            put_float(1,yymin,ydigits);
+            put_float(1,yymax,ydigits);
+            if (xx3rd != xxmin || yy3rd != yymin)
+            {
+               put_float(1,xx3rd,xdigits);
+               put_float(1,yy3rd,ydigits);
+            }
          }
-      }   
+      }
 
       for(i = (MAXPARAMS-1); i >= 0; --i)
           if(typehasparm((fractype==JULIBROT || fractype==JULIBROTFP)
@@ -683,143 +701,155 @@ static void write_batch_parms(char *colorinf,int maxcolor)
       }
 
       if(useinitorbit == 2)
-	 put_parm( " %s=pixel",s_initorbit);
+         put_parm( " %s=pixel",s_initorbit);
       else if(useinitorbit == 1)
-	 put_parm( " %s=%.15g/%.15g",s_initorbit,initorbit.x,initorbit.y);
+         put_parm( " %s=%.15g/%.15g",s_initorbit,initorbit.x,initorbit.y);
 
       if (floatflag)
-	 put_parm( " %s=y",s_float);
+         put_parm( " %s=y",s_float);
 
       if (maxit != 150)
-	 put_parm(" %s=%ld",s_maxiter,maxit);
+         put_parm(" %s=%ld",s_maxiter,maxit);
 
       if(bailout && (potflag == 0 || potparam[2] == 0.0))
-	 put_parm(" %s=%ld",s_bailout,bailout);
+         put_parm(" %s=%ld",s_bailout,bailout);
 
       if(bailoutest != Mod && (potflag == 0 || potparam[2] == 0.0)) {
-	 put_parm(" %s=",s_bailoutest);
-	 if (bailoutest == Real)
-	    put_parm( s_real);
-	 else if (bailoutest == Imag)
-	    put_parm(s_imag);
-	 else if (bailoutest == Or)
-	    put_parm(s_or);
-	 else if (bailoutest == And)
-	    put_parm(s_and);
-	 else
-	    put_parm(s_mod); /* default, just in case */
+         put_parm(" %s=",s_bailoutest);
+         if (bailoutest == Real)
+            put_parm( s_real);
+         else if (bailoutest == Imag)
+            put_parm(s_imag);
+         else if (bailoutest == Or)
+            put_parm(s_or);
+         else if (bailoutest == And)
+            put_parm(s_and);
+         else if (bailoutest == Manh)
+            put_parm(s_manh);
+         else if (bailoutest == Manr)
+            put_parm(s_manr);
+         else
+            put_parm(s_mod); /* default, just in case */
       }
       if(fillcolor != -1) {
-  	 put_parm(" %s=",s_fillcolor);
-	put_parm( "%d",fillcolor);
+         put_parm(" %s=",s_fillcolor);
+        put_parm( "%d",fillcolor);
       }
       if (inside != 1) {
-	 put_parm(" %s=",s_inside);
-	 if (inside == -1)
-	    put_parm( s_maxiter);
-	 else if (inside == -59)
-	    put_parm(s_zmag);
-	 else if (inside == -60)
-	    put_parm(s_bof60);
-	 else if (inside == -61)
-	    put_parm(s_bof61);
-	 else if (inside == -100)
-	    put_parm(s_epscross);
-	 else if (inside == -101)
-	    put_parm(s_startrail);
-	 else if (inside == -102)
-	    put_parm(s_period);
-	 else
-	    put_parm( "%d",inside);
-	 }
+         put_parm(" %s=",s_inside);
+         if (inside == -1)
+            put_parm( s_maxiter);
+         else if (inside == -59)
+            put_parm(s_zmag);
+         else if (inside == -60)
+            put_parm(s_bof60);
+         else if (inside == -61)
+            put_parm(s_bof61);
+         else if (inside == -100)
+            put_parm(s_epscross);
+         else if (inside == -101)
+            put_parm(s_startrail);
+         else if (inside == -102)
+            put_parm(s_period);
+         else
+            put_parm( "%d",inside);
+         }
       if (outside != -1)
       {
-	 put_parm(" %s=",s_outside);
-	 if (outside == -2)
-	    put_parm(s_real);
-	 else if (outside == -3)
-	    put_parm(s_imag);
-	 else if (outside == -4)
-	    put_parm(s_mult);
-	 else if (outside == -5)
-	    put_parm(s_sum);
-	 else if (outside == -6)
-	    put_parm(s_atan);
-	 else
-	    put_parm( "%d",outside);
-	  }
+         put_parm(" %s=",s_outside);
+         if (outside == -2)
+            put_parm(s_real);
+         else if (outside == -3)
+            put_parm(s_imag);
+         else if (outside == -4)
+            put_parm(s_mult);
+         else if (outside == -5)
+            put_parm(s_sum);
+         else if (outside == -6)
+            put_parm(s_atan);
+         else
+            put_parm( "%d",outside);
+          }
 
       if(LogFlag) {
-	 put_parm( " %s=",s_logmap);
-	 if(LogFlag == -1)
-	    put_parm( "old");
-	 else if(LogFlag == 1)
-	    put_parm( s_yes);
-	 else
-	    put_parm( "%d", LogFlag);
-	 }
+         put_parm( " %s=",s_logmap);
+         if(LogFlag == -1)
+            put_parm( "old");
+         else if(LogFlag == 1)
+            put_parm( s_yes);
+         else
+            put_parm( "%ld", LogFlag);
+         }
+
+      if(Log_Fly_Calc) {
+         put_parm( " %s=",s_logmode);
+         if(Log_Fly_Calc == 1)
+            put_parm( "fly");
+         else if(Log_Fly_Calc == 2)
+            put_parm( "table");
+         }
 
       if (potflag) {
        put_parm( " %s=%d/%g/%d",s_potential,
            (int)potparam[0],potparam[1],(int)potparam[2]);
        if(pot16bit)
-	    put_parm( "/%s",s_16bit);
-	 }
+            put_parm( "/%s",s_16bit);
+         }
       if (invert)
-	 put_parm( " %s=%g/%g/%g",s_invert,
-	     inversion[0], inversion[1], inversion[2]);
+         put_parm( " %s=%-1.15lg/%-1.15lg/%-1.15lg",s_invert,
+             inversion[0], inversion[1], inversion[2]);
       if (decomp[0])
-	 put_parm( s_seqd,s_decomp, decomp[0]);
+         put_parm( s_seqd,s_decomp, decomp[0]);
       if (distest) {
-	 put_parm( s_seqdddd,s_distest, distest, distestwidth,
-	             pseudox?pseudox:xdots,pseudoy?pseudoy:ydots);
+         put_parm( s_seqldddd,s_distest, distest, distestwidth,
+                     pseudox?pseudox:xdots,pseudoy?pseudoy:ydots);
       }
       if (old_demm_colors)
-	 put_parm( s_olddemmcolors, old_demm_colors);
+         put_parm( " %s=y",s_olddemmcolors);
       if (usr_biomorph != -1)
-	 put_parm( s_seqd,s_biomorph, usr_biomorph);
+         put_parm( s_seqd,s_biomorph, usr_biomorph);
       if (finattract)
-	 put_parm(" %s=y",s_finattract);
+         put_parm(" %s=y",s_finattract);
 
       if (forcesymmetry != 999) {
-         static FCODE msg[] = 
+         static FCODE msg[] =
             {"Regenerate before <b> to get correct symmetry"};
          if(forcesymmetry == 1000)
             stopmsg(0,msg);
-	 put_parm( " %s=",s_symmetry);
-	 if (forcesymmetry==XAXIS)
-	    put_parm(s_xaxis);
-	 else if(forcesymmetry==YAXIS)
-	    put_parm(s_yaxis);
-	 else if(forcesymmetry==XYAXIS)
-	    put_parm(s_xyaxis);
-	 else if(forcesymmetry==ORIGIN)
-	    put_parm(s_origin);
-	 else if(forcesymmetry==PI_SYM)
-	    put_parm(s_pi);
-	 else
-	    put_parm(s_none);
-	 }
+         put_parm( " %s=",s_symmetry);
+         if (forcesymmetry==XAXIS)
+            put_parm(s_xaxis);
+         else if(forcesymmetry==YAXIS)
+            put_parm(s_yaxis);
+         else if(forcesymmetry==XYAXIS)
+            put_parm(s_xyaxis);
+         else if(forcesymmetry==ORIGIN)
+            put_parm(s_origin);
+         else if(forcesymmetry==PI_SYM)
+            put_parm(s_pi);
+         else
+            put_parm(s_none);
+         }
 
       if (periodicitycheck != 1)
-	 put_parm( s_seqd,s_periodicity,periodicitycheck);
+         put_parm( s_seqd,s_periodicity,periodicitycheck);
 
       if (rflag)
-	 put_parm( s_seqd,s_rseed,rseed);
+         put_parm( s_seqd,s_rseed,rseed);
 
       if (rangeslen) {
-	 put_parm(" %s=",s_ranges);
-	 i = 0;
-	 while (i < rangeslen) {
-	    if (i)
-	       put_parm("/");
-	    if (ranges[i] == -1) {
-	       put_parm("-%d/",ranges[++i]);
-	       ++i;
-	       }
-	    put_parm("%d",ranges[i++]);
-	    }
-	 }
+         put_parm(" %s=",s_ranges);
+         i = 0;
+         while (i < rangeslen) {
+            if (i)
+               put_parm("/");
+            if (ranges[i] == -1) {
+               put_parm("-%d/",ranges[++i]);
+               ++i;
+               }
+            put_parm("%d",ranges[i++]);
+            }
+         }
       }
 
    if (display3d >= 1) {
@@ -829,65 +859,65 @@ static void write_batch_parms(char *colorinf,int maxcolor)
       else
       put_parm( s_seqs,s_3d,s_yes);
       if (loaded3d == 0)
-	 put_filename(s_filename,readname);
+         put_filename(s_filename,readname);
       if (SPHERE) {
-	 put_parm( " %s=y",s_sphere);
-	 put_parm( s_seqdd,s_latitude, THETA1, THETA2);
-	 put_parm( s_seqdd,s_longitude, PHI1, PHI2);
-	 put_parm( s_seqd,s_radius, RADIUS);
-	 }
+         put_parm( " %s=y",s_sphere);
+         put_parm( s_seqdd,s_latitude, THETA1, THETA2);
+         put_parm( s_seqdd,s_longitude, PHI1, PHI2);
+         put_parm( s_seqd,s_radius, RADIUS);
+         }
       put_parm( s_seqdd,s_scalexyz, XSCALE, YSCALE);
       put_parm( s_seqd,s_roughness, ROUGH);
       put_parm( s_seqd,s_waterline, WATERLINE);
       if (FILLTYPE)
-	 put_parm( s_seqd,s_filltype, FILLTYPE);
+         put_parm( s_seqd,s_filltype, FILLTYPE);
       if (transparent[0] || transparent[1])
-	 put_parm( s_seqdd,s_transparent, transparent[0],transparent[1]);
+         put_parm( s_seqdd,s_transparent, transparent[0],transparent[1]);
       if (preview) {
-	 put_parm( s_seqs,s_preview,s_yes);
-	 if (showbox)
-	    put_parm( s_seqs,s_showbox,s_yes);
-	 put_parm( s_seqd,s_coarse,previewfactor);
-	 }
+         put_parm( s_seqs,s_preview,s_yes);
+         if (showbox)
+            put_parm( s_seqs,s_showbox,s_yes);
+         put_parm( s_seqd,s_coarse,previewfactor);
+         }
       if (RAY) {
-	 put_parm( s_seqd,s_ray,RAY);
-	 if (BRIEF)
-	    put_parm(" %s=y",s_brief);
-	 }
+         put_parm( s_seqd,s_ray,RAY);
+         if (BRIEF)
+            put_parm(" %s=y",s_brief);
+         }
       if (FILLTYPE > 4) {
-	 put_parm( s_seqddd,s_lightsource, XLIGHT, YLIGHT, ZLIGHT);
-	 if (LIGHTAVG)
-	    put_parm( " %=%d",s_smoothing, LIGHTAVG);
-	 }
+         put_parm( s_seqddd,s_lightsource, XLIGHT, YLIGHT, ZLIGHT);
+         if (LIGHTAVG)
+            put_parm( " %=%d",s_smoothing, LIGHTAVG);
+         }
       if (RANDOMIZE)
-	 put_parm( s_seqd,s_randomize,RANDOMIZE);
+         put_parm( s_seqd,s_randomize,RANDOMIZE);
       if (Targa_Out)
-	 put_parm( " %s=y",s_fullcolor);
+         put_parm( " %s=y",s_fullcolor);
       if (grayflag)
-	 put_parm( " %s=y",s_usegrayscale);
+         put_parm( " %s=y",s_usegrayscale);
       if (Ambient)
-	 put_parm( s_seqd,s_ambient,Ambient);
+         put_parm( s_seqd,s_ambient,Ambient);
       if (haze)
-	 put_parm( s_seqd,s_haze,haze);
+         put_parm( s_seqd,s_haze,haze);
       }
 
-   if (display3d) {		/* universal 3d */
+   if (display3d) {             /* universal 3d */
       /***** common (fractal & transform) 3d parameters in this section *****/
       if (!SPHERE || display3d < 0)
-	 put_parm( s_seqddd,s_rotation, XROT, YROT, ZROT);
+         put_parm( s_seqddd,s_rotation, XROT, YROT, ZROT);
       put_parm( s_seqd,s_perspective, ZVIEWER);
       put_parm( s_seqdd,s_xyshift, XSHIFT, YSHIFT);
       if(xtrans || ytrans)
-	 put_parm( s_seqdd,s_xyadjust,xtrans,ytrans);
+         put_parm( s_seqdd,s_xyadjust,xtrans,ytrans);
       if(glassestype) {
-	 put_parm( s_seqd,s_stereo,glassestype);
-	 put_parm( s_seqd,s_interocular,eyeseparation);
-	 put_parm( s_seqd,s_converge,xadjust);
-	 put_parm( " %s=%d/%d/%d/%d",s_crop,
-	     red_crop_left,red_crop_right,blue_crop_left,blue_crop_right);
-	 put_parm( s_seqdd,s_bright,
-	     red_bright,blue_bright);
-	 }
+         put_parm( s_seqd,s_stereo,glassestype);
+         put_parm( s_seqd,s_interocular,eyeseparation);
+         put_parm( s_seqd,s_converge,xadjust);
+         put_parm( " %s=%d/%d/%d/%d",s_crop,
+             red_crop_left,red_crop_right,blue_crop_left,blue_crop_right);
+         put_parm( s_seqdd,s_bright,
+             red_bright,blue_bright);
+         }
       }
 
    /***** universal parameters in this section *****/
@@ -904,85 +934,103 @@ static void write_batch_parms(char *colorinf,int maxcolor)
    if (*colorinf != 'n') {
       put_parm(" %s=",s_colors);
       if (*colorinf == '@')
-	 put_parm(colorinf);
+         put_parm(colorinf);
       else {
-	 int curc,scanc,force,diffmag = -1;
-	 int delta,diff1[4][3],diff2[4][3];
-	 curc = force = 0;
-	 for(;;) {
-	    /* emit color in rgb 3 char encoded form */
-	    for (j = 0; j < 3; ++j) {
-	       if ((k = dacbox[curc][j]) < 10) k += '0';
-	       else if (k < 36) 	       k += ('A' - 10);
-	       else			       k += ('_' - 36);
-	       buf[j] = (char)k;
-	       }
-	    buf[3] = 0;
-	    put_parm(buf);
-	    if (++curc >= maxcolor)	 /* quit if done last color */
-	       break;
-	    /* Next a P Branderhorst special, a tricky scan for smooth-shaded
-	       ranges which can be written as <nn> to compress .par file entry.
-	       Method used is to check net change in each color value over
-	       spans of 2 to 5 color numbers.  First time for each span size
-	       the value change is noted.  After first time the change is
-	       checked against noted change.  First time it differs, a
-	       a difference of 1 is tolerated and noted as an alternate
-	       acceptable change.  When change is not one of the tolerated
-	       values, loop exits. */
-	    if (force) {
-	       --force;
-	       continue;
-	       }
-	    scanc = curc;
-	    while (scanc < maxcolor) {	 /* scan while same diff to next */
-	       if ((i = scanc - curc) > 3) /* check spans up to 4 steps */
-		  i = 3;
-	       for (k = 0; k <= i; ++k) {
-		  for (j = 0; j < 3; ++j) { /* check pattern of chg per color */
-		     delta = (int)dacbox[scanc][j] - (int)dacbox[scanc-k-1][j];
-		     if (k == scanc - curc)
-			diff1[k][j] = diff2[k][j] = delta;
-		     else
-			if (delta != diff1[k][j] && delta != diff2[k][j]) {
-			   diffmag = abs(delta - diff1[k][j]);
-			   if (diff1[k][j] != diff2[k][j] || diffmag != 1)
-			      break;
-			   diff2[k][j] = delta;
-			   }
-		     }
-		  if (j < 3) break; /* must've exited from inner loop above */
-		  }
-	       if (k <= i) break;   /* must've exited from inner loop above */
-	       ++scanc;
-	       }
-	    /* now scanc-1 is next color which must be written explicitly */
-	    if (scanc - curc > 2) { /* good, we have a shaded range */
-	       if (scanc != maxcolor) {
+         int curc,scanc,force,diffmag = -1;
+         int delta,diff1[4][3],diff2[4][3];
+         curc = force = 0;
+         for(;;) {
+            /* emit color in rgb 3 char encoded form */
+            for (j = 0; j < 3; ++j) {
+               if ((k = dacbox[curc][j]) < 10) k += '0';
+               else if (k < 36)                k += ('A' - 10);
+               else                            k += ('_' - 36);
+               buf[j] = (char)k;
+               }
+            buf[3] = 0;
+            put_parm(buf);
+            if (++curc >= maxcolor)      /* quit if done last color */
+               break;
+            /* Next a P Branderhorst special, a tricky scan for smooth-shaded
+               ranges which can be written as <nn> to compress .par file entry.
+               Method used is to check net change in each color value over
+               spans of 2 to 5 color numbers.  First time for each span size
+               the value change is noted.  After first time the change is
+               checked against noted change.  First time it differs, a
+               a difference of 1 is tolerated and noted as an alternate
+               acceptable change.  When change is not one of the tolerated
+               values, loop exits. */
+            if (force) {
+               --force;
+               continue;
+               }
+            scanc = curc;
+            while (scanc < maxcolor) {   /* scan while same diff to next */
+               if ((i = scanc - curc) > 3) /* check spans up to 4 steps */
+                  i = 3;
+               for (k = 0; k <= i; ++k) {
+                  for (j = 0; j < 3; ++j) { /* check pattern of chg per color */
+                     delta = (int)dacbox[scanc][j] - (int)dacbox[scanc-k-1][j];
+                     if (k == scanc - curc)
+                        diff1[k][j] = diff2[k][j] = delta;
+                     else
+                        if (delta != diff1[k][j] && delta != diff2[k][j]) {
+                           diffmag = abs(delta - diff1[k][j]);
+                           if (diff1[k][j] != diff2[k][j] || diffmag != 1)
+                              break;
+                           diff2[k][j] = delta;
+                           }
+                     }
+                  if (j < 3) break; /* must've exited from inner loop above */
+                  }
+               if (k <= i) break;   /* must've exited from inner loop above */
+               ++scanc;
+               }
+            /* now scanc-1 is next color which must be written explicitly */
+            if (scanc - curc > 2) { /* good, we have a shaded range */
+               if (scanc != maxcolor) {
                   static FCODE msg[] = {"Tell Tim Wegner to check diffmag MISCOVL.C"};
                   if(diffmag < 0) stopmsg(0,msg);
-		  if (diffmag < 3) {  /* not a sharp slope change? */
-		     force = 2;       /* force more between ranges, to stop  */
-		     --scanc;	      /* "drift" when load/store/load/store/ */
-		     }
-		  if (k) {	      /* more of the same		     */
-		     force += k;
-		     --scanc;
-		     }
-		  }
-	       if (--scanc - curc > 1) {
-		  put_parm("<%d>",scanc-curc);
-		  curc = scanc;
-		  }
-	       else		   /* changed our mind */
-		  force = 0;
-	       }
-	    }
-	 }
+                  if (diffmag < 3) {  /* not a sharp slope change? */
+                     force = 2;       /* force more between ranges, to stop  */
+                     --scanc;         /* "drift" when load/store/load/store/ */
+                     }
+                  if (k) {            /* more of the same                    */
+                     force += k;
+                     --scanc;
+                     }
+                  }
+               if (--scanc - curc > 1) {
+                  put_parm("<%d>",scanc-curc);
+                  curc = scanc;
+                  }
+               else                /* changed our mind */
+                  force = 0;
+               }
+            }
+         }
       }
 
    if (rotate_lo != 1 || rotate_hi != 255)
       put_parm( s_seqdd,s_cyclerange,rotate_lo,rotate_hi);
+
+   if(basehertz != 440)
+      put_parm(s_seqd,s_hertz,basehertz);
+
+   if(start_showorbit != 0)
+
+   if(soundflag == 1)
+      put_parm(s_seqs,s_sound,s_x);
+   else if(soundflag == 2)
+      put_parm(s_seqs,s_sound,s_y);
+   else if(soundflag == 3)
+      put_parm(s_seqs,s_sound,s_z);
+
+   if(orbit_delay > 0)
+      put_parm(s_seqd,s_orbitdelay,orbit_delay);
+
+   if(start_showorbit > 0)
+      put_parm(s_seqs,s_showorbit,s_yes);
 
    while (wbdata->len) /* flush the buffer */
       put_parm_line();
@@ -996,7 +1044,7 @@ static void put_filename(char *keyword,char *fname)
    char *p;
    if (*fname && !endswithslash(fname)) {
       if ((p = strrchr(fname, SLASHC)) != NULL)
-	 if (*(fname = p+1) == 0) return;
+         if (*(fname = p+1) == 0) return;
       put_parm(s_seqs,keyword,fname);
       }
 }
@@ -1020,7 +1068,7 @@ va_dcl
    parm = va_arg(args,char *);
 #endif
    if (*parm == ' '             /* starting a new parm */
-     && wbdata->len == 0)	/* skip leading space */
+     && wbdata->len == 0)       /* skip leading space */
       ++parm;
    bufptr = wbdata->buf + wbdata->len;
    vsprintf(bufptr,parm,args);
@@ -1040,10 +1088,10 @@ static void put_parm_line()
       len = NICELINELEN+1;
       while (--len != 0 && wbdata->buf[len] != ' ') { }
       if (len == 0) {
-	 len = NICELINELEN-1;
-	 while (++len < MAXLINELEN
-	   && wbdata->buf[len] && wbdata->buf[len] != ' ') { }
-	 }
+         len = NICELINELEN-1;
+         while (++len < MAXLINELEN
+           && wbdata->buf[len] && wbdata->buf[len] != ' ') { }
+         }
       }
    c = wbdata->buf[len];
    wbdata->buf[len] = 0;
@@ -1079,7 +1127,7 @@ int getprecbf_mag()
 
    dec = getpower10(Magnification) + 4; /* 4 digits of padding sounds good */
    return(dec);
-}   
+}
 
 static int getprec(double a,double b,double c)
 {
@@ -1102,7 +1150,7 @@ static int getprec(double a,double b,double c)
 }
 
 /* This function calculates the precision needed to distiguish adjacent
-   pixels at Fractint's maximum resolution of MAXPIXELS by MAXPIXELS 
+   pixels at Fractint's maximum resolution of MAXPIXELS by MAXPIXELS
    (if rez==MAXREZ) or at current resolution (if rez==CURRENTREZ)    */
 int getprecbf(int rezflag)
 {
@@ -1122,7 +1170,7 @@ int getprecbf(int rezflag)
    if(rezflag == MAXREZ)
       rez = MAXPIXELS -1;
    else
-      rez = xdots-1;   
+      rez = xdots-1;
 
    /* bfxxdel = (bfxmax - bfx3rd)/(xdots-1) */
    sub_bf(bfxxdel, bfxmax, bfx3rd);
@@ -1133,7 +1181,7 @@ int getprecbf(int rezflag)
    div_a_bf_int(bfyydel2, (U16)rez);
 
    if(rezflag == CURRENTREZ)
-      rez = ydots-1;   
+      rez = ydots-1;
 
    /* bfyydel = (bfymax - bfy3rd)/(ydots-1) */
    sub_bf(bfyydel, bfymax, bfy3rd);
@@ -1157,7 +1205,7 @@ int getprecbf(int rezflag)
    {
       digits++;
       mult_a_bf_int(del1,10);
-   }   
+   }
    digits = max(digits,3);
    restore_stack(saved);
    dec = getprecbf_mag();
@@ -1165,7 +1213,7 @@ int getprecbf(int rezflag)
 }
 
 /* This function calculates the precision needed to distiguish adjacent
-   pixels at Fractint's maximum resolution of MAXPIXELS by MAXPIXELS 
+   pixels at Fractint's maximum resolution of MAXPIXELS by MAXPIXELS
    (if rez==MAXREZ) or at current resolution (if rez==CURRENTREZ)    */
 int getprecdbl(int rezflag)
 {
@@ -1175,13 +1223,13 @@ int getprecdbl(int rezflag)
    if(rezflag == MAXREZ)
       rez = MAXPIXELS -1;
    else
-      rez = xdots-1;   
-      
+      rez = xdots-1;
+
    xdel =  ((LDBL)xxmax - (LDBL)xx3rd)/rez;
    ydel2 = ((LDBL)yy3rd - (LDBL)yymin)/rez;
 
    if(rezflag == CURRENTREZ)
-      rez = ydots-1;   
+      rez = ydots-1;
 
    ydel = ((LDBL)yymax - (LDBL)yy3rd)/rez;
    xdel2 = ((LDBL)xx3rd - (LDBL)xxmin)/rez;
@@ -1202,59 +1250,66 @@ int getprecdbl(int rezflag)
    {
       digits++;
       del1 *= 10;
-   }   
+   }
    digits = max(digits,3);
    return(digits);
 }
 
-static void put_float(int slash,double fnum,int prec)
-{  char buf[40];
-   char *bptr, *dptr;
-   bptr = buf;
-   if (slash)
-      *(bptr++) = '/';
-/*   sprintf(bptr,"%1.*f",prec,fnum); */
-#ifdef USE_LONG_DOUBLE
-     /* Idea of long double cast is to squeeze out another digit or two
-        which might be needed (we have found cases where this digit makes
-        a difference.) But lets not do this at lower precision */
-     if(prec > 15) 
-        sprintf(bptr,"%1.*Lg",prec,(long double)fnum);
-     else
-#endif
-     sprintf(bptr,"%1.*g",prec,(double)fnum);
+/*
+   Strips zeros from the non-exponent part of a number. This logic
+   was originally in put_bf(), but is split into this routine so it can be
+   shared with put_float(), which had a bug in Fractint 19.2 (used to strip
+   zeros from the exponent as well.)
+*/
 
-   if ((dptr = strchr(bptr,'.')) != 0) {
-      ++dptr;
-      bptr = buf + strlen(buf);
-      while (--bptr > dptr && *bptr == '0')
-	 *bptr = 0;
-      }
-   put_parm(buf);
-}
-
-static void put_bf(int slash,bf_t r, int prec)
-{  
-   char *buf; /* "/-1.xxxxxxE-1234" */
-   char *bptr, *dptr, *exptr;
-   /* buf = malloc(decimals+11); */
-   buf = wbdata->buf+5000;  /* end of use suffix buffer, 5000 bytes safe */
-   bptr = buf;
-   if (slash)
-      *(bptr++) = '/';
-   bftostr(bptr, prec, r);
-
-   if ((dptr = strchr(bptr,'.')) != 0) {
+static void strip_zeros(char *buf)
+{
+   char *dptr, *bptr, *exptr;
+   strlwr(buf);
+   if ((dptr = strchr(buf,'.')) != 0) {
       ++dptr;
       if ((exptr = strchr(buf,'e')) !=0)  /* scientific notation with 'e'? */
          bptr = exptr;
       else
          bptr = buf + strlen(buf);
       while (--bptr > dptr && *bptr == '0')
-	 *bptr = 0;
-      if(exptr && bptr < exptr -1) 
+         *bptr = 0;
+      if(exptr && bptr < exptr -1)
         strcat(buf,exptr);
-   }     
+   }
+}
+
+static void put_float(int slash,double fnum,int prec)
+{  char buf[40];
+   char *bptr;
+   bptr = buf;
+   if (slash)
+      *(bptr++) = '/';
+/*   sprintf(bptr,"%1.*f",prec,fnum); */
+#ifdef USE_LONG_DOUBLE
+   /* Idea of long double cast is to squeeze out another digit or two
+      which might be needed (we have found cases where this digit makes
+      a difference.) But lets not do this at lower precision */
+   if(prec > 15)
+      sprintf(bptr,"%1.*Lg",prec,(long double)fnum);
+   else
+#endif
+      sprintf(bptr,"%1.*g",prec,(double)fnum);
+   strip_zeros(bptr);
+   put_parm(buf);
+}
+
+static void put_bf(int slash,bf_t r, int prec)
+{
+   char *buf; /* "/-1.xxxxxxE-1234" */
+   char *bptr;
+   /* buf = malloc(decimals+11); */
+   buf = wbdata->buf+5000;  /* end of use suffix buffer, 5000 bytes safe */
+   bptr = buf;
+   if (slash)
+      *(bptr++) = '/';
+   bftostr(bptr, prec, r);
+   strip_zeros(bptr);
    put_parm(buf);
 }
 
@@ -1288,22 +1343,22 @@ size_t showstack(void)
 #elif (_MSC_VER == 600)
    return(stackavail());
 #endif
-#else   
+#else
    return(-1);
 #endif
 }
 
 long fr_farfree(void)
 {
-   long j,j2; 
+   long j,j2;
    BYTE huge *fartempptr;
    j = 0;
    j2 = 0x80000L;
    while ((j2 >>= 1) != 0)
       if ((fartempptr = (BYTE huge *)farmemalloc(j+j2)) != NULL) {
-	 farmemfree((void far*)fartempptr);
-	 j += j2;
-	 }
+         farmemfree((void far*)fartempptr);
+         j += j2;
+         }
    return(j);
 }
 
@@ -1312,20 +1367,20 @@ void showfreemem(void)
    char *tempptr;
    unsigned i,i2;
 
-   char adapter_name[8];  	/* entry lenth from VIDEO.ASM */
+   char adapter_name[8];        /* entry lenth from VIDEO.ASM */
    char *adapter_ptr;
 
    printf("\n CPU type: %d  FPU type: %d  IIT FPU: %d  Video: %d",
-	  cpu, fpu, iit, video_type);
-         
+          cpu, fpu, iit, video_type);
+
    adapter_ptr = &supervga_list;
-   
-   for(i = 0 ; ; i++) {		/* find the SuperVGA entry */
+
+   for(i = 0 ; ; i++) {         /* find the SuperVGA entry */
        int j;
        memcpy(adapter_name , adapter_ptr, 8);
        adapter_ptr += 8;
-       if (adapter_name[0] == ' ') break;	/* end-of-the-list */
-       if (adapter_name[6] == 0) continue;	/* not our adapter */
+       if (adapter_name[0] == ' ') break;       /* end-of-the-list */
+       if (adapter_name[6] == 0) continue;      /* not our adapter */
        adapter_name[6] = ' ';
        for (j = 0; j < 8; j++)
            if(adapter_name[j] == ' ')
@@ -1338,9 +1393,9 @@ void showfreemem(void)
    i2 = 0x8000;
    while ((i2 >>= 1) != 0)
       if ((tempptr = malloc(i+i2)) != NULL) {
-	 free(tempptr);
-	 i += i2;
-	 }
+         free(tempptr);
+         i += i2;
+         }
    printf(" %d NEAR bytes free \n", i);
 
    printf(" %ld FAR bytes free ", fr_farfree());
@@ -1382,63 +1437,63 @@ edit_text_colors()
       i = getakey();
       if (i >= 'a' && i <= 'z') i -= 32; /* uppercase */
       switch (i) {
-	 case 27: /* esc */
-	    debugflag = save_debugflag;
-	    lookatmouse = save_lookatmouse;
-	    movecursor(25,80);
-	    return 0;
-	 case '/':
-	    farp1 = savescreen = farmemalloc(4000L);
-	    farp2 = vidmem;
-	    for (i = 0; i < 4000; ++i) { /* save and blank */
-	       *(farp1++) = *farp2;
-	       *(farp2++) = 0;
-	       }
-	    for (i = 0; i < 8; ++i)	  /* 8 bkgrd attrs */
-	       for (j = 0; j < 16; ++j) { /* 16 fgrd attrs */
-		  k = i*16 + j;
-		  farp1 = vidmem + i*320 + j*10;
-		  *(farp1++) = ' '; *(farp1++) = (char)k;
-		  *(farp1++) = (char)(i+'0'); *(farp1++) = (char)k;
-		  *(farp1++) = (char)((j < 10) ? j+'0' : j+'A'-10); *(farp1++) = (char)k;
-		  *(farp1++) = ' '; *(farp1++) = (char)k;
-		  }
-	    getakey();
-	    farp1 = vidmem;
-	    farp2 = savescreen;
-	    for (i = 0; i < 4000; ++i) /* restore */
-	       *(farp1++) = *(farp2++);
-	    farmemfree(savescreen);
-	    break;
-	 case ',':
-	    rowf = row; colf = col; break;
-	 case '.':
-	    rowt = row; colt = col; break;
-	 case ' ': /* next color is background */
-	    bkgrd = 1; break;
-	 case 1075: /* cursor left  */
-	    --col; break;
-	 case 1077: /* cursor right */
-	    ++col; break;
-	 case 1072: /* cursor up    */
-	    --row; break;
-	 case 1080: /* cursor down  */
-	    ++row; break;
-	 case 13:   /* enter */
-	    *(vidmem + row*160 + col*2) = (char)getakey();
-	    break;
-	 default:
-	    if (i >= '0' && i <= '9')      i -= '0';
-	    else if (i >= 'A' && i <= 'F') i -= 'A'-10;
-	    else break;
-	    for (j = rowf; j <= rowt; ++j)
-	       for (k = colf; k <= colt; ++k) {
-		  farp1 = vidmem + j*160 + k*2 + 1;
-		  if (bkgrd) *farp1 = (char)((*farp1 & 15) + i * 16);
-		  else	     *farp1 = (char)((*farp1 & 0xf0) + i);
-		  }
-	    bkgrd = 0;
-	 }
+         case 27: /* esc */
+            debugflag = save_debugflag;
+            lookatmouse = save_lookatmouse;
+            movecursor(25,80);
+            return 0;
+         case '/':
+            farp1 = savescreen = farmemalloc(4000L);
+            farp2 = vidmem;
+            for (i = 0; i < 4000; ++i) { /* save and blank */
+               *(farp1++) = *farp2;
+               *(farp2++) = 0;
+               }
+            for (i = 0; i < 8; ++i)       /* 8 bkgrd attrs */
+               for (j = 0; j < 16; ++j) { /* 16 fgrd attrs */
+                  k = i*16 + j;
+                  farp1 = vidmem + i*320 + j*10;
+                  *(farp1++) = ' '; *(farp1++) = (char)k;
+                  *(farp1++) = (char)(i+'0'); *(farp1++) = (char)k;
+                  *(farp1++) = (char)((j < 10) ? j+'0' : j+'A'-10); *(farp1++) = (char)k;
+                  *(farp1++) = ' '; *(farp1++) = (char)k;
+                  }
+            getakey();
+            farp1 = vidmem;
+            farp2 = savescreen;
+            for (i = 0; i < 4000; ++i) /* restore */
+               *(farp1++) = *(farp2++);
+            farmemfree(savescreen);
+            break;
+         case ',':
+            rowf = row; colf = col; break;
+         case '.':
+            rowt = row; colt = col; break;
+         case ' ': /* next color is background */
+            bkgrd = 1; break;
+         case 1075: /* cursor left  */
+            --col; break;
+         case 1077: /* cursor right */
+            ++col; break;
+         case 1072: /* cursor up    */
+            --row; break;
+         case 1080: /* cursor down  */
+            ++row; break;
+         case 13:   /* enter */
+            *(vidmem + row*160 + col*2) = (char)getakey();
+            break;
+         default:
+            if (i >= '0' && i <= '9')      i -= '0';
+            else if (i >= 'A' && i <= 'F') i -= 'A'-10;
+            else break;
+            for (j = rowf; j <= rowt; ++j)
+               for (k = colf; k <= colt; ++k) {
+                  farp1 = vidmem + j*160 + k*2 + 1;
+                  if (bkgrd) *farp1 = (char)((*farp1 & 15) + i * 16);
+                  else       *farp1 = (char)((*farp1 & 0xf0) + i);
+                  }
+            bkgrd = 0;
+         }
       }
 }
 
@@ -1451,13 +1506,13 @@ int select_video_mode(int curmode)
    static FCODE o_hdg1[]={"Select Video Mode"};
    char hdg2[sizeof(o_hdg2)];
    char hdg1[sizeof(o_hdg1)];
-   
+
    int entnums[MAXVIDEOMODES];
    int attributes[MAXVIDEOMODES];
    int i,j,k,ret;
    int oldtabmode,oldhelpmode;
 
-   load_fractint_cfg(0);	/* load fractint.cfg to extraseg */
+   load_fractint_cfg(0);        /* load fractint.cfg to extraseg */
 
    far_strcpy(hdg1,o_hdg1);
    far_strcpy(hdg2,o_hdg2);
@@ -1466,42 +1521,42 @@ int select_video_mode(int curmode)
       entnums[i] = i;
       attributes[i] = 1;
       }
-   entsptr = entnums;		/* for indirectly called subroutines */
+   entsptr = entnums;           /* for indirectly called subroutines */
 
    qsort(entnums,vidtbllen,sizeof(entnums[0]),entcompare); /* sort modes */
 
    /* pick default mode */
    if (curmode < 0) {
       switch (video_type) { /* set up a reasonable default (we hope) */
-	 case 1:  videoentry.videomodeax = 8;	/* hgc */
-		  videoentry.colors = 2;
-		  break;
-	 case 2:  videoentry.videomodeax = 4;	/* cga */
-		  videoentry.colors = 4;
-		  break;
-	 case 3:  videoentry.videomodeax = 16;	/* ega */
-		  videoentry.colors = 16;
-		  if (mode7text) {		/* egamono */
-		     videoentry.videomodeax = 15;
-		     videoentry.colors = 2;
-		     }
-		  break;
-	 default: videoentry.videomodeax = 19;	/* mcga/vga? */
-		  videoentry.colors = 256;
-		  break;
-	 }
+         case 1:  videoentry.videomodeax = 8;   /* hgc */
+                  videoentry.colors = 2;
+                  break;
+         case 2:  videoentry.videomodeax = 4;   /* cga */
+                  videoentry.colors = 4;
+                  break;
+         case 3:  videoentry.videomodeax = 16;  /* ega */
+                  videoentry.colors = 16;
+                  if (mode7text) {              /* egamono */
+                     videoentry.videomodeax = 15;
+                     videoentry.colors = 2;
+                     }
+                  break;
+         default: videoentry.videomodeax = 19;  /* mcga/vga? */
+                  videoentry.colors = 256;
+                  break;
+         }
       }
    else
       far_memcpy((char far *)&videoentry,(char far *)&videotable[curmode],
-		 sizeof(videoentry));
+                 sizeof(videoentry));
 #ifndef XFRACT
    for (i = 0; i < vidtbllen; ++i) { /* find default mode */
       if ( videoentry.videomodeax == vidtbl[entnums[i]].videomodeax
-	&& videoentry.colors	  == vidtbl[entnums[i]].colors
-	&& (curmode < 0
-	    || far_memcmp((char far *)&videoentry,(char far *)&vidtbl[entnums[i]],
-			  sizeof(videoentry)) == 0))
-	 break;
+        && videoentry.colors      == vidtbl[entnums[i]].colors
+        && (curmode < 0
+            || far_memcmp((char far *)&videoentry,(char far *)&vidtbl[entnums[i]],
+                          sizeof(videoentry)) == 0))
+         break;
       }
    if (i >= vidtbllen) /* no match, default to first entry */
       i = 0;
@@ -1518,18 +1573,18 @@ int select_video_mode(int curmode)
    if (i == -1) {
    static FCODE msg[]={"Save new function key assignments or cancel changes?"};
       if (modes_changed /* update fractint.cfg for new key assignments */
-	&& badconfig == 0
-	&& stopmsg(22,msg) == 0)
-	 update_fractint_cfg();
+        && badconfig == 0
+        && stopmsg(22,msg) == 0)
+         update_fractint_cfg();
       return(-1);
       }
-   if (i < 0)	/* picked by function key */
+   if (i < 0)   /* picked by function key */
       i = -1 - i;
-   else 	/* picked by Enter key */
+   else         /* picked by Enter key */
       i = entnums[i];
 #endif
    far_memcpy((char far *)&videoentry,(char far *)&vidtbl[i],
-	      sizeof(videoentry));  /* the selected entry now in videoentry */
+              sizeof(videoentry));  /* the selected entry now in videoentry */
 
 #ifndef XFRACT
    /* copy fractint.cfg table to resident table, note selected entry */
@@ -1537,21 +1592,21 @@ int select_video_mode(int curmode)
    far_memset((char far *)videotable,0,sizeof(*vidtbl)*MAXVIDEOTABLE);
    for (i = 0; i < vidtbllen; ++i) {
       if (vidtbl[i].keynum > 0) {
-	 far_memcpy((char far *)&videotable[j],(char far *)&vidtbl[i],
-		    sizeof(*vidtbl));
-	 if (far_memcmp((char far *)&videoentry,(char far *)&vidtbl[i],
-			sizeof(videoentry)) == 0)
-	    k = vidtbl[i].keynum;
-	 if (++j >= MAXVIDEOTABLE-1)
-	    break;
-	 }
+         far_memcpy((char far *)&videotable[j],(char far *)&vidtbl[i],
+                    sizeof(*vidtbl));
+         if (far_memcmp((char far *)&videoentry,(char far *)&vidtbl[i],
+                        sizeof(videoentry)) == 0)
+            k = vidtbl[i].keynum;
+         if (++j >= MAXVIDEOTABLE-1)
+            break;
+         }
       }
 #else
     k = vidtbl[0].keynum;
 #endif
    if ((ret = k) == 0) { /* selected entry not a copied (assigned to key) one */
       far_memcpy((char far *)&videotable[MAXVIDEOTABLE-1],
-		 (char far *)&videoentry,sizeof(*vidtbl));
+                 (char far *)&videoentry,sizeof(*vidtbl));
       ret = 1400; /* special value for check_vidmode_key */
       }
 
@@ -1567,12 +1622,12 @@ void format_vid_table(int choice,char *buf)
    char kname[5];
    char biosflag;
    far_memcpy((char far *)&videoentry,(char far *)&vidtbl[entsptr[choice]],
-	      sizeof(videoentry));
+              sizeof(videoentry));
    vidmode_keyname(videoentry.keynum,kname);
    biosflag = (char)((videoentry.dotmode % 100 == 1) ? 'B' : ' ');
    sprintf(buf,"%-5s %-25s %4d %4d %3d%c %-25s",  /* 72 chars */
-	   kname, videoentry.name, videoentry.xdots, videoentry.ydots,
-	   videoentry.colors, biosflag, videoentry.comment);
+           kname, videoentry.name, videoentry.xdots, videoentry.ydots,
+           videoentry.colors, biosflag, videoentry.comment);
 }
 
 static int check_modekey(int curkey,int choice)
@@ -1586,28 +1641,28 @@ static int check_modekey(int curkey,int choice)
      && (vidtbl[i].keynum == 0 || vidtbl[i].keynum >= 1084)) {
       static FCODE msg[]={"Missing or bad FRACTINT.CFG file. Can't reassign keys."};
       if (badconfig)
-	 stopmsg(0,msg);
+         stopmsg(0,msg);
       else {
-	 if (curkey == '-') {                   /* deassign key? */
-	    if (vidtbl[i].keynum >= 1084) {
-	       vidtbl[i].keynum = 0;
-	       modes_changed = 1;
-	       }
-	    }
-	 else { 				/* assign key? */
-	    j = getakeynohelp();
-	    if (j >= 1084 && j <= 1113) {
-	       for (k = 0; k < vidtbllen; ++k) {
-		  if (vidtbl[k].keynum == j) {
-		     vidtbl[k].keynum = 0;
-		     ret = -1; /* force redisplay */
-		     }
-		  }
-	       vidtbl[i].keynum = j;
-	       modes_changed = 1;
-	       }
-	    }
-	 }
+         if (curkey == '-') {                   /* deassign key? */
+            if (vidtbl[i].keynum >= 1084) {
+               vidtbl[i].keynum = 0;
+               modes_changed = 1;
+               }
+            }
+         else {                                 /* assign key? */
+            j = getakeynohelp();
+            if (j >= 1084 && j <= 1113) {
+               for (k = 0; k < vidtbllen; ++k) {
+                  if (vidtbl[k].keynum == j) {
+                     vidtbl[k].keynum = 0;
+                     ret = -1; /* force redisplay */
+                     }
+                  }
+               vidtbl[i].keynum = j;
+               modes_changed = 1;
+               }
+            }
+         }
       }
    return(ret);
 }
@@ -1656,43 +1711,43 @@ static void update_fractint_cfg()
    while (fgets(buf,120,cfgfile)) {
       ++linenum;
       if (linenum == nextlinenum) { /* replace this line */
-	 far_memcpy((char far *)&vident,(char far *)&vidtbl[nextmode],
-		    sizeof(videoentry));
-	 vidmode_keyname(vident.keynum,kname);
-	 strcpy(buf,vident.name);
-	 i = strlen(buf);
-	 while (i && buf[i-1] == ' ') /* strip trailing spaces to compress */
-	    --i;
-	 j = i + 5;
-	 while (j < 32) {		/* tab to column 33 */
-	    buf[i++] = '\t';
-	    j += 8;
-	    }
-	 buf[i] = 0;
-	 fprintf(outfile,"%-4s,%s,%4x,%4x,%4x,%4x,%4d,%4d,%4d,%3d,%s\n",
-		kname,
-		buf,
-		vident.videomodeax,
-		vident.videomodebx,
-		vident.videomodecx,
-		vident.videomodedx,
-		vident.dotmode,
-		vident.xdots,
-		vident.ydots,
-		vident.colors,
-		vident.comment);
-	 if (++nextmode >= vidtbllen)
-	    nextlinenum = 32767;
-	 else
-	    nextlinenum = cfglinenums[nextmode];
-	 }
+         far_memcpy((char far *)&vident,(char far *)&vidtbl[nextmode],
+                    sizeof(videoentry));
+         vidmode_keyname(vident.keynum,kname);
+         strcpy(buf,vident.name);
+         i = strlen(buf);
+         while (i && buf[i-1] == ' ') /* strip trailing spaces to compress */
+            --i;
+         j = i + 5;
+         while (j < 32) {               /* tab to column 33 */
+            buf[i++] = '\t';
+            j += 8;
+            }
+         buf[i] = 0;
+         fprintf(outfile,"%-4s,%s,%4x,%4x,%4x,%4x,%4d,%4d,%4d,%3d,%s\n",
+                kname,
+                buf,
+                vident.videomodeax,
+                vident.videomodebx,
+                vident.videomodecx,
+                vident.videomodedx,
+                vident.dotmode,
+                vident.xdots,
+                vident.ydots,
+                vident.colors,
+                vident.comment);
+         if (++nextmode >= vidtbllen)
+            nextlinenum = 32767;
+         else
+            nextlinenum = cfglinenums[nextmode];
+         }
       else
-	 fputs(buf,outfile);
+         fputs(buf,outfile);
       }
 
    fclose(cfgfile);
    fclose(outfile);
-   unlink(cfgname);	    /* success assumed on these lines	    */
+   unlink(cfgname);         /* success assumed on these lines       */
    rename(outname,cfgname); /* since we checked earlier with access */
 #endif
 }
@@ -1720,22 +1775,22 @@ unsigned char *temp;
 FILE *out, *in;
 char msgbuf[81];
 
-errorflag = 0;				/* no errors so far */
+errorflag = 0;                          /* no errors so far */
 inputerrorflag = 0;
 allxres = allyres = allitbl = 0;
 out = in = NULL;
 
 strcpy(gifout,"fractmig.gif");
 
-temp= &olddacbox[0][0];			/* a safe place for our temp data */
+temp= &olddacbox[0][0];                 /* a safe place for our temp data */
 
-gif87a_flag = 1;			/* for now, force this */
+gif87a_flag = 1;                        /* for now, force this */
 
 /* process each input image, one at a time */
 for (ystep = 0; ystep < ymult; ystep++) {
     for (xstep = 0; xstep < xmult; xstep++) {
 
-if (xstep == 0 && ystep == 0) {		/* first time through? */
+if (xstep == 0 && ystep == 0) {         /* first time through? */
     static FCODE msg1[] = "Cannot create output file %s!\n";
     static FCODE msg2[] = " \n Generating multi-image GIF file %s using";
     static FCODE msg3[] = " %d X and %d Y components\n\n";
@@ -1761,15 +1816,15 @@ if (xstep == 0 && ystep == 0) {		/* first time through? */
             }
 
         /* (read, but only copy this if it's the first time through) */
-        if (fread(temp,13,1,in) != 1)	/* read the header and LDS */
+        if (fread(temp,13,1,in) != 1)   /* read the header and LDS */
             inputerrorflag = 1;
-        memcpy(&xres, &temp[6], 2);	/* X-resolution */
-        memcpy(&yres, &temp[8], 2);	/* Y-resolution */
+        memcpy(&xres, &temp[6], 2);     /* X-resolution */
+        memcpy(&yres, &temp[8], 2);     /* Y-resolution */
 
-        if (xstep == 0 && ystep == 0) {	/* first time through? */
-            allxres = xres;		/* save the "master" resolution */
+        if (xstep == 0 && ystep == 0) { /* first time through? */
+            allxres = xres;             /* save the "master" resolution */
             allyres = yres;
-            xtot = xres * xmult;	/* adjust the image size */
+            xtot = xres * xmult;        /* adjust the image size */
             ytot = yres * ymult;
             memcpy(&temp[6], &xtot, 2);
             memcpy(&temp[8], &ytot, 2);
@@ -1778,22 +1833,22 @@ if (xstep == 0 && ystep == 0) {		/* first time through? */
                 temp[4] = '7';
                 temp[5] = 'a';
                 }
-            if (fwrite(temp,13,1,out) != 1)	/* write out the header */
+            if (fwrite(temp,13,1,out) != 1)     /* write out the header */
                 errorflag = 1;
-            }				/* end of first-time-through */
+            }                           /* end of first-time-through */
 
 
-        ichar = (char)(temp[10] & 0x07);	/* find the color table size */
+        ichar = (char)(temp[10] & 0x07);        /* find the color table size */
         itbl = 1 << (++ichar);
-        ichar = (char)(temp[10] & 0x80);	/* is there a global color table? */
-        if (xstep == 0 && ystep == 0)	/* first time through? */
-            allitbl = itbl;		/* save the color table size */
-        if (ichar != 0) {		/* yup */
+        ichar = (char)(temp[10] & 0x80);        /* is there a global color table? */
+        if (xstep == 0 && ystep == 0)   /* first time through? */
+            allitbl = itbl;             /* save the color table size */
+        if (ichar != 0) {               /* yup */
             /* (read, but only copy this if it's the first time through) */
-            if(fread(temp,3*itbl,1,in) != 1)	/* read the global color table */
+            if(fread(temp,3*itbl,1,in) != 1)    /* read the global color table */
                 inputerrorflag = 2;
-            if (xstep == 0 && ystep == 0)	/* first time through? */
-                if (fwrite(temp,3*itbl,1,out) != 1)	/* write out the GCT */
+            if (xstep == 0 && ystep == 0)       /* first time through? */
+                if (fwrite(temp,3*itbl,1,out) != 1)     /* write out the GCT */
                     errorflag = 2;
             }
 
@@ -1805,68 +1860,68 @@ if (xstep == 0 && ystep == 0) {		/* first time through? */
             exit(1);
             }
 
-        for (;;) {			/* process each information block */
-        if (fread(temp,1,1,in) != 1)	/* read the block identifier */
+        for (;;) {                      /* process each information block */
+        if (fread(temp,1,1,in) != 1)    /* read the block identifier */
             inputerrorflag = 3;
 
-        if (temp[0] == 0x2c) {		/* image descriptor block */
-            if (fread(&temp[1],9,1,in) != 1)	/* read the Image Descriptor */
+        if (temp[0] == 0x2c) {          /* image descriptor block */
+            if (fread(&temp[1],9,1,in) != 1)    /* read the Image Descriptor */
                 inputerrorflag = 4;
-            memcpy(&xloc, &temp[1], 2);	/* X-location */
-            memcpy(&yloc, &temp[3], 2);	/* Y-location */
-            xloc += (xstep * xres);	/* adjust the locations */
+            memcpy(&xloc, &temp[1], 2); /* X-location */
+            memcpy(&yloc, &temp[3], 2); /* Y-location */
+            xloc += (xstep * xres);     /* adjust the locations */
             yloc += (ystep * yres);
             memcpy(&temp[1], &xloc, 2);
             memcpy(&temp[3], &yloc, 2);
-            if (fwrite(temp,10,1,out) != 1)	/* write out the Image Descriptor */
+            if (fwrite(temp,10,1,out) != 1)     /* write out the Image Descriptor */
                 errorflag = 4;
 
-            ichar = (char)(temp[9] & 0x80);	/* is there a local color table? */
-            if (ichar != 0) {		/* yup */
-                if (fread(temp,3*itbl,1,in) != 1)	/* read the local color table */
+            ichar = (char)(temp[9] & 0x80);     /* is there a local color table? */
+            if (ichar != 0) {           /* yup */
+                if (fread(temp,3*itbl,1,in) != 1)       /* read the local color table */
                     inputerrorflag = 5;
-                if (fwrite(temp,3*itbl,1,out) != 1)	/* write out the LCT */
+                if (fwrite(temp,3*itbl,1,out) != 1)     /* write out the LCT */
                     errorflag = 5;
                 }
 
-            if (fread(temp,1,1,in) != 1)	/* LZH table size */
+            if (fread(temp,1,1,in) != 1)        /* LZH table size */
                 inputerrorflag = 6;
             if (fwrite(temp,1,1,out) != 1)
                 errorflag = 6;
             for(;;) {
-                if (errorflag != 0 || inputerrorflag != 0)	/* oops - did something go wrong? */
+                if (errorflag != 0 || inputerrorflag != 0)      /* oops - did something go wrong? */
                     break;
-                if (fread(temp,1,1,in) != 1)	/* block size */
+                if (fread(temp,1,1,in) != 1)    /* block size */
                     inputerrorflag = 7;
                 if (fwrite(temp,1,1,out) != 1)
                     errorflag = 7;
                 if ((i = temp[0]) == 0)
                     break;
-                if (fread(temp,i,1,in) != 1)	/* LZH data block */
+                if (fread(temp,i,1,in) != 1)    /* LZH data block */
                     inputerrorflag = 8;
                 if (fwrite(temp,i,1,out) != 1)
                     errorflag = 8;
                 }
             }
 
-        if (temp[0] == 0x21) {		/* extension block */
+        if (temp[0] == 0x21) {          /* extension block */
             /* (read, but only copy this if it's the last time through) */
-            if (fread(&temp[2],1,1,in) != 1)	/* read the block type */
+            if (fread(&temp[2],1,1,in) != 1)    /* read the block type */
                 inputerrorflag = 9;
             if ((!gif87a_flag) && xstep == xmult-1 && ystep == ymult-1)
                 if (fwrite(temp,2,1,out) != 1)
                     errorflag = 9;
             for(;;) {
-                if (errorflag != 0 || inputerrorflag != 0)	/* oops - did something go wrong? */
+                if (errorflag != 0 || inputerrorflag != 0)      /* oops - did something go wrong? */
                     break;
-                if (fread(temp,1,1,in) != 1)	/* block size */
+                if (fread(temp,1,1,in) != 1)    /* block size */
                     inputerrorflag = 10;
                 if ((!gif87a_flag) && xstep == xmult-1 && ystep == ymult-1)
                     if (fwrite(temp,1,1,out) != 1)
                         errorflag = 10;
                 if ((i = temp[0]) == 0)
                     break;
-                if (fread(temp,i,1,in) != 1)	/* data block */
+                if (fread(temp,i,1,in) != 1)    /* data block */
                     inputerrorflag = 11;
                 if ((!gif87a_flag) && xstep == xmult-1 && ystep == ymult-1)
                     if (fwrite(temp,i,1,out) != 1)
@@ -1874,30 +1929,30 @@ if (xstep == 0 && ystep == 0) {		/* first time through? */
                 }
             }
 
-        if (temp[0] == 0x3b) {		/* end-of-stream indicator */
-            break;			/* done with this file */
+        if (temp[0] == 0x3b) {          /* end-of-stream indicator */
+            break;                      /* done with this file */
             }
 
-        if (errorflag != 0 || inputerrorflag != 0)	/* oops - did something go wrong? */
+        if (errorflag != 0 || inputerrorflag != 0)      /* oops - did something go wrong? */
             break;
 
         }
-        fclose(in);			/* done with an input GIF */
+        fclose(in);                     /* done with an input GIF */
 
-        if (errorflag != 0 || inputerrorflag != 0)	/* oops - did something go wrong? */
+        if (errorflag != 0 || inputerrorflag != 0)      /* oops - did something go wrong? */
             break;
         }
 
-    if (errorflag != 0 || inputerrorflag != 0)	/* oops - did something go wrong? */
+    if (errorflag != 0 || inputerrorflag != 0)  /* oops - did something go wrong? */
         break;
     }
 
-temp[0] = 0x3b;			/* end-of-stream indicator */
+temp[0] = 0x3b;                 /* end-of-stream indicator */
 if (fwrite(temp,1,1,out) != 1)
     errorflag = 12;
-fclose(out);			/* done with the output GIF */
+fclose(out);                    /* done with the output GIF */
 
-if (inputerrorflag != 0) {	/* uh-oh - something failed */
+if (inputerrorflag != 0) {      /* uh-oh - something failed */
     static FCODE msg1[] = "\007 Process failed = early EOF on input file %s\n";
     far_strcpy(msgbuf, msg1);
     printf(msgbuf, gifin);
@@ -1906,7 +1961,7 @@ if (inputerrorflag != 0) {	/* uh-oh - something failed */
 */
     }
 
-if (errorflag != 0) {		/* uh-oh - something failed */
+if (errorflag != 0) {           /* uh-oh - something failed */
     static FCODE msg1[] = "\007 Process failed = out of disk space?\n";
     far_strcpy(msgbuf, msg1);
     printf(msgbuf);
@@ -1941,22 +1996,22 @@ void flip_image(int key)
    int i, j, ixhalf, iyhalf, tempdot;
 
    /* fractal must be rotate-able and be finished */
-   if ((curfractalspecific->flags&NOROTATE) != 0 
-       || calc_status == 1   
-       || calc_status == 2)  
+   if ((curfractalspecific->flags&NOROTATE) != 0
+       || calc_status == 1
+       || calc_status == 2)
       return;
    if(bf_math)
        clear_zoombox(); /* clear, don't copy, the zoombox */
-   ixhalf = xdots / 2;  
+   ixhalf = xdots / 2;
    iyhalf = ydots / 2;
    switch(key)
    {
    case 24:            /* control-X - reverse X-axis */
-      for (i = 0; i < ixhalf; i++) 
+      for (i = 0; i < ixhalf; i++)
       {
          if(keypressed())
             break;
-         for (j = 0; j < ydots; j++) 
+         for (j = 0; j < ydots; j++)
          {
             tempdot=getcolor(i,j);
             putcolor(i, j, getcolor(xdots-1-i,j));
@@ -1986,7 +2041,7 @@ void flip_image(int key)
       {
          if(keypressed())
             break;
-         for (i = 0; i < xdots; i++) 
+         for (i = 0; i < xdots; i++)
          {
             tempdot=getcolor(i,j);
             putcolor(i, j, getcolor(i,ydots-1-j));
@@ -2012,11 +2067,11 @@ void flip_image(int key)
       }
       break;
    case 26:            /* control-Z - reverse X and Y aXis */
-      for (i = 0; i < ixhalf; i++) 
+      for (i = 0; i < ixhalf; i++)
       {
          if(keypressed())
             break;
-         for (j = 0; j < ydots; j++) 
+         for (j = 0; j < ydots; j++)
          {
             tempdot=getcolor(i,j);
             putcolor(i, j, getcolor(xdots-1-i,ydots-1-j));

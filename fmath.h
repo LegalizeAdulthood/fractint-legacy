@@ -18,9 +18,9 @@
      128 Hamden Ave., F
      Waterbury, CT 06704
      (203) 754-1162
-     
+
      Notes below document changes to Mark's original file:
-     
+
      Date       Change                                    Changer
      ============================================================
      07-16-89 - Added sqrt define per Mark's suggestion   TIW
@@ -37,7 +37,7 @@
 
                    23-bit accuracy (limit of type float)
      Regular Implementation               Fast Math Implementation
- -------------------------------------------------------------------- 
+ --------------------------------------------------------------------
          z = x + y;                          fAdd(x, y, z);
          z = x * y;                          fMul(x, y, z);
          z = x * x;                          fSqr(x, z);
@@ -58,20 +58,20 @@
 
                             16-bit accuracy
      Regular Implementation               Fast Math Implementation
- -------------------------------------------------------------------- 
+ --------------------------------------------------------------------
          z = x * y;                          fMul16(x, y, z);
          z = x * x;                          fSqr16(x, z);
 
                             14-bit accuracy
      Regular Implementation               Fast Math Implementation
- -------------------------------------------------------------------- 
+ --------------------------------------------------------------------
          z = log(x);                         fLog14(x, z);
          z = exp(x);                         fExp14(x, z);
          z = pow(x, y);                      fPow14(x, y, z);
 
                             12-bit accuracy
      Regular Implementation               Fast Math Implementation
- -------------------------------------------------------------------- 
+ --------------------------------------------------------------------
          z = sin(x);                         fSin12(x, z);
          z = cos(x);                         fCos12(x, z);
          z = sinh(x);                        fSinh12(x, z);
@@ -88,7 +88,7 @@
 Just be sure to declare x, y, and z as type floats instead of type double.
 */
 
-long 
+long
 #ifndef XFRACT
    far RegFg2Float(long x, char FudgeFact),
    far RegSftFloat(long x, char Shift),
@@ -106,13 +106,13 @@ long
    far r16Mul(long x, long y),
    far r16Sqr(long x);
 int
-	far sin13(long x),
-	far cos13(long x),
-	far FastCosine(int x),
-	far FastSine(int x);
+        far sin13(long x),
+        far cos13(long x),
+        far FastCosine(int x),
+        far FastSine(int x);
 long
-	far FastHypCosine(int x),
-	far FastHypSine(int x),
+        far FastHypCosine(int x),
+        far FastHypSine(int x),
    far sinh13(long x),
    far cosh13(long x);
 long far LogFudged(unsigned long x, int Fudge);
@@ -140,7 +140,7 @@ long far ExpFloat14(long x);
 #define fCosh12(x, z) (void)((*(long*)&z) = \
    RegFg2Float(cosh13(Float2Fg(x, 13)), 13))
 #define fLog14(x, z) (void)((*(long*)&z) = \
-	RegFg2Float(LogFloat14(*(long*)&x), 16))
+        RegFg2Float(LogFloat14(*(long*)&x), 16))
 #define fExp14(x, z) (void)((*(long*)&z) = ExpFloat14(*(long*)&x));
 #define fPow14(x, y, z) fLog14(x, z); fMul16(z, y, z); fExp14(z, z)
 #define fSqrt14(x, z) fLog14(x, z); fShift(z, -1, z); fExp14(z, z)
@@ -149,7 +149,7 @@ struct fComplex {
    float x, y, mod;
 };
 
-void 
+void
    fSqrZ(struct fComplex *x, struct fComplex *z),
    fMod(struct fComplex *x),
    fInvZ(struct fComplex *x, struct fComplex *z),

@@ -23,7 +23,7 @@ SUBTTL All rights reserved.
 ;     80386/80286 Assembly Language Programming
 ;        by William H. Murray, III and Chris H. Pappas
 ;        Published by Osborne McGraw-Hill, 1986
-;        
+;
 ;
 ;
 
@@ -100,11 +100,11 @@ FPUcplxexp387  PROC     x:word, z:word
    fstp  QWORD PTR [bx+8]  ; <empty>
    ret
 FPUcplxexp387  ENDP
-   
+
 
 .data
 
-extrn TrigOverflow:WORD, TrigLimit:DWORD
+extrn overflow:WORD, TrigLimit:DWORD
 
 PiFg13         dw       6487h
 InvPiFg17      dw       0a2f9h
@@ -151,7 +151,7 @@ LoPtr          equ      <DWORD PTR [bx]>
 HiPtr          equ      <DWORD PTR [bx+2]>
 
 
-         
+
 _sincos386   PROC
    xor   Factorial, Factorial
    mov   SinNeg, Factorial
@@ -159,13 +159,13 @@ _sincos386   PROC
    mov   Exp, Factorial
    or    HiTerm, HiTerm
    jns   AnglePositive
-   
+
    not   Term
    not   HiTerm
    add   Term, 1
    adc   HiTerm, Factorial
    mov   SinNeg, 1
-      
+
 AnglePositive:
    mov   Sin, Term
    mov   Cos, HiTerm
@@ -192,7 +192,7 @@ AnglePositive:
    mov   One, Factorial
    mov   Cos, Factorial          ; Cos = 1
    mov   Sin, Num                  ; Sin = Num
-      
+
 LoopIntSinCos:
    TaylorTerm                    ; Term = Num * (x/2) * (x/3) * (x/4) * . . .
    sub   Cos, Term               ; Cos = 1 - Num*(x/2) + (x**4)/4! - . . .
@@ -203,30 +203,30 @@ LoopIntSinCos:
    sub   Sin, Term               ; Sin = Num - Num*(x/2)*(x/3) + (x**5)/5! - . . .
    cmp   Term, TrigLimit
    jbe   SHORT ExitIntSinCos
-      
+
    TaylorTerm
    add   Cos, Term
    cmp   Term, TrigLimit
    jbe   SHORT ExitIntSinCos
-      
+
    TaylorTerm                    ; Term = Num * (x/2) * (x/3) * . . .
    add   Sin, Term
    cmp   Term, TrigLimit
    jnbe  LoopIntSinCos
-      
+
 ExitIntSinCos:
    xor   Term, Term
    mov   Factorial, Term
    cmp   Cos, InvPiFg33
    jb    CosDivide               ; Cos < 1.0
-      
+
    inc   Factorial                      ; Cos == 1.0
    jmp   StoreCos
-      
+
 CosDivide:
    mov   HiTerm, Cos
    div   InvPiFg33
-      
+
 StoreCos:
    mov   Cos, Term                 ; Factorial:Cos
 
@@ -234,14 +234,14 @@ StoreCos:
    mov   Num, Term
    cmp   Sin, InvPiFg33
    jb    SinDivide               ; Sin < 1.0
-   
+
    inc   Num                      ; Sin == 1.0
    jmp   StoreSin
-      
+
 SinDivide:
    mov   HiTerm, Sin
    div   InvPiFg33
-      
+
 StoreSin:
    mov   Sin, Term                 ; Num:Sin
 
@@ -273,23 +273,23 @@ ChkNegSin:
 CorrectQuad:
    ret
 _sincos386     ENDP
-      
-      
+
+
 SinCos386   PROC     LoNum:DWORD, HiNum:DWORD, SinAddr:DWORD, CosAddr:DWORD
-   mov   Term, LoNum 
+   mov   Term, LoNum
    mov   HiTerm, HiNum
-   
+
    call  _sincos386
 
    cmp   CosNeg, 1
    jne   CosPolarized
 
    not   Cos
-   not   Factorial 
+   not   Factorial
    add   Cos, 1
    adc   Factorial, 0
 
-CosPolarized:     
+CosPolarized:
    mov   HiTerm, Num
    mov   Num, CosAddr
    mov   LoPtr, Cos
@@ -309,25 +309,25 @@ SinPolarized:
    mov   HiPtr, HiTerm
    ret
 SinCos386      ENDP
-      
-      
-      
+
+
+
 _e2y386   PROC                 ; eTerm =: Num * 2**16, 0 < Num < Ln2
    mov   ExpSign, 0
    or    HiTerm, HiTerm
    jns   CalcExp
-      
+
    mov   ExpSign, 1
    not   Term
    not   HiTerm
    add   Term, 1
    adc   HiTerm, 0
-   
+
 CalcExp:
    div   Ln2Fg32
    mov   Exp, Term
    mov   Num, HiTerm
-      
+
    xor   Factorial, Factorial
    stc
    rcr   Factorial, 1
@@ -335,30 +335,30 @@ CalcExp:
    mov   e, Num
    mov   Term, Num
    shr   Num, 1
-      
+
 Loop_e2y386:
    TaylorTerm
    add   e, Term                 ; e = 1 + Num + Num*x/2 + (x**3)/3! + . . .
    cmp   Term, TrigLimit
    jnbe  SHORT Loop_e2y386
-      
+
 ExitIntSinhCosh:
    stc
    rcr   e, 1
    ret                           ; return e**y * (2**32), 1 < e**y < 2
 _e2y386   ENDP
-      
-      
-      
+
+
+
 Exp386    PROC     LoNum:DWORD, HiNum:DWORD
-   mov   Term, LoNum 
+   mov   Term, LoNum
    mov   HiTerm, HiNum
-   
+
    call  _e2y386
-      
+
    cmp   Exp, 32
    jae   Overflow
-      
+
    cmp   ExpSign, 0
    jnz   NegNumber
 
@@ -366,33 +366,33 @@ Exp386    PROC     LoNum:DWORD, HiNum:DWORD
    shld  HiTerm, Term, cl
    shl   Term, cl
    jmp   ExitExp386
-      
+
 Overflow:
    xor   Term, Term
    xor   HiTerm, HiTerm
-   mov   TrigOverflow, 1
+   mov   overflow, 1
    jmp   ExitExp386
-      
+
 NegNumber:
    cmp   e, 80000000h
    jne   DivideE
-      
+
    mov   Term, e
    dec   Exp
    jmp   ShiftE
-      
+
 DivideE:
    xor   Term, Term
    mov   HiTerm, Term
    stc
    rcr   HiTerm, 1
    div   e
-      
+
 ShiftE:
    xor   HiTerm, HiTerm
    mov   Factorial, Exp
    shr   Term, cl
-      
+
 ExitExp386:
    ret
 Exp386    ENDP

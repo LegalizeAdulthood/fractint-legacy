@@ -26,14 +26,14 @@
 #include "tplus.h"
 
 struct TPWrite far WriteOffsets = {
-      0,       1,	2,	 3,	  0x400,   0x401,      0x402,
-      0x403,   0x800,	0x801,	 0x802,   0x803,   0xc00,      0xc01,
+      0,       1,       2,       3,       0x400,   0x401,      0x402,
+      0x403,   0x800,   0x801,   0x802,   0x803,   0xc00,      0xc01,
       0xc02,   0xc03
 };
 
 struct TPRead far ReadOffsets = {
-      0,		2,	 3,	  0x400,   0x401,      0x402,
-      0x403,   0x800,	0x801,	 0x802,   0x803,   0xc00,      0xc01,
+      0,                2,       3,       0x400,   0x401,      0x402,
+      0x403,   0x800,   0x801,   0x802,   0x803,   0xc00,      0xc01,
       0xc02,   0xc03
 };
 
@@ -83,7 +83,7 @@ struct TPLUS_IO {
    int Initx, Finalx, Inity, Finaly, Destx, Desty;
    unsigned long Color;
    unsigned RegsOffset, RegsSegment, RegListOffset, RegListSegment,
-	    BoardNumber, StructSize;
+            BoardNumber, StructSize;
 } far TPlusIO;
 
 /* TARGAP.SYS Commands */
@@ -92,11 +92,11 @@ struct TPLUS_IO {
 #define NUMBOARDS  3
 #define FILLBLOCK  4
 #define GRABFIELD  4
-#define RESET	   5
+#define RESET      5
 #define GRABFRAME  5
 #define WAITFORVB  6
 #define SETBOARD   8
-#define IOBASE	   9
+#define IOBASE     9
 
 /* DOS IO Commands */
 #define DOS_READ   0x4402
@@ -168,12 +168,12 @@ int SetVGA_LUT(void) {
    findpath("tplus.dat", PathName);
    if(PathName[0]) {
       if((Data = fopen(PathName, "rb")) != NULL) {
-	 if(!fseek(Data, 16L << 8, SEEK_SET)) {
-	    if(fread(LUTData, 1, sizeof(LUTData), Data) == sizeof(LUTData)) {
-	       fclose(Data);
-	       return(TPlusLUT(LUTData, 0, sizeof(LUTData), DOS_WRITE));
-	    }
-	 }
+         if(!fseek(Data, 16L << 8, SEEK_SET)) {
+            if(fread(LUTData, 1, sizeof(LUTData), Data) == sizeof(LUTData)) {
+               fclose(Data);
+               return(TPlusLUT(LUTData, 0, sizeof(LUTData), DOS_WRITE));
+            }
+         }
       }
    }
    if(Data != NULL)
@@ -186,62 +186,62 @@ int SetColorDepth(int Depth) {
       Depth = 2;
    switch(Depth) {
       case 1:
-	 if(TPlus.Reg[XDOTS] > 512) {
-	    TPlus.Reg[PERM] = 1;
-	    TPlus.Reg[BYCAP] = 3;
-	    TPlus.RowBytes = 10;
-	 }
-	 else {
-	    TPlus.Reg[PERM] = 0;
-	    TPlus.Reg[BYCAP] = 1;
-	    TPlus.RowBytes = 9;
-	 }
-	 TPlus.Reg[BUFFPORTSRC] = 0;
-	 TPlus.Reg[CM1] = 0;
-	 TPlus.Reg[CM2] = 0;
-	 TPlus.Reg[DEPTH] = 1;
-	 TPlus.Reg[LIVE8] = 1;
-	 TPlus.Reg[DISPMODE] = 0;
-	 TPlus.Reg[LIVEPORTSRC] = 1;
-	 TPlus.Reg[LUTBYPASS] = 0;
-	 break;
+         if(TPlus.Reg[XDOTS] > 512) {
+            TPlus.Reg[PERM] = 1;
+            TPlus.Reg[BYCAP] = 3;
+            TPlus.RowBytes = 10;
+         }
+         else {
+            TPlus.Reg[PERM] = 0;
+            TPlus.Reg[BYCAP] = 1;
+            TPlus.RowBytes = 9;
+         }
+         TPlus.Reg[BUFFPORTSRC] = 0;
+         TPlus.Reg[CM1] = 0;
+         TPlus.Reg[CM2] = 0;
+         TPlus.Reg[DEPTH] = 1;
+         TPlus.Reg[LIVE8] = 1;
+         TPlus.Reg[DISPMODE] = 0;
+         TPlus.Reg[LIVEPORTSRC] = 1;
+         TPlus.Reg[LUTBYPASS] = 0;
+         break;
       case 2:
-	 if(TPlus.Reg[XDOTS] > 512) {
-	    TPlus.Reg[PERM] = 3;
-	    TPlus.Reg[BYCAP] = 15;
-	    TPlus.Reg[CM2] = 1;
-	    TPlus.RowBytes = 11;
-	 }
-	 else {
-	    TPlus.Reg[PERM] = 1;
-	    TPlus.Reg[BYCAP] = 3;
-	    TPlus.Reg[CM2] = 0;
-	    TPlus.RowBytes = 10;
-	 }
-	 TPlus.Reg[BUFFPORTSRC] = 1;
-	 TPlus.Reg[CM1] = 0;
-	 TPlus.Reg[DEPTH] = 2;
-	 TPlus.Reg[LIVE8] = 0;
-	 TPlus.Reg[DISPMODE] = 0;
-	 TPlus.Reg[LIVEPORTSRC] = 1;
-	 TPlus.Reg[LUTBYPASS] = 1;
-	 break;
+         if(TPlus.Reg[XDOTS] > 512) {
+            TPlus.Reg[PERM] = 3;
+            TPlus.Reg[BYCAP] = 15;
+            TPlus.Reg[CM2] = 1;
+            TPlus.RowBytes = 11;
+         }
+         else {
+            TPlus.Reg[PERM] = 1;
+            TPlus.Reg[BYCAP] = 3;
+            TPlus.Reg[CM2] = 0;
+            TPlus.RowBytes = 10;
+         }
+         TPlus.Reg[BUFFPORTSRC] = 1;
+         TPlus.Reg[CM1] = 0;
+         TPlus.Reg[DEPTH] = 2;
+         TPlus.Reg[LIVE8] = 0;
+         TPlus.Reg[DISPMODE] = 0;
+         TPlus.Reg[LIVEPORTSRC] = 1;
+         TPlus.Reg[LUTBYPASS] = 1;
+         break;
       case 3:
       case 4:
-	 TPlus.Reg[PERM] = (Depth == 3) ? 2 : 3;
-	 TPlus.Reg[BYCAP] = 0xf;
-	 TPlus.Reg[BUFFPORTSRC] = 3;
-	 TPlus.Reg[CM1] = 1;
-	 TPlus.Reg[CM2] = 1;
-	 TPlus.Reg[DEPTH] = 4;
-	 TPlus.Reg[LIVE8] = 0;
-	 TPlus.Reg[DISPMODE] = 0;
-	 TPlus.Reg[LIVEPORTSRC] = 1;
-	 TPlus.Reg[LUTBYPASS] = 1;
-	 TPlus.RowBytes = 11;
-	 break;
+         TPlus.Reg[PERM] = (Depth == 3) ? 2 : 3;
+         TPlus.Reg[BYCAP] = 0xf;
+         TPlus.Reg[BUFFPORTSRC] = 3;
+         TPlus.Reg[CM1] = 1;
+         TPlus.Reg[CM2] = 1;
+         TPlus.Reg[DEPTH] = 4;
+         TPlus.Reg[LIVE8] = 0;
+         TPlus.Reg[DISPMODE] = 0;
+         TPlus.Reg[LIVEPORTSRC] = 1;
+         TPlus.Reg[LUTBYPASS] = 1;
+         TPlus.RowBytes = 11;
+         break;
       default:
-	 return(0);
+         return(0);
    }
    TPlus.Plot = WriteTPlusBankedPixel;
    TPlus.GetColor = ReadTPlusBankedPixel;
@@ -250,9 +250,9 @@ int SetColorDepth(int Depth) {
    TPlus.RowsPerBank = 16 - TPlus.RowBytes;
    if(TargapSys(WRITEALL, DOS_WRITE)) {
       if(Depth == 1)
-	 SetVGA_LUT();
+         SetVGA_LUT();
       if(TPlus.ClearScreen)
-	 ClearTPlusScreen();
+         ClearTPlusScreen();
       TargapSys(READALL, DOS_READ);
       return(Depth);
    }
@@ -271,11 +271,11 @@ int SetBoard(int BoardNumber) {
       return(0);
    TPlus.VerPan       = TPlus.Reg[VPAN];
    TPlus.HorPan       = TPlus.Reg[HPAN];
-   TPlus.Top	      = TPlus.Reg[TOP];
+   TPlus.Top          = TPlus.Reg[TOP];
    TPlus.Bottom       = TPlus.Reg[BOT];
-   TPlus.Bank64k      = 0xffff; 		/* Force a bank switch */
+   TPlus.Bank64k      = 0xffff;                 /* Force a bank switch */
 
-   MemBase	  = TPlus.Reg[MEM_BASE];
+   MemBase        = TPlus.Reg[MEM_BASE];
    MemBase += (TPlus.Reg[MEM_MAP] != 3) ? 8 : 0;
    TPlus.Screen = (BYTE far *)(MemBase << 28);
 
@@ -312,15 +312,15 @@ int CheckForTPlus(void) {
 
    if((hTPlus = open("TARGPLUS", O_RDWR | O_BINARY )) != -1) {
       if(!TargapSys(NUMBOARDS, DOS_READ))
-	 return(0);
+         return(0);
       NumTPlus = TPlusIO.BoardNumber;
       TPlus.ThisBoard = -1;
       TPlus.ClearScreen = 1;
       for(n = 0; n < NumTPlus; n++)
-	 if(!ResetBoard(n))
-	    return(0);
+         if(!ResetBoard(n))
+            return(0);
       if(SetBoard(0))
-	 return(1);
+         return(1);
    }
    return(0);
 }
@@ -334,35 +334,35 @@ int SetTPlusMode(int Mode, int NotIntFlag, int Depth, int Zoom) {
    findpath("tplus.dat", PathName);
    if(PathName[0]) {
       if((Data = fopen(PathName, "rb")) != NULL) {
-	 if(!fseek(Data, (long)Mode << 8, SEEK_SET)) {
-	    if(fread(NewRegs, 1, 256, Data) == 256) {
-	       fclose(Data);
-	       NewRegs[PE] = TPlus.Reg[PE];
-	       NewRegs[OVLE] = TPlus.Reg[OVLE];
-	       NewRegs[RGB] = TPlus.Reg[RGB];
-	       NewRegs[SVIDEO] = TPlus.Reg[SVIDEO];
-	       NewRegs[DAC567DATA] = TPlus.Reg[DAC567DATA];
-	       NewRegs[VGASRC] = TPlus.Reg[VGASRC];
-	       for(n = 0; n < 128; n++)
-		  TPlus.Reg[n] = NewRegs[n];
-	       if(TPlus.Reg[VTOP + 1] == 0xffff)
-		  TPlus.Reg[NOT_INT] = 0;
-	       else if(TPlus.Reg[VTOP] == 0xffff && !NotIntFlag) {
-		  TPlusErr = 1;
-		  return(0);
-	       }
-	       else
-		  TPlus.Reg[NOT_INT] = NotIntFlag;
-	       TPlus.xdots = TPlus.Reg[XDOTS];
-	       TPlus.ydots = TPlus.Reg[YDOTS];
-	       if(Zoom) {
-		  TPlus.Reg[ZOOM] = Zoom;
-		  TPlus.xdots >>= Zoom;
-		  TPlus.ydots >>= Zoom;
-	       }
-	       return(SetColorDepth(Depth));
-	    }
-	 }
+         if(!fseek(Data, (long)Mode << 8, SEEK_SET)) {
+            if(fread(NewRegs, 1, 256, Data) == 256) {
+               fclose(Data);
+               NewRegs[PE] = TPlus.Reg[PE];
+               NewRegs[OVLE] = TPlus.Reg[OVLE];
+               NewRegs[RGB] = TPlus.Reg[RGB];
+               NewRegs[SVIDEO] = TPlus.Reg[SVIDEO];
+               NewRegs[DAC567DATA] = TPlus.Reg[DAC567DATA];
+               NewRegs[VGASRC] = TPlus.Reg[VGASRC];
+               for(n = 0; n < 128; n++)
+                  TPlus.Reg[n] = NewRegs[n];
+               if(TPlus.Reg[VTOP + 1] == 0xffff)
+                  TPlus.Reg[NOT_INT] = 0;
+               else if(TPlus.Reg[VTOP] == 0xffff && !NotIntFlag) {
+                  TPlusErr = 1;
+                  return(0);
+               }
+               else
+                  TPlus.Reg[NOT_INT] = NotIntFlag;
+               TPlus.xdots = TPlus.Reg[XDOTS];
+               TPlus.ydots = TPlus.Reg[YDOTS];
+               if(Zoom) {
+                  TPlus.Reg[ZOOM] = Zoom;
+                  TPlus.xdots >>= Zoom;
+                  TPlus.ydots >>= Zoom;
+               }
+               return(SetColorDepth(Depth));
+            }
+         }
       }
    }
    if(Data != NULL)
@@ -371,7 +371,7 @@ int SetTPlusMode(int Mode, int NotIntFlag, int Depth, int Zoom) {
 }
 
 int FillTPlusRegion(unsigned x, unsigned y, unsigned xdots, unsigned ydots,
-	       unsigned long Color) {
+               unsigned long Color) {
    int Status = 0;
 
    TPlusIO.Initx = x;
@@ -455,34 +455,34 @@ static struct {
 static unsigned TableSize = (sizeof(ModeTable) / sizeof(ModeTable[0]));
 
 int MatchTPlusMode(unsigned xdots, unsigned ydots, unsigned MaxColorRes,
-		   unsigned PixelZoom, unsigned NonInterlaced) {
+                   unsigned PixelZoom, unsigned NonInterlaced) {
    unsigned n, Depth;
 
    for(n = 0; n < TableSize; n++) {
       if(ModeTable[n].xdots == xdots && ModeTable[n].ydots == ydots)
-	 break;
+         break;
    }
    if(n < TableSize) {
       if(ModeTable[n].Zoom)
-	 PixelZoom += ModeTable[n].Zoom;
+         PixelZoom += ModeTable[n].Zoom;
       if(PixelZoom > 4)
-	 PixelZoom = 4;
+         PixelZoom = 4;
       switch(MaxColorRes) {
-	 case 24:
-	    Depth = 4;
-	    break;
-	 case 16:
-	    Depth = 2;
-	    break;
-	 case 8:
-	 default:
-	    Depth = 1;
-	    break;
+         case 24:
+            Depth = 4;
+            break;
+         case 16:
+            Depth = 2;
+            break;
+         case 8:
+         default:
+            Depth = 1;
+            break;
       }
       if(ModeTable[n].Depth < Depth)
-	 Depth = ModeTable[n].Depth;
+         Depth = ModeTable[n].Depth;
       return(SetTPlusMode(ModeTable[n].Template, NonInterlaced, Depth,
-	     PixelZoom));
+             PixelZoom));
    }
    return(0);
 }

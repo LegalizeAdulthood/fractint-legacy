@@ -114,7 +114,7 @@ struct fls far *pfls = (struct fls far *)0;
 
 /* not moved to PROTOTYPE.H because these only communicate within
    PARSER.C and other parser modules */
-   
+
 extern union Arg *Arg1, *Arg2;
 extern double _1_, _2_;
 extern union Arg s[20], far * far *Store, far * far *Load;
@@ -235,7 +235,6 @@ NEW_FN  fStkCAbs;
 #define PARM1 v[1].a
 #define PARM2 v[2].a
 #define PARM3 v[8].a
-#define MAX_ARGS 100  /* maximum memory variables  */
 #define MAX_STACK 8   /* max # of stack register avail  */
 
 #ifdef TESTFP
@@ -334,12 +333,14 @@ NEW_FN  fStkCAbs;
 static unsigned char
    realstkcnt,   /* how many scalars are really on stack  */
    stkcnt,       /* # scalars on FPU stack  */
-   cvtptrx,      /* subscript of next free entry in pfls  */
    lastsqrused,  /* was lastsqr loaded in the formula?  */
    lastsqrreal,  /* was lastsqr stored explicitly in the formula?  */
    p1const,      /* is p1 a constant?  */
    p2const,      /* ...and p2?  */
    p3const;      /* ...and p3?  */
+
+static unsigned int
+   cvtptrx;      /* subscript of next free entry in pfls  */
 
 static void (near *prevfptr )(void);  /* previous function pointer  */
 
@@ -710,7 +711,7 @@ awful_error:
          ffptr = fStkStoDbl;
       }
       else if (prevfptr == fStkLod ){ /* have found  lod (*add)  */
-         --cvtptrx;	/*  ? *lod (add)  */
+         --cvtptrx;     /*  ? *lod (add)  */
          if (FNPTR(cvtptrx-1) == fStkPush2 ){
             DBUGMSG(0, "*push load (add) -> (*plodadd),stk+=2" );
             REMOVE_PUSH;
@@ -978,7 +979,7 @@ awful_error:
    /* ******************************************************************** */
    else if (ffptr == fStkDiv ){
 
-      if (prevfptr == fStkLodRealC && vsp < MAX_ARGS - 1 ){
+      if (prevfptr == fStkLodRealC && vsp < Max_Args - 1 ){
          /* have found a divide by a real constant  */
          /*  and there is space to create a new one  */
          /* lodrealc ? (*div)  */
@@ -1246,7 +1247,7 @@ SkipOptimizer:  /* -------------  end of optimizer ----------------------- */
    FNPTR(cvtptrx++) = prevfptr = ffptr;
 #ifdef TESTFP
    prevstkcnt = stkcnt;
-#endif   
+#endif
    if (Delta == CLEAR_STK ){
       realstkcnt = stkcnt = 0;
    }
@@ -1261,11 +1262,11 @@ SkipOptimizer:  /* -------------  end of optimizer ----------------------- */
    return 1;  /* return 1 for success  */
 }
 
-extern int fform_per_pixel(void);	/* these fns are in parsera.asm  */
+extern int fform_per_pixel(void);       /* these fns are in parsera.asm  */
 extern int BadFormula(void);
 extern void (far Img_Setup )(void);
 
-int CvtStk() {	/* convert the array of ptrs  */
+int CvtStk() {  /* convert the array of ptrs  */
    extern char FormName[];
    void (far *ftst)(void);
    void (near *ntst)(void);
@@ -1325,7 +1326,7 @@ int CvtStk() {	/* convert the array of ptrs  */
    }
 
    prevfptr = (void (near *)(void))0;
-   realstkcnt = stkcnt = cvtptrx = 0;
+   cvtptrx = realstkcnt = stkcnt = 0;
 
    for (OpPtr = LodPtr = StoPtr = 0; OpPtr < (int)LastOp; OpPtr++) {
       ftst = f[OpPtr];

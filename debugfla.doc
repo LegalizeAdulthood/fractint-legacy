@@ -35,6 +35,9 @@ timer.
 472	calcfract.c	enable solid guessing at bottom and right
 600	printer.c	paintjet, no form feed
 602	printer.c	paintjet, flip image
+620	loadfile.c	force the browser to use expanded memory
+622	loadfile.c	force the browser to use extended memory
+624	loadfile.c	force the browser to use far memory
 7nn     miscovl.c	set <b> getprec() digits variable to nn
 750     miscovl.c	print out as many params digits as possible in PAR
 870	fractint.c	set fpu to max 87

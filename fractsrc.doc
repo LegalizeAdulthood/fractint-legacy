@@ -2,7 +2,7 @@ The source code for Fractint is freely available.
 
 Enhancements to it are appreciated.  If you want to add something to
 Fractint and join the Stone Soup Group, please do!  To submit changes,
-see "Contacting the Authors" in Fractint's online help.
+see "Contacting the Authors" in Fractint's online help. 
 
 
 Copyright Information:
@@ -94,7 +94,8 @@ the lines for earlier versions. These probably need some work.
 
 Borland C++ 3.0 and 3.1 Users
 -----------------------------
-See the BC*.* files.
+See the BC*.* files. We don't claim these are up to date. If you can
+get this to compile under Borland, please send us the files.
 
 Help System
 ===========
@@ -201,16 +202,16 @@ CMPLX.H         - Complex math defines
 HCMPLX.C        - 4D Hypercomplex math
 PARSER.C	- The "type=formula" formula parser routines
 BIGFLT.C        - Wes Loewer's arbitrary precision library. All ASM code
- BIGFLT.H          exists as C also for portability.
- BIGFLTA.ASM  
- BIGFLTC.C    
- BIGINIT.C    
+ BIG.H            exists as C also for portability.
  BIGINIT.H    
+ BIGPORT.H    
+ BIGFLT.C     
+ BIGINIT.C    
  BIGNUM.C     
- BIGNUM.H     
- BIGNUMA.ASM  
  BIGNUMC.C    
-
+ BIGNUMA.ASM  
+ BIG.INC      
+ BIGPORT.INC  
 VIDEO.ASM	- Assembler code containing all of the video routines
 		  (setting up the video, reading/writing pixels, zoom-box
 		  code, color-cycling, graphics-to-text "help" switch,
@@ -399,3 +400,4 @@ M_MATH: uses MP type (mantissa, exponent).  These routines such as mStkAdd
     The MP routines work on multiple precision, MPC works on complex pairs
     of multiple precision.
 L_MATH: uses integer math.  Routines such as lStkAdd.
+

@@ -278,7 +278,7 @@ zlinefp(double x, double y)
 {
 #ifdef XFRACT
    static int keychk = 0;
-#endif   
+#endif
    xpixelfp = x;
    ypixelfp = y;
    mxfp = mxminfp;
@@ -310,7 +310,7 @@ zlinefp(double x, double y)
       qci = param[1];
       qcj = param[2];
       qck = param[3];
-#ifdef XFRACT      
+#ifdef XFRACT
       if (keychk++ > 500)
       {
          keychk = 0;
@@ -320,7 +320,7 @@ zlinefp(double x, double y)
 #else
       if (keypressed())
          return (-1);
-#endif      
+#endif
       tempsqrx = sqr(old.x);
       tempsqry = sqr(old.y);
 
@@ -395,9 +395,9 @@ Std4dFractal(void)
       {
          if (y == 0)
            plotted = -1;  /* no points first pass; don't give up */
-         else  
+         else
            break;
-      }     
+      }
    }
    return (0);
 }
@@ -414,7 +414,7 @@ Std4dfpFractal(void)
           fractalspecific[neworbittype].orbitcalc = floatZpowerFractal;
       else
           fractalspecific[neworbittype].orbitcalc = floatCmplxZpowerFractal;
-      get_julia_attractor (param[0], param[1]);	/* another attractor? */
+      get_julia_attractor (param[0], param[1]); /* another attractor? */
    }
 
    for (y = 0, ydot = (ydots >> 1) - 1; ydot >= 0; ydot--, y -= inch_per_ydotfp)
@@ -436,9 +436,9 @@ Std4dfpFractal(void)
       {
          if (y == 0)
            plotted = -1;  /* no points first pass; don't give up */
-         else  
+         else
            break;
-      }     
+      }
    }
    return (0);
 }

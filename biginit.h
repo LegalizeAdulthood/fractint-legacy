@@ -1,38 +1,45 @@
-/* bignum.h */
-/* Wesley Loewer's Big Numbers.        (C) 1994, Wesley B. Loewer */
+/* biginit.h */
+/* Used for fractint only. */
+/* Many of these are redundant from big.h  */
+/* but the fractint specific ones are not. */
 
-#ifndef _BIGINIT_H
-#define _BIGINIT_H
-
-#include "bignum.h"
-#include "bigflt.h"
-
-
-
-
-/* values that bf_math can hold, */
-/* 0 = bf_math is not being used */
-/* 1 = bf_math is being used     */
-/*
-If bf_math is used, then bigflt_t numbers are always used to
-keep track of corners and center-mag.  The actual calculations
-are done with either bn_t or bf_t.
-*/
-#define BIGNUM 1  /* bf_math is being used with bn_t numbers */
-#define BIGFLT 2  /* bf_math is being used with bf_t numbers */
+#define MATHBITS      32
+#define MATHBYTES     (MATHBITS/8)
+#define NUMVARS       30            /* room for this many on stack */
+#define CURRENTREZ    1
+#define MAXREZ        0
 
 
-/* functions defined in biginit.c */
+/* globals */
+int bnstep, bnlength, intlength, rlength, padding, shiftfactor, decimals;
+int bflength, rbflength, bfshiftfactor, bfdecimals;
 
-void calc_lengths(void);
-void free_bf_vars(void);
-bn_t alloc_stack(size_t size);
-int save_stack(void);
-void restore_stack(int old_offset);
-void init_bf_dec(int dec);
-void init_bf_length(int bnl);
-void init_big_pi(void);
-void show_var_bf(char *s, bf_t n);
-void show_var_bf_hex(char *s, bf_t n);
+/* used internally by bignum.c routines */
+bn_t bntmp1, bntmp2, bntmp3, bntmp4, bntmp5, bntmp6; /* rlength  */
+bn_t bntmpcpy1, bntmpcpy2;                           /* bnlength */
 
-#endif
+/* used by other routines */
+bn_t bnxmin, bnxmax, bnymin, bnymax, bnx3rd, bny3rd;        /* bnlength */
+bn_t bnxdel, bnydel, bnxdel2, bnydel2, bnclosenuff;         /* bnlength */
+bn_t bntmpsqrx, bntmpsqry, bntmp;                           /* rlength  */
+_BNCMPLX bnold, /* bnnew, */ bnparm, bnsaved;               /* bnlength */
+_BNCMPLX bnnew;                                              /* rlength */
+bn_t bn_pi;                                           /* TAKES NO SPACE */
+
+bf_t bftmp1, bftmp2, bftmp3, bftmp4, bftmp5, bftmp6;     /* rbflength+2 */
+bf_t bftmpcpy1, bftmpcpy2;                               /* rbflength+2 */
+bf_t bfxdel, bfydel, bfxdel2, bfydel2, bfclosenuff;      /* rbflength+2 */
+bf_t bftmpsqrx, bftmpsqry;                               /* rbflength+2 */
+_BFCMPLX /* bfold,  bfnew, */ bfparm, bfsaved;            /* bflength+2 */
+_BFCMPLX bfold,  bfnew;                                  /* rbflength+2 */
+bf_t bf_pi;                                           /* TAKES NO SPACE */
+bf_t big_pi;                                              /* bflength+2 */
+
+/* for testing only */
+
+/* used by other routines */
+bf_t bfxmin, bfxmax, bfymin, bfymax, bfx3rd, bfy3rd;      /* bflength+2 */
+bf_t bfsxmin, bfsxmax, bfsymin, bfsymax, bfsx3rd, bfsy3rd;/* bflength+2 */
+bf_t bfparms[10];                                    /* (bflength+2)*10 */
+bf_t bftmp;
+bf_t bf10tmp;                                              /* dec+4 */

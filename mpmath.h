@@ -71,8 +71,8 @@ union Arg {
    struct MPC m;
    _LCMPLX    l;
 /*
-   _DHCMPLX   dh; 
-   _LHCMPLX   lh; */  
+   _DHCMPLX   dh;
+   _LHCMPLX   lh; */
 };
 
 struct ConstArg {
@@ -96,15 +96,15 @@ extern void (*dtrig2)(void);
 extern void (*dtrig3)(void);
 
 /* -------------------------------------------------------------------- */
-/*   The following #defines allow the complex transcendental functions	*/
-/*   in parser.c to be used here thus avoiding duplicated code. 	*/
+/*   The following #defines allow the complex transcendental functions  */
+/*   in parser.c to be used here thus avoiding duplicated code.         */
 /* -------------------------------------------------------------------- */
 #ifndef XFRACT
 
-#define CMPLXmod(z)	  (sqr((z).x)+sqr((z).y))
-#define CMPLXconj(z)	((z).y =  -((z).y))
-#define LCMPLXmod(z)	   (lsqr((z).x)+lsqr((z).y))
-#define LCMPLXconj(z)	((z).y =  -((z).y))
+#define CMPLXmod(z)       (sqr((z).x)+sqr((z).y))
+#define CMPLXconj(z)    ((z).y =  -((z).y))
+#define LCMPLXmod(z)       (lsqr((z).x)+lsqr((z).y))
+#define LCMPLXconj(z)   ((z).y =  -((z).y))
 
 
 #define LCMPLXtrig0(arg,out) Arg1->l = (arg); ltrig0(); (out)=Arg1->l
@@ -133,24 +133,24 @@ extern void (*dtrig3)(void);
 #define LCMPLXsqr(arg,out)   \
    (out).x = lsqr((arg).x) - lsqr((arg).y);\
    (out).y = multiply((arg).x, (arg).y, bitshiftless1)
-#define LCMPLXsqr_old(out)	 \
+#define LCMPLXsqr_old(out)       \
    (out).y = multiply(lold.x, lold.y, bitshiftless1);\
    (out).x = ltempsqrx - ltempsqry
 
 #define LCMPLXpwr(arg1,arg2,out)    Arg2->l = (arg1); Arg1->l = (arg2);\
-	 lStkPwr(); Arg1++; Arg2++; (out) = Arg2->l
+         lStkPwr(); Arg1++; Arg2++; (out) = Arg2->l
 #define LCMPLXmult(arg1,arg2,out)    Arg2->l = (arg1); Arg1->l = (arg2);\
-	 lStkMul(); Arg1++; Arg2++; (out) = Arg2->l
+         lStkMul(); Arg1++; Arg2++; (out) = Arg2->l
 #define LCMPLXadd(arg1,arg2,out)    \
     (out).x = (arg1).x + (arg2).x; (out).y = (arg1).y + (arg2).y
 #define LCMPLXsub(arg1,arg2,out)    \
     (out).x = (arg1).x - (arg2).x; (out).y = (arg1).y - (arg2).y
 
-#define LCMPLXtimesreal(arg,real,out)	\
+#define LCMPLXtimesreal(arg,real,out)   \
     (out).x = multiply((arg).x,(real),bitshift);\
     (out).y = multiply((arg).y,(real),bitshift)
 
-#define LCMPLXrecip(arg,out)	\
+#define LCMPLXrecip(arg,out)    \
 { long denom; denom = lsqr((arg).x) + lsqr((arg).y);\
 if(denom==0L) overflow=1; else {(out).x = divide((arg).x,denom,bitshift);\
 (out).y = -divide((arg).y,denom,bitshift);}}
@@ -168,20 +168,20 @@ if(denom==0L) overflow=1; else {(out).x = divide((arg).x,denom,bitshift);\
 #define CMPLXsqr(arg,out)    \
    (out).x = sqr((arg).x) - sqr((arg).y);\
    (out).y = ((arg).x+(arg).x) * (arg).y
-#define CMPLXsqr_old(out)	\
+#define CMPLXsqr_old(out)       \
    (out).y = (old.x+old.x) * old.y;\
    (out).x = tempsqrx - tempsqry
 
 #define CMPLXpwr(arg1,arg2,out)   (out)= ComplexPower((arg1), (arg2))
 #define CMPLXmult1(arg1,arg2,out)    Arg2->d = (arg1); Arg1->d = (arg2);\
-	 dStkMul(); Arg1++; Arg2++; (out) = Arg2->d
+         dStkMul(); Arg1++; Arg2++; (out) = Arg2->d
 #define CMPLXmult(arg1,arg2,out)  \
-	{\
-	   _CMPLX TmP;\
-	   TmP.x = (arg1).x*(arg2).x - (arg1).y*(arg2).y;\
-	   TmP.y = (arg1).x*(arg2).y + (arg1).y*(arg2).x;\
-	   (out) = TmP;\
-	 }
+        {\
+           _CMPLX TmP;\
+           TmP.x = (arg1).x*(arg2).x - (arg1).y*(arg2).y;\
+           TmP.y = (arg1).x*(arg2).y + (arg1).y*(arg2).x;\
+           (out) = TmP;\
+         }
 #define CMPLXadd(arg1,arg2,out)    \
     (out).x = (arg1).x + (arg2).x; (out).y = (arg1).y + (arg2).y
 #define CMPLXsub(arg1,arg2,out)    \

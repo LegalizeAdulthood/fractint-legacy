@@ -14,7 +14,7 @@ comment {
  1) The fractal name through the open curly bracket must be on a single line.
  2) There is a hard-coded limit of 2000 formulas per formula file, only
     because of restrictions in the prompting routines.
- 3) Formulas can contain at most 250 operations (references to variables and
+ 3) Formulas can contain at most 2000 operations (references to variables and
     arithmetic); this is bigger than it sounds.
  4) Comment blocks can be set up using dummy formulas with no formula name
     or with the special name "comment".
@@ -290,7 +290,6 @@ REB005G {; Ron Barnett, 1993
     |z| <= 100
   }
 
-
 {--- BRADLEY BEACHAM -----------------------------------------------------}
 
 OK-01 { ;TRY P1 REAL = 10000, FN1 = SQR
@@ -490,12 +489,29 @@ inandout04 {
     |z| <= test
   }
 
+comment {
+  In this formula, a running count of the iterations is kept. After a 
+  specified iteration number has been reached, the algorithm is changed.
+  }
+
+shifter01 { ; After shift, switch from z*z to z*z*z
+            ; Bradley Beacham  [74223,2745]
+  ; P1 = shift value, P2 varies bailout value
+  z = c = pixel, iter = 1, shift = p1, test = 4 + p2:
+   lo = (z*z) * (iter <= shift)
+   hi = (z*z*z) * (shift < iter)
+   iter = iter + 1
+   z = lo + hi + c
+    |z| < test
+  }
 
 {--- PIETER BRANDERHORST -------------------------------------------------}
 
-{ The following resulted from a FRACTINT bug. Version 13 incorrectly
+comment {
+  The following resulted from a FRACTINT bug. Version 13 incorrectly
   calculated Spider (see above). We fixed the bug, and reverse-engineered
-  what it was doing to Spider - so here is the old "spider" }
+  what it was doing to Spider - so here is the old "spider" 
+  }
 
 Wineglass(XAXIS) {; Pieter Branderhorst
   c = z = pixel:
@@ -504,11 +520,38 @@ Wineglass(XAXIS) {; Pieter Branderhorst
     |z| <= 4
   }
 
+{--- ROBERT W. CARR ------------------------------------------------------}
+
+COMMENT {
+  This formula is based on Sylvie Gallet's Five-Mandels formula.
+  Though it shouldn't produce a symmetrical image, a modification of pixel 
+  forces symmetry around the Y axis.
+  }
+
+Carr2289 (YAXIS) {; Modified Sylvie Gallet frm. [101324,3444],1996
+  ; 0 < real(p1) < imag(p1) < real(p2) < imag(p2) < maxiter, periodicity=0
+  pixel = -abs(real(pixel))+flip(imag(pixel))
+  c = pixel+pixel-flip(0.0010/pixel)-conj(0.010/pixel)
+  z = pixel-conj(asin(pixel+pixel+0.32))
+  d1 = flip(-0.00059350/pixel)
+  z1 = 1.5*z+d1 , z2 = 2.25*z+d1 , z3 = 3.375*z+d1 , z4 = 5.0625*z+d1
+  l1 = real(p1) , l2 = imag(p1) , l3 = real(p2) , l4 = imag(p2)
+  bailout = 16 , iter = 0 , d4 = 4*d1:
+   t1 = (iter==l1) , t2 = (iter==l2) , t3 = (iter==l3) , t4 = (iter==l4)
+   t = 1-(t1||t2||t3||t4) , ct = z1*t1 + z2*t2 + z3*t3 + z4*t4 + d4
+   z = z*t + ct , c = c*t + ct
+   z = z*z+c
+   iter = iter+1
+    |real(z)| <= bailout
+  }
+
 {--- JM COLLARD-RICHARD --------------------------------------------------}
 
-{ These are the original "Richard" types sent by Jm Collard-Richard. Their
+comment {
+  These are the original "Richard" types sent by Jm Collard-Richard. Their
   generalizations are tacked on to the end of the "Jm" list below, but
-  we felt we should keep these around for historical reasons.}
+  we felt we should keep these around for historical reasons.
+  }
 
 Richard1 (XYAXIS) {; Jm Collard-Richard
   z = pixel:
@@ -577,10 +620,12 @@ Richard11(XYAXIS) {; Jm Collard-Richard
     |z|<=50
   }
 
-{ These types are generalizations of types sent to us by the French
+comment {
+  These types are generalizations of types sent to us by the French
   mathematician Jm Collard-Richard. If we hadn't generalized them
   there would be --ahhh-- quite a few. With 26 possible values for
-  each fn variable, Jm_03, for example, has 456,976 variations! }
+  each fn variable, Jm_03, for example, has 456,976 variations!
+  }
 
 Jm_01 {; generalized Jm Collard-Richard type
   z=pixel,t=p1+4:
@@ -796,15 +841,15 @@ GenInvMand1_N { ; Jm Collard-Richard
     |z|<=4
   }
 
-
 {--- W. LEROY DAVIS ------------------------------------------------------}
 
-{ These are from: "AKA MrWizard W. LeRoy Davis;SM-ALC/HRUC"
+comment {
+  These are from: "AKA MrWizard W. LeRoy Davis;SM-ALC/HRUC"
       davisl@sm-logdis1-aflc.af.mil
   The first 3 are variations of:
          z
      gamma(z) = (z/e) * sqrt(2*pi*z) * R
-}
+  }
 
 Sterling(XAXIS) {; davisl
   z = Pixel:
@@ -916,7 +961,6 @@ M_Lagandre6 {
     |z| < 100
   }
 
-
 {--- CHUCK EBBERT & JON HORNER -------------------------------------------}
 
 comment {
@@ -995,6 +1039,91 @@ F'M-SetInNewtonC(XAXIS) { ; same as F'M-SetInNewtonB except for bailout
     abs(|z| - real(lastsqr) ) >= p2
   }
 
+{--- SYLVIE GALLET -------------------------------------------------------}
+
+comment { 
+  Because of its large size, this formula requires Fractint version 19.3 or
+  later to run.
+  It uses Newton's formula applied to the equation z^6-1 = 0 and, in the 
+  foreground, spells out the word 'FRACTINT'.
+  }
+
+Fractint {; Sylvie Gallet [101324,3444], 1996
+          ; requires 'periodicity=0' 
+  z = pixel-0.025 , x=real(z) , y=imag(z) , x1=x*1.8 , x3=3*x
+  ty2 = ( (y<0.025) && (y>-0.025) ) || (y>0.175)
+  f = ( (x<-1.2) || ty2 ) && ( (x>-1.25) && (x<-1) )
+  r = ( (x<-0.9) || ty2 ) && ( (x>-0.95) && (x<-0.8) )
+  r = r || ((cabs(sqrt(|z+(0.8,-0.1)|)-0.1)<0.025) && (x>-0.8))
+  r = r || (((y<(-x1-1.44)) && (y>(-x1-1.53))) && (y<0.025))
+  a = (y>(x3+1.5)) || (y>(-x3-1.2)) || ((y>-0.125) && (y<-0.075))
+  a = a && ((y<(x3+1.65)) && (y<(-x3-1.05)))
+  c = (cabs(sqrt(|z+0.05|)-0.2)<0.025) && (x<0.05)
+  t1 = ((x>0.225) && (x<0.275) || (y>0.175)) && ((x>0.1) && (x<0.4))
+  i = (x>0.45) && (x<0.5)
+  n = (x<0.6) || (x>0.8) || ((y>-x1+1.215) && (y<-x1+1.305))
+  n = n && (x>0.55) && (x<0.85)
+  t2 = ((x>1.025) && (x<1.075) || (y>0.175)) && ((x>0.9) && (x<1.2))
+  test = 1 - (real(f||r||a||c||t1||i||n||t2)*real(y>-0.225)*real(y<0.225)) 
+  z = 1+(0.0,-0.65)/(pixel+(0.0,.75)) :
+   z2 = z*z , z4 = z2*z2 , n = z4*z2-1 , z = z-n/(6*z4*z)
+    (|n|>=0.0001) && test
+  }
+
+comment {
+  This formula uses Newton's formula applied to the real equation :
+     F(x,y) = 0 where F(x,y) = (x^3 + y^2 - 1 , y^3 - x^2 + 1)
+     starting with (x_0,y_0) = z0 = pixel
+  It calculates:
+     (x_(n+1),y_(n+1)) = (x_n,y_n) - (F'(x_n,y_n))^-1 * F(x_n,y_n)
+     where (F'(x_n,y_n))^-1 is the inverse of the Jacobian matrix of F.
+  }
+
+Newton_real { ; Sylvie Gallet [101324,3444], 1996
+  ; Newton's method applied to   x^3 + y^2 - 1 = 0 
+  ;                              y^3 - x^2 + 1 = 0
+  ;                              solution (0,-1)
+  ; One parameter : real(p1) = bailout value 
+  z = pixel , x = real(z) , y = imag(z) : 
+   xy = x*y                                
+   d = 9*xy+4 , x2 = x*x , y2 = y*y        
+   c = 6*xy+2 
+   x1 = x*c - (y*y2 - 3*y - 2)/x
+   y1 = y*c + (x*x2 + 2 - 3*x)/y
+   z = (x1+flip(y1))/d , x = real(z) , y = imag(z)
+    (|x| >= p1) || (|y+1| >= p1)
+  }
+
+comment {
+  Five-Mandels shows five Mandelbrot sets that fit into each other.
+  It uses the following algorithm:
+    z=c=pixel
+    FOR iter:=0 to l1-1
+      IF the orbit of z*z + c escapes THEN end
+        ELSE
+          z:=z1
+          FOR iter:=L1+1 to l2-1
+            IF the orbit of z*z + z1 escapes THEN end
+              ELSE
+                z:=z2
+                FOR iter:=L2+1 to l3-1
+                  ...
+  To work correctly, this formula requires the use of periodicity=0.
+  }
+
+Five-Mandels (XAXIS) {; Sylvie Gallet [101324,3444], 1996
+  ; 0 < real(p1) < imag(p1) < real(p2) < imag(p2) < maxiter, periodicity=0
+  c = z = pixel
+  z1 = 1.5*z , z2 = 2.25*z , z3 = 3.375*z , z4 = 5.0625*z
+  l1 = real(p1) , l2 = imag(p1) , l3 = real(p2) , l4 = imag(p2)
+  bailout = 16 , iter = 0 :
+   t1 = (iter==l1) , t2 = (iter==l2) , t3 = (iter==l3) , t4 = (iter==l4)
+   t = 1-(t1||t2||t3||t4) , ct = z1*t1 + z2*t2 + z3*t3 + z4*t4
+   z = z*t + ct , c = c*t + ct
+   z = z*z+c
+   iter = iter+1
+    |z| <= bailout
+  }
 
 {--- CHRIS GREEN ---------------------------------------------------------}
 
@@ -1091,7 +1220,6 @@ OldHalleySin (XYAXIS) {
     0.0001 <= |s|
   }
 
-
 {--- RICHARD HUGHES ------------------------------------------------------}
 
 phoenix_m { ; Mandelbrot style map of the Phoenix curves
@@ -1102,7 +1230,6 @@ phoenix_m { ; Mandelbrot style map of the Phoenix curves
    nx=x, ny=y, x=x1, y=y1, z=x + flip(y)
     |z| <= 4
   }
-
 
 {--- GORDON LAMB ---------------------------------------------------------}
 
@@ -1153,7 +1280,6 @@ SJMAND11 {;Mandelbrot lambda function - lower bailout
    z=fn1(z)*c
     |z|<=4
   }
-
 
 {--- KEVIN LEE -----------------------------------------------------------}
 
@@ -1235,7 +1361,6 @@ RCL_10 { ; Ron Lewen, 76376,2567
    z=flip((z^2+pixel)/(pixel^2+z))
     |z| <= 4
   }
-
 
 {--- JONATHAN OSUCH ------------------------------------------------------}
 
@@ -1361,7 +1486,9 @@ Zexpe (XAXIS) {
     |z| <= 100
   }
 
-comment { s = log(-1.,0.) / (0.,1.)   is   (3.14159265358979, 0.0 }
+comment {
+  s = log(-1.,0.) / (0.,1.)   is   (3.14159265358979, 0.0)
+  }
 
 Exipi (XAXIS) {
   s = log(-1.,0.) / (0.,1.), z = Pixel:
@@ -1422,11 +1549,60 @@ TSinh (XAXIS) {; Tetrated Hyperbolic Sine - Improper Bailout
     z <= (p1 + 3)
   }
 
+{--- TERREN SUYDAM -------------------------------------------------------}
+
+comment {
+  These formulas are designed to create tilings based on the Mandel or Julia
+  formulas that can be used as HTML page or Windows backgrounds.
+  Zoom in on a favorite spot on Mandel or Julia. Write down the center and
+  magnification for that particular view. If it's a Julia, write down
+  the real & imag. parameter as well.
+  The numbers you write down will be parameters to the fractal type 
+  TileMandel or TileJulia.
+  - For both, paramter p1 is the center of the image you want to tile.
+  - The real part of p2 is the magnification (the default is 1/3).
+  - The imag. part is the number of tiles you want to be drawn (the default
+    is 3).
+  - For TileJulia, p3 is the Julia parameter.
+     These formulas need 'periodicity=0'.
+  }
+
+TileMandel { ; Terren Suydam (terren@io.com), 1996
+             ; modified by Sylvie Gallet [101324,3444]
+  ; p1 = center = coordinates for a good Mandel
+  ; 0 <= real(p2) = magnification. Default for magnification is 1/3
+  ; 0 <= imag(p2) = numtiles. Default for numtiles is 3
+  center = p1 , mag = real(p2)*(p2>0) + (p2<=0)/3
+  numtiles = imag(p2)*(flip(p2)>0) + 3*(flip(p2)<=0)
+  omega = numtiles*2*pi/3
+  x = asin(sin(omega*real(pixel))) , y = asin(sin(omega*imag(pixel)))
+  z = c = (x+flip(y)) / mag + center :
+   z = z*z + c
+    |z| <= 4
+  }
+
+TileJulia { ; Terren Suydam (terren@io.com), 1996
+            ; modified by Sylvie Gallet [101324,3444]
+  ; p1 = center = coordinates for a good Julia
+  ; 0 <= real(p2) = magnification. Default for magnification is 1/3
+  ; 0 <= imag(p2) = numtiles. Default for numtiles is 3
+  ; p3 is the Julia set parameter
+  center = p1 , mag = real(p2)*(p2>0) + (p2<=0)/3
+  numtiles = imag(p2)*(flip(p2)>0) + 3*(flip(p2)<=0)
+  omega = numtiles*2*pi/3
+  x = asin(sin(omega*real(pixel))) , y = asin(sin(omega*imag(pixel)))
+  z = (x+flip(y)) / mag + center :
+   z = z*z + p3
+    |z| <= 4
+  }
+
 {--- SCOTT TAYLOR --------------------------------------------------------}
 
-{ The following is from Scott Taylor.
+comment {
+  The following is from Scott Taylor.
   Scott says they're "Dog" because the first one he looked at reminded him
-  of a hot dog. This was originally several fractals, we have generalized it. }
+  of a hot dog. This was originally several fractals, we have generalized it.
+  }
 
 FnDog(XYAXIS) {; Scott Taylor
   z = Pixel, b = p1+2:
@@ -1512,7 +1688,8 @@ MyFractal {; Fractal Creations example
 
 Bogus1 {; Fractal Creations example
   z = 0; z = z + * 2
-   |z| <= 4 }
+   |z| <= 4 
+  }
 
 MandelTangent {; Fractal Creations example (revised for v.16)
   z = pixel:
@@ -1527,15 +1704,14 @@ Mandel3 {; Fractal Creations example
     |z| <= 4
   }
 
-
 {--- AUTHORS UNKNOWN -----------------------------------------------------}
 
 moc {
-	z=0, c=pixel:
+  z=0, c=pixel:
    z=sqr(z)+c
    c=c+p1/c
     |z| <= 4
-	}
+  }
 
 Bali {;The difference of two squares
   z=x=1/pixel, c= fn1 (z):
@@ -1554,7 +1730,7 @@ Fatso {;
 Bjax {;
   z=c=2/pixel:
    z =(1/((z^(real(p1)))*(c^(real(p2))))*c) + c
-}
+  }
 
 ULI_4 {
   z = Pixel:
@@ -1573,4 +1749,3 @@ ULI_6 {
    z = fn1(p1+z)*fn2(p2-z)
     |z| <= p2+16
   }
-

@@ -12,8 +12,7 @@ Philippe Hurbain
 FRANCE
 }
 
-Penrose1 {
-           ;; by Herb Savage
+Penrose1 { ;; by Herb Savage
            ;; based on Martin Gardner's "Penrose Tiles to Trapdoor Ciphers",
            ;; Roger Penrose's rhombuses
   Angle 10
@@ -105,7 +104,7 @@ Kites&DartsColor {
 }
 
 
-AmmannPolyColor {
+AmmannPolyColor {  
                   ;; by Philippe Hurbain
                   ;; Ammann's coloring of Penrose's rhombuses, giving an
                   ;; aperiodic tiling of 2 pentagons and 1 hexagon
@@ -118,7 +117,7 @@ AmmannPolyColor {
   D=M
 }
 
-AmmannPoly {
+AmmannPoly {     
              ;; by Philippe Hurbain
              ;; Same as AmmanPolyColor, showing only the
              ;; pentagon/hexagon tiling

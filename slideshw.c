@@ -1,6 +1,6 @@
 /***********************************************************************/
 /* These routines are called by getakey to allow keystrokes to control */
-/* Fractint to be read from a file.				       */
+/* Fractint to be read from a file.                                    */
 /***********************************************************************/
 
 #include <stdio.h>
@@ -28,21 +28,21 @@ struct scancodes
 };
 static struct scancodes far scancodes[] =
 {
-   {  ENTER,	  "ENTER"       },
-   {  INSERT,	  "INSERT"      },
-   {  DELETE,	  "DELETE"      },
-   {  ESC,	  "ESC"         },
-   {  TAB,	  "TAB"         },
-   {  PAGE_UP,	  "PAGEUP"      },
+   {  ENTER,      "ENTER"       },
+   {  INSERT,     "INSERT"      },
+   {  DELETE,     "DELETE"      },
+   {  ESC,        "ESC"         },
+   {  TAB,        "TAB"         },
+   {  PAGE_UP,    "PAGEUP"      },
    {  PAGE_DOWN,  "PAGEDOWN"    },
-   {  HOME,	  "HOME"        },
-   {  END,	  "END"         },
+   {  HOME,       "HOME"        },
+   {  END,        "END"         },
    {  LEFT_ARROW, "LEFT"        },
    {  RIGHT_ARROW,"RIGHT"       },
    {  UP_ARROW,   "UP"          },
    {  DOWN_ARROW, "DOWN"        },
-   {  F1,	  "F1"          },
-   {  -1,	  NULL		}
+   {  F1,         "F1"          },
+   {  -1,         NULL          }
 };
 #define stop sizeof(scancodes)/sizeof(struct scancodes)-1
 
@@ -52,7 +52,7 @@ static int get_scancode(char *mn)
    i = 0;
    for(i=0;i< stop;i++)
       if(far_strcmp((char far *)mn,scancodes[i].mnemonic)==0)
-	 break;
+         break;
    return(scancodes[i].code);
 }
 
@@ -62,7 +62,7 @@ static char far *get_mnemonic(int code)
    i = 0;
    for(i=0;i< stop;i++)
       if(code == scancodes[i].code)
-	 break;
+         break;
    return(scancodes[i].mnemonic);
 }
 #undef stop
@@ -116,8 +116,8 @@ static void message(int secs, char far *buf)
       showtempmsg_txt(0,0,7,secs,nearbuf);
    else if (showtempmsg(nearbuf) == 0)
       {
-	 sleep_secs(secs);
-	 cleartempmsg();
+         sleep_secs(secs);
+         cleartempmsg();
       }
 }
 
@@ -129,20 +129,20 @@ int slideshw()
    if(calcwait)
    {
       if(calc_status == 1 || busy) /* restart timer - process not done */
-	 return(0); /* wait for calc to finish before reading more keystrokes */
+         return(0); /* wait for calc to finish before reading more keystrokes */
       calcwait = 0;
    }
    if(fpss==NULL)   /* open files first time through */
       if(startslideshow()==0)
-	 {
-	 stopslideshow();
-	 return (0);
-	 }
+         {
+         stopslideshow();
+         return (0);
+         }
 
    if(ticks) /* if waiting, see if waited long enough */
    {
       if(clock_ticks() - starttick < ticks) /* haven't waited long enough */
-	 return(0);
+         return(0);
       ticks = 0;
    }
    if (++slowcount <= 18)
@@ -150,7 +150,7 @@ int slideshw()
       starttick = clock_ticks();
       ticks = CLK_TCK/5; /* a slight delay so keystrokes are visible */
       if (slowcount > 10)
-	 ticks /= 2;
+         ticks /= 2;
    }
    if(repeats>0)
    {
@@ -161,7 +161,7 @@ start:
    if(quotes) /* reading a quoted string */
    {
       if((out=fgetc(fpss)) != '\"' && out != EOF)
-	 return(last1 = out);
+         return(last1 = out);
       quotes = 0;
    }
    /* skip white space: */
@@ -169,110 +169,110 @@ start:
    switch(out)
    {
       case EOF:
-	 stopslideshow();
-	 return(0);
+         stopslideshow();
+         return(0);
       case '\"':        /* begin quoted string */
-	 quotes = 1;
-	 goto start;
+         quotes = 1;
+         goto start;
       case ';':         /* comment from here to end of line, skip it */
-	 while((out=fgetc(fpss)) != '\n' && out != EOF) { }
-	 goto start;
+         while((out=fgetc(fpss)) != '\n' && out != EOF) { }
+         goto start;
       case '*':
-	 if (fscanf(fpss,"%d",&repeats) != 1
-	   || repeats <= 1 || repeats >= 256 || feof(fpss))
-	 {
-	    static FCODE msg[] = "error in * argument";
-	    slideshowerr(msg);
-	    last1 = repeats = 0;
-	 }
-	 repeats -= 2;
-	 return(out = last1);
+         if (fscanf(fpss,"%d",&repeats) != 1
+           || repeats <= 1 || repeats >= 256 || feof(fpss))
+         {
+            static FCODE msg[] = "error in * argument";
+            slideshowerr(msg);
+            last1 = repeats = 0;
+         }
+         repeats -= 2;
+         return(out = last1);
    }
 
    i = 0;
    for(;;) /* get a token */
    {
       if(i < 80)
-	 buffer[i++] = (char)out;
+         buffer[i++] = (char)out;
       if((out=fgetc(fpss)) == ' ' || out == '\t' || out == '\n' || out == EOF)
-	 break;
+         break;
    }
    buffer[i] = 0;
    if(buffer[i-1] == ':')
       goto start;
    out = -12345;
-   if(isdigit(buffer[0]))	/* an arbitrary scan code number - use it */
-	 out=atoi(buffer);
+   if(isdigit(buffer[0]))       /* an arbitrary scan code number - use it */
+         out=atoi(buffer);
    else if(far_strcmp((char far *)buffer,smsg)==0)
       {
-	 int secs;
-	 out = 0;
-	 if (fscanf(fpss,"%d",&secs) != 1)
-	 {
-	    static FCODE msg[] = "MESSAGE needs argument";
-	    slideshowerr(msg);
-	 }
-	 else
-	 {
-	    int len;
-	    char buf[41];
-	    buf[40] = 0;
-	    fgets(buf,40,fpss);
-	    len = strlen(buf);
-	    buf[len-1]=0; /* zap newline */
-	    message(secs,(char far *)buf);
-	 }
-	 out = 0;
+         int secs;
+         out = 0;
+         if (fscanf(fpss,"%d",&secs) != 1)
+         {
+            static FCODE msg[] = "MESSAGE needs argument";
+            slideshowerr(msg);
+         }
+         else
+         {
+            int len;
+            char buf[41];
+            buf[40] = 0;
+            fgets(buf,40,fpss);
+            len = strlen(buf);
+            buf[len-1]=0; /* zap newline */
+            message(secs,(char far *)buf);
+         }
+         out = 0;
       }
    else if(far_strcmp((char far *)buffer,sgoto)==0)
       {
-	 if (fscanf(fpss,"%s",buffer) != 1)
-	 {
-	    static FCODE msg[] = "GOTO needs target";
-	    slideshowerr(msg);
-	    out = 0;
-	 }
-	 else
-	 {
-	    char buffer1[80];
-	    rewind(fpss);
-	    strcat(buffer,":");
-	    do
-	    {
-	       err = fscanf(fpss,"%s",buffer1);
-	    } while( err == 1 && strcmp(buffer1,buffer) != 0);
-	    if(feof(fpss))
-	    {
-	       static FCODE msg[] = "GOTO target not found";
-	       slideshowerr(msg);
-	       return(0);
-	    }
-	    goto start;
-	 }
+         if (fscanf(fpss,"%s",buffer) != 1)
+         {
+            static FCODE msg[] = "GOTO needs target";
+            slideshowerr(msg);
+            out = 0;
+         }
+         else
+         {
+            char buffer1[80];
+            rewind(fpss);
+            strcat(buffer,":");
+            do
+            {
+               err = fscanf(fpss,"%s",buffer1);
+            } while( err == 1 && strcmp(buffer1,buffer) != 0);
+            if(feof(fpss))
+            {
+               static FCODE msg[] = "GOTO target not found";
+               slideshowerr(msg);
+               return(0);
+            }
+            goto start;
+         }
       }
    else if((i = get_scancode(buffer)) > 0)
-	 out = i;
+         out = i;
    else if(far_strcmp(swait,(char far *)buffer)==0)
       {
-	 float fticks;
-	 err = fscanf(fpss,"%f",&fticks); /* how many ticks to wait */
-	 fticks *= CLK_TCK;		/* convert from seconds to ticks */
-	 if(err==1)
-	 {
-	    ticks = (long)fticks;
-	    starttick = clock_ticks();	/* start timing */
-	 }
-	 else
-	 {
-	    static FCODE msg[] = "WAIT needs argument";
-	    slideshowerr(msg);
-	 }
-	 slowcount = out = 0;
+         float fticks;
+         err = fscanf(fpss,"%f",&fticks); /* how many ticks to wait */
+         fticks *= CLK_TCK;             /* convert from seconds to ticks */
+         if(err==1)
+         {
+            ticks = (long)fticks;
+            starttick = clock_ticks();  /* start timing */
+         }
+         else
+         {
+            static FCODE msg[] = "WAIT needs argument";
+            slideshowerr(msg);
+         }
+         slowcount = out = 0;
       }
    else if(far_strcmp(scalcwait,(char far *)buffer)==0) /* wait for calc to finish */
       {
-	 calcwait = 1;
-	 slowcount = out = 0;
+         calcwait = 1;
+         slowcount = out = 0;
       }
    else if((i=check_vidmode_keyname(buffer)) != 0)
       out = i;
@@ -309,19 +309,19 @@ void recordshw(int key)
 {
    char far *mn;
    float dt;
-   dt = (float)ticks;	   /* save time of last call */
+   dt = (float)ticks;      /* save time of last call */
    ticks=clock_ticks();  /* current time */
    if(fpss==NULL)
       if((fpss=fopen(autoname,"w"))==NULL)
-	 return;
+         return;
    dt = ticks-dt;
    dt /= CLK_TCK;  /* dt now in seconds */
    if(dt > .5) /* don't bother with less than half a second */
    {
       if(quotes) /* close quotes first */
       {
-	 quotes=0;
-	 fprintf(fpss,"\"\n");
+         quotes=0;
+         fprintf(fpss,"\"\n");
       }
       fprintf(fpss,"WAIT %4.1f\n",dt);
    }
@@ -329,8 +329,8 @@ void recordshw(int key)
    {
       if(!quotes)
       {
-	 quotes=1;
-	 fputc('\"',fpss);
+         quotes=1;
+         fputc('\"',fpss);
       }
       fputc(key,fpss);
    }
@@ -338,23 +338,23 @@ void recordshw(int key)
    {
       if(quotes) /* not an ASCII character - turn off quotes */
       {
-	 fprintf(fpss,"\"\n");
-	 quotes=0;
+         fprintf(fpss,"\"\n");
+         quotes=0;
       }
       if((mn=get_mnemonic(key)) != NULL)
 #ifndef XFRACT
-	  fprintf(fpss,"%Fs",mn);
+          fprintf(fpss,"%Fs",mn);
 #else
           fprintf(fpss,"%s",mn);
 #endif
       else if (check_vidmode_key(0,key) >= 0)
-	 {
-	    char buf[10];
-	    vidmode_keyname(key,buf);
-	    fprintf(fpss,buf);
-	 }
+         {
+            char buf[10];
+            vidmode_keyname(key,buf);
+            fprintf(fpss,buf);
+         }
       else /* not ASCII and not FN key */
-	 fprintf(fpss,"%4d",key);
+         fprintf(fpss,"%4d",key);
       fputc('\n',fpss);
    }
 }

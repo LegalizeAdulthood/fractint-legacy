@@ -382,6 +382,7 @@ _DATA              segment word public use16 'DATA'
    extrn           _dy1:DWORD, _dx1:DWORD, _dy0:DWORD, _dx0:DWORD
    extrn           _new:WORD, _old:WORD
    extrn           _overflow:WORD
+   extrn           _save_release:WORD
    extrn           _col:WORD, _row:WORD
    extrn           _Arg1:WORD, _Arg2:WORD
    extrn           _f:DWORD, _pfls:DWORD, _v:DWORD
@@ -820,6 +821,11 @@ DivNotOk:
       POP_STK      5                   ; clear 5 from stack (!)
       fld          _infinity           ; return a very large number
       fld          st(0)
+      mov          ax,_save_release
+      cmp          ax,1920
+      jle          oldwayD
+      mov          _overflow, 1
+oldwayD:
    END_INCL        Div
 ; --------------------------------------------------------------------------
    BEGN_INCL       Recip               ; Reciprocal
@@ -841,6 +847,11 @@ RecipNotOk:
       POP_STK      3                   ; clear three from stack
       fld          _infinity           ; return a very large number
       fld          st(0)
+      mov          ax,_save_release
+      cmp          ax,1920
+      jle          oldwayR
+      mov          _overflow, 1
+oldwayR:
    END_INCL        Recip
 ; --------------------------------------------------------------------------
    BEGN_OPER       StoSqr              ; Sto, Square, save magnitude
@@ -1058,7 +1069,7 @@ RecipNotOk:
       je           domainok            ; yup
       POP_STK      4                   ; clear stack completely
       fldz                             ; 0
-      fldz                             ; 0 0 
+      fldz                             ; 0 0
       EXIT_OPER    Pwr                 ; return (0,0)
    PARSALIGN
 domainok:
@@ -1855,7 +1866,7 @@ doneloop:
       ret
 _fFormulaX         endp
 ; --------------------------------------------------------------------------
-;	orbitcalc function follows
+;       orbitcalc function follows
 ; --------------------------------------------------------------------------
    public          _fFormula
    align           16
@@ -2021,7 +2032,7 @@ doneloop:
       ret
 _fFormulaX         endp
 ; --------------------------------------------------------------------------
-;	orbitcalc function follows
+;       orbitcalc function follows
 ; --------------------------------------------------------------------------
    public          _fFormula
    align           16

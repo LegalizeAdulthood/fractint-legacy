@@ -8,5 +8,5 @@ cmdfiles+help+intro+prompts1+prompts2+
 calcfrac+miscfrac+calcmand+calmanfp+testpt+lyapunov+
 encoder+loadfile+loadfdos+line3d+stereo+
 rotate+editpal+jiim+printer+miscovl+framain2+
-biginit+bignuma+bignum+fractalb+bigflt+bigfltc+bigflta+
-ant+frasetup,,,,fractint.def
+biginit+bignum+bigflt+bignuma+
+fractalb+ant+frasetup,,,,fractint.def

@@ -16,64 +16,64 @@
  *   10-22-90 EAN     Initial release.
  *
  *   10-23-90 EAN     "Discovered" get_line/put_line functions, integrated
- *		        them in (instead of only getcolor/putcolor). Much
- *		        faster!
- *		      Redesigned color editors (now at top of palette) and
- *		        re-assigned some keys.
- *		      Added (A)uto option.
- *		      Fixed memory allocation problem.  Now uses shared
- *		        FRACTINT data area (strlocn).  Uses 6 bytes DS.
+ *                      them in (instead of only getcolor/putcolor). Much
+ *                      faster!
+ *                    Redesigned color editors (now at top of palette) and
+ *                      re-assigned some keys.
+ *                    Added (A)uto option.
+ *                    Fixed memory allocation problem.  Now uses shared
+ *                      FRACTINT data area (strlocn).  Uses 6 bytes DS.
  *
  *   10-27-90 EAN     Added save to memory option - will save screen image to
- *		        memory, if enough mem avail.  (disk otherwise).
- *		      Added s(T)ripe mode - works like (S)hade except only
- *		        changes every n'th entry.
- *		      Added temporary palette save/restore.  (Can work like
- *		        an undo feature.)  Thanks to Pieter Branderhorst for
- *		        idea.
+ *                      memory, if enough mem avail.  (disk otherwise).
+ *                    Added s(T)ripe mode - works like (S)hade except only
+ *                      changes every n'th entry.
+ *                    Added temporary palette save/restore.  (Can work like
+ *                      an undo feature.)  Thanks to Pieter Branderhorst for
+ *                      idea.
  *
  *   10-28-90 EAN     The (H)ide function now makes the palette invisible,
- *		        while allowing any other operations (except '\\' -
- *		        move/resize) to continue.
+ *                      while allowing any other operations (except '\\' -
+ *                      move/resize) to continue.
  *
  *   10-29-90 PB (in EAN's absence, <grin>)
- *		      Change 'c' to 'd' and 's' to '=' for below.
- *		      Add 'l' to load palette from .map, 's' to store .map.
- *		      Add 'c' to invoke color cycling.
- *		      Change cursor to use whatever colors it can from
- *		      the palette (not fixed 0 and 255).
- *		      Restore colors 0 and 255 to real values whenever
- *		      palette is not on display.
- *		      Rotate 255 colors instead of 254.
- *		      Reduce cursor blink rate.
+ *                    Change 'c' to 'd' and 's' to '=' for below.
+ *                    Add 'l' to load palette from .map, 's' to store .map.
+ *                    Add 'c' to invoke color cycling.
+ *                    Change cursor to use whatever colors it can from
+ *                    the palette (not fixed 0 and 255).
+ *                    Restore colors 0 and 255 to real values whenever
+ *                    palette is not on display.
+ *                    Rotate 255 colors instead of 254.
+ *                    Reduce cursor blink rate.
  *
  *   11-15-90 EAN     Minor "bug" fixes.  Continuous rotation now at a fixed
- *		        rate - once every timer tick (18.2 sec);  Blanks out
- *		        color samples when rotating; Editors no longer rotate
- *		        with the colors in color rotation mode;  Eliminated
- *		        (Z)oom mode; other minor fixes.
+ *                      rate - once every timer tick (18.2 sec);  Blanks out
+ *                      color samples when rotating; Editors no longer rotate
+ *                      with the colors in color rotation mode;  Eliminated
+ *                      (Z)oom mode; other minor fixes.
  *
  *   01-05-91 PB      Add 'w' function to convert to greyscale.
  *
  *   01-16-91 PB      Change rotate function to use new cyclerange stuff.
  *
  *   01-29-91 EAN     Made all colors editable.  The two reserved colors are
- *			 X'ed out.  They can be edited but the color is not
- *			 visible.  (There is an X over the sample instead.)
- *		      Changed default reserved colors to 254 & 255.
- *		      Added 'v' command to set the reserved colors to those
- *			 under the editors.
- *		      Added 'o' command to set the rotate range to between
- *		        the two editors.
- *		      Modified 'w' function:
- *		        uses internal function to do conversion (not BIOS)
- *		        will convert only current color if in 'x' mode or
- *			  range between editors in 'y' mode or entire palette
- *			  if in "normal" mode.
+ *                       X'ed out.  They can be edited but the color is not
+ *                       visible.  (There is an X over the sample instead.)
+ *                    Changed default reserved colors to 254 & 255.
+ *                    Added 'v' command to set the reserved colors to those
+ *                       under the editors.
+ *                    Added 'o' command to set the rotate range to between
+ *                      the two editors.
+ *                    Modified 'w' function:
+ *                      uses internal function to do conversion (not BIOS)
+ *                      will convert only current color if in 'x' mode or
+ *                        range between editors in 'y' mode or entire palette
+ *                        if in "normal" mode.
  *
  *   02-08-91 EAN     Improved 16 color support.  In 16 color mode, colors
- *		        16-255 have a dot over them and are editable but not
- *		        visible (like the two reserved colors).
+ *                      16-255 have a dot over them and are editable but not
+ *                      visible (like the two reserved colors).
  *
  *   09-08-91 SWT     Added 'n' command to make a negative color palette:
  *                      will convert only current color if in 'x' mode or
@@ -127,24 +127,24 @@
  * misc. #defines
  */
 
-#define FONT_DEPTH	    8	  /* font size */
+#define FONT_DEPTH          8     /* font size */
 
-#define CSIZE_MIN	    8	  /* csize cannot be smaller than this */
+#define CSIZE_MIN           8     /* csize cannot be smaller than this */
 
-#define CURSOR_SIZE	    5	  /* length of one side of the x-hair cursor */
+#define CURSOR_SIZE         5     /* length of one side of the x-hair cursor */
 
 #ifndef XFRACT
-#define CURSOR_BLINK_RATE   3	  /* timer ticks between cursor blinks */
+#define CURSOR_BLINK_RATE   3     /* timer ticks between cursor blinks */
 #else
-#define CURSOR_BLINK_RATE   300	  /* timer ticks between cursor blinks */
+#define CURSOR_BLINK_RATE   300   /* timer ticks between cursor blinks */
 #endif
 
-#define FAR_RESERVE     8192L	  /* amount of far mem we will leave avail. */
+#define FAR_RESERVE     8192L     /* amount of far mem we will leave avail. */
 
-#define MAX_WIDTH	 1024	  /* palette editor cannot be wider than this */
+#define MAX_WIDTH        1024     /* palette editor cannot be wider than this */
 
 char scrnfile[] = "FRACTINT.$$1";  /* file where screen portion is */
-				   /* stored */
+                                   /* stored */
 char undofile[] = "FRACTINT.$$2";  /* file where undo list is stored */
 #define TITLE   "FRACTINT"
 
@@ -166,19 +166,19 @@ int editpal_cursor = 0;
 
 #if 0
  /* declarations moved to PRORTOTYPE.H - this left for docs */
- BYTE dacbox[256][3];	         /* DAC spindac() will use	     */
- int	     sxdots;		 /* width of physical screen	     */
- int	     sydots;		 /* depth of physical screen	     */
- int	     sxoffs;		 /* start of logical screen	     */
- int	     syoffs;		 /* start of logical screen	     */
- int	     lookatmouse;	 /* mouse mode for getakey(), etc    */
- int	     strlocn[]; 	 /* 10K buffer to store classes in   */
- int	     colors;		 /* # colors avail.		     */
- int	     color_bright;	 /* brightest color in palette	     */
- int	     color_dark;	 /* darkest color in palette	     */
- int	     color_medium;	 /* nearest to medbright gray color  */
- int	     rotate_lo, rotate_hi;
- int	     debugflag;
+ BYTE dacbox[256][3];            /* DAC spindac() will use           */
+ int         sxdots;             /* width of physical screen         */
+ int         sydots;             /* depth of physical screen         */
+ int         sxoffs;             /* start of logical screen          */
+ int         syoffs;             /* start of logical screen          */
+ int         lookatmouse;        /* mouse mode for getakey(), etc    */
+ int         strlocn[];          /* 10K buffer to store classes in   */
+ int         colors;             /* # colors avail.                  */
+ int         color_bright;       /* brightest color in palette       */
+ int         color_dark;         /* darkest color in palette         */
+ int         color_medium;       /* nearest to medbright gray color  */
+ int         rotate_lo, rotate_hi;
+ int         debugflag;
 #endif
 int using_jiim = 0;
 
@@ -190,8 +190,8 @@ int using_jiim = 0;
 typedef struct
    {
    BYTE red,
-		 green,
-		 blue;
+                 green,
+                 blue;
    } PALENTRY;
 
 
@@ -202,13 +202,13 @@ typedef struct
 
 
 static BYTE far *font8x8 = NULL;
-BYTE	 *line_buff;   /* must be alloced!!! */
-static BYTE	  fg_color,
-			  bg_color;
-static BOOLEAN		  reserve_colors;
-static BOOLEAN		  inverse;
+BYTE     *line_buff;   /* must be alloced!!! */
+static BYTE       fg_color,
+                          bg_color;
+static BOOLEAN            reserve_colors;
+static BOOLEAN            inverse;
 
-static float	gamma_val = 1;
+static float    gamma_val = 1;
 
 
 /*
@@ -241,7 +241,7 @@ static void getpalrange(int first, int how_many, PALENTRY *pal)
 static void rotatepal(PALENTRY *pal, int dir, int lo, int hi)
    {             /* rotate in either direction */
    PALENTRY hold;
-   int	    size;
+   int      size;
 
    size  = 1 + (hi-lo);
 
@@ -386,7 +386,7 @@ static void rect(int x, int y, int width, int depth, int color)
 
 void displayc(int x, int y, int fg, int bg, int ch)
    {
-   int		      xc, yc;
+   int                xc, yc;
    BYTE      t;
    BYTE far *ptr;
 
@@ -399,7 +399,7 @@ void displayc(int x, int y, int fg, int bg, int ch)
    for (yc=0; yc<FONT_DEPTH; yc++, y++, ++ptr)
       {
       for (xc=0, t= *ptr; xc<8; xc++, t<<=1)
-	 line_buff[xc] = (BYTE)((t&0x80) ? fg : bg);
+         line_buff[xc] = (BYTE)((t&0x80) ? fg : bg);
       putrow(x, y, 8, (char *)line_buff);
       }
    }
@@ -445,31 +445,31 @@ va_dcl
 
 static void mkpalrange(PALENTRY *p1, PALENTRY *p2, PALENTRY pal[], int num, int skip)
    {
-   int	  curr;
+   int    curr;
    double rm = (double)((int) p2->red   - (int) p1->red  ) / num,
-	  gm = (double)((int) p2->green - (int) p1->green) / num,
-	  bm = (double)((int) p2->blue  - (int) p1->blue ) / num;
+          gm = (double)((int) p2->green - (int) p1->green) / num,
+          bm = (double)((int) p2->blue  - (int) p1->blue ) / num;
 
    for (curr=0; curr<num; curr+=skip)
       {
       if (gamma_val == 1)
           {
-	  pal[curr].red   = (BYTE)((p1->red   == p2->red  ) ? p1->red   :
-		  (int) p1->red   + (int) ( rm * curr ));
-	  pal[curr].green = (BYTE)((p1->green == p2->green) ? p1->green :
-	      (int) p1->green + (int) ( gm * curr ));
-	  pal[curr].blue  = (BYTE)((p1->blue  == p2->blue ) ? p1->blue  :
-		  (int) p1->blue  + (int) ( bm * curr ));
-	  }
-	  else
-	  {
-	  pal[curr].red   = (BYTE)((p1->red   == p2->red  ) ? p1->red   :
-		  (int) (p1->red   + pow(curr/(double)(num-1),gamma_val)*num*rm));
-	  pal[curr].green = (BYTE)((p1->green == p2->green) ? p1->green :
-		  (int) (p1->green + pow(curr/(double)(num-1),gamma_val)*num*gm));
-	  pal[curr].blue  = (BYTE)((p1->blue  == p2->blue ) ? p1->blue  :
-		  (int) (p1->blue  + pow(curr/(double)(num-1),gamma_val)*num*bm));
-	  }
+          pal[curr].red   = (BYTE)((p1->red   == p2->red  ) ? p1->red   :
+                  (int) p1->red   + (int) ( rm * curr ));
+          pal[curr].green = (BYTE)((p1->green == p2->green) ? p1->green :
+              (int) p1->green + (int) ( gm * curr ));
+          pal[curr].blue  = (BYTE)((p1->blue  == p2->blue ) ? p1->blue  :
+                  (int) p1->blue  + (int) ( bm * curr ));
+          }
+          else
+          {
+          pal[curr].red   = (BYTE)((p1->red   == p2->red  ) ? p1->red   :
+                  (int) (p1->red   + pow(curr/(double)(num-1),gamma_val)*num*rm));
+          pal[curr].green = (BYTE)((p1->green == p2->green) ? p1->green :
+                  (int) (p1->green + pow(curr/(double)(num-1),gamma_val)*num*gm));
+          pal[curr].blue  = (BYTE)((p1->blue  == p2->blue ) ? p1->blue  :
+                  (int) (p1->blue  + pow(curr/(double)(num-1),gamma_val)*num*bm));
+          }
       }
    }
 
@@ -479,7 +479,7 @@ static void mkpalrange(PALENTRY *p1, PALENTRY *p2, PALENTRY pal[], int num, int 
 
 static void rotcolrg(PALENTRY pal[], int num)
    {
-   int	  curr;
+   int    curr;
    int    dummy;
 
     for (curr=0; curr<=num; curr++)
@@ -493,7 +493,7 @@ static void rotcolrg(PALENTRY pal[], int num)
 
 static void rotcolgb(PALENTRY pal[], int num)
    {
-   int	  curr;
+   int    curr;
    int    dummy;
 
     for (curr=0; curr<=num; curr++)
@@ -506,7 +506,7 @@ static void rotcolgb(PALENTRY pal[], int num)
 
 static void rotcolbr(PALENTRY pal[], int num)
    {
-   int	  curr;
+   int    curr;
    int    dummy;
 
     for (curr=0; curr<=num; curr++)
@@ -660,11 +660,11 @@ static BOOLEAN is_in_box(int x, int y, int bx, int by, int bw, int bd)
 
 static void draw_diamond(int x, int y, int color)
    {
-   putcolor (x+2, y+0,	  color);
+   putcolor (x+2, y+0,    color);
    hline    (x+1, y+1, 3, color);
    hline    (x+0, y+2, 5, color);
    hline    (x+1, y+3, 3, color);
-   putcolor (x+2, y+4,	  color);
+   putcolor (x+2, y+4,    color);
    }
 
 
@@ -675,28 +675,28 @@ static void draw_diamond(int x, int y, int color)
  * Purpose:   Draw the blinking cross-hair cursor.
  *
  * Note:      Only one Cursor can exist (referenced through the_cursor).
- *	      IMPORTANT: Call Cursor_Construct before you use any other
- *	      Cursor_ function!  Call Cursor_Destroy before exiting to
- *	      deallocate memory.
+ *            IMPORTANT: Call Cursor_Construct before you use any other
+ *            Cursor_ function!  Call Cursor_Destroy before exiting to
+ *            deallocate memory.
  */
 
 struct _Cursor
    {
 
-   int	   x, y;
-   int	   hidden;	 /* >0 if mouse hidden */
+   int     x, y;
+   int     hidden;       /* >0 if mouse hidden */
    long    last_blink;
    BOOLEAN blink;
 #if 0
-   char    t[CURSOR_SIZE],	  /* save line segments here */
-	   b[CURSOR_SIZE],
-	   l[CURSOR_SIZE],
-	   r[CURSOR_SIZE];
+   char    t[CURSOR_SIZE],        /* save line segments here */
+           b[CURSOR_SIZE],
+           l[CURSOR_SIZE],
+           r[CURSOR_SIZE];
 #endif
-   char    t[CURSOR_SIZE];	  /* save line segments here */
-   char	   b[CURSOR_SIZE];
-   char	   l[CURSOR_SIZE];
-   char	   r[CURSOR_SIZE];
+   char    t[CURSOR_SIZE];        /* save line segments here */
+   char    b[CURSOR_SIZE];
+   char    l[CURSOR_SIZE];
+   char    r[CURSOR_SIZE];
    } ;
 
 #define Cursor struct _Cursor
@@ -724,10 +724,10 @@ BOOLEAN Cursor_Construct(void)
 
    the_cursor = new(Cursor);
 
-   the_cursor->x	  = sxdots/2;
-   the_cursor->y	  = sydots/2;
-   the_cursor->hidden	  = 1;
-   the_cursor->blink	  = FALSE;
+   the_cursor->x          = sxdots/2;
+   the_cursor->y          = sydots/2;
+   the_cursor->hidden     = 1;
+   the_cursor->blink      = FALSE;
    the_cursor->last_blink = 0;
 
    return (TRUE);
@@ -752,30 +752,30 @@ static void Cursor__Draw(void)
    color = (the_cursor->blink) ? color_medium : color_dark;
 
    vline(the_cursor->x, the_cursor->y-CURSOR_SIZE-1, CURSOR_SIZE, color);
-   vline(the_cursor->x, the_cursor->y+2,	     CURSOR_SIZE, color);
+   vline(the_cursor->x, the_cursor->y+2,             CURSOR_SIZE, color);
 
    hline(the_cursor->x-CURSOR_SIZE-1, the_cursor->y, CURSOR_SIZE, color);
-   hline(the_cursor->x+2,	      the_cursor->y, CURSOR_SIZE, color);
+   hline(the_cursor->x+2,             the_cursor->y, CURSOR_SIZE, color);
    }
 
 
 static void Cursor__Save(void)
    {
    vgetrow(the_cursor->x, the_cursor->y-CURSOR_SIZE-1, CURSOR_SIZE, the_cursor->t);
-   vgetrow(the_cursor->x, the_cursor->y+2,	       CURSOR_SIZE, the_cursor->b);
+   vgetrow(the_cursor->x, the_cursor->y+2,             CURSOR_SIZE, the_cursor->b);
 
    getrow(the_cursor->x-CURSOR_SIZE-1, the_cursor->y,  CURSOR_SIZE, the_cursor->l);
-   getrow(the_cursor->x+2,	       the_cursor->y,  CURSOR_SIZE, the_cursor->r);
+   getrow(the_cursor->x+2,             the_cursor->y,  CURSOR_SIZE, the_cursor->r);
    }
 
 
 static void Cursor__Restore(void)
    {
    vputrow(the_cursor->x, the_cursor->y-CURSOR_SIZE-1, CURSOR_SIZE, the_cursor->t);
-   vputrow(the_cursor->x, the_cursor->y+2,	       CURSOR_SIZE, the_cursor->b);
+   vputrow(the_cursor->x, the_cursor->y+2,             CURSOR_SIZE, the_cursor->b);
 
    putrow(the_cursor->x-CURSOR_SIZE-1, the_cursor->y,  CURSOR_SIZE, the_cursor->l);
-   putrow(the_cursor->x+2,	       the_cursor->y,  CURSOR_SIZE, the_cursor->r);
+   putrow(the_cursor->x+2,             the_cursor->y,  CURSOR_SIZE, the_cursor->r);
    }
 
 
@@ -871,7 +871,7 @@ void Cursor_CheckBlink(void)
       the_cursor->blink = (BOOLEAN)((the_cursor->blink) ? FALSE : TRUE);
       the_cursor->last_blink = tick;
       if ( !the_cursor->hidden )
-	 Cursor__Draw();
+         Cursor__Draw();
       }
    else if ( tick < the_cursor->last_blink )
       the_cursor->last_blink = tick;
@@ -903,38 +903,38 @@ int Cursor_WaitKey(void)   /* blink cursor while waiting for a key */
 
 struct _MoveBox
    {
-   int	    x, y;
-   int	    base_width,
-	    base_depth;
-   int	    csize;
+   int      x, y;
+   int      base_width,
+            base_depth;
+   int      csize;
    BOOLEAN  moved;
    BOOLEAN  should_hide;
    char    *t, *b,
-	   *l, *r;
+           *l, *r;
    } ;
 
 #define MoveBox struct _MoveBox
 
 /* private: */
 
-   static void	   MoveBox__Draw     (MoveBox *this);
-   static void	   MoveBox__Erase    (MoveBox *this);
-   static void	   MoveBox__Move     (MoveBox *this, int key);
+   static void     MoveBox__Draw     (MoveBox *this);
+   static void     MoveBox__Erase    (MoveBox *this);
+   static void     MoveBox__Move     (MoveBox *this, int key);
 
 /* public: */
 
    static MoveBox *MoveBox_Construct  (int x, int y, int csize, int base_width,
-				      int base_depth);
-   static void	   MoveBox_Destroy    (MoveBox *this);
+                                      int base_depth);
+   static void     MoveBox_Destroy    (MoveBox *this);
    static BOOLEAN  MoveBox_Process    (MoveBox *this); /* returns FALSE if ESCAPED */
    static BOOLEAN  MoveBox_Moved      (MoveBox *this);
    static BOOLEAN  MoveBox_ShouldHide (MoveBox *this);
-   static int	   MoveBox_X	      (MoveBox *this);
-   static int	   MoveBox_Y	      (MoveBox *this);
-   static int	   MoveBox_CSize      (MoveBox *this);
+   static int      MoveBox_X          (MoveBox *this);
+   static int      MoveBox_Y          (MoveBox *this);
+   static int      MoveBox_CSize      (MoveBox *this);
 
-   static void	   MoveBox_SetPos     (MoveBox *this, int x, int y);
-   static void	   MoveBox_SetCSize   (MoveBox *this, int csize);
+   static void     MoveBox_SetPos     (MoveBox *this, int x, int y);
+   static void     MoveBox_SetCSize   (MoveBox *this, int csize);
 
 
 
@@ -942,17 +942,17 @@ static MoveBox *MoveBox_Construct(int x, int y, int csize, int base_width, int b
    {
    MoveBox *this = new(MoveBox);
 
-   this->x	     = x;
-   this->y	     = y;
-   this->csize	     = csize;
+   this->x           = x;
+   this->y           = y;
+   this->csize       = csize;
    this->base_width  = base_width;
    this->base_depth  = base_depth;
-   this->moved	     = FALSE;
+   this->moved       = FALSE;
    this->should_hide = FALSE;
-   this->t	     = newx(sxdots);
-   this->b	     = newx(sxdots);
-   this->l	     = newx(sydots);
-   this->r	     = newx(sydots);
+   this->t           = newx(sxdots);
+   this->b           = newx(sxdots);
+   this->l           = newx(sydots);
+   this->r           = newx(sydots);
 
    return(this);
    }
@@ -972,9 +972,9 @@ static BOOLEAN MoveBox_Moved(MoveBox *this) { return(this->moved); }
 
 static BOOLEAN MoveBox_ShouldHide(MoveBox *this) { return(this->should_hide); }
 
-static int MoveBox_X(MoveBox *this)	 { return(this->x); }
+static int MoveBox_X(MoveBox *this)      { return(this->x); }
 
-static int MoveBox_Y(MoveBox *this)	 { return(this->y); }
+static int MoveBox_Y(MoveBox *this)      { return(this->y); }
 
 static int MoveBox_CSize(MoveBox *this)  { return(this->csize); }
 
@@ -1000,16 +1000,16 @@ static void MoveBox__Draw(MoveBox *this)  /* private */
        y     = this->y;
 
 
-   getrow (x, y,	 width, this->t);
+   getrow (x, y,         width, this->t);
    getrow (x, y+depth-1, width, this->b);
 
-   vgetrow(x,	      y, depth, this->l);
+   vgetrow(x,         y, depth, this->l);
    vgetrow(x+width-1, y, depth, this->r);
 
    hdline(x, y,         width);
    hdline(x, y+depth-1, width);
 
-   vdline(x,	     y, depth);
+   vdline(x,         y, depth);
    vdline(x+width-1, y, depth);
    }
 
@@ -1019,10 +1019,10 @@ static void MoveBox__Erase(MoveBox *this)   /* private */
    int width = this->base_width + this->csize*16+1,
        depth = this->base_depth + this->csize*16+1;
 
-   vputrow(this->x,	    this->y, depth, this->l);
+   vputrow(this->x,         this->y, depth, this->l);
    vputrow(this->x+width-1, this->y, depth, this->r);
 
-   putrow(this->x, this->y,	    width, this->t);
+   putrow(this->x, this->y,         width, this->t);
    putrow(this->x, this->y+depth-1, width, this->b);
    }
 
@@ -1034,34 +1034,34 @@ static void MoveBox__Move(MoveBox *this, int key)
    {
    BOOLEAN done  = FALSE;
    BOOLEAN first = TRUE;
-   int	   xoff  = 0,
-	   yoff  = 0;
+   int     xoff  = 0,
+           yoff  = 0;
 
    while ( !done )
       {
       switch(key)
-	 {
-	 case RIGHT_ARROW_2:	 xoff += BOX_INC*4;   break;
-	 case RIGHT_ARROW:	 xoff += BOX_INC;     break;
-	 case LEFT_ARROW_2:	 xoff -= BOX_INC*4;   break;
-	 case LEFT_ARROW:	 xoff -= BOX_INC;     break;
-	 case DOWN_ARROW_2:	 yoff += BOX_INC*4;   break;
-	 case DOWN_ARROW:	 yoff += BOX_INC;     break;
-	 case UP_ARROW_2:	 yoff -= BOX_INC*4;   break;
-	 case UP_ARROW: 	 yoff -= BOX_INC;     break;
+         {
+         case RIGHT_ARROW_2:     xoff += BOX_INC*4;   break;
+         case RIGHT_ARROW:       xoff += BOX_INC;     break;
+         case LEFT_ARROW_2:      xoff -= BOX_INC*4;   break;
+         case LEFT_ARROW:        xoff -= BOX_INC;     break;
+         case DOWN_ARROW_2:      yoff += BOX_INC*4;   break;
+         case DOWN_ARROW:        yoff += BOX_INC;     break;
+         case UP_ARROW_2:        yoff -= BOX_INC*4;   break;
+         case UP_ARROW:          yoff -= BOX_INC;     break;
 
-	 default:
-	    done = TRUE;
-	 }
+         default:
+            done = TRUE;
+         }
 
       if (!done)
-	 {
-	 if (!first)
-	    getakey();	     /* delete key from buffer */
-	 else
-	    first = FALSE;
-	 key = keypressed();   /* peek at the next one... */
-	 }
+         {
+         if (!first)
+            getakey();       /* delete key from buffer */
+         else
+            first = FALSE;
+         key = keypressed();   /* peek at the next one... */
+         }
       }
 
    xoff += this->x;
@@ -1088,10 +1088,10 @@ static void MoveBox__Move(MoveBox *this, int key)
 
 static BOOLEAN MoveBox_Process(MoveBox *this)
    {
-   int	   key;
-   int	   orig_x     = this->x,
-	   orig_y     = this->y,
-	   orig_csize = this->csize;
+   int     key;
+   int     orig_x     = this->x,
+           orig_y     = this->y,
+           orig_csize = this->csize;
 
    MoveBox__Draw(this);
 
@@ -1104,70 +1104,70 @@ static BOOLEAN MoveBox_Process(MoveBox *this)
       key = getakey();
 
       if (key==ENTER || key==ENTER_2 || key==ESC || key=='H' || key=='h')
-	 {
-	 if (this->x != orig_x || this->y != orig_y || this->csize != orig_csize)
-	    this->moved = TRUE;
-	 else
-	   this->moved = FALSE;
-	 break;
-	 }
+         {
+         if (this->x != orig_x || this->y != orig_y || this->csize != orig_csize)
+            this->moved = TRUE;
+         else
+           this->moved = FALSE;
+         break;
+         }
 
       switch(key)
-	 {
-	 case UP_ARROW:
-	 case DOWN_ARROW:
-	 case LEFT_ARROW:
-	 case RIGHT_ARROW:
-	 case UP_ARROW_2:
-	 case DOWN_ARROW_2:
-	 case LEFT_ARROW_2:
-	 case RIGHT_ARROW_2:
-	    MoveBox__Move(this, key);
-	    break;
+         {
+         case UP_ARROW:
+         case DOWN_ARROW:
+         case LEFT_ARROW:
+         case RIGHT_ARROW:
+         case UP_ARROW_2:
+         case DOWN_ARROW_2:
+         case LEFT_ARROW_2:
+         case RIGHT_ARROW_2:
+            MoveBox__Move(this, key);
+            break;
 
-	 case PAGE_UP:	 /* shrink */
-	    if (this->csize > CSIZE_MIN)
-	       {
-	       int t = this->csize - CSIZE_INC;
-	       int change;
+         case PAGE_UP:   /* shrink */
+            if (this->csize > CSIZE_MIN)
+               {
+               int t = this->csize - CSIZE_INC;
+               int change;
 
-	       if (t < CSIZE_MIN)
-		  t = CSIZE_MIN;
+               if (t < CSIZE_MIN)
+                  t = CSIZE_MIN;
 
-	       MoveBox__Erase(this);
+               MoveBox__Erase(this);
 
-	       change = this->csize - t;
-	       this->csize = t;
-	       this->x += (change*16) / 2;
-	       this->y += (change*16) / 2;
-	       MoveBox__Draw(this);
-	       }
-	    break;
+               change = this->csize - t;
+               this->csize = t;
+               this->x += (change*16) / 2;
+               this->y += (change*16) / 2;
+               MoveBox__Draw(this);
+               }
+            break;
 
-	 case PAGE_DOWN:   /* grow */
-	    {
-	    int max_width = min(sxdots, MAX_WIDTH);
+         case PAGE_DOWN:   /* grow */
+            {
+            int max_width = min(sxdots, MAX_WIDTH);
 
-	    if (this->base_depth+(this->csize+CSIZE_INC)*16+1 < sydots  &&
-	        this->base_width+(this->csize+CSIZE_INC)*16+1 < max_width )
-	       {
-	       MoveBox__Erase(this);
-	       this->x -= (CSIZE_INC*16) / 2;
-	       this->y -= (CSIZE_INC*16) / 2;
-	       this->csize += CSIZE_INC;
-	       if (this->y+this->base_depth+this->csize*16+1 > sydots)
-		  this->y = sydots - (this->base_depth+this->csize*16+1);
-	       if (this->x+this->base_width+this->csize*16+1 > max_width)
-		  this->x = max_width - (this->base_width+this->csize*16+1);
-	       if (this->y < 0)
-		  this->y = 0;
-	       if (this->x < 0)
-		  this->x = 0;
-	       MoveBox__Draw(this);
-	       }
-	    }
-	    break;
-	 }
+            if (this->base_depth+(this->csize+CSIZE_INC)*16+1 < sydots  &&
+                this->base_width+(this->csize+CSIZE_INC)*16+1 < max_width )
+               {
+               MoveBox__Erase(this);
+               this->x -= (CSIZE_INC*16) / 2;
+               this->y -= (CSIZE_INC*16) / 2;
+               this->csize += CSIZE_INC;
+               if (this->y+this->base_depth+this->csize*16+1 > sydots)
+                  this->y = sydots - (this->base_depth+this->csize*16+1);
+               if (this->x+this->base_width+this->csize*16+1 > max_width)
+                  this->x = max_width - (this->base_width+this->csize*16+1);
+               if (this->y < 0)
+                  this->y = 0;
+               if (this->x < 0)
+                  this->x = 0;
+               MoveBox__Draw(this);
+               }
+            }
+            break;
+         }
       }
 
 #ifdef XFRACT
@@ -1189,15 +1189,15 @@ static BOOLEAN MoveBox_Process(MoveBox *this)
  * Purpose:   Edits a single color component (R, G or B)
  *
  * Note:      Calls the "other_key" function to process keys it doesn't use.
- *	      The "change" function is called whenever the value is changed
- *	      by the CEditor.
+ *            The "change" function is called whenever the value is changed
+ *            by the CEditor.
  */
 
 struct _CEditor
    {
-   int	     x, y;
+   int       x, y;
    char      letter;
-   int	     val;
+   int       val;
    BOOLEAN   done;
    BOOLEAN   hidden;
 #ifndef XFRACT
@@ -1217,16 +1217,16 @@ struct _CEditor
 
 #ifndef XFRACT
    static CEditor *CEditor_Construct( int x, int y, char letter,
-				      void (*other_key)(int,CEditor*,void*),
+                                      void (*other_key)(int,CEditor*,void*),
                                       void (*change)(CEditor*,void*), VOIDPTR info);
-   static void CEditor_Destroy	 (CEditor *this);
-   static void CEditor_Draw	 (CEditor *this);
-   static void CEditor_SetPos	 (CEditor *this, int x, int y);
-   static void CEditor_SetVal	 (CEditor *this, int val);
-   static int  CEditor_GetVal	 (CEditor *this);
-   static void CEditor_SetDone	 (CEditor *this, BOOLEAN done);
+   static void CEditor_Destroy   (CEditor *this);
+   static void CEditor_Draw      (CEditor *this);
+   static void CEditor_SetPos    (CEditor *this, int x, int y);
+   static void CEditor_SetVal    (CEditor *this, int val);
+   static int  CEditor_GetVal    (CEditor *this);
+   static void CEditor_SetDone   (CEditor *this, BOOLEAN done);
    static void CEditor_SetHidden (CEditor *this, BOOLEAN hidden);
-   static int  CEditor_Edit	 (CEditor *this);
+   static int  CEditor_Edit      (CEditor *this);
 #else
    static CEditor *CEditor_Construct( int , int , char ,
                                     void (*other_key)(),
@@ -1248,8 +1248,8 @@ struct _CEditor
 
 #ifndef XFRACT
 static CEditor *CEditor_Construct( int x, int y, char letter,
-				   void (*other_key)(int,CEditor*,VOIDPTR),
-				   void (*change)(CEditor*, VOIDPTR), VOIDPTR info)
+                                   void (*other_key)(int,CEditor*,VOIDPTR),
+                                   void (*change)(CEditor*, VOIDPTR), VOIDPTR info)
 #else
 static CEditor *CEditor_Construct( int x, int y, char letter,
                                    void (*other_key)(),
@@ -1258,14 +1258,14 @@ static CEditor *CEditor_Construct( int x, int y, char letter,
    {
    CEditor *this = new(CEditor);
 
-   this->x	   = x;
-   this->y	   = y;
+   this->x         = x;
+   this->y         = y;
    this->letter    = letter;
-   this->val	   = 0;
+   this->val       = 0;
    this->other_key = other_key;
    this->hidden    = FALSE;
    this->change    = change;
-   this->info	   = info;
+   this->info      = info;
 
    return(this);
    }
@@ -1348,85 +1348,85 @@ static int CEditor_Edit(CEditor *this)
       key = getakey();
 
       switch( key )
-	 {
-	 case PAGE_UP:
-	    if (this->val < 63)
-	       {
-	       this->val += 5;
-	       if (this->val > 63)
-		  this->val = 63;
-	       CEditor_Draw(this);
-	       this->change(this, this->info);
-	       }
-	    break;
+         {
+         case PAGE_UP:
+            if (this->val < 63)
+               {
+               this->val += 5;
+               if (this->val > 63)
+                  this->val = 63;
+               CEditor_Draw(this);
+               this->change(this, this->info);
+               }
+            break;
 
-	 case '+':
-	 case CTL_PLUS:        /*RB*/
-	    diff = 1;
-	    while ( keypressed() == key )
-	       {
-	       getakey();
-	       ++diff;
-	       }
-	    if (this->val < 63)
-	       {
-	       this->val += diff;
-	       if (this->val > 63)
-		  this->val = 63;
-	       CEditor_Draw(this);
-	       this->change(this, this->info);
-	       }
-	    break;
+         case '+':
+         case CTL_PLUS:        /*RB*/
+            diff = 1;
+            while ( keypressed() == key )
+               {
+               getakey();
+               ++diff;
+               }
+            if (this->val < 63)
+               {
+               this->val += diff;
+               if (this->val > 63)
+                  this->val = 63;
+               CEditor_Draw(this);
+               this->change(this, this->info);
+               }
+            break;
 
-	 case PAGE_DOWN:
-	    if (this->val > 0)
-	       {
-	       this->val -= 5;
-	       if (this->val < 0)
-		  this->val = 0;
-	       CEditor_Draw(this);
-	       this->change(this, this->info);
-	       } break;
+         case PAGE_DOWN:
+            if (this->val > 0)
+               {
+               this->val -= 5;
+               if (this->val < 0)
+                  this->val = 0;
+               CEditor_Draw(this);
+               this->change(this, this->info);
+               } break;
 
-	 case '-':
-	 case CTL_MINUS:     /*RB*/
-	    diff = 1;
-	    while ( keypressed() == key )
-	       {
-	       getakey();
-	       ++diff;
-	       }
-	    if (this->val > 0)
-	       {
-	       this->val -= diff;
-	       if (this->val < 0)
-		  this->val = 0;
-	       CEditor_Draw(this);
-	       this->change(this, this->info);
-	       }
-	    break;
+         case '-':
+         case CTL_MINUS:     /*RB*/
+            diff = 1;
+            while ( keypressed() == key )
+               {
+               getakey();
+               ++diff;
+               }
+            if (this->val > 0)
+               {
+               this->val -= diff;
+               if (this->val < 0)
+                  this->val = 0;
+               CEditor_Draw(this);
+               this->change(this, this->info);
+               }
+            break;
 
-	 case '0':
-	 case '1':
-	 case '2':
-	 case '3':
-	 case '4':
-	 case '5':
-	 case '6':
-	 case '7':
-	 case '8':
-	 case '9':
-	    this->val = (key - '0') * 10;
-	    if (this->val > 63)
-	       this->val = 63;
-	    CEditor_Draw(this);
-	    this->change(this, this->info);
-	    break;
+         case '0':
+         case '1':
+         case '2':
+         case '3':
+         case '4':
+         case '5':
+         case '6':
+         case '7':
+         case '8':
+         case '9':
+            this->val = (key - '0') * 10;
+            if (this->val > 63)
+               this->val = 63;
+            CEditor_Draw(this);
+            this->change(this, this->info);
+            break;
 
-	 default:
-	    this->other_key(key, this, this->info);
-	    break;
-	 } /* switch */
+         default:
+            this->other_key(key, this, this->info);
+            break;
+         } /* switch */
       } /* while */
 #ifdef XFRACT
    Cursor_EndMouseTracking();
@@ -1452,12 +1452,12 @@ static int CEditor_Edit(CEditor *this)
 
 struct _RGBEditor
    {
-   int	     x, y;	      /* position */
-   int	     curr;	      /* 0=r, 1=g, 2=b */
-   int	     pal;	      /* palette number */
+   int       x, y;            /* position */
+   int       curr;            /* 0=r, 1=g, 2=b */
+   int       pal;             /* palette number */
    BOOLEAN   done;
    BOOLEAN   hidden;
-   CEditor  *color[3];	      /* color editors 0=r, 1=g, 2=b */
+   CEditor  *color[3];        /* color editors 0=r, 1=g, 2=b */
 #ifndef XFRACT
    void    (*other_key)(int key, struct _RGBEditor *e, VOIDPTR info);
    void    (*change)(struct _RGBEditor *e, VOIDPTR info);
@@ -1479,23 +1479,23 @@ struct _RGBEditor
 
 #ifndef XFRACT
    static RGBEditor *RGBEditor_Construct(int x, int y,
-		     void (*other_key)(int,RGBEditor*,void*),
-		     void (*change)(RGBEditor*,void*), VOIDPTR info);
+                     void (*other_key)(int,RGBEditor*,void*),
+                     void (*change)(RGBEditor*,void*), VOIDPTR info);
 #else
    static RGBEditor *RGBEditor_Construct(int x, int y,
                      void (*other_key)(),
                      void (*change)(), VOIDPTR info);
 #endif
 
-   static void	   RGBEditor_Destroy  (RGBEditor *this);
-   static void	   RGBEditor_SetPos   (RGBEditor *this, int x, int y);
-   static void	   RGBEditor_SetDone  (RGBEditor *this, BOOLEAN done);
-   static void	   RGBEditor_SetHidden(RGBEditor *this, BOOLEAN hidden);
-   static void	   RGBEditor_BlankSampleBox(RGBEditor *this);
-   static void	   RGBEditor_Update   (RGBEditor *this);
-   static void	   RGBEditor_Draw     (RGBEditor *this);
-   static int	   RGBEditor_Edit     (RGBEditor *this);
-   static void	   RGBEditor_SetRGB   (RGBEditor *this, int pal, PALENTRY *rgb);
+   static void     RGBEditor_Destroy  (RGBEditor *this);
+   static void     RGBEditor_SetPos   (RGBEditor *this, int x, int y);
+   static void     RGBEditor_SetDone  (RGBEditor *this, BOOLEAN done);
+   static void     RGBEditor_SetHidden(RGBEditor *this, BOOLEAN hidden);
+   static void     RGBEditor_BlankSampleBox(RGBEditor *this);
+   static void     RGBEditor_Update   (RGBEditor *this);
+   static void     RGBEditor_Draw     (RGBEditor *this);
+   static int      RGBEditor_Edit     (RGBEditor *this);
+   static void     RGBEditor_SetRGB   (RGBEditor *this, int pal, PALENTRY *rgb);
    static PALENTRY RGBEditor_GetRGB   (RGBEditor *this);
 
 #define RGBEditor_WIDTH 62
@@ -1508,27 +1508,27 @@ struct _RGBEditor
 
 #ifndef XFRACT
 static RGBEditor *RGBEditor_Construct(int x, int y, void (*other_key)(int,RGBEditor*,void*),
-				      void (*change)(RGBEditor*,void*), VOIDPTR info)
+                                      void (*change)(RGBEditor*,void*), VOIDPTR info)
 #else
 static RGBEditor *RGBEditor_Construct(int x, int y, void (*other_key)(),
                                       void (*change)(), VOIDPTR info)
 #endif
    {
-   RGBEditor	  *this     = new(RGBEditor);
+   RGBEditor      *this     = new(RGBEditor);
    static FCODE letter[] = "RGB";
-   int		   ctr;
+   int             ctr;
 
    for (ctr=0; ctr<3; ctr++)
       this->color[ctr] = CEditor_Construct(0, 0, letter[ctr], RGBEditor__other_key,
-					   RGBEditor__change, this);
+                                           RGBEditor__change, this);
 
    RGBEditor_SetPos(this, x, y);
-   this->curr	   = 0;
-   this->pal	   = 1;
+   this->curr      = 0;
+   this->pal       = 1;
    this->hidden    = FALSE;
    this->other_key = other_key;
    this->change    = change;
-   this->info	   = info;
+   this->info      = info;
 
    return(this);
    }
@@ -1566,49 +1566,49 @@ static void RGBEditor__other_key(int key, CEditor *ceditor, VOIDPTR info) /* pri
       {
       case 'R':
       case 'r':
-	 if (this->curr != 0)
-	    {
-	    this->curr = 0;
-	    CEditor_SetDone(ceditor, TRUE);
-	    }
-	 break;
+         if (this->curr != 0)
+            {
+            this->curr = 0;
+            CEditor_SetDone(ceditor, TRUE);
+            }
+         break;
 
       case 'G':
       case 'g':
-	 if (this->curr != 1)
-	    {
-	    this->curr = 1;
-	    CEditor_SetDone(ceditor, TRUE);
-	    }
-	 break;
+         if (this->curr != 1)
+            {
+            this->curr = 1;
+            CEditor_SetDone(ceditor, TRUE);
+            }
+         break;
 
       case 'B':
       case 'b':
-	 if (this->curr != 2)
-	    {
-	    this->curr = 2;
-	    CEditor_SetDone(ceditor, TRUE);
-	    }
-	 break;
+         if (this->curr != 2)
+            {
+            this->curr = 2;
+            CEditor_SetDone(ceditor, TRUE);
+            }
+         break;
 
       case DELETE:   /* move to next CEditor */
       case CTL_ENTER_2:    /*double click rt mouse also! */
-	 if ( ++this->curr > 2)
-	    this->curr = 0;
-	 CEditor_SetDone(ceditor, TRUE);
-	 break;
+         if ( ++this->curr > 2)
+            this->curr = 0;
+         CEditor_SetDone(ceditor, TRUE);
+         break;
 
       case INSERT:   /* move to prev CEditor */
-	 if ( --this->curr < 0)
-	    this->curr = 2;
-	 CEditor_SetDone(ceditor, TRUE);
-	 break;
+         if ( --this->curr < 0)
+            this->curr = 2;
+         CEditor_SetDone(ceditor, TRUE);
+         break;
 
       default:
-	 this->other_key(key, this, this->info);
-	 if (this->done)
-	    CEditor_SetDone(ceditor, TRUE);
-	 break;
+         this->other_key(key, this, this->info);
+         if (this->done)
+            CEditor_SetDone(ceditor, TRUE);
+         break;
       }
    }
 
@@ -1626,7 +1626,7 @@ static void RGBEditor__change(CEditor *ceditor, VOIDPTR info) /* private */
    ceditor = NULL; /* just for warning */
    if ( this->pal < colors && !is_reserved(this->pal) )
       setpal(this->pal, CEditor_GetVal(this->color[0]),
-	  CEditor_GetVal(this->color[1]), CEditor_GetVal(this->color[2]));
+          CEditor_GetVal(this->color[1]), CEditor_GetVal(this->color[2]));
 
    this->change(this, this->info);
    }
@@ -1673,7 +1673,7 @@ static void RGBEditor_Update(RGBEditor *this)
    else if ( is_reserved(this->pal) )
       {
       int x2 = x1+RGBEditor_BWIDTH-3,
-	  y2 = y1+RGBEditor_BDEPTH-3;
+          y2 = y1+RGBEditor_BDEPTH-3;
 
       fillrect(x1, y1, RGBEditor_BWIDTH-2, RGBEditor_BDEPTH-2, bg_color);
       draw_line(x1, y1, x2, y2, fg_color);
@@ -1756,9 +1756,9 @@ static PALENTRY RGBEditor_GetRGB(RGBEditor *this)
  * Class:     PalTable
  *
  * Purpose:   This is where it all comes together.  Creates the two RGBEditors
- *	      and the palette. Moves the cursor, hides/restores the screen,
- *	      handles (S)hading, (C)opying, e(X)clude mode, the "Y" exclusion
- *	      mode, (Z)oom option, (H)ide palette, rotation, etc.
+ *            and the palette. Moves the cursor, hides/restores the screen,
+ *            handles (S)hading, (C)opying, e(X)clude mode, the "Y" exclusion
+ *            mode, (Z)oom option, (H)ide palette, rotation, etc.
  *
  */
 
@@ -1783,21 +1783,21 @@ Modes:
 
 struct  _PalTable
    {
-   int		 x, y;
-   int		 csize;
-   int		 active;   /* which RGBEditor is active (0,1) */
-   int		 curr[2];
+   int           x, y;
+   int           csize;
+   int           active;   /* which RGBEditor is active (0,1) */
+   int           curr[2];
    RGBEditor    *rgb[2];
    MoveBox      *movebox;
-   BOOLEAN	 done;
-   BOOLEAN	 exclude;
-   BOOLEAN	 auto_select;
-   PALENTRY	 pal[256];
+   BOOLEAN       done;
+   BOOLEAN       exclude;
+   BOOLEAN       auto_select;
+   PALENTRY      pal[256];
    FILE         *undo_file;
    BOOLEAN       curr_changed;
    int           num_redo;
-   int		 hidden;
-   int		 stored_at;
+   int           hidden;
+   int           stored_at;
    FILE         *file;
    char far     *memory;
 
@@ -1814,18 +1814,18 @@ struct  _PalTable
 /* private: */
 
    static void    PalTable__DrawStatus  (PalTable *this, BOOLEAN stripe_mode);
-   static void	  PalTable__HlPal       (PalTable *this, int pnum, int color);
-   static void	  PalTable__Draw        (PalTable *this);
+   static void    PalTable__HlPal       (PalTable *this, int pnum, int color);
+   static void    PalTable__Draw        (PalTable *this);
    static BOOLEAN PalTable__SetCurr     (PalTable *this, int which, int curr);
    static BOOLEAN PalTable__MemoryAlloc (PalTable *this, long size);
-   static void	  PalTable__SaveRect    (PalTable *this);
-   static void	  PalTable__RestoreRect (PalTable *this);
-   static void	  PalTable__SetPos      (PalTable *this, int x, int y);
-   static void	  PalTable__SetCSize    (PalTable *this, int csize);
-   static int	  PalTable__GetCursorColor(PalTable *this);
-   static void	  PalTable__DoCurs      (PalTable *this, int key);
-   static void	  PalTable__Rotate      (PalTable *this, int dir, int lo, int hi);
-   static void	  PalTable__UpdateDAC   (PalTable *this);
+   static void    PalTable__SaveRect    (PalTable *this);
+   static void    PalTable__RestoreRect (PalTable *this);
+   static void    PalTable__SetPos      (PalTable *this, int x, int y);
+   static void    PalTable__SetCSize    (PalTable *this, int csize);
+   static int     PalTable__GetCursorColor(PalTable *this);
+   static void    PalTable__DoCurs      (PalTable *this, int key);
+   static void    PalTable__Rotate      (PalTable *this, int dir, int lo, int hi);
+   static void    PalTable__UpdateDAC   (PalTable *this);
    static void    PalTable__other_key   (int key, RGBEditor *rgb, VOIDPTR info);
    static void    PalTable__SaveUndoData(PalTable *this, int first, int last);
    static void    PalTable__SaveUndoRotate(PalTable *this, int dir, int first, int last);
@@ -1837,10 +1837,10 @@ struct  _PalTable
 /* public: */
 
    static PalTable *PalTable_Construct (void);
-   static void	    PalTable_Destroy   (PalTable *this);
-   static void	    PalTable_Process   (PalTable *this);
-   static void	    PalTable_SetHidden (PalTable *this, BOOLEAN hidden);
-   static void	    PalTable_Hide      (PalTable *this, RGBEditor *rgb, BOOLEAN hidden);
+   static void      PalTable_Destroy   (PalTable *this);
+   static void      PalTable_Process   (PalTable *this);
+   static void      PalTable_SetHidden (PalTable *this, BOOLEAN hidden);
+   static void      PalTable_Hide      (PalTable *this, RGBEditor *rgb, BOOLEAN hidden);
 
 
 #define PalTable_PALX (1)
@@ -2066,13 +2066,16 @@ static void PalTable__Redo(PalTable *this)
 
 static void PalTable__DrawStatus(PalTable *this, BOOLEAN stripe_mode)
    {
+   int color, hunds, tens, ones;
    int width = 1+(this->csize*16)+1+1;
 
    if ( !this->hidden && ( width - (RGBEditor_WIDTH*2+4) >= STATUS_LEN*8 ) )
       {
       int x = this->x + 2 + RGBEditor_WIDTH,
           y = this->y + PalTable_PALY - 10;
-
+      color = PalTable__GetCursorColor(this);
+      if (color < 0 || color >= colors) /* hmm, the border returns -1 */
+         color = 0;
       Cursor_Hide();
 
       displayc(x+(0*8), y, fg_color, bg_color, (this->auto_select) ? 'A' : 254);
@@ -2080,6 +2083,14 @@ static void PalTable__DrawStatus(PalTable *this, BOOLEAN stripe_mode)
                                                (this->exclude==2)  ? 'Y' : 254);
       displayc(x+(2*8), y, fg_color, bg_color, (this->freestyle)   ? 'F' : 254);
       displayc(x+(3*8), y, fg_color, bg_color, (stripe_mode)       ? 'T' : 254);
+
+      y = y - 10;
+      hunds = (int)(color/100);
+      displayc(x+(0*8), y, fg_color, bg_color, (char)(hunds) + '0'  );
+      tens = (int)((color - (hunds * 100)) / 10);
+      displayc(x+(1*8), y, fg_color, bg_color, (char)(tens) + '0'  );
+      ones = (int)(color - (hunds * 100) - (tens * 10));
+      displayc(x+(2*8), y, fg_color, bg_color, (char)(ones) + '0'  );
 
       Cursor_Show();
       }
@@ -2129,7 +2140,7 @@ static void PalTable__Draw(PalTable *this)
       {
       int center = (width - TITLE_LEN*8) / 2;
 
-      displayf(this->x+center, this->y+2+RGBEditor_DEPTH/2-4, fg_color, bg_color, TITLE);
+      displayf(this->x+center, this->y+RGBEditor_DEPTH/2-6, fg_color, bg_color, TITLE);
       }
 
    RGBEditor_Draw(this->rgb[0]);
@@ -2141,23 +2152,23 @@ static void PalTable__Draw(PalTable *this)
       yoff = PalTable_PALY + (pal/16) * this->csize;
 
       if ( pal >= colors )
-	 {
-	 fillrect(this->x + xoff + 1, this->y + yoff + 1, this->csize-1, this->csize-1, bg_color);
-	 draw_diamond(this->x + xoff + this->csize/2 - 1, this->y + yoff + this->csize/2 - 1, fg_color);
-	 }
+         {
+         fillrect(this->x + xoff + 1, this->y + yoff + 1, this->csize-1, this->csize-1, bg_color);
+         draw_diamond(this->x + xoff + this->csize/2 - 1, this->y + yoff + this->csize/2 - 1, fg_color);
+         }
 
       else if ( is_reserved(pal) )
-	 {
-	 int x1 = this->x + xoff + 1,
-	     y1 = this->y + yoff + 1,
-	     x2 = x1 + this->csize - 2,
-	     y2 = y1 + this->csize - 2;
-	 fillrect(this->x + xoff + 1, this->y + yoff + 1, this->csize-1, this->csize-1, bg_color);
-	 draw_line(x1, y1, x2, y2, fg_color);
-	 draw_line(x1, y2, x2, y1, fg_color);
-	 }
+         {
+         int x1 = this->x + xoff + 1,
+             y1 = this->y + yoff + 1,
+             x2 = x1 + this->csize - 2,
+             y2 = y1 + this->csize - 2;
+         fillrect(this->x + xoff + 1, this->y + yoff + 1, this->csize-1, this->csize-1, bg_color);
+         draw_line(x1, y1, x2, y2, fg_color);
+         draw_line(x1, y2, x2, y1, fg_color);
+         }
       else
-	 fillrect(this->x + xoff + 1, this->y + yoff + 1, this->csize-1, this->csize-1, pal);
+         fillrect(this->x + xoff + 1, this->y + yoff + 1, this->csize-1, this->csize-1, pal);
 
       }
 
@@ -2190,7 +2201,7 @@ static BOOLEAN PalTable__SetCurr(PalTable *this, int which, int curr)
       }
    else
       if ( curr == this->curr[which] || curr < 0 )
-	 return (FALSE);
+         return (FALSE);
 
    Cursor_Hide();
 
@@ -2295,16 +2306,16 @@ static void PalTable__SaveRect(PalTable *this)
    switch( this->stored_at )
       {
       case NOWHERE:
-	 break;
+         break;
 
       case DISK:
-	 break;
+         break;
 
       case MEMORY:
-	 if (this->memory != NULL)
-	    farmemfree(this->memory);
-	 this->memory = NULL;
-	 break;
+         if (this->memory != NULL)
+            farmemfree(this->memory);
+         this->memory = NULL;
+         break;
       } ;
 
    /* allocate space and store the rect */
@@ -2316,12 +2327,12 @@ static void PalTable__SaveRect(PalTable *this)
 
       Cursor_Hide();
       for (yoff=0; yoff<depth; yoff++)
-	 {
-	 getrow(this->x, this->y+yoff, width, buff);
-	 hline (this->x, this->y+yoff, width, bg_color);
-	 movedata(FP_SEG(bufptr), FP_OFF(bufptr), FP_SEG(ptr), FP_OFF(ptr), width);
-	 ptr = (char far *)normalize(ptr+width);
-	 }
+         {
+         getrow(this->x, this->y+yoff, width, buff);
+         hline (this->x, this->y+yoff, width, bg_color);
+         movedata(FP_SEG(bufptr), FP_OFF(bufptr), FP_SEG(ptr), FP_OFF(ptr), width);
+         ptr = (char far *)normalize(ptr+width);
+         }
       Cursor_Show();
       }
 
@@ -2330,28 +2341,28 @@ static void PalTable__SaveRect(PalTable *this)
       this->stored_at = DISK;
 
       if ( this->file == NULL )
-	 {
-	 this->file = dir_fopen(tempdir,scrnfile, "w+b");
-	 if (this->file == NULL)
-	    {
-	    this->stored_at = NOWHERE;
-	    buzzer(3);
-	    return ;
-	    }
-	 }
+         {
+         this->file = dir_fopen(tempdir,scrnfile, "w+b");
+         if (this->file == NULL)
+            {
+            this->stored_at = NOWHERE;
+            buzzer(3);
+            return ;
+            }
+         }
 
       rewind(this->file);
       Cursor_Hide();
       for (yoff=0; yoff<depth; yoff++)
-	 {
-	 getrow(this->x, this->y+yoff, width, buff);
-	 hline (this->x, this->y+yoff, width, bg_color);
-	 if ( fwrite(buff, width, 1, this->file) != 1 )
-	    {
-	    buzzer(3);
-	    break;
-	    }
-	 }
+         {
+         getrow(this->x, this->y+yoff, width, buff);
+         hline (this->x, this->y+yoff, width, bg_color);
+         if ( fwrite(buff, width, 1, this->file) != 1 )
+            {
+            buzzer(3);
+            break;
+            }
+         }
       Cursor_Show();
       }
 
@@ -2371,38 +2382,38 @@ static void PalTable__RestoreRect(PalTable *this)
    switch ( this->stored_at )
       {
       case DISK:
-	 rewind(this->file);
-	 Cursor_Hide();
-	 for (yoff=0; yoff<depth; yoff++)
-	    {
-	    if ( fread(buff, width, 1, this->file) != 1 )
-	       {
-	       buzzer(3);
-	       break;
-	       }
-	    putrow(this->x, this->y+yoff, width, buff);
-	    }
-	 Cursor_Show();
-	 break;
+         rewind(this->file);
+         Cursor_Hide();
+         for (yoff=0; yoff<depth; yoff++)
+            {
+            if ( fread(buff, width, 1, this->file) != 1 )
+               {
+               buzzer(3);
+               break;
+               }
+            putrow(this->x, this->y+yoff, width, buff);
+            }
+         Cursor_Show();
+         break;
 
       case MEMORY:
-	 {
-	 char far  *ptr = this->memory;
-	 char far  *bufptr = buff; /* MSC needs this indirection to get it right */
+         {
+         char far  *ptr = this->memory;
+         char far  *bufptr = buff; /* MSC needs this indirection to get it right */
 
-	 Cursor_Hide();
-	 for (yoff=0; yoff<depth; yoff++)
-	    {
-	    movedata(FP_SEG(ptr), FP_OFF(ptr), FP_SEG(bufptr), FP_OFF(bufptr), width);
-	    putrow(this->x, this->y+yoff, width, buff);
-	    ptr = (char far *)normalize(ptr+width);
-	    }
-	 Cursor_Show();
-	 break;
-	 }
+         Cursor_Hide();
+         for (yoff=0; yoff<depth; yoff++)
+            {
+            movedata(FP_SEG(ptr), FP_OFF(ptr), FP_SEG(bufptr), FP_OFF(bufptr), width);
+            putrow(this->x, this->y+yoff, width, buff);
+            ptr = (char far *)normalize(ptr+width);
+            }
+         Cursor_Show();
+         break;
+         }
 
       case NOWHERE:
-	 break;
+         break;
       } /* switch */
    }
 
@@ -2436,23 +2447,23 @@ static int PalTable__GetCursorColor(PalTable *this)
    if ( is_reserved(color) )
       {
       if ( is_in_box(x, y, this->x, this->y, 1+(this->csize*16)+1+1, 2+RGBEditor_DEPTH+2+(this->csize*16)+1+1) )
-	 {  /* is the cursor over the editor? */
-	 x -= this->x + PalTable_PALX;
-	 y -= this->y + PalTable_PALY;
-	 size = this->csize;
+         {  /* is the cursor over the editor? */
+         x -= this->x + PalTable_PALX;
+         y -= this->y + PalTable_PALY;
+         size = this->csize;
 
-	 if (x < 0 || y < 0 || x > size*16 || y > size*16)
-	    return (-1);
+         if (x < 0 || y < 0 || x > size*16 || y > size*16)
+            return (-1);
 
-	 if ( x == size*16 )
-	    --x;
-	 if ( y == size*16 )
-	    --y;
+         if ( x == size*16 )
+            --x;
+         if ( y == size*16 )
+            --y;
 
-	 return ( (y/size)*16 + x/size );
-	 }
+         return ( (y/size)*16 + x/size );
+         }
       else
-	 return (color);
+         return (color);
       }
 
    return (color);
@@ -2466,34 +2477,34 @@ static void PalTable__DoCurs(PalTable *this, int key)
    {
    BOOLEAN done  = FALSE;
    BOOLEAN first = TRUE;
-   int	   xoff  = 0,
-	   yoff  = 0;
+   int     xoff  = 0,
+           yoff  = 0;
 
    while ( !done )
       {
       switch(key)
-	 {
-	 case RIGHT_ARROW_2:	 xoff += CURS_INC*4;   break;
-	 case RIGHT_ARROW:	 xoff += CURS_INC;     break;
-	 case LEFT_ARROW_2:	 xoff -= CURS_INC*4;   break;
-	 case LEFT_ARROW:	 xoff -= CURS_INC;     break;
-	 case DOWN_ARROW_2:	 yoff += CURS_INC*4;   break;
-	 case DOWN_ARROW:	 yoff += CURS_INC;     break;
-	 case UP_ARROW_2:	 yoff -= CURS_INC*4;   break;
-	 case UP_ARROW: 	 yoff -= CURS_INC;     break;
+         {
+         case RIGHT_ARROW_2:     xoff += CURS_INC*4;   break;
+         case RIGHT_ARROW:       xoff += CURS_INC;     break;
+         case LEFT_ARROW_2:      xoff -= CURS_INC*4;   break;
+         case LEFT_ARROW:        xoff -= CURS_INC;     break;
+         case DOWN_ARROW_2:      yoff += CURS_INC*4;   break;
+         case DOWN_ARROW:        yoff += CURS_INC;     break;
+         case UP_ARROW_2:        yoff -= CURS_INC*4;   break;
+         case UP_ARROW:          yoff -= CURS_INC;     break;
 
-	 default:
-	    done = TRUE;
-	 }
+         default:
+            done = TRUE;
+         }
 
       if (!done)
-	 {
-	 if (!first)
-	    getakey();	     /* delete key from buffer */
-	 else
-	    first = FALSE;
-	 key = keypressed();   /* peek at the next one... */
-	 }
+         {
+         if (!first)
+            getakey();       /* delete key from buffer */
+         else
+            first = FALSE;
+         key = keypressed();   /* peek at the next one... */
+         }
       }
 
    Cursor_Move(xoff, yoff);
@@ -2552,24 +2563,24 @@ static void PalTable__UpdateDAC(PalTable *this)
       {
       memset(dacbox, 0, 256*3);
       if (this->exclude == 1)
-	 {
-	 int a = this->curr[this->active];
-	 memmove(dacbox[a], &this->pal[a], 3);
-	 }
+         {
+         int a = this->curr[this->active];
+         memmove(dacbox[a], &this->pal[a], 3);
+         }
       else
-	 {
-	 int a = this->curr[0],
-	     b = this->curr[1];
+         {
+         int a = this->curr[0],
+             b = this->curr[1];
 
-	 if (a>b)
-	    {
-	    int t=a;
-	    a=b;
-	    b=t;
-	    }
+         if (a>b)
+            {
+            int t=a;
+            a=b;
+            b=t;
+            }
 
-	 memmove(dacbox[a], &this->pal[a], 3*(1+(b-a)));
-	 }
+         memmove(dacbox[a], &this->pal[a], 3*(1+(b-a)));
+         }
       }
    else
       {
@@ -2582,15 +2593,15 @@ static void PalTable__UpdateDAC(PalTable *this)
    if ( !this->hidden )
       {
       if (inverse)
-	 {
-	 memset(dacbox[fg_color], 0, 3);	 /* dacbox[fg] = (0,0,0) */
-	 memset(dacbox[bg_color], 48, 3);	 /* dacbox[bg] = (48,48,48) */
-	 }
+         {
+         memset(dacbox[fg_color], 0, 3);         /* dacbox[fg] = (0,0,0) */
+         memset(dacbox[bg_color], 48, 3);        /* dacbox[bg] = (48,48,48) */
+         }
       else
-	 {
-	 memset(dacbox[bg_color], 0, 3);	 /* dacbox[bg] = (0,0,0) */
-	 memset(dacbox[fg_color], 48, 3);	 /* dacbox[fg] = (48,48,48) */
-	 }
+         {
+         memset(dacbox[bg_color], 0, 3);         /* dacbox[bg] = (0,0,0) */
+         memset(dacbox[fg_color], 48, 3);        /* dacbox[fg] = (48,48,48) */
+         }
       }
 
    spindac(0,1);
@@ -2626,53 +2637,51 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
    switch(key)
       {
       case '\\':    /* move/resize */
-	 {
-	 if (this->hidden)
-	    break;	     /* cannot move a hidden pal */
-	 Cursor_Hide();
-	 PalTable__RestoreRect(this);
-	 MoveBox_SetPos(this->movebox, this->x, this->y);
-	 MoveBox_SetCSize(this->movebox, this->csize);
-	 if ( MoveBox_Process(this->movebox) )
-	    {
-	    if ( MoveBox_ShouldHide(this->movebox) )
-	       PalTable_SetHidden(this, TRUE);
-	    else if ( MoveBox_Moved(this->movebox) )
-	       {
-	       PalTable__SetPos(this, MoveBox_X(this->movebox), MoveBox_Y(this->movebox));
-	       PalTable__SetCSize(this, MoveBox_CSize(this->movebox));
-	       PalTable__SaveRect(this);
-	       }
-	    }
-	 PalTable__Draw(this);
-	 Cursor_Show();
+         {
+         if (this->hidden)
+            break;           /* cannot move a hidden pal */
+         Cursor_Hide();
+         PalTable__RestoreRect(this);
+         MoveBox_SetPos(this->movebox, this->x, this->y);
+         MoveBox_SetCSize(this->movebox, this->csize);
+         if ( MoveBox_Process(this->movebox) )
+            {
+            if ( MoveBox_ShouldHide(this->movebox) )
+               PalTable_SetHidden(this, TRUE);
+            else if ( MoveBox_Moved(this->movebox) )
+               {
+               PalTable__SetPos(this, MoveBox_X(this->movebox), MoveBox_Y(this->movebox));
+               PalTable__SetCSize(this, MoveBox_CSize(this->movebox));
+               PalTable__SaveRect(this);
+               }
+            }
+         PalTable__Draw(this);
+         Cursor_Show();
 
-	 RGBEditor_SetDone(this->rgb[this->active], TRUE);
+         RGBEditor_SetDone(this->rgb[this->active], TRUE);
 
-	 if (this->auto_select)
-	    PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
-	 break;
-	 }
+         if (this->auto_select)
+            PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
+         break;
+         }
 
       case 'Y':    /* exclude range */
       case 'y':
-	 if ( this->exclude==2 )
-	    this->exclude = 0;
-	 else
-	    this->exclude = 2;
-	 PalTable__UpdateDAC(this);
-         PalTable__DrawStatus(this, FALSE);
-	 break;
+         if ( this->exclude==2 )
+            this->exclude = 0;
+         else
+            this->exclude = 2;
+         PalTable__UpdateDAC(this);
+         break;
 
       case 'X':
       case 'x':     /* exclude current entry */
-	 if ( this->exclude==1 )
-	    this->exclude = 0;
-	 else
-	    this->exclude = 1;
-	 PalTable__UpdateDAC(this);
-         PalTable__DrawStatus(this, FALSE);
-	 break;
+         if ( this->exclude==1 )
+            this->exclude = 0;
+         else
+            this->exclude = 1;
+         PalTable__UpdateDAC(this);
+         break;
 
       case RIGHT_ARROW:
       case LEFT_ARROW:
@@ -2682,26 +2691,26 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
       case LEFT_ARROW_2:
       case UP_ARROW_2:
       case DOWN_ARROW_2:
-	 PalTable__DoCurs(this, key);
-	 break;
+         PalTable__DoCurs(this, key);
+         break;
 
       case ESC:
-	 this->done = TRUE;
-	 RGBEditor_SetDone(rgb, TRUE);
-	 break;
+         this->done = TRUE;
+         RGBEditor_SetDone(rgb, TRUE);
+         break;
 
       case ' ':     /* select the other palette register */
-	 this->active = (this->active==0) ? 1 : 0;
-	 if (this->auto_select)
-	    PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
-	  else
-	    PalTable__SetCurr(this, -1, 0);
+         this->active = (this->active==0) ? 1 : 0;
+         if (this->auto_select)
+            PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
+          else
+            PalTable__SetCurr(this, -1, 0);
 
-	 if (this->exclude || this->freestyle)
-	    PalTable__UpdateDAC(this);
+         if (this->exclude || this->freestyle)
+            PalTable__UpdateDAC(this);
 
-	 RGBEditor_SetDone(rgb, TRUE);
-	 break;
+         RGBEditor_SetDone(rgb, TRUE);
+         break;
 
       case ENTER:    /* set register to color under cursor.  useful when not */
       case ENTER_2:  /* in auto_select mode */
@@ -2712,304 +2721,302 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
             PalTable__PutBand(this, this->pal);
             }
 
-	 PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
+         PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
 
-	 if (this->exclude || this->freestyle )
-	    PalTable__UpdateDAC(this);
+         if (this->exclude || this->freestyle )
+            PalTable__UpdateDAC(this);
 
-	 RGBEditor_SetDone(rgb, TRUE);
-	 break;
+         RGBEditor_SetDone(rgb, TRUE);
+         break;
 
       case 'D':    /* copy (Duplicate?) color in inactive to color in active */
       case 'd':
-	 {
-	 int   a = this->active,
-		  b = (a==0) ? 1 : 0;
-	 PALENTRY t;
+         {
+         int   a = this->active,
+                  b = (a==0) ? 1 : 0;
+         PALENTRY t;
 
-	 t = RGBEditor_GetRGB(this->rgb[b]);
-	 Cursor_Hide();
+         t = RGBEditor_GetRGB(this->rgb[b]);
+         Cursor_Hide();
 
-	 RGBEditor_SetRGB(this->rgb[a], this->curr[a], &t);
-	 RGBEditor_Update(this->rgb[a]);
-	 PalTable__change(this->rgb[a], this);
-	 PalTable__UpdateDAC(this);
+         RGBEditor_SetRGB(this->rgb[a], this->curr[a], &t);
+         RGBEditor_Update(this->rgb[a]);
+         PalTable__change(this->rgb[a], this);
+         PalTable__UpdateDAC(this);
 
-	 Cursor_Show();
-	 break;
-	 }
+         Cursor_Show();
+         break;
+         }
 
       case '=':    /* create a shade range between the two entries */
-	 {
-	 int a = this->curr[0],
-	     b = this->curr[1];
+         {
+         int a = this->curr[0],
+             b = this->curr[1];
 
-	 if (a > b)
-	    {
-	    int t = a;
-	    a = b;
-	    b = t;
-	    }
+         if (a > b)
+            {
+            int t = a;
+            a = b;
+            b = t;
+            }
 
          PalTable__SaveUndoData(this, a, b);
 
-	 if (a != b)
-	    {
-	    mkpalrange(&this->pal[a], &this->pal[b], &this->pal[a], b-a, 1);
-	    PalTable__UpdateDAC(this);
-	    }
+         if (a != b)
+            {
+            mkpalrange(&this->pal[a], &this->pal[b], &this->pal[a], b-a, 1);
+            PalTable__UpdateDAC(this);
+            }
 
-	 break;
-	 }
+         break;
+         }
 
       case '!':    /* swap r<->g */
-	 {
-	 int a = this->curr[0],
-	     b = this->curr[1];
+         {
+         int a = this->curr[0],
+             b = this->curr[1];
 
-	 if (a > b)
-	    {
-	    int t = a;
-	    a = b;
-	    b = t;
-	    }
+         if (a > b)
+            {
+            int t = a;
+            a = b;
+            b = t;
+            }
 
          PalTable__SaveUndoData(this, a, b);
 
-	 if (a != b)
-	    {
-	    rotcolrg(&this->pal[a], b-a);
-	    PalTable__UpdateDAC(this);
-	    }
+         if (a != b)
+            {
+            rotcolrg(&this->pal[a], b-a);
+            PalTable__UpdateDAC(this);
+            }
 
 
-	 break;
-	 }
+         break;
+         }
 
       case '@':    /* swap g<->b */
-	 {
-	 int a = this->curr[0],
-	     b = this->curr[1];
+         {
+         int a = this->curr[0],
+             b = this->curr[1];
 
-	 if (a > b)
-	    {
-	    int t = a;
-	    a = b;
-	    b = t;
-	    }
+         if (a > b)
+            {
+            int t = a;
+            a = b;
+            b = t;
+            }
 
          PalTable__SaveUndoData(this, a, b);
 
-	 if (a != b)
-	    {
-	    rotcolgb(&this->pal[a], b-a);
-	    PalTable__UpdateDAC(this);
-	    }
+         if (a != b)
+            {
+            rotcolgb(&this->pal[a], b-a);
+            PalTable__UpdateDAC(this);
+            }
 
-	 break;
-	 }
+         break;
+         }
 
       case '#':    /* swap r<->b */
-	 {
-	 int a = this->curr[0],
-	     b = this->curr[1];
+         {
+         int a = this->curr[0],
+             b = this->curr[1];
 
-	 if (a > b)
-	    {
-	    int t = a;
-	    a = b;
-	    b = t;
-	    }
+         if (a > b)
+            {
+            int t = a;
+            a = b;
+            b = t;
+            }
 
          PalTable__SaveUndoData(this, a, b);
 
-	 if (a != b)
-	    {
-	    rotcolbr(&this->pal[a], b-a);
-	    PalTable__UpdateDAC(this);
-	    }
+         if (a != b)
+            {
+            rotcolbr(&this->pal[a], b-a);
+            PalTable__UpdateDAC(this);
+            }
 
-	 break;
-	 }
+         break;
+         }
 
 
       case 'T':
       case 't':   /* s(T)ripe mode */
-	 {
-	 int key;
+         {
+         int key;
 
-	 Cursor_Hide();
+         Cursor_Hide();
          PalTable__DrawStatus(this, TRUE);
-	 key = getakeynohelp();
-         PalTable__DrawStatus(this, FALSE);
-	 Cursor_Show();
+         key = getakeynohelp();
+         Cursor_Show();
 
-	 if (key >= '1' && key <= '9')
-	    {
-	    int a = this->curr[0],
-		b = this->curr[1];
+         if (key >= '1' && key <= '9')
+            {
+            int a = this->curr[0],
+                b = this->curr[1];
 
-	    if (a > b)
-	       {
-	       int t = a;
-	       a = b;
-	       b = t;
-	       }
+            if (a > b)
+               {
+               int t = a;
+               a = b;
+               b = t;
+               }
 
             PalTable__SaveUndoData(this, a, b);
 
-	    if (a != b)
-	       {
-	       mkpalrange(&this->pal[a], &this->pal[b], &this->pal[a], b-a, key-'0');
-	       PalTable__UpdateDAC(this);
-	       }
-	    }
+            if (a != b)
+               {
+               mkpalrange(&this->pal[a], &this->pal[b], &this->pal[a], b-a, key-'0');
+               PalTable__UpdateDAC(this);
+               }
+            }
 
-	 break;
-	 }
+         break;
+         }
 
       case 'M':   /* set gamma */
       case 'm':
-	  {
-	      static FCODE o_msg[] = {"Enter gamma value"};
-	      char msg[sizeof(o_msg)];
-	      int i;
-	      char buf[20];
-	      far_strcpy(msg,o_msg);
-	      sprintf(buf,"%.3f",1./gamma_val);
-	      stackscreen();
-	      i = field_prompt(0,msg,NULL,buf,20,NULL);
-	      unstackscreen();
-	      if (i != -1) {
-		  sscanf(buf,"%f",&gamma_val);
-		  if (gamma_val==0) {
-		      gamma_val = (float)0.0000000001;
-		  }
-		  gamma_val = (float)(1./gamma_val);
-	      }
-	  }
-	  break;
+          {
+              static FCODE o_msg[] = {"Enter gamma value"};
+              char msg[sizeof(o_msg)];
+              int i;
+              char buf[20];
+              far_strcpy(msg,o_msg);
+              sprintf(buf,"%.3f",1./gamma_val);
+              stackscreen();
+              i = field_prompt(0,msg,NULL,buf,20,NULL);
+              unstackscreen();
+              if (i != -1) {
+                  sscanf(buf,"%f",&gamma_val);
+                  if (gamma_val==0) {
+                      gamma_val = (float)0.0000000001;
+                  }
+                  gamma_val = (float)(1./gamma_val);
+              }
+          }
+          break;
       case 'A':   /* toggle auto-select mode */
       case 'a':
-	 this->auto_select = (BOOLEAN)((this->auto_select) ? FALSE : TRUE);
-	 if (this->auto_select)
-	    {
-	    PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
-	    if (this->exclude)
-	       PalTable__UpdateDAC(this);
-	    }
-         PalTable__DrawStatus(this, FALSE);
-	 break;
+         this->auto_select = (BOOLEAN)((this->auto_select) ? FALSE : TRUE);
+         if (this->auto_select)
+            {
+            PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
+            if (this->exclude)
+               PalTable__UpdateDAC(this);
+            }
+         break;
 
       case 'H':
       case 'h': /* toggle hide/display of palette editor */
-	 Cursor_Hide();
-	 PalTable_Hide(this, rgb, (BOOLEAN)((this->hidden) ? FALSE : TRUE));
-	 Cursor_Show();
-	 break;
+         Cursor_Hide();
+         PalTable_Hide(this, rgb, (BOOLEAN)((this->hidden) ? FALSE : TRUE));
+         Cursor_Show();
+         break;
 
       case '.':   /* rotate once */
       case ',':
-	 {
+         {
          int dir = (key=='.') ? 1 : -1;
 
          PalTable__SaveUndoRotate(this, dir, rotate_lo, rotate_hi);
-	 PalTable__Rotate(this, dir, rotate_lo, rotate_hi);
-	 break;
-	 }
+         PalTable__Rotate(this, dir, rotate_lo, rotate_hi);
+         break;
+         }
 
       case '>':   /* continuous rotation (until a key is pressed) */
       case '<':
-	 {
+         {
          int  dir;
-	 long tick;
+         long tick;
          int  diff = 0;
 
-	 Cursor_Hide();
+         Cursor_Hide();
 
-	 if ( !this->hidden )
-	    {
-	    RGBEditor_BlankSampleBox(this->rgb[0]);
-	    RGBEditor_BlankSampleBox(this->rgb[1]);
-	    RGBEditor_SetHidden(this->rgb[0], TRUE);
-	    RGBEditor_SetHidden(this->rgb[1], TRUE);
-	    }
+         if ( !this->hidden )
+            {
+            RGBEditor_BlankSampleBox(this->rgb[0]);
+            RGBEditor_BlankSampleBox(this->rgb[1]);
+            RGBEditor_SetHidden(this->rgb[0], TRUE);
+            RGBEditor_SetHidden(this->rgb[1], TRUE);
+            }
 
          do
             {
             dir = (key=='>') ? 1 : -1;
 
-   	    while ( !keypressed() )
-	       {
-	       tick = readticker();
-	       PalTable__Rotate(this, dir, rotate_lo, rotate_hi);
+            while ( !keypressed() )
+               {
+               tick = readticker();
+               PalTable__Rotate(this, dir, rotate_lo, rotate_hi);
                diff += dir;
-	       while (readticker() == tick) ;   /* wait until a tick passes */
-	       }
+               while (readticker() == tick) ;   /* wait until a tick passes */
+               }
 
-  	    key = getakey();
+            key = getakey();
             }
          while (key=='<' || key=='>');
 
-	 if ( !this->hidden )
-	    {
-	    RGBEditor_SetHidden(this->rgb[0], FALSE);
-	    RGBEditor_SetHidden(this->rgb[1], FALSE);
-	    RGBEditor_Update(this->rgb[0]);
-	    RGBEditor_Update(this->rgb[1]);
-	    }
+         if ( !this->hidden )
+            {
+            RGBEditor_SetHidden(this->rgb[0], FALSE);
+            RGBEditor_SetHidden(this->rgb[1], FALSE);
+            RGBEditor_Update(this->rgb[0]);
+            RGBEditor_Update(this->rgb[1]);
+            }
 
          if ( diff != 0 )
             PalTable__SaveUndoRotate(this, diff, rotate_lo, rotate_hi);
 
-	 Cursor_Show();
-	 break;
-	 }
+         Cursor_Show();
+         break;
+         }
 
       case 'I':     /* invert the fg & bg colors */
       case 'i':
-	inverse = (BOOLEAN)!inverse;
-	PalTable__UpdateDAC(this);
-	break;
+        inverse = (BOOLEAN)!inverse;
+        PalTable__UpdateDAC(this);
+        break;
 
       case 'V':
-      case 'v':	 /* set the reserved colors to the editor colors */
-	 if ( this->curr[0] >= colors || this->curr[1] >= colors ||
-	      this->curr[0] == this->curr[1] )
-	    {
-	    buzzer(2);
-	    break;
-	    }
+      case 'v':  /* set the reserved colors to the editor colors */
+         if ( this->curr[0] >= colors || this->curr[1] >= colors ||
+              this->curr[0] == this->curr[1] )
+            {
+            buzzer(2);
+            break;
+            }
 
-	 fg_color = (BYTE)this->curr[0];
-	 bg_color = (BYTE)this->curr[1];
+         fg_color = (BYTE)this->curr[0];
+         bg_color = (BYTE)this->curr[1];
 
-	 if ( !this->hidden )
-	    {
-	    Cursor_Hide();
-	    PalTable__UpdateDAC(this);
-	    PalTable__Draw(this);
-	    Cursor_Show();
-	    }
+         if ( !this->hidden )
+            {
+            Cursor_Hide();
+            PalTable__UpdateDAC(this);
+            PalTable__Draw(this);
+            Cursor_Show();
+            }
 
-	 RGBEditor_SetDone(this->rgb[this->active], TRUE);
-	 break;
+         RGBEditor_SetDone(this->rgb[this->active], TRUE);
+         break;
 
       case 'O':    /* set rotate_lo and rotate_hi to editors */
       case 'o':
-	 if (this->curr[0] > this->curr[1])
-	    {
-	    rotate_lo = this->curr[1];
-	    rotate_hi = this->curr[0];
-	    }
-	 else
-	    {
-	    rotate_lo = this->curr[0];
-	    rotate_hi = this->curr[1];
-	    }
-	 break;
+         if (this->curr[0] > this->curr[1])
+            {
+            rotate_lo = this->curr[1];
+            rotate_hi = this->curr[0];
+            }
+         else
+            {
+            rotate_lo = this->curr[0];
+            rotate_hi = this->curr[1];
+            }
+         break;
 
-      case F2:	  /* restore a palette */
+      case F2:    /* restore a palette */
       case F3:
       case F4:
       case F5:
@@ -3017,31 +3024,31 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
       case F7:
       case F8:
       case F9:
-	 {
-	 int which = key - F2;
+         {
+         int which = key - F2;
 
-	 if ( this->save_pal[which] != NULL )
-	    {
-	    struct SREGS seg;
+         if ( this->save_pal[which] != NULL )
+            {
+            struct SREGS seg;
 
-	    Cursor_Hide();
+            Cursor_Hide();
 
             PalTable__SaveUndoData(this, 0, 255);
 
-	    segread(&seg);
-	    movedata(FP_SEG(this->save_pal[which]), FP_OFF(this->save_pal[which]),
-		     seg.ds, (USEGTYPE)(this->pal), 256*3);
+            segread(&seg);
+            movedata(FP_SEG(this->save_pal[which]), FP_OFF(this->save_pal[which]),
+                     seg.ds, (USEGTYPE)(this->pal), 256*3);
 
-	    PalTable__UpdateDAC(this);
+            PalTable__UpdateDAC(this);
 
-	    PalTable__SetCurr(this, -1, 0);
-	    Cursor_Show();
-	    RGBEditor_SetDone(this->rgb[this->active], TRUE);
-	    }
-	 else
-	    buzzer(3);	 /* error buzz */
-	 break;
-	 }
+            PalTable__SetCurr(this, -1, 0);
+            Cursor_Show();
+            RGBEditor_SetDone(this->rgb[this->active], TRUE);
+            }
+         else
+            buzzer(3);   /* error buzz */
+         break;
+         }
 
       case SF2:   /* save a palette */
       case SF3:
@@ -3051,77 +3058,77 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
       case SF7:
       case SF8:
       case SF9:
-	 {
-	 int which = key - SF2;
+         {
+         int which = key - SF2;
 
-	 if ( this->save_pal[which] != NULL )
-	    {
-	    struct SREGS seg;
+         if ( this->save_pal[which] != NULL )
+            {
+            struct SREGS seg;
 
-	    segread(&seg);
-	    movedata(seg.ds, (USEGTYPE)(this->pal), FP_SEG(this->save_pal[which]),
-		    FP_OFF(this->save_pal[which]), 256*3);
-	    }
-	 else
-	    buzzer(3); /* oops! short on memory! */
-	 break;
-	 }
+            segread(&seg);
+            movedata(seg.ds, (USEGTYPE)(this->pal), FP_SEG(this->save_pal[which]),
+                    FP_OFF(this->save_pal[which]), 256*3);
+            }
+         else
+            buzzer(3); /* oops! short on memory! */
+         break;
+         }
 
       case 'L':     /* load a .map palette */
       case 'l':
-	 {
+         {
          PalTable__SaveUndoData(this, 0, 255);
 
-	 load_palette();
+         load_palette();
 #ifndef XFRACT
-	 getpalrange(0, colors, this->pal);
+         getpalrange(0, colors, this->pal);
 #else
-	 getpalrange(0, 256, this->pal);
+         getpalrange(0, 256, this->pal);
 #endif
-	 PalTable__UpdateDAC(this);
-	 RGBEditor_SetRGB(this->rgb[0], this->curr[0], &(this->pal[this->curr[0]]));
-	 RGBEditor_Update(this->rgb[0]);
-	 RGBEditor_SetRGB(this->rgb[1], this->curr[1], &(this->pal[this->curr[1]]));
-	 RGBEditor_Update(this->rgb[1]);
-	 break;
-	 }
+         PalTable__UpdateDAC(this);
+         RGBEditor_SetRGB(this->rgb[0], this->curr[0], &(this->pal[this->curr[0]]));
+         RGBEditor_Update(this->rgb[0]);
+         RGBEditor_SetRGB(this->rgb[1], this->curr[1], &(this->pal[this->curr[1]]));
+         RGBEditor_Update(this->rgb[1]);
+         break;
+         }
 
       case 'S':     /* save a .map palette */
       case 's':
-	 {
+         {
 #ifndef XFRACT
-	 setpalrange(0, colors, this->pal);
+         setpalrange(0, colors, this->pal);
 #else
-	 setpalrange(0, 256, this->pal);
+         setpalrange(0, 256, this->pal);
 #endif
-	 save_palette();
-	 PalTable__UpdateDAC(this);
-	 break;
-	 }
+         save_palette();
+         PalTable__UpdateDAC(this);
+         break;
+         }
 
       case 'C':     /* color cycling sub-mode */
       case 'c':
-	 {
-	 BOOLEAN oldhidden = (BOOLEAN)this->hidden;
+         {
+         BOOLEAN oldhidden = (BOOLEAN)this->hidden;
 
          PalTable__SaveUndoData(this, 0, 255);
 
-	 Cursor_Hide();
-	 if ( !oldhidden )
-	    PalTable_Hide(this, rgb, TRUE);
-	 setpalrange(0, colors, this->pal);
-	 rotate(0);
-	 getpalrange(0, colors, this->pal);
-	 PalTable__UpdateDAC(this);
-	 if ( !oldhidden )
-	    {
-	    RGBEditor_SetRGB(this->rgb[0], this->curr[0], &(this->pal[this->curr[0]]));
-	    RGBEditor_SetRGB(this->rgb[1], this->curr[1], &(this->pal[this->curr[1]]));
-	    PalTable_Hide(this, rgb, FALSE);
-	    }
-	 Cursor_Show();
-	 break;
-	 }
+         Cursor_Hide();
+         if ( !oldhidden )
+            PalTable_Hide(this, rgb, TRUE);
+         setpalrange(0, colors, this->pal);
+         rotate(0);
+         getpalrange(0, colors, this->pal);
+         PalTable__UpdateDAC(this);
+         if ( !oldhidden )
+            {
+            RGBEditor_SetRGB(this->rgb[0], this->curr[0], &(this->pal[this->curr[0]]));
+            RGBEditor_SetRGB(this->rgb[1], this->curr[1], &(this->pal[this->curr[1]]));
+            PalTable_Hide(this, rgb, FALSE);
+            }
+         Cursor_Show();
+         break;
+         }
 
       case 'F':
       case 'f':    /* toggle freestyle palette edit mode */
@@ -3132,7 +3139,6 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
          if ( !this->freestyle )   /* if turning off... */
             PalTable__UpdateDAC(this);
 
-         PalTable__DrawStatus(this, FALSE);
          break;
 
       case CTL_DEL:  /* rt plus down */
@@ -3153,85 +3159,85 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
 
       case 'W':   /* convert to greyscale */
       case 'w':
-	 {
-	 switch ( this->exclude )
-	    {
-	    case 0:   /* normal mode.  convert all colors to grey scale */
+         {
+         switch ( this->exclude )
+            {
+            case 0:   /* normal mode.  convert all colors to grey scale */
                PalTable__SaveUndoData(this, 0, 255);
-	       palrangetogrey(this->pal, 0, 256);
-	       break;
+               palrangetogrey(this->pal, 0, 256);
+               break;
 
-	    case 1:   /* 'x' mode. convert current color to grey scale.  */
+            case 1:   /* 'x' mode. convert current color to grey scale.  */
                PalTable__SaveUndoData(this, this->curr[this->active], this->curr[this->active]);
-	       palrangetogrey(this->pal, this->curr[this->active], 1);
-	       break;
+               palrangetogrey(this->pal, this->curr[this->active], 1);
+               break;
 
-	    case 2:  /* 'y' mode.  convert range between editors to grey. */
-	       {
-	       int a = this->curr[0],
-		   b = this->curr[1];
+            case 2:  /* 'y' mode.  convert range between editors to grey. */
+               {
+               int a = this->curr[0],
+                   b = this->curr[1];
 
-	       if (a > b)
-		  {
-		  int t = a;
-		  a = b;
-		  b = t;
-		  }
+               if (a > b)
+                  {
+                  int t = a;
+                  a = b;
+                  b = t;
+                  }
 
                PalTable__SaveUndoData(this, a, b);
-	       palrangetogrey(this->pal, a, 1+(b-a));
-	       break;
-	       }
-	    }
+               palrangetogrey(this->pal, a, 1+(b-a));
+               break;
+               }
+            }
 
-	 PalTable__UpdateDAC(this);
-	 RGBEditor_SetRGB(this->rgb[0], this->curr[0], &(this->pal[this->curr[0]]));
-	 RGBEditor_Update(this->rgb[0]);
-	 RGBEditor_SetRGB(this->rgb[1], this->curr[1], &(this->pal[this->curr[1]]));
-	 RGBEditor_Update(this->rgb[1]);
-	 break;
-	 }
+         PalTable__UpdateDAC(this);
+         RGBEditor_SetRGB(this->rgb[0], this->curr[0], &(this->pal[this->curr[0]]));
+         RGBEditor_Update(this->rgb[0]);
+         RGBEditor_SetRGB(this->rgb[1], this->curr[1], &(this->pal[this->curr[1]]));
+         RGBEditor_Update(this->rgb[1]);
+         break;
+         }
 
       case 'N':   /* convert to negative color */
       case 'n':
-	 {
-	 switch ( this->exclude )
-	    {
-	    case 0:	 /* normal mode.  convert all colors to grey scale */
+         {
+         switch ( this->exclude )
+            {
+            case 0:      /* normal mode.  convert all colors to grey scale */
                PalTable__SaveUndoData(this, 0, 255);
-	       palrangetonegative(this->pal, 0, 256);
-	       break;
+               palrangetonegative(this->pal, 0, 256);
+               break;
 
-	    case 1:	 /* 'x' mode. convert current color to grey scale.  */
+            case 1:      /* 'x' mode. convert current color to grey scale.  */
                PalTable__SaveUndoData(this, this->curr[this->active], this->curr[this->active]);
-	       palrangetonegative(this->pal, this->curr[this->active], 1);
-	       break;
+               palrangetonegative(this->pal, this->curr[this->active], 1);
+               break;
 
-	    case 2:  /* 'y' mode.  convert range between editors to grey. */
-	       {
-	       int a = this->curr[0],
-		   b = this->curr[1];
+            case 2:  /* 'y' mode.  convert range between editors to grey. */
+               {
+               int a = this->curr[0],
+                   b = this->curr[1];
 
-	       if (a > b)
-		  {
-		  int t = a;
-		  a = b;
-		  b = t;
-		  }
+               if (a > b)
+                  {
+                  int t = a;
+                  a = b;
+                  b = t;
+                  }
 
                PalTable__SaveUndoData(this, a, b);
-	       palrangetonegative(this->pal, a, 1+(b-a));
-	       break;
-	       }
-	    }
+               palrangetonegative(this->pal, a, 1+(b-a));
+               break;
+               }
+            }
 
-	 PalTable__UpdateDAC(this);
-	 RGBEditor_SetRGB(this->rgb[0], this->curr[0], &(this->pal[this->curr[0]]));
-	 RGBEditor_Update(this->rgb[0]);
-	 RGBEditor_SetRGB(this->rgb[1], this->curr[1], &(this->pal[this->curr[1]]));
-	 RGBEditor_Update(this->rgb[1]);
-	 break;
-	 }
+         PalTable__UpdateDAC(this);
+         RGBEditor_SetRGB(this->rgb[0], this->curr[0], &(this->pal[this->curr[0]]));
+         RGBEditor_Update(this->rgb[0]);
+         RGBEditor_SetRGB(this->rgb[1], this->curr[1], &(this->pal[this->curr[1]]));
+         RGBEditor_Update(this->rgb[1]);
+         break;
+         }
 
       case 'U':     /* Undo */
       case 'u':
@@ -3244,15 +3250,16 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
          break;
 
       } /* switch */
+      PalTable__DrawStatus(this, FALSE);
    }
 
 
 static void PalTable__MkDefaultPalettes(PalTable *this)  /* creates default Fkey palettes */
    {
    PALENTRY     black,
-	        white;
+                white;
    PALENTRY     temp[256];
-   int	        ctr;
+   int          ctr;
    struct SREGS seg;
 
    black.red = black.green = black.blue = 0;
@@ -3263,7 +3270,7 @@ static void PalTable__MkDefaultPalettes(PalTable *this)  /* creates default Fkey
 
    for (ctr=0; ctr<8; ctr++)   /* copy temp into all fkey saves */
       movedata(seg.ss, (USEGTYPE)(temp), FP_SEG(this->save_pal[ctr]),
-	       FP_OFF(this->save_pal[ctr]), 256*3);
+               FP_OFF(this->save_pal[ctr]), 256*3);
    }
 
 
@@ -3271,8 +3278,8 @@ static void PalTable__MkDefaultPalettes(PalTable *this)  /* creates default Fkey
 static PalTable *PalTable_Construct(void)
    {
    PalTable     *this = new(PalTable);
-   int		 csize;
-   int		 ctr;
+   int           csize;
+   int           ctr;
    PALENTRY far *mem_block;
    void far     *temp;
 
@@ -3283,24 +3290,24 @@ static PalTable *PalTable_Construct(void)
       mem_block = (PALENTRY far *)farmemalloc(256L*3 * 8);
 
       if ( mem_block == NULL )
-	 {
-	 for (ctr=0; ctr<8; ctr++)
-	    this->save_pal[ctr] = NULL;
-	 }
+         {
+         for (ctr=0; ctr<8; ctr++)
+            this->save_pal[ctr] = NULL;
+         }
       else
-	 {
-	 for (ctr=0; ctr<8; ctr++)
-	    this->save_pal[ctr] = mem_block + (256*ctr);
+         {
+         for (ctr=0; ctr<8; ctr++)
+            this->save_pal[ctr] = mem_block + (256*ctr);
 
-	 PalTable__MkDefaultPalettes(this);
-	 }
+         PalTable__MkDefaultPalettes(this);
+         }
       farmemfree(temp);
       }
 
    this->rgb[0] = RGBEditor_Construct(0, 0, PalTable__other_key,
-		  PalTable__change, this);
+                  PalTable__change, this);
    this->rgb[1] = RGBEditor_Construct(0, 0, PalTable__other_key,
-		  PalTable__change, this);
+                  PalTable__change, this);
 
    this->movebox = MoveBox_Construct(0,0,0, PalTable_PALX+1, PalTable_PALY+1);
 
@@ -3311,7 +3318,7 @@ static PalTable *PalTable_Construct(void)
    this->exclude     = FALSE;
    this->hidden      = FALSE;
    this->stored_at   = NOWHERE;
-   this->file	     = NULL;
+   this->file        = NULL;
    this->memory      = NULL;
 
    this->fs_color.red   = 42;
@@ -3358,17 +3365,17 @@ static void PalTable_Hide(PalTable *this, RGBEditor *rgb, BOOLEAN hidden)
       PalTable_SetHidden(this, TRUE);
       reserve_colors = FALSE;
       if (this->auto_select)
-	 PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
+         PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
       }
    else
       {
       PalTable_SetHidden(this, FALSE);
       reserve_colors = TRUE;
       if (this->stored_at == NOWHERE)  /* do we need to save screen? */
-	 PalTable__SaveRect(this);
+         PalTable__SaveRect(this);
       PalTable__Draw(this);
       if (this->auto_select)
-	 PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
+         PalTable__SetCurr(this, this->active, PalTable__GetCursorColor(this));
       RGBEditor_SetDone(rgb, TRUE);
       }
    }
@@ -3423,28 +3430,28 @@ static void PalTable_Process(PalTable *this)
       MoveBox_SetPos(this->movebox, this->x, this->y);
       MoveBox_SetCSize(this->movebox, this->csize);
       if ( !MoveBox_Process(this->movebox) )
-	 {
-	 setpalrange(0, colors, this->pal);
-	 return ;
-	 }
+         {
+         setpalrange(0, colors, this->pal);
+         return ;
+         }
 
       PalTable__SetPos(this, MoveBox_X(this->movebox), MoveBox_Y(this->movebox));
       PalTable__SetCSize(this, MoveBox_CSize(this->movebox));
 
       if ( MoveBox_ShouldHide(this->movebox) )
-	 {
-	 PalTable_SetHidden(this, TRUE);
-	 reserve_colors = FALSE;   /* <EAN> */
-	 }
+         {
+         PalTable_SetHidden(this, TRUE);
+         reserve_colors = FALSE;   /* <EAN> */
+         }
       else
-	 {
-	 reserve_colors = TRUE;    /* <EAN> */
-	 PalTable__SaveRect(this);
-	 PalTable__Draw(this);
-	 }
+         {
+         reserve_colors = TRUE;    /* <EAN> */
+         PalTable__SaveRect(this);
+         PalTable__Draw(this);
+         }
       }
 
-   PalTable__SetCurr(this, this->active,	  PalTable__GetCursorColor(this));
+   PalTable__SetCurr(this, this->active,          PalTable__GetCursorColor(this));
    PalTable__SetCurr(this, (this->active==1)?0:1, PalTable__GetCursorColor(this));
    Cursor_Show();
 
@@ -3465,11 +3472,11 @@ static void PalTable_Process(PalTable *this)
 
 
 
-void EditPalette(void)	     /* called by fractint */
+void EditPalette(void)       /* called by fractint */
    {
-   int	     oldlookatmouse = lookatmouse;
-   int	     oldsxoffs	    = sxoffs;
-   int	     oldsyoffs	    = syoffs;
+   int       oldlookatmouse = lookatmouse;
+   int       oldsxoffs      = sxoffs;
+   int       oldsyoffs      = syoffs;
    PalTable *pt;
 
    mem_init(strlocn, 10*1024);

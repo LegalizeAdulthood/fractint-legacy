@@ -93,10 +93,10 @@ void showbfglobals(char *s)
    sprintf(msg, "%s\n\
 bnstep=%d bnlength=%d intlength=%d rlength=%d padding=%d\n\
 shiftfactor=%d decimals=%d bflength=%d rbflength=%d \n\
-bfshiftfactor=%d bfdecimals=%d ",
-               s, bnstep, bnlength, intlength, rlength, padding, 
-               shiftfactor, decimals, bflength, rbflength, 
-               bfshiftfactor, bfdecimals); 
+bfdecimals=%d ",
+               s, bnstep, bnlength, intlength, rlength, padding,
+               shiftfactor, decimals, bflength, rbflength,
+               bfdecimals);
    if(stopmsg(0,msg)==-1)
       goodbye();
 }
@@ -192,7 +192,7 @@ void showaspect(char *s)
    sub_bf(bt1,bfxmax,bfxmin);
    sub_bf(bt2,bfymax,bfymin);
    div_bf(aspect,bt2,bt1);
-   bftostr(str,10,aspect); 
+   bftostr(str,10,aspect);
    sprintf(msg,"aspect %s\nfloat %13.10f\nbf    %s\n\n",
             s,
             (yymax-yymin)/(xxmax-xxmin),
@@ -284,7 +284,7 @@ int near bnMODbailout()
    copy_bn(bnold.y, bnnew.y);
    return 0;
 }
-  
+
 int near bnREALbailout()
 {
    long longtempsqrx;
@@ -335,9 +335,45 @@ int near bnANDbailout()
 
    square_bn(bntmpsqrx, bnnew.x);
    square_bn(bntmpsqry, bnnew.y);
-   longtempsqrx = bntoint(bntmpsqrx+shiftfactor); 
-   longtempsqry = bntoint(bntmpsqry+shiftfactor); 
+   longtempsqrx = bntoint(bntmpsqrx+shiftfactor);
+   longtempsqry = bntoint(bntmpsqry+shiftfactor);
    if(longtempsqrx >= (long)rqlim && longtempsqry >= (long)rqlim)
+      return 1;
+   copy_bn(bnold.x, bnnew.x);
+   copy_bn(bnold.y, bnnew.y);
+   return(0);
+}
+
+int near bnMANHbailout()
+{
+   long longtempmag;
+
+   square_bn(bntmpsqrx, bnnew.x);
+   square_bn(bntmpsqry, bnnew.y);
+   /* note: in next five lines, bnold is just used as a temporary variable */
+   abs_bn(bnold.x,bnnew.x);
+   abs_bn(bnold.y,bnnew.y);
+   add_bn(bntmp, bnold.x, bnold.y);
+   square_bn(bnold.x, bntmp);
+   longtempmag = bntoint(bnold.x+shiftfactor);
+   if(longtempmag >= (long)rqlim)
+      return 1;
+   copy_bn(bnold.x, bnnew.x);
+   copy_bn(bnold.y, bnnew.y);
+   return(0);
+}
+
+int near bnMANRbailout()
+{
+   long longtempmag;
+
+   square_bn(bntmpsqrx, bnnew.x);
+   square_bn(bntmpsqry, bnnew.y);
+   add_bn(bntmp, bnnew.x, bnnew.y); /* don't need abs since we square it next */
+   /* note: in next two lines, bnold is just used as a temporary variable */
+   square_bn(bnold.x, bntmp);
+   longtempmag = bntoint(bnold.x+shiftfactor);
+   if(longtempmag >= (long)rqlim)
       return 1;
    copy_bn(bnold.x, bnnew.x);
    copy_bn(bnold.y, bnnew.y);
@@ -359,7 +395,7 @@ int near bfMODbailout()
    copy_bf(bfold.y, bfnew.y);
    return 0;
 }
-  
+
 int near bfREALbailout()
 {
    long longtempsqrx;
@@ -419,6 +455,42 @@ int near bfANDbailout()
    return(0);
 }
 
+int near bfMANHbailout()
+{
+   long longtempmag;
+
+   square_bf(bftmpsqrx, bfnew.x);
+   square_bf(bftmpsqry, bfnew.y);
+   /* note: in next five lines, bfold is just used as a temporary variable */
+   abs_bf(bfold.x,bfnew.x);
+   abs_bf(bfold.y,bfnew.y);
+   add_bf(bftmp, bfold.x, bfold.y);
+   square_bf(bfold.x, bftmp);
+   longtempmag = bftoint(bfold.x);
+   if(longtempmag >= (long)rqlim)
+      return 1;
+   copy_bf(bfold.x, bfnew.x);
+   copy_bf(bfold.y, bfnew.y);
+   return(0);
+}
+
+int near bfMANRbailout()
+{
+   long longtempmag;
+
+   square_bf(bftmpsqrx, bfnew.x);
+   square_bf(bftmpsqry, bfnew.y);
+   add_bf(bftmp, bfnew.x, bfnew.y); /* don't need abs since we square it next */
+   /* note: in next two lines, bfold is just used as a temporary variable */
+   square_bf(bfold.x, bftmp);
+   longtempmag = bftoint(bfold.x);
+   if(longtempmag >= (long)rqlim)
+      return 1;
+   copy_bf(bfold.x, bfnew.x);
+   copy_bf(bfold.y, bfnew.y);
+   return(0);
+}
+
 #if (_MSC_VER >= 700)
 #pragma code_seg ("bigsetup_text")     /* place following in an overlay */
 #endif
@@ -463,7 +535,7 @@ int MandelbnSetup()
    {
       if(cmp_bn(bntemp1,bnclosenuff) > 0)
          copy_bn(bnclosenuff,bntemp1);
-   } 
+   }
    else if(cmp_bn(bntemp2,bnclosenuff) > 0)
       copy_bn(bnclosenuff,bntemp2);
    {
@@ -603,14 +675,14 @@ int mandelbn_per_pixel()
    if(inside == -60 || inside == -61)
    {
       /* kludge to match "Beauty of Fractals" picture since we start
-	 Mandelbrot iteration with init rather than 0 */
+         Mandelbrot iteration with init rather than 0 */
       floattobn(bnold.x,param[0]); /* initial pertubation of parameters set */
       floattobn(bnold.y,param[1]);
       coloriter = -1;
    }
    else
    {
-     floattobn(bnnew.x,param[0]); 
+     floattobn(bnnew.x,param[0]);
      floattobn(bnnew.y,param[1]);
      add_a_bn(bnold.x,bnnew.x);
      add_a_bn(bnold.y,bnnew.y);
@@ -624,7 +696,7 @@ int mandelbn_per_pixel()
    square_bn(bntmpsqrx, bnnew.x);
    square_bn(bntmpsqry, bnnew.y);
 
-   return (1);			/* 1st iteration has been done */
+   return (1);                  /* 1st iteration has been done */
 }
 
 int mandelbf_per_pixel()
@@ -649,7 +721,7 @@ int mandelbf_per_pixel()
    if(inside == -60 || inside == -61)
    {
       /* kludge to match "Beauty of Fractals" picture since we start
-	 Mandelbrot iteration with init rather than 0 */
+         Mandelbrot iteration with init rather than 0 */
       floattobf(bfold.x,param[0]); /* initial pertubation of parameters set */
       floattobf(bfold.y,param[1]);
       coloriter = -1;
@@ -670,7 +742,7 @@ int mandelbf_per_pixel()
    square_bf(bftmpsqrx, bfnew.x);
    square_bf(bftmpsqry, bfnew.y);
 
-   return (1);			/* 1st iteration has been done */
+   return (1);                  /* 1st iteration has been done */
 }
 
 juliabn_per_pixel()
@@ -688,7 +760,7 @@ juliabn_per_pixel()
    mult_bn_int(bnnew.y, bnydel2, (U16)col);
    add_a_bn(bnnew.x, bnnew.y);
    sub_bn(bnold.y, bnymax, bnnew.x);
-   
+
    /* square has side effect - must copy first */
    copy_bn(bnnew.x, bnold.x);
    copy_bn(bnnew.y, bnold.y);
@@ -697,7 +769,7 @@ juliabn_per_pixel()
    square_bn(bntmpsqrx, bnnew.x);
    square_bn(bntmpsqry, bnnew.y);
 
-   return (1);			/* 1st iteration has been done */
+   return (1);                  /* 1st iteration has been done */
 }
 
 juliabf_per_pixel()
@@ -715,7 +787,7 @@ juliabf_per_pixel()
    mult_bf_int(bfnew.y, bfydel2, (U16)col);
    add_a_bf(bfnew.x, bfnew.y);
    sub_bf(bfold.y, bfymax, bfnew.x);
-   
+
    /* square has side effect - must copy first */
    copy_bf(bfnew.x, bfold.x);
    copy_bf(bfnew.y, bfold.y);
@@ -724,7 +796,7 @@ juliabf_per_pixel()
    square_bf(bftmpsqrx, bfnew.x);
    square_bf(bftmpsqry, bfnew.y);
 
-   return (1);			/* 1st iteration has been done */
+   return (1);                  /* 1st iteration has been done */
 }
 
 
@@ -771,7 +843,7 @@ JuliaZpowerbnFractal()
 
    floattobn(parm2.x,param[2]);
    floattobn(parm2.y,param[3]);
-   ComplexPower_bn(&bnnew,&bnold,&parm2); 
+   ComplexPower_bn(&bnnew,&bnold,&parm2);
    add_bn(bnnew.x,bnparm.x,bnnew.x+shiftfactor);
    add_bn(bnnew.y,bnparm.y,bnnew.y+shiftfactor);
    restore_stack(saved);
@@ -813,7 +885,7 @@ JuliabnFractal()
     * precision, we might as well keep that extra precision in this next
     * subtraction.  Therefore, use rlength as the length.
     */
-    
+
    oldbnlength = bnlength;
    bnlength = rlength; sub_a_bn(bntmpsqrx, bntmpsqry); bnlength = oldbnlength;
 
@@ -848,12 +920,12 @@ JuliabnFractal()
    add_bn(bntmp, bntmpsqrx, bntmpsqry);
    bnlength = oldbnlength;
 
-   mod = bntmp + (rlength) - (intlength << 1);	/* where int part starts
-						 * after mult */
+   mod = bntmp + (rlength) - (intlength << 1);  /* where int part starts
+                                                 * after mult */
    /*
     * equivalent to, but faster than, mod = bn_int(tmp+shiftfactor);
     */
-   
+
    if ((magnitude = *mod) >= rqlim)
       return (1);
    return (0);
@@ -870,7 +942,7 @@ _CMPLX cmplxbntofloat(_BNCMPLX *s)
 
 _CMPLX cmplxbftofloat(_BFCMPLX *s)
 {
-   _CMPLX t; 
+   _CMPLX t;
    t.x = (double)bftofloat(s->x);
    t.y = (double)bftofloat(s->y);
    return(t);
@@ -878,7 +950,7 @@ _CMPLX cmplxbftofloat(_BFCMPLX *s)
 
 _BFCMPLX *cmplxlog_bf(_BFCMPLX *t, _BFCMPLX *s)
 {
-   square_bf(t->x,s->x); 
+   square_bf(t->x,s->x);
    square_bf(t->y,s->y);
    add_a_bf(t->x,t->y);
    ln_bf(t->x,t->x);
@@ -894,7 +966,7 @@ _BFCMPLX *cplxmul_bf( _BFCMPLX *t, _BFCMPLX *x, _BFCMPLX *y)
    tmp1 = alloc_stack(rbflength+2);
    mult_bf(t->x, x->x, y->x);
    mult_bf(t->y, x->y, y->y);
-   sub_bf(t->x,t->x,t->y); 
+   sub_bf(t->x,t->x,t->y);
 
    mult_bf(tmp1, x->x, y->y);
    mult_bf(t->y, x->y, y->x);
@@ -903,7 +975,7 @@ _BFCMPLX *cplxmul_bf( _BFCMPLX *t, _BFCMPLX *x, _BFCMPLX *y)
    return(t);
 }
 
-_BFCMPLX *ComplexPower_bf(_BFCMPLX *t, _BFCMPLX *xx, _BFCMPLX *yy) 
+_BFCMPLX *ComplexPower_bf(_BFCMPLX *t, _BFCMPLX *xx, _BFCMPLX *yy)
 {
    _BFCMPLX tmp;
    bf_t e2x, siny, cosy;
@@ -960,7 +1032,7 @@ _BNCMPLX *cplxmul_bn( _BNCMPLX *t, _BNCMPLX *x, _BNCMPLX *y)
 }
 
 /* note: ComplexPower_bn() returns need to be +shiftfactor'ed */
-_BNCMPLX *ComplexPower_bn(_BNCMPLX *t, _BNCMPLX *xx, _BNCMPLX *yy) 
+_BNCMPLX *ComplexPower_bn(_BNCMPLX *t, _BNCMPLX *xx, _BNCMPLX *yy)
 {
    _BNCMPLX tmp;
    bn_t e2x, siny, cosy;

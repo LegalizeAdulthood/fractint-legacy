@@ -1,163 +1,17 @@
 /* bignum.c - C routines for bignumbers */
 
 /*
-Wesley Loewer's Big Numbers.        (C) 1994, Wesley B. Loewer
-
-The bignumber format is simply a signed integer of variable length.  The
-bytes are stored in reverse order (least significant byte first, most
-significant byte last).  The sign bit is the highest bit of the most
-significant byte.  Negatives are stored in 2's complement form.  The byte
-length of the bignumbers must be a multiple of 4 for 386+ operations, and
-a multiple of 2 for 8086/286 and non 80x86 machines.
-
-Some of the arithmetic operations coded here may alter some of the
-operands used.  Therefore, take note of the SIDE-EFFECTS listed with each
-procedure.  If the value of an operand needs to be retained, just use
-copy_bn() first.  This was done for speed sake to avoid unnecessary
-copying.  If space is at such a premium that copying it would be
-difficult, some of the operations only change the sign of the value.  In
-this case, the original could be optained by calling neg_a_bn().
-
-Most of the bignumber routines operate on true integers.  Some of the
-procedures, however, are designed specifically for fixed decimal point
-operations.  The results and how the results are interpreted depend on
-where the implied decimal point is located.  The routines that depend on
-where the decimal is located are:  strtobn(), bntostr(), bntoint(), inttobn(),
-bntofloat(), floattobn(), inv_bn(), div_bn().  The number of bytes
-designated for the integer part may be 1, 2, or 4.
-
-
-BIGNUMBER FORMAT:
-The following is a discription of the bignumber format and associated
-variables.  The number is stored in reverse order (Least Significant Byte,
-LSB, stored first in memory, Most Significant Byte, MSB, stored last).
-Each '_' below represents a block of memory used for arithmetic (1 block =
-4 bytes on 386+, 2 bytes on 286-).  All lengths are given in bytes.
-
-LSB                                MSB
-  _  _  _  _  _  _  _  _  _  _  _  _
-n <----------- bnlength ----------->
-                    intlength  ---> <---
-
-  bnlength  = the length in bytes of the bignumber
-  intlength = the number of bytes used to represent the integer part of
-              the bignumber.  Possible values are 1, 2, or 4.  This
-              determines the largest number that can be represented by
-              the bignumber.
-                intlength = 1, max value = 127.99...
-                intlength = 2, max value = 32,767.99...
-                intlength = 4, max value = 2,147,483,647.99...
-
-
-FULL DOUBLE PRECISION MULTIPLICATION:
-( full_mult_bn(), full_square_bn() )
-
-The product of two bignumbers, n1 and n2, will be a result, r, which is
-a double wide bignumber.  The integer part will also be twice as wide,
-thereby eliminating the possiblity of overflowing the number.
-
-LSB                                                                    MSB
-  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
-r <--------------------------- 2*bnlength ----------------------------->
-                                                     2*intlength  --->  <---
-
-If this double wide bignumber, r, needs to be converted to a normal,
-single width bignumber, this is easily done with pointer arithmetic.  The
-converted value starts at r+shiftfactor (where shiftfactor =
-bnlength-intlength) and continues for bnlength bytes.  The lower order
-bytes and the upper integer part of the double wide number can then be
-ignored.
-
-LSB                                                                    MSB
-  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
-r <--------------------------- 2*bnlength ----------------------------->
-                                                     2*intlength  --->  <---
-                                 LSB                                  MSB
-	           r+shiftfactor   <----------  bnlength  ------------>
-                                                       intlength  ---> <---
-
-
-PARTIAL PRECISION MULTIPLICATION:
-( mult_bn(), square_bn() )
-
-In most cases, full double precision multiplication is not necessary.  The
-lower order bytes are usually thrown away anyway.  The non-"full"
-multiplication routines only calculate rlength bytes in the result.  The
-value of rlength must be in the range: 2*bnlength <= rlength < bnlength.
-The amount by which rlength exceeds bnlength accounts for the extra bytes
-that must be multiplied so that the first bnlength bytes are correct.
-These extra bytes are refered to in the code as the "padding," that is:
-rlength=bnlength+padding.
-
-All three of the values, bnlength, rlength, and therefore padding, must be
-multiples of the size of memory blocks being used for arithmetic (2 on
-8086/286 and 4 on 386+).  Typically, the padding is 2*blocksize.  In the
-case where bnlength=blocksize, padding can only be blocksize to keep
-rlength from being too big.
-
-The product of two bignumbers, n1 and n2, will then be a result, r, which
-is of length rlength.  The integer part will be twice as wide, thereby
-eliminating the possiblity of overflowing the number.
-
-             LSB                                      MSB
-               _  _  _  _  _  _  _  _  _  _  _  _  _  _
-            r  <---- rlength = bnlength+padding ------>
-                                    2*intlength  --->  <---
-
-If r needs to be converted to a normal, single width bignumber, this is
-easily done with pointer arithmetic.  The converted value starts at
-r+shiftfactor (where shiftfactor = padding-intlength) and continues for
-bnlength bytes.  The lower order bytes and the upper integer part of the
-double wide number can then be ignored.
-
-             LSB                                      MSB
-               _  _  _  _  _  _  _  _  _  _  _  _  _  _
-            r  <---- rlength = bnlength+padding ------>
-                                    2*intlength  --->  <---
-                   LSB                                  MSB
-      r+shiftfactor  <----------  bnlength  --------->
-                                       intlength ---> <---
+Wesley Loewer's Big Numbers.        (C) 1994-95, Wesley B. Loewer
 */
-
-/************************************************************************/
-/* There are three parts to the bignum library:                         */
-/*                                                                      */
-/* 1) bignum.c - initialization, general routines, routines that would  */
-/*    not be speeded up much with assembler.                            */
-/*                                                                      */
-/* 2) bignuma.asm - hand coded assembler routines.                      */
-/*                                                                      */
-/* 3) bignumc.c - portable C versions of routines in bignuma.asm        */
-/*                                                                      */
-/************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include "big.h"
+#ifndef BIG_ANSI_C
 #include <malloc.h>
-#include "prototyp.h"
-#include "bignum.h"
-#ifdef sign
-#undef sign
 #endif
-
-/* globals */
-extern int bnstep, bnlength, intlength, rlength, padding, shiftfactor, decimals;
-extern int bflength, rbflength, bfshiftfactor, bfdecimals;
-
-/* used internally by bignum.c routines */
-extern bn_t bntmp1, bntmp2, bntmp3, bntmp4, bntmp5, bntmp6; /* rlength  */
-extern bn_t bntmpcpy1, bntmpcpy2;                           /* bnlength */
-
-/* used by other routines */
-extern  bn_t bn_pi;
-extern  bn_t bnxmin, bnxmax, bnymin, bnymax, bnx3rd, bny3rd;        /* bnlength */
-extern  bn_t bnxdel, bnydel, bnxdel2, bnydel2, bnclosenuff;         /* bnlength */
-extern  bn_t bntmpsqrx, bntmpsqry, bntmp;                           /* rlength  */
-extern  _BNCMPLX bnold, bnnew, bnparm, bnsaved;                     /* bnlength */
-
-#define LOG10_256 2.4082399653118
-#define LOG_256   5.5451774444795
 
 /*************************************************************************
 * The original bignumber code was written specifically for a Little Endian
@@ -165,44 +19,45 @@ extern  _BNCMPLX bnold, bnnew, bnparm, bnsaved;                     /* bnlength 
 * simple to incorporate.  If speed with a Big Endian machine is critical,
 * the bignumber format could be reversed.
 **************************************************************************/
-#ifdef BIG_ENDIAN /* Big Endian: &variable == &(most significant byte), moterola style */
-U32 access32(BYTE far *addr)
+#ifdef ACCESS_BY_BYTE
+U32 big_access32(BYTE BIGDIST *addr)
     {
     return addr[0] | ((U32)addr[1]<<8) | ((U32)addr[2]<<16) | ((U32)addr[3]<<24);
     }
 
-U16 access16(BYTE far *addr)
+U16 big_access16(BYTE BIGDIST *addr)
     {
     return (U16)addr[0] | ((U16)addr[1]<<8);
     }
 
-S16 accessS16(S16 far *addr)
+S16 big_accessS16(S16 BIGDIST *addr)
     {
     return (S16)((BYTE *)addr)[0] | ((S16)((BYTE *)addr)[1]<<8);
     }
 
-U32 set32(BYTE far *addr, U32 val)
+U32 big_set32(BYTE BIGDIST *addr, U32 val)
     {
-    addr[0] = val&0xff;
-    addr[1] = (val>>8)&0xff;
-    addr[2] = (val>>16)&0xff;
-    addr[3] = (val>>24)&0xff;
+    addr[0] = (BYTE)(val&0xff);
+    addr[1] = (BYTE)((val>>8)&0xff);
+    addr[2] = (BYTE)((val>>16)&0xff);
+    addr[3] = (BYTE)((val>>24)&0xff);
     return val;
     }
 
-U16 set16(BYTE far *addr, U16 val)
+U16 big_set16(BYTE BIGDIST *addr, U16 val)
     {
-    addr[0] = val&0xff;
-    addr[1] = (val>>8)&0xff;
+    addr[0] = (BYTE)(val&0xff);
+    addr[1] = (BYTE)((val>>8)&0xff);
     return val;
     }
 
-S16 setS16(S16 far *addr, S16 val)
+S16 big_setS16(S16 BIGDIST *addr, S16 val)
     {
-    ((BYTE *)addr)[0] = val&0xff;
-    ((BYTE *)addr)[1] = (val>>8)&0xff;
+    ((BYTE *)addr)[0] = (BYTE)(val&0xff);
+    ((BYTE *)addr)[1] = (BYTE)((val>>8)&0xff);
     return val;
     }
+
 #endif
 
 #if (_MSC_VER >= 700)
@@ -302,10 +157,10 @@ bn_t strtobn(bn_t r, char *s)
                     *onesbyte = (BYTE)longval;
                     break;
                 case 2:
-                    set16(onesbyte, (U16)longval);
+                    big_set16(onesbyte, (U16)longval);
                     break;
                 case 4:
-                    set32(onesbyte, longval);
+                    big_set32(onesbyte, longval);
                     break;
                 }
             }
@@ -319,10 +174,10 @@ bn_t strtobn(bn_t r, char *s)
                 *onesbyte = (BYTE)longval;
                 break;
             case 2:
-                set16(onesbyte, (U16)longval);
+                big_set16(onesbyte, (U16)longval);
                 break;
             case 4:
-                set32(onesbyte, longval);
+                big_set32(onesbyte, longval);
                 break;
             }
         }
@@ -359,7 +214,7 @@ int strlen_needed()
     length += 4;         /* null and a little extra for safety */
     return(length);
     }
-         
+
 /********************************************************************/
 /* bntostr() - converts a bignumber into a string                    */
 /*   s - string, must be large enough to hold the number.           */
@@ -389,10 +244,10 @@ char *unsafe_bntostr(char *s, int dec, bn_t r)
             longval = *onesbyte;
             break;
         case 2:
-            longval = access16(onesbyte);
+            longval = big_access16(onesbyte);
             break;
         case 4:
-            longval = access32(onesbyte);
+            longval = big_access32(onesbyte);
             break;
         }
     ltoa(longval, s, 10);
@@ -430,10 +285,10 @@ bn_t inttobn(bn_t r, long longval)
             *onesbyte = (BYTE)longval;
             break;
         case 2:
-            set16(onesbyte, (U16)longval);
+            big_set16(onesbyte, (U16)longval);
             break;
         case 4:
-            set32(onesbyte, longval);
+            big_set32(onesbyte, longval);
             break;
         }
     return r;
@@ -454,10 +309,10 @@ long bntoint(bn_t n)
             longval = *onesbyte;
             break;
         case 2:
-            longval = access16(onesbyte);
+            longval = big_access16(onesbyte);
             break;
         case 4:
-            longval = access32(onesbyte);
+            longval = big_access32(onesbyte);
             break;
         }
     return longval;
@@ -469,36 +324,38 @@ long bntoint(bn_t n)
 bn_t floattobn(bn_t r, LDBL f)
     {
 #ifndef USE_BIGNUM_C_CODE
+    /* Only use this when using the ASM code as the C version of  */
+    /* floattobf() calls floattobn(), an infinite recursive loop. */
     floattobf(bftmp1, f);
     return bftobn(r, bftmp1);
-    
+
 #else
     bn_t onesbyte;
     int i;
     int signflag=0;
- 
+
     clear_bn(r);
     onesbyte = r + bnlength - intlength;
- 
+
     if (f < 0)
         {
         signflag = 1;
         f = -f;
         }
- 
+
     switch (intlength)
         { /* only 1, 2, or 4 are allowed */
         case 1:
             *onesbyte = (BYTE)f;
             break;
         case 2:
-            set16(onesbyte, (U16)f);
+            big_set16(onesbyte, (U16)f);
             break;
         case 4:
-            set32(onesbyte, (U32)f);
+            big_set32(onesbyte, (U32)f);
             break;
         }
- 
+
     f -= (long)f; /* keep only the decimal part */
     for (i = bnlength - intlength - 1; i >= 0 && f != 0.0; i--)
         {
@@ -506,10 +363,10 @@ bn_t floattobn(bn_t r, LDBL f)
         r[i] = (BYTE)f;  /* keep use the integer part */
         f -= (BYTE)f; /* now throw away the integer part */
         }
- 
+
     if (signflag)
         neg_a_bn(r);
- 
+
     return r;
 #endif /* USE_BIGNUM_C_CODE */
     }
@@ -525,7 +382,7 @@ int sign_bn(bn_t n)
 /* r = |n|                                                          */
 bn_t abs_bn(bn_t r, bn_t n)
     {
-    copy_bn(r,n);    
+    copy_bn(r,n);
     if (is_bn_neg(r))
         neg_a_bn(r);
     return r;
@@ -550,6 +407,11 @@ bn_t unsafe_inv_bn(bn_t r, bn_t n)
     int signflag=0, i;
     long maxval;
     LDBL f;
+    bn_t orig_r, orig_n; /* orig_bntmp1 not needed here */
+    int  orig_bnlength,
+         orig_padding,
+         orig_rlength,
+         orig_shiftfactor;
 
     /* use Newton's recursive method for zeroing in on 1/n : r=r(2-rn) */
 
@@ -579,20 +441,60 @@ bn_t unsafe_inv_bn(bn_t r, bn_t n)
         return r;
         }
 
+    /* With Newton's Method, there is no need to calculate all the digits */
+    /* every time.  The precision approximately doubles each iteration.   */
+    /* Save original values. */
+    orig_bnlength      = bnlength;
+    orig_padding       = padding;
+    orig_rlength       = rlength;
+    orig_shiftfactor   = shiftfactor;
+    orig_r             = r;
+    orig_n             = n;
+    /* orig_bntmp1        = bntmp1; */
+
+    /* calculate new starting values */
+    bnlength = intlength + (int)(LDBL_DIG/LOG10_256) + 1; /* round up */
+    if (bnlength > orig_bnlength)
+        bnlength = orig_bnlength;
+    calc_lengths();
+
+    /* adjust pointers */
+    r = orig_r + orig_bnlength - bnlength;
+    n = orig_n + orig_bnlength - bnlength;
+    /* bntmp1 = orig_bntmp1 + orig_bnlength - bnlength; */
+
     floattobn(r, f); /* start with approximate inverse */
     clear_bn(bntmp2); /* will be used as 1.0 and 2.0 */
 
     for (i=0; i<25; i++) /* safety net, this shouldn't ever be needed */
         {
+        /* adjust lengths */
+        bnlength <<= 1; /* double precision */
+        if (bnlength > orig_bnlength)
+           bnlength = orig_bnlength;
+        calc_lengths();
+        r = orig_r + orig_bnlength - bnlength;
+        n = orig_n + orig_bnlength - bnlength;
+        /* bntmp1 = orig_bntmp1 + orig_bnlength - bnlength; */
+
         unsafe_mult_bn(bntmp1, r, n); /* bntmp1=rn */
-        bntmp2[bnlength-intlength] = 1; /* bntmp2 = 1.0 */
-        if ( !cmp_bn(bntmp2, bntmp1+shiftfactor) ) /* if not different */
+        inttobn(bntmp2, 1);  /* bntmp2 = 1.0 */
+        if (bnlength == orig_bnlength && cmp_bn(bntmp2, bntmp1+shiftfactor) == 0 ) /* if not different */
             break;  /* they must be the same */
-        bntmp2[bnlength-intlength] = 2; /* bntmp2 = 2.0 */
+        inttobn(bntmp2, 2); /* bntmp2 = 2.0 */
         sub_bn(bntmp3, bntmp2, bntmp1+shiftfactor); /* bntmp3=2-rn */
         unsafe_mult_bn(bntmp1, r, bntmp3); /* bntmp1=r(2-rn) */
         copy_bn(r, bntmp1+shiftfactor); /* r = bntmp1 */
         }
+
+    /* restore original values */
+    bnlength      = orig_bnlength;
+    padding       = orig_padding;
+    rlength       = orig_rlength;
+    shiftfactor   = orig_shiftfactor;
+    r             = orig_r;
+    n             = orig_n;
+    /* bntmp1        = orig_bntmp1; */
 
     if (signflag)
         {
@@ -606,7 +508,7 @@ bn_t unsafe_inv_bn(bn_t r, bn_t n)
 /*      r - result of length bnlength                               */
 /* uses bntmp1 - bntmp3 - global temp bignumbers                    */
 /*  SIDE-EFFECTS:                                                   */
-/*      n1, n2 end up as |n1|, |n2|                                 */
+/*      n1, n2 can end up as GARBAGE                                */
 /*      Make copies first if necessary.                             */
 bn_t unsafe_div_bn(bn_t r, bn_t n1, bn_t n2)
     {
@@ -668,6 +570,7 @@ bn_t unsafe_div_bn(bn_t r, bn_t n1, bn_t n2)
     if (scale2 < 0)
        scale2 = 0;
 
+    /* shift n1, n2 */
     /* important!, use memmove(), not memcpy() */
     _fmemmove(n1+scale1, n1, bnlength-scale1); /* shift bytes over */
     _fmemset(n1, 0, scale1);  /* zero out the rest */
@@ -705,13 +608,18 @@ bn_t unsafe_div_bn(bn_t r, bn_t n1, bn_t n2)
 
 /********************************************************************/
 /* sqrt(r)                                                          */
-/* uses bntmp1 - bntmp4 - global temp bignumbers                    */
+/* uses bntmp1 - bntmp6 - global temp bignumbers                    */
 /*  SIDE-EFFECTS:                                                   */
 /*      n ends up as |n|                                            */
 bn_t sqrt_bn(bn_t r, bn_t n)
     {
     int i, comp, almost_match=0;
     LDBL f;
+    bn_t orig_r, orig_n;
+    int  orig_bnlength,
+         orig_padding,
+         orig_rlength,
+         orig_shiftfactor;
 
 /* use Newton's recursive method for zeroing in on sqrt(n): r=.5(r+n/r) */
 
@@ -730,28 +638,61 @@ bn_t sqrt_bn(bn_t r, bn_t n)
     f = sqrtl(f); /* approximate square root */
     /* no need to check overflow */
 
+    /* With Newton's Method, there is no need to calculate all the digits */
+    /* every time.  The precision approximately doubles each iteration.   */
+    /* Save original values. */
+    orig_bnlength      = bnlength;
+    orig_padding       = padding;
+    orig_rlength       = rlength;
+    orig_shiftfactor   = shiftfactor;
+    orig_r             = r;
+    orig_n             = n;
+
+    /* calculate new starting values */
+    bnlength = intlength + (int)(LDBL_DIG/LOG10_256) + 1; /* round up */
+    if (bnlength > orig_bnlength)
+        bnlength = orig_bnlength;
+    calc_lengths();
+
+    /* adjust pointers */
+    r = orig_r + orig_bnlength - bnlength;
+    n = orig_n + orig_bnlength - bnlength;
+
     floattobn(r, f); /* start with approximate sqrt */
     copy_bn(bntmp4, r);
 
     for (i=0; i<25; i++) /* safety net, this shouldn't ever be needed */
         {
-        unsafe_div_bn(bntmp4, n, r);
+        /* adjust lengths */
+        bnlength <<= 1; /* double precision */
+        if (bnlength > orig_bnlength)
+           bnlength = orig_bnlength;
+        calc_lengths();
+        r = orig_r + orig_bnlength - bnlength;
+        n = orig_n + orig_bnlength - bnlength;
+
+        copy_bn(bntmp6, r);
+        copy_bn(bntmp5, n);
+        unsafe_div_bn(bntmp4, bntmp5, bntmp6);
         add_a_bn(r, bntmp4);
         half_a_bn(r);
-        if ((comp=abs(cmp_bn(r, bntmp4))) <= 2 ) /* if match or almost match */
+        if (bnlength == orig_bnlength && (comp=abs(cmp_bn(r, bntmp4))) < 8 ) /* if match or almost match */
             {
-            if (comp == 0)  /* perfect match */
+            if (comp < 4  /* perfect or near perfect match */
+                || almost_match == 1) /* close enough for 2nd time */
                 break;
-            if (almost_match == 2) /* did they almost match before? */
-                { /* yes, this must be the third time */
-                /* average last 4 bytes */
-                *(U32 far *)r = (*(U32 far *)r + *(U32 far *)bntmp4) / 2;
-                break;
-                }
-            else /* this is the first or second time they almost matched */
+            else /* this is the first time they almost matched */
                 almost_match++;
             }
         }
+
+    /* restore original values */
+    bnlength      = orig_bnlength;
+    padding       = orig_padding;
+    rlength       = orig_rlength;
+    shiftfactor   = orig_shiftfactor;
+    r             = orig_r;
+    n             = orig_n;
 
     return r;
     }
@@ -796,6 +737,11 @@ bn_t unsafe_ln_bn(bn_t r, bn_t n)
     int i, comp, almost_match=0;
     long maxval;
     LDBL f;
+    bn_t orig_r, orig_n, orig_bntmp5, orig_bntmp4;
+    int  orig_bnlength,
+         orig_padding,
+         orig_rlength,
+         orig_shiftfactor;
 
 /* use Newton's recursive method for zeroing in on ln(n): r=r+n*exp(-r)-1 */
 
@@ -822,33 +768,73 @@ bn_t unsafe_ln_bn(bn_t r, bn_t n)
         }
     /* appears to be ok, do ln */
 
+    /* With Newton's Method, there is no need to calculate all the digits */
+    /* every time.  The precision approximately doubles each iteration.   */
+    /* Save original values. */
+    orig_bnlength      = bnlength;
+    orig_padding       = padding;
+    orig_rlength       = rlength;
+    orig_shiftfactor   = shiftfactor;
+    orig_r             = r;
+    orig_n             = n;
+    orig_bntmp5        = bntmp5;
+    orig_bntmp4        = bntmp4;
+
+    inttobn(bntmp4, 1); /* set before setting new values */
+
+    /* calculate new starting values */
+    bnlength = intlength + (int)(LDBL_DIG/LOG10_256) + 1; /* round up */
+    if (bnlength > orig_bnlength)
+        bnlength = orig_bnlength;
+    calc_lengths();
+
+    /* adjust pointers */
+    r = orig_r + orig_bnlength - bnlength;
+    n = orig_n + orig_bnlength - bnlength;
+    bntmp5 = orig_bntmp5 + orig_bnlength - bnlength;
+    bntmp4 = orig_bntmp4 + orig_bnlength - bnlength;
+
     floattobn(r, f); /* start with approximate ln */
     neg_a_bn(r); /* -r */
     copy_bn(bntmp5, r); /* -r */
-    inttobn(bntmp4, 1);
 
     for (i=0; i<25; i++) /* safety net, this shouldn't ever be needed */
         {
+        /* adjust lengths */
+        bnlength <<= 1; /* double precision */
+        if (bnlength > orig_bnlength)
+           bnlength = orig_bnlength;
+        calc_lengths();
+        r = orig_r + orig_bnlength - bnlength;
+        n = orig_n + orig_bnlength - bnlength;
+        bntmp5 = orig_bntmp5 + orig_bnlength - bnlength;
+        bntmp4 = orig_bntmp4 + orig_bnlength - bnlength;
         exp_bn(bntmp6, r);     /* exp(-r) */
         unsafe_mult_bn(bntmp2, bntmp6, n);  /* n*exp(-r) */
         sub_a_bn(bntmp2+shiftfactor, bntmp4);   /* n*exp(-r) - 1 */
         sub_a_bn(r, bntmp2+shiftfactor);        /* -r - (n*exp(-r) - 1) */
 
-        if ((comp=abs(cmp_bn(r, bntmp5))) <= 2 ) /* if match or almost match */
+        if (bnlength == orig_bnlength && (comp=abs(cmp_bn(r, bntmp5))) < 8 ) /* if match or almost match */
             {
-            if (comp == 0)  /* perfect match */
+            if (comp < 4  /* perfect or near perfect match */
+                || almost_match == 1) /* close enough for 2nd time */
                 break;
-            if (almost_match == 2) /* did they almost match twice before? */
-                { /* yes, this must be the third time */
-                /* average last 4 bytes */
-                *(U32 far *)r = (*(U32 far *)r + *(U32 far *)bntmp5) / 2;
-                break;
-                }
-            else /* this is the first or second time they almost matched */
+            else /* this is the first time they almost matched */
                 almost_match++;
             }
         copy_bn(bntmp5, r); /* -r */
         }
+
+    /* restore original values */
+    bnlength      = orig_bnlength;
+    padding       = orig_padding;
+    rlength       = orig_rlength;
+    shiftfactor   = orig_shiftfactor;
+    r             = orig_r;
+    n             = orig_n;
+    bntmp5        = orig_bntmp5;
+    bntmp4        = orig_bntmp4;
+
     neg_a_bn(r); /* -(-r) */
     return r;
     }
@@ -864,6 +850,7 @@ bn_t unsafe_sincos_bn(bn_t s, bn_t c, bn_t n)
     int k=0, i, halves;
     int signcos=0, signsin=0, switch_sincos=0;
 
+#ifndef CALCULATING_BIG_PI
     /* assure range 0 <= x < pi/4 */
 
     if (is_bn_zero(n))
@@ -931,6 +918,7 @@ bn_t unsafe_sincos_bn(bn_t s, bn_t c, bn_t n)
    halves = 1;
    for (i = 0; i < halves; i++)
        half_a_bn(n);
+#endif
 
 /* use Taylor Series (very slow convergence) */
     copy_bn(s, n); /* start with s=n */
@@ -961,8 +949,12 @@ bn_t unsafe_sincos_bn(bn_t s, bn_t c, bn_t n)
         else
             sub_a_bn(s, bntmp1);
         k = !k; /* toggle */
+#ifdef CALCULATING_BIG_PI
+        printf("."); /* lets you know it's doing something */
+#endif
         }
 
+#ifndef CALCULATING_BIG_PI
      /* now need to undo what was done by cutting angles in half */
      inttobn(bntmp1, 1);
      for (i = 0; i < halves; i++)
@@ -984,6 +976,8 @@ bn_t unsafe_sincos_bn(bn_t s, bn_t c, bn_t n)
          neg_a_bn(s);
      if (signcos)
          neg_a_bn(c);
+#endif
+
      return s; /* return sine I guess */
     }
 
@@ -991,11 +985,17 @@ bn_t unsafe_sincos_bn(bn_t s, bn_t c, bn_t n)
 /* atan(r)                                                          */
 /* uses bntmp1 - bntmp5 - global temp bignumbers                    */
 /*  SIDE-EFFECTS:                                                   */
-/*      n ends up as |n|                                            */
+/*      n ends up as |n| or 1/|n|                                   */
 bn_t unsafe_atan_bn(bn_t r, bn_t n)
     {
     int i, comp, almost_match=0, signflag=0;
     LDBL f;
+    bn_t orig_r, orig_n, orig_bn_pi, orig_bntmp3;
+    int  orig_bnlength,
+         orig_padding,
+         orig_rlength,
+         orig_shiftfactor;
+    int large_arg;
 
 /* use Newton's recursive method for zeroing in on atan(n): r=r-cos(r)(sin(r)-n*cos(r)) */
 
@@ -1005,7 +1005,45 @@ bn_t unsafe_atan_bn(bn_t r, bn_t n)
         neg_a_bn(n);
         }
 
+/* If n is very large, atanl() won't give enough decimal places to be a */
+/* good enough initial guess for Newton's Method.  If it is larger than */
+/* say, 1, atan(n) = pi/2 - acot(n) = pi/2 - atan(1/n).                 */
+
     f = bntofloat(n);
+    large_arg = f > 1.0;
+    if (large_arg)
+        {
+        unsafe_inv_bn(bntmp3, n);
+        copy_bn(n, bntmp3);
+        f = bntofloat(n);
+        }
+
+    clear_bn(bntmp3); /* not really necessary, but makes things more consistent */
+
+    /* With Newton's Method, there is no need to calculate all the digits */
+    /* every time.  The precision approximately doubles each iteration.   */
+    /* Save original values. */
+    orig_bnlength      = bnlength;
+    orig_padding       = padding;
+    orig_rlength       = rlength;
+    orig_shiftfactor   = shiftfactor;
+    orig_bn_pi         = bn_pi;
+    orig_r             = r;
+    orig_n             = n;
+    orig_bntmp3        = bntmp3;
+
+    /* calculate new starting values */
+    bnlength = intlength + (int)(LDBL_DIG/LOG10_256) + 1; /* round up */
+    if (bnlength > orig_bnlength)
+        bnlength = orig_bnlength;
+    calc_lengths();
+
+    /* adjust pointers */
+    r = orig_r + orig_bnlength - bnlength;
+    n = orig_n + orig_bnlength - bnlength;
+    bn_pi = orig_bn_pi + orig_bnlength - bnlength;
+    bntmp3 = orig_bntmp3 + orig_bnlength - bnlength;
+
     f = atanl(f); /* approximate arctangent */
     /* no need to check overflow */
 
@@ -1014,6 +1052,19 @@ bn_t unsafe_atan_bn(bn_t r, bn_t n)
 
     for (i=0; i<25; i++) /* safety net, this shouldn't ever be needed */
         {
+        /* adjust lengths */
+        bnlength <<= 1; /* double precision */
+        if (bnlength > orig_bnlength)
+           bnlength = orig_bnlength;
+        calc_lengths();
+        r = orig_r + orig_bnlength - bnlength;
+        n = orig_n + orig_bnlength - bnlength;
+        bn_pi = orig_bn_pi + orig_bnlength - bnlength;
+        bntmp3 = orig_bntmp3 + orig_bnlength - bnlength;
+
+#ifdef CALCULATING_BIG_PI
+        printf("\natan() loop #%i, bnlength=%i\nsincos() loops\n", i, bnlength);
+#endif
         unsafe_sincos_bn(bntmp4, bntmp5, bntmp3);   /* sin(r), cos(r) */
         copy_bn(bntmp3, r); /* restore bntmp3 from sincos_bn() */
         copy_bn(bntmp1, bntmp5);
@@ -1022,20 +1073,45 @@ bn_t unsafe_atan_bn(bn_t r, bn_t n)
         unsafe_mult_bn(bntmp1, bntmp5, bntmp4); /* cos(r) * (sin(r) - n*cos(r)) */
         sub_a_bn(r, bntmp1+shiftfactor); /* r - cos(r) * (sin(r) - n*cos(r)) */
 
-        if ((comp=abs(cmp_bn(r, bntmp3))) <= 2 ) /* if match or almost match */
+#ifdef CALCULATING_BIG_PI
+        putchar('\n');
+        bn_hexdump(r);
+#endif
+        if (bnlength == orig_bnlength && (comp=abs(cmp_bn(r, bntmp3))) < 8 ) /* if match or almost match */
             {
-            if (comp == 0)  /* perfect match */
+#ifdef CALCULATING_BIG_PI
+            printf("atan() loop comp=%i\n", comp);
+#endif
+            if (comp < 4  /* perfect or near perfect match */
+                || almost_match == 1) /* close enough for 2nd time */
                 break;
-            if (almost_match == 2) /* did they almost match before? */
-                { /* yes, this must be the third time */
-                /* average last 4 bytes */
-                *(U32 far *)r = (*(U32 far *)r + *(U32 far *)bntmp3) / 2;
-                break;
-                }
-            else /* this is the first or second time they almost matched */
+            else /* this is the first time they almost matched */
                 almost_match++;
             }
+
+#ifdef CALCULATING_BIG_PI
+        if (bnlength == orig_bnlength && comp >= 8)
+            printf("atan() loop comp=%i\n", comp);
+#endif
+
         copy_bn(bntmp3, r); /* make a copy for later comparison */
+        }
+
+    /* restore original values */
+    bnlength      = orig_bnlength;
+    padding       = orig_padding;
+    rlength       = orig_rlength;
+    shiftfactor   = orig_shiftfactor;
+    bn_pi         = orig_bn_pi;
+    r             = orig_r;
+    n             = orig_n;
+    bntmp3        = orig_bntmp3;
+
+    if (large_arg)
+        {
+        half_bn(bntmp3, bn_pi);  /* pi/2 */
+        sub_a_bn(bntmp3, r);     /* pi/2 - atan(1/n) */
+        copy_bn(r, bntmp3);
         }
 
     if (signflag)
@@ -1109,7 +1185,7 @@ bn_t mult_bn(bn_t r, bn_t n1, bn_t n2)
     {
     int sign1, sign2;
 
-    /* TW ENDFIX */   
+    /* TW ENDFIX */
     sign1 = is_bn_neg(n1);
     sign2 = is_bn_neg(n2);
     unsafe_mult_bn(r, n1, n2);

@@ -23,7 +23,7 @@ SUBTTL All rights reserved.
 ;     80386/80286 Assembly Language Programming
 ;        by William H. Murray, III and Chris H. Pappas
 ;        Published by Osborne McGraw-Hill, 1986
-;        
+;
 ;
 ;
 
@@ -52,7 +52,7 @@ PUBLIC Ans
 MPOverflow  DW        0
 
 Ans         MP       <?>
-Double      DQ        ? 
+Double      DQ        ?
 
 
 .code
@@ -155,7 +155,7 @@ Cmp5:
    mov   Flag, -1
 
 ChkRev:
-	or    Rev, 0
+        or    Rev, 0
    jz    ExitCmp
 
    neg   Flag
@@ -452,7 +452,7 @@ Subtract:
    jg    SubtractNumbers
    je    ZeroAns
 
-SwapNumbers:   
+SwapNumbers:
    xor   si, 8000h
    xchg  ax, WORD PTR [yMant]
    xchg  dx, WORD PTR [yMant+2]
@@ -658,7 +658,7 @@ Cmp3:
    mov   di, -1
 
 ChkRev:
-	or    si, si
+        or    si, si
    jz    ExitCmp
 
    neg   di
@@ -681,7 +681,7 @@ d2MP386     PROC     uses si di, x:QWORD
    shl   ebx, 1
    or    ebx, eax
    jnz   NonZero
-   
+
    xor   si, si
    xor   edx, edx
    jmp   StoreAns
@@ -728,7 +728,7 @@ Overflow:
 
 InRangeOfDouble:
    mov   bx, xExp
-   mov   ax, bx 
+   mov   ax, bx
    shl   bx, 5
    shl   ax, 1
    rcr   bx, 1
@@ -901,9 +901,9 @@ StoreAns:
 .8086
    ret
 MPadd386    ENDP
-   
 
-   
+
+
 
 
 MPdiv386    PROC     uses si di, xExp:WORD, xMant:DWORD, yExp:WORD, \

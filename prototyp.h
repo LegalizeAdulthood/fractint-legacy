@@ -53,11 +53,15 @@ extern int near asmlREALbailout(void);
 extern int near asmlIMAGbailout(void);
 extern int near asmlORbailout(void);
 extern int near asmlANDbailout(void);
+extern int near asmlMANHbailout(void);
+extern int near asmlMANRbailout(void);
 extern int near asm386lMODbailout(void);
 extern int near asm386lREALbailout(void);
 extern int near asm386lIMAGbailout(void);
 extern int near asm386lORbailout(void);
 extern int near asm386lANDbailout(void);
+extern int near asm386lMANHbailout(void);
+extern int near asm386lMANRbailout(void);
 extern int FManOWarfpFractal( void );
 extern int FJuliafpFractal( void );
 extern int FBarnsley1FPFractal( void );
@@ -68,6 +72,8 @@ extern int near asmfpREALbailout(void);
 extern int near asmfpIMAGbailout(void);
 extern int near asmfpORbailout(void);
 extern int near asmfpANDbailout(void);
+extern int near asmfpMANHbailout(void);
+extern int near asmfpMANRbailout(void);
 
 /*  general -- assembler file prototypes */
 
@@ -86,13 +92,20 @@ extern  void   cdecl far_memset( VOIDFARPTR , int      , int);
 extern  void   cdecl far_memcpy( VOIDFARPTR , VOIDFARPTR , int);
 extern  int    cdecl far_memcmp( VOIDFARPTR , VOIDFARPTR , int);
 extern  void   cdecl far_memicmp(VOIDFARPTR , VOIDFARPTR , int);
+extern  BYTE far *cdecl emmquery(void);
+extern  unsigned int cdecl emmgetfree(void);
+extern  unsigned int cdecl emmallocate(unsigned int);
 extern  void   cdecl emmdeallocate(unsigned int);
 extern  void   cdecl emmgetpage(unsigned int, unsigned int);
 extern  void   cdecl emmclearpage(unsigned int, unsigned int);
+extern  unsigned int *cdecl xmmquery(void);
+extern  unsigned int cdecl xmmlongest(void);
+extern  unsigned int cdecl xmmallocate(unsigned int);
+extern  void   cdecl xmmdeallocate(unsigned int);
+extern  unsigned int cdecl xmmreallocate(unsigned int, unsigned int);
+extern  unsigned int cdecl xmmmoveextended(struct XMM_Move *);
 extern  int    cdecl keypressed(void);
 extern  long   cdecl readticker( void );
-extern  void   cdecl emmdeallocate(unsigned int);
-extern  void   cdecl xmmdeallocate(unsigned int);
 extern  void   cdecl snd( int );
 extern  void   cdecl nosnd( void );
 extern  void   cdecl initasmvars( void );
@@ -106,7 +119,6 @@ extern  void   cdecl delay( int );
 extern  int    cdecl farread(int, VOIDFARPTR, unsigned);
 extern  int    cdecl farwrite(int, VOIDFARPTR, unsigned);
 extern  long   cdecl normalize(char far *);
-extern  unsigned int cdecl xmmmoveextended(struct XMM_Move *);
 extern  void   cdecl erasesegment(int, int);
 extern  int    cdecl IITCoPro( void );
 extern  int    cdecl F4x4Check( void );
@@ -118,12 +130,6 @@ extern  unsigned int cdecl fromextra( unsigned int, char *, int );
 extern  unsigned int cdecl toextra( unsigned int, char *, int );
 extern  void   cdecl load_mat(double (*)[4]);
 extern  VOIDFARPTR cdecl farmemalloc(long);
-extern  unsigned int *cdecl xmmquery(void);
-extern  BYTE far *cdecl emmquery(void);
-extern  unsigned int cdecl emmgetfree(void);
-extern  unsigned int cdecl emmallocate(unsigned int);
-extern  unsigned int cdecl emmallocate(unsigned int);
-extern  unsigned int cdecl xmmallocate(unsigned int);
 extern  void   mult_vec_iit(VECTOR);
 
 /*  mpmath_a -- assembler file prototypes */
@@ -188,7 +194,7 @@ extern void   cdecl scrollup(int, int);
 extern void   cdecl home(void);
 extern BYTE far *cdecl  findfont(int);
 extern int _fastcall getcolor(int, int);
-extern void _fastcall putcolor(int, int, int);
+extern void _fastcall putcolor_a(int, int, int);
 extern int  out_line(BYTE *, int);
 extern void   (*swapsetup)(void);
 
@@ -368,6 +374,10 @@ extern void adjust_cornerbf(void);
 extern char *typehasparm(int,int);
 extern void fill_dx_array();
 extern void fill_lx_array();
+extern int snd_open(void);
+extern void w_snd(int);
+extern void snd_time_write(void);
+extern void close_snd(void);
 
 /*  fractals -- C file prototypes */
 
@@ -538,16 +548,22 @@ extern int near fpREALbailout(void);
 extern int near fpIMAGbailout(void);
 extern int near fpORbailout(void);
 extern int near fpANDbailout(void);
+extern int near fpMANHbailout(void);
+extern int near fpMANRbailout(void);
 extern int near bnMODbailout(void);
 extern int near bnREALbailout(void);
 extern int near bnIMAGbailout(void);
 extern int near bnORbailout(void);
 extern int near bnANDbailout(void);
+extern int near bnMANHbailout(void);
+extern int near bnMANRbailout(void);
 extern int near bfMODbailout(void);
 extern int near bfREALbailout(void);
 extern int near bfIMAGbailout(void);
 extern int near bfORbailout(void);
 extern int near bfANDbailout(void);
+extern int near bfMANHbailout(void);
+extern int near bfMANRbailout(void);
 extern int ant(void);
 extern int LongPhoenixFractal(void);
 extern int PhoenixFractal(void);
@@ -658,6 +674,7 @@ extern int    EnQueueFloat    (float,  float);
 extern int line3d(BYTE *,unsigned int );
 extern int _fastcall targa_color(int ,int ,int );
 extern int targa_validate(char *);
+extern int startdisk1(char *, FILE *, int);
 
 /*  loadfdos -- C file prototypes */
 
@@ -670,8 +687,7 @@ extern void set_if_old_bif(void);
 extern int fgetwindow(void);
 extern void backwards_v18(void);
 extern void backwards_v19(void);
-extern int fix_bof(void);
-extern int fix_period_bof(void);
+extern int check_back(void);
 
 /*  loadmap -- C file prototypes */
 
@@ -759,6 +775,7 @@ extern int ifsload(void);
 extern int find_file_item(char *,char *,FILE **);
 extern int file_gets(char *,int ,FILE *);
 extern void roundfloatd(double *);
+extern void fix_inversion(double *);
 extern int ungetakey(int);
 
 /*  mpmath_c -- C file prototypes */
@@ -780,6 +797,7 @@ extern struct MPC cmplx2MPC(_CMPLX );
 extern void setMPfunctions(void );
 extern _CMPLX ComplexPower(_CMPLX ,_CMPLX );
 extern void SetupLogTable(void );
+extern long logtablecalc(long);
 extern long far ExpFloat14(long );
 extern int ComplexNewtonSetup(void );
 extern int ComplexNewton(void );
@@ -960,7 +978,6 @@ extern void (far *isfunct(char *,int ))(void );
 extern void (far *isfunct(char *,int ))();
 #endif
 extern void RecSortPrec(void );
-extern int ParseStr(char *);
 extern int Formula(void );
 extern int form_per_pixel(void );
 extern char *FindFormula(char *);

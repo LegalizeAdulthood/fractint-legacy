@@ -1,43 +1,26 @@
-; bignuma.asm - asm routines for bignumbers
-; far pointer version
-; Wesley Loewer's Big Numbers.        (C) 1994, Wesley B. Loewer
+; bignuma.asm
 
-; IMPORTANT!!!  The following routines assume that all the bignumber arrays
-; were allocated from the same far segment.  This allows the routines to
-; switch the DS register to that segment and treat everything then as a
-; near pointer.  If that array is not in this segment, then copy it into
-; an array that is.
+; based on:
+; bbignuma.asm - asm routines for bignumbers
+; Wesley Loewer's Big Numbers.        (C) 1994-95, Wesley B. Loewer
+; based pointer version
 
-; See BIGNUMC.C for further documentation.
+; See BIGLIB.TXT for further documentation.
+
+; general programming notes for bases pointer version
+; ALL big_t pointers must have a segment value equal to bignum_seg.
+; single arg procedures, p(r), r = bx (or si when required)
+; two arg procedures,    p(r,n), r=di, n=bx(or si when required)
+; two arg procedures,    p(n1,n2), n1=bx(or si when required), n2=di
+; three arg proc,        p(r,n1,n2), r=di, n1=si, n2=bx
+; unless otherwise noted, such as full_mult, mult, full_square, square
 
 .MODEL medium, c
 
-ifdef ??version ; for TASM
-   ideal
-TYPEDEF bn_t far ptr byte
-   masm
-   masm51
-   quirks
-; invoke w/ one arg
-invoke macro a,b
-   call a, b
-endm
-; invoke with 2 args
-invoke2 macro a,b,c
-   call a, b, c
-endm
-extern equ extrn
-
-else
-
-bn_t TYPEDEF far ptr byte   ; far pointer to bignumber array
-
-endif
+include big.inc
+include bigport.inc
 
 .DATA
-
-extern cpu:word
-extern bnlength:word, rlength:word;
 
 .CODE
 .8086
@@ -45,28 +28,37 @@ extern bnlength:word, rlength:word;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r = 0
 clear_bn   PROC USES di, r:bn_t
-        les     di, r                   ; load pointer in es:di for stos
-        mov     cx, bnlength
 
+        mov     cx, bnlength
+        mov     di, word ptr r
+        mov     es, bignum_seg          ; load pointer in es:di
+
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
 
+IFDEF BIG16
         sub     ax, ax                  ; clear ax
         shr     cx, 1                   ; 1 byte = 1/2 word
         rep     stosw                   ; clear r, word at a time
+ENDIF
 
+IFDEF BIG16AND32
         jmp     bottom
+ENDIF
 
+IFDEF BIG32
 use_32_bit:
 .386
         sub     eax, eax                ; clear eax
         shr     cx, 2                   ; 1 byte = 1/4 word
         rep     stosd                   ; clear r, dword at a time
+ENDIF
 
 bottom:
 .8086
-        mov     dx, es                  ; return r in dx:ax
-        mov     ax, word ptr r
+        mov     ax, word ptr r          ; return r in ax
         ret
 
 clear_bn   ENDP
@@ -74,32 +66,40 @@ clear_bn   ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r = max positive value
 max_bn   PROC USES di, r:bn_t
-        les     di, r                   ; load pointer in es:di for stos
-        mov     cx, bnlength
 
+        mov     cx, bnlength
+        mov     di, word ptr r
+        mov     es, bignum_seg          ; load pointer in es:di
+
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
 
+IFDEF BIG16
         mov     ax, 0FFFFh              ; set ax to max value
         shr     cx, 1                   ; 1 byte = 1/2 word
         rep     stosw                   ; max out r, word at a time
+ENDIF
 
+IFDEF BIG16AND32
         jmp     bottom
+ENDIF
 
+IFDEF BIG32
 use_32_bit:
 .386
         mov     eax, 0FFFFFFFFh         ; set eax to max value
         shr     cx, 2                   ; 1 byte = 1/4 word
         rep     stosd                   ; max out r, dword at a time
+ENDIF
 
 bottom:
 .8086
         ; when the above stos is finished, di points to the byte past the end
-        dec     di                          ; find sign bit in msb
-        mov     byte ptr es:[di], 7Fh       ; turn off the sign bit
+        mov     byte ptr es:[di-1], 7Fh       ; turn off the sign bit
 
-        mov     dx, es                  ; return r in dx:ax
-        mov     ax, word ptr r
+        mov     ax, word ptr r              ; return r in ax
         ret
 
 max_bn   ENDP
@@ -107,29 +107,42 @@ max_bn   ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r = n
 copy_bn   PROC USES di si, r:bn_t, n:bn_t
-        les     di, r                   ; load pointer in es:di for movs
+
         mov     ax, ds                  ; save ds for later
         mov     cx, bnlength
+        mov     di, word ptr r
+        mov     es, bignum_seg          ; load pointer in es:di
+        mov     si, word ptr n
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
 
-        lds     si, n                   ; load pointer in ds:si for movs
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load pointer in ds:si for movs
+
         shr     cx, 1                   ; 1 byte = 1/2 word
         rep     movsw                   ; copy word at a time
-        jmp     bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
-        lds     si, n                   ; load pointer in ds:si for movs
+        mov     ds, bignum_seg          ; load pointer in ds:si for movs
+
         shr     cx, 2                   ; 1 byte = 1/4 word
         rep     movsd                   ; copy dword at a time
+ENDIF
 
 bottom:
 .8086
         mov     ds, ax                  ; restore ds
-        mov     dx, es                  ; return r in dx:ax
-        mov     ax, word ptr r
+        mov     ax, word ptr r          ; return r in ax
         ret
 
 copy_bn   ENDP
@@ -141,40 +154,73 @@ copy_bn   ENDP
 ;          if n1 < n2 returns a negative (steps left to go when mismatch occured)
 cmp_bn   PROC USES di, n1:bn_t, n2:bn_t
 
-        mov     cx, bnlength
-
         push    ds                      ; save DS
-        mov     di, word ptr n2
-        lds     bx, n1                  ; load pointers
+        mov     cx, bnlength
+        mov     dx, cx                  ; save bnlength for later comparison
+        mov     di, word ptr n2         ; load n2 pointer in di
+        mov     bx, word ptr n1         ; load n1 pointer in bx
+
         add     bx, cx                  ; point to end of bignumbers
         add     di, cx                  ; where the msb is
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
 
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
         shr     cx, 1                   ; byte = 1/2 word
-        mov     dx, cx                  ; keep a copy of cx
 top_loop_16:
         sub     bx, 2                   ; decrement to previous word
         sub     di, 2
-        mov     ax, [bx]                ; load n1
-        cmp     ax, [di]                ; compare to n2
-        jne     bottom                  ; don't match
+        mov     ax, ds:[bx]             ; load n1
+        cmp     ax, ds:[di]             ; compare to n2
+        jne     not_match_16            ; don't match
         loop    top_loop_16
-        jmp     match
+        jmp     match                   ; cx is zero
+not_match_16:
+        ; now determine which byte of the two did not match
+        shl     cx, 1                   ; convert back to bytes
+        cmp     ah, ds:[di+1]           ; compare to n2
+        jne     bottom                  ; jump if ah doesn't match
+        ; if ah does match, then mismatch was in al
+        dec     cx                      ; decrement cx by 1 to show match
+        jmp     bottom
 
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
         shr     cx, 2                   ; byte = 1/4 dword
-        mov     dx, cx                  ; keep a copy of cx
 top_loop_32:
         sub     bx, 4                   ; decrement to previous dword
         sub     di, 4
-        mov     eax, [bx]               ; load n1
-        cmp     eax, [di]               ; compare to n2
-        jne     bottom                  ; don't match
+        mov     eax, ds:[bx]            ; load n1
+        cmp     eax, ds:[di]            ; compare to n2
+        jne     not_match_32            ; don't match
         loop    top_loop_32
-        jmp     match
+        jmp     match                   ; cx is zero
+not_match_32:
+        ; now determine which byte of the four did not match
+        shl     cx, 2                   ; convert back to bytes
+        mov     ebx, eax
+        shr     ebx, 16                 ; shift ebx_high to bx
+        cmp     bh, ds:[di+3]           ; compare to n2
+        jne     bottom                  ; jump if bh doesn't match
+        dec     cx                      ; decrement cx by 1 to show match
+        cmp     bl, ds:[di+2]           ; compare to n2
+        jne     bottom                  ; jump if bl doesn't match
+        dec     cx                      ; decrement cx by 1 to show match
+        cmp     ah, ds:[di+1]           ; compare to n2
+        jne     bottom                  ; jump if ah doesn't match
+        ; if bh,bl,ah do match, then mismatch was in al
+        dec     cx                      ; decrement cx by 1 to show match
+        jmp     bottom
+
+ENDIF
 
 bottom:
 .8086
@@ -209,10 +255,12 @@ cmp_bn   ENDP
 is_bn_neg   PROC n:bn_t
 
         ; for a one-pass routine like this, don't bother with ds
-        les     bx, n                       ; find sign bit
-        add     bx, bnlength
-        dec     bx                          ; here it is
-        mov     al, es:[bx]                 ; got it
+        mov     bx, word ptr n
+        mov     es, bignum_seg              ; load n pointer in es:bx
+
+        add     bx, bnlength                ; find sign bit
+        mov     al, es:[bx-1]               ; got it
+
         and     al, 80h                     ; check the sign bit
         rol     al, 1                       ; rotate sign big to bit 0
         sub     ah, ah                      ; clear upper ax
@@ -226,30 +274,41 @@ is_bn_neg   ENDP
 ;          else returns 0
 is_bn_not_zero   PROC n:bn_t
 
-        mov     cx, bnlength
         mov     ax, ds                  ; save DS
-        lds     bx, n                   ; load pointers with DS
+        mov     cx, bnlength
+        mov     bx, word ptr n
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
 
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load n pointer in ds:bx
         shr     cx, 1                   ; byte = 1/2 word
 top_loop_16:
-        cmp     word ptr [bx], 0        ; compare to n to 0
+        cmp     word ptr ds:[bx], 0     ; compare to n to 0
         jnz     bottom                  ; not zero
         add     bx, 2                   ; increment to next word
         loop    top_loop_16
-        jmp     bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load n pointer in ds:bx
         shr     cx, 2                   ; byte = 1/4 dword
 top_loop_32:
-        cmp     dword ptr [bx], 0       ; compare to n to 0
+        cmp     dword ptr ds:[bx], 0    ; compare to n to 0
         jnz     bottom                  ; not zero
         add     bx, 4                   ; increment to next dword
         loop    top_loop_32
         jmp     bottom
+ENDIF
 
 bottom:
 .8086
@@ -264,22 +323,28 @@ is_bn_not_zero   ENDP
 ; r = n1 + n2
 add_bn   PROC USES di si, r:bn_t, n1:bn_t, n2:bn_t
 
+        mov     dx, ds                  ; save ds
         mov     cx, bnlength
-        push    ds                      ; save ds
-        mov     di, word ptr n1         ; load pointers ds:di
-        mov     si, word ptr n2         ;               ds:si
-        lds     bx, r                   ;               ds:bx
+        mov     di, WORD PTR r
+        mov     si, WORD PTR n1
+        mov     bx, WORD PTR n2
 
+
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 1                   ; byte = 1/2 word
         clc                             ; clear carry flag
 
 top_loop_16:
-        mov     ax, [di]                ; n1
-        adc     ax, [si]                ; n1+n2
-        mov     [bx], ax                ; r = n1+n2
+        mov     ax, ds:[si]             ; n1
+        adc     ax, ds:[bx]             ; n1+n2
+        mov     ds:[di], ax             ; r = n1+n2
 
                                         ; inc does not change carry flag
         inc     di                      ; add  di, 2
@@ -290,32 +355,39 @@ top_loop_16:
         inc     bx
 
         loop    top_loop_16
-        jmp     short bottom
 
+ENDIF
+
+IFDEF BIG16AND32
+        jmp     short bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 2                   ; byte = 1/4 double word
         clc                             ; clear carry flag
 
 top_loop_32:
-        mov     eax, [di]               ; n1
-        adc     eax, [si]               ; n1+n2
-        mov     [bx], eax               ; r = n1+n2
+        mov     eax, ds:[si]            ; n1
+        adc     eax, ds:[bx]            ; n1+n2
+        mov     ds:[di], eax            ; r = n1+n2
 
         lahf                            ; save carry flag
         add     di, 4                   ; increment by double word size
         add     si, 4
         add     bx, 4
-	sahf                            ; restore carry flag
+        sahf                            ; restore carry flag
 
         loop    top_loop_32
+ENDIF
 
 bottom:
 .8086
-        mov     dx, ds                  ; return r in dx:ax
-        pop     ds                      ; restore ds
-        mov     ax, word ptr r
+        mov     ds, dx                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 add_bn   ENDP
 
@@ -323,20 +395,25 @@ add_bn   ENDP
 ; r += n
 add_a_bn   PROC USES di, r:bn_t, n:bn_t
 
+        mov     dx, ds                  ; save ds
         mov     cx, bnlength
-        push    ds
-        mov     di, word ptr n          ; load pointers ds:di
-        lds     bx, r                   ;               ds:bx
+        mov     di, WORD PTR r
+        mov     bx, WORD PTR n
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 1                   ; byte = 1/2 word
         clc                             ; clear carry flag
 
 top_loop_16:
-        mov     ax, [di]                ; n
-        adc     [bx], ax                ; r += n
+        mov     ax, ds:[bx]             ; n
+        adc     ds:[di], ax             ; r += n
 
                                         ; inc does not change carry flag
         inc     di                      ; add  di, 2
@@ -345,30 +422,36 @@ top_loop_16:
         inc     bx
 
         loop    top_loop_16
-        jmp     short bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     short bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 2                   ; byte = 1/4 double word
         clc                             ; clear carry flag
 
 top_loop_32:
-        mov     eax, [di]               ; n
-        adc     [bx], eax               ; r += n
+        mov     eax, ds:[bx]            ; n
+        adc     ds:[di], eax            ; r += n
 
         lahf                            ; save carry flag
         add     di, 4                   ; increment by double word size
         add     bx, 4
-	sahf                            ; restore carry flag
+        sahf                            ; restore carry flag
 
         loop    top_loop_32
+ENDIF
 
 bottom:
 .8086
-        mov     dx, ds                  ; return r in dx:ax
-        pop     ds                      ; restore ds
-        mov     ax, word ptr r
+        mov     ds, dx                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 add_a_bn   ENDP
 
@@ -376,22 +459,28 @@ add_a_bn   ENDP
 ; r = n1 - n2
 sub_bn   PROC USES di si, r:bn_t, n1:bn_t, n2:bn_t
 
+        mov     dx, ds                  ; save ds
         mov     cx, bnlength
-        push    ds
-        mov     di, word ptr n1         ; load pointers ds:di
-        mov     si, word ptr n2         ;               ds:si
-        lds     bx, r                   ;               ds:bx
+        mov     di, WORD PTR r
+        mov     si, WORD PTR n1
+        mov     bx, WORD PTR n2
 
+
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 1                   ; byte = 1/2 word
         clc                             ; clear carry flag
 
 top_loop_16:
-        mov     ax, [di]                ; n1
-        sbb     ax, [si]                ; n1-n2
-        mov     [bx], ax                ; r = n1-n2
+        mov     ax, ds:[si]             ; n1
+        sbb     ax, ds:[bx]             ; n1-n2
+        mov     ds:[di], ax             ; r = n1-n2
 
                                         ; inc does not change carry flag
         inc     di                      ; add  di, 2
@@ -402,33 +491,39 @@ top_loop_16:
         inc     bx
 
         loop    top_loop_16
-        jmp     short bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     short bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 2                   ; byte = 1/4 double word
         clc                             ; clear carry flag
 
 top_loop_32:
-        mov     eax, [di]               ; n1
-        sbb     eax, [si]               ; n1-n2
-        mov     [bx], eax               ; r = n1-n2
+        mov     eax, ds:[si]            ; n1
+        sbb     eax, ds:[bx]            ; n1-n2
+        mov     ds:[di], eax            ; r = n1-n2
 
         lahf                            ; save carry flag
         add     di, 4                   ; increment by double word size
         add     si, 4
         add     bx, 4
-	sahf                            ; restore carry flag
+        sahf                            ; restore carry flag
 
         loop    top_loop_32
+ENDIF
 
 bottom:
 .8086
 
-        mov     dx, ds                  ; return r in dx:ax
-        pop     ds                      ; restore ds
-        mov     ax, word ptr r
+        mov     ds, dx                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 sub_bn   ENDP
 
@@ -436,20 +531,25 @@ sub_bn   ENDP
 ; r -= n
 sub_a_bn   PROC USES di, r:bn_t, n:bn_t
 
+        mov     dx, ds                  ; save ds
         mov     cx, bnlength
-        push    ds
-        mov     di, word ptr n          ; load pointers ds:di
-        lds     bx, r                   ;               ds:bx
+        mov     di, WORD PTR r
+        mov     bx, WORD PTR n
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 1                   ; byte = 1/2 word
         clc                             ; clear carry flag
 
 top_loop_16:
-        mov     ax, [di]                ; n
-        sbb     [bx], ax                ; r -= n
+        mov     ax, ds:[bx]             ; n
+        sbb     ds:[di], ax             ; r -= n
 
                                         ; inc does not change carry flag
         inc     di                      ; add  di, 2
@@ -458,51 +558,64 @@ top_loop_16:
         inc     bx
 
         loop    top_loop_16
-        jmp     short bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     short bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 2                   ; byte = 1/4 double word
         clc                             ; clear carry flag
 
 top_loop_32:
-        mov     eax, [di]               ; n
-        sbb     [bx], eax               ; r -= n
+        mov     eax, ds:[bx]            ; n
+        sbb     ds:[di], eax            ; r -= n
 
         lahf                            ; save carry flag
         add     di, 4                   ; increment by double word size
         add     bx, 4
-	sahf                            ; restore carry flag
+        sahf                            ; restore carry flag
 
         loop    top_loop_32
+
+ENDIF
 
 bottom:
 .8086
 
-        mov     dx, ds                  ; return r in dx:ax
-        pop     ds                      ; restore ds
-        mov     ax, word ptr r
+        mov     ds, dx                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 sub_a_bn   ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r = -n
 neg_bn   PROC USES di, r:bn_t, n:bn_t
-        mov     cx, bnlength
-        push    ds
-        mov     di, word ptr n          ; load pointers ds:di
-        lds     bx, r                   ;               ds:bx
 
+        mov     dx, ds                  ; save ds
+        mov     cx, bnlength
+        mov     di, WORD PTR r
+        mov     bx, WORD PTR n
+
+IFDEF BIG16AND32
         cmp     cpu, 386
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 1                   ; byte = 1/2 word
 
 top_loop_16:
-        mov     ax, [di]
+        mov     ax, ds:[bx]
         neg     ax
-        mov     [bx], ax
+        mov     ds:[di], ax
         jc      short no_more_carry_16  ; notice the "reverse" logic here
 
         add     di, 2                   ; increment by word size
@@ -518,25 +631,32 @@ no_more_carry_16:
         jmp     short bottom
 
 top_loop_no_more_carry_16:
-        mov     ax, [di]
+        mov     ax, ds:[bx]
         not     ax
-        mov     [bx], ax
+        mov     ds:[di], ax
 
         add     di, 2
         add     bx, 2
 
         loop    top_loop_no_more_carry_16
-        jmp     short bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     short bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
+
         shr     cx, 2                   ; byte = 1/4 dword
 
 top_loop_32:
-        mov     eax, [di]
+        mov     eax, ds:[bx]
         neg     eax
-        mov     [bx], eax
-        jc     short no_more_carry_32   ; notice the "reverse" logic here
+        mov     ds:[di], eax
+        jc      short no_more_carry_32   ; notice the "reverse" logic here
 
         add     di, 4                   ; increment by double word size
         add     bx, 4
@@ -551,38 +671,43 @@ no_more_carry_32:
         jmp     short bottom
 
 top_loop_no_more_carry_32:
-        mov     eax, [di]
+        mov     eax, ds:[bx]
         not     eax
-        mov     [bx], eax
+        mov     ds:[di], eax
 
         add     di, 4                   ; increment by double word size
         add     bx, 4
 
         loop    top_loop_no_more_carry_32
+ENDIF
 
 bottom:
 .8086
 
-        mov     dx, ds                  ; return r in dx:ax
-        pop     ds                      ; restore ds
-        mov     ax, word ptr r
+        mov     ds, dx                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 neg_bn   ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r *= -1
 neg_a_bn   PROC r:bn_t
-        mov     cx, bnlength
-        push    ds
-        lds     bx, r                   ; ds:bx
 
+        mov     ax, ds                  ; save ds
+        mov     cx, bnlength
+        mov     bx, WORD PTR r
+
+IFDEF BIG16AND32
         cmp     cpu, 386
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
 
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
         shr     cx, 1                   ; byte = 1/2 word
 
 top_loop_16:
-        neg     word ptr [bx]
+        neg     word ptr ds:[bx]
         jc      short no_more_carry_16  ; notice the "reverse" logic here
 
         add     bx, 2
@@ -596,20 +721,26 @@ no_more_carry_16:
         jmp     short bottom
 
 top_loop_no_more_carry_16:
-        not     word ptr [bx]
+        not     word ptr ds:[bx]
 
         add     bx, 2
 
         loop    top_loop_no_more_carry_16
-        jmp     short bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     short bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
         shr     cx, 2                   ; byte = 1/4 dword
 
 top_loop_32:
-        neg     dword ptr [bx]
-        jc     short no_more_carry_32   ; notice the "reverse" logic here
+        neg     dword ptr ds:[bx]
+        jc      short no_more_carry_32   ; notice the "reverse" logic here
 
         add     bx, 4
 
@@ -622,39 +753,44 @@ no_more_carry_32:
         jmp     short bottom
 
 top_loop_no_more_carry_32:
-        not     dword ptr [bx]
+        not     dword ptr ds:[bx]
 
         add     bx, 4
 
         loop    top_loop_no_more_carry_32
+ENDIF
 
 bottom:
 .8086
-
-        mov     dx, ds                  ; return r in dx:ax
-        pop     ds                      ; restore ds
-        mov     ax, word ptr r
+        mov     ds, ax                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 neg_a_bn   ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r = 2*n
 double_bn   PROC USES di, r:bn_t, n:bn_t
-        mov     cx, bnlength
-        push    ds
-        mov     di, word ptr n          ; load pointers ds:di
-        lds     bx, r                   ;               ds:bx
 
+        mov     dx, ds                  ; save ds
+        mov     cx, bnlength
+        mov     di, WORD PTR r
+        mov     bx, WORD PTR n
+
+IFDEF BIG16AND32
         cmp     cpu, 386
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 1                   ; byte = 1/2 word
         clc
 
 top_loop_16:
-        mov     ax, [di]
+        mov     ax, ds:[bx]
         rcl     ax, 1                   ; rotate with carry left
-        mov     [bx], ax
+        mov     ds:[di], ax
 
                                         ; inc does not change carry flag
         inc     di                      ; add  di, 2
@@ -663,92 +799,120 @@ top_loop_16:
         inc     bx
 
         loop    top_loop_16
-        jmp     short bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     short bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
+
         shr     cx, 2                   ; byte = 1/4 dword
         clc                             ; clear carry flag
 
 top_loop_32:
-        mov     eax, [di]
+        mov     eax, ds:[bx]
         rcl     eax, 1                  ; rotate with carry left
-        mov     [bx], eax
+        mov     ds:[di], eax
 
         lahf                            ; save carry flag
         add     di, 4                   ; increment by double word size
         add     bx, 4
-	sahf                            ; restore carry flag
+        sahf                            ; restore carry flag
 
         loop    top_loop_32
 
+ENDIF
 bottom:
 .8086
 
-        mov     dx, ds                  ; return r in dx:ax
-        pop     ds                      ; restore ds
-        mov     ax, word ptr r
+        mov     ds, dx                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 double_bn   ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r *= 2
 double_a_bn   PROC r:bn_t
-        mov     cx, bnlength
-        push    ds
-        lds     bx, r                   ;               ds:bx
 
+        mov     ax, ds                  ; save ds
+        mov     cx, bnlength
+        mov     bx, WORD PTR r
+
+IFDEF BIG16AND32
         cmp     cpu, 386
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 1                   ; byte = 1/2 word
         clc
 
 top_loop_16:
-        rcl     word ptr [bx], 1        ; rotate with carry left
+        rcl     word ptr ds:[bx], 1     ; rotate with carry left
 
                                         ; inc does not change carry flag
         inc     bx                      ; add  bx, 2
         inc     bx
 
         loop    top_loop_16
-        jmp     short bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     short bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
+
         shr     cx, 2                   ; byte = 1/4 dword
         clc                             ; clear carry flag
 
 top_loop_32:
-        rcl     dword ptr [bx], 1       ; rotate with carry left
+        rcl     dword ptr ds:[bx], 1    ; rotate with carry left
 
-        lahf                            ; save carry flag
-        add     bx, 4
-	sahf                            ; restore carry flag
+        inc     bx                      ; add bx, 4 but keep carry flag
+        inc     bx
+        inc     bx
+        inc     bx
 
         loop    top_loop_32
+ENDIF
 
 bottom:
 .8086
 
-        mov     dx, ds                  ; return r in dx:ax
-        pop     ds                      ; restore ds
-        mov     ax, word ptr r
+        mov     ds, ax                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 double_a_bn   ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r = n/2
 half_bn   PROC USES di, r:bn_t, n:bn_t
+
+        mov     dx, ds                  ; save ds
         mov     cx, bnlength
-        push    ds
-        mov     di, word ptr n          ; load pointers ds:di
-        lds     bx, r                   ;               ds:bx
+        mov     di, WORD PTR r
+        mov     bx, WORD PTR n
+
         add     di, cx                  ; start with msb
         add     bx, cx
 
+IFDEF BIG16AND32
         cmp     cpu, 386
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 1                   ; byte = 1/2 word
 
@@ -756,9 +920,9 @@ half_bn   PROC USES di, r:bn_t, n:bn_t
         sub     di, 2
         sub     bx, 2
 
-        mov     ax, [di]
+        mov     ax, ds:[bx]
         sar     ax, 1                   ; shift arithmetic right
-        mov     [bx], ax
+        mov     ds:[di], ax
 
         loop    top_loop_16
         jmp     short bottom
@@ -771,23 +935,30 @@ top_loop_16:
         dec     bx                      ; sub bx, 2
         dec     bx
 
-        mov     ax, [di]
+        mov     ax, ds:[bx]
         rcr     ax, 1                   ; rotate with carry right
-        mov     [bx], ax
+        mov     ds:[di], ax
 
         loop    top_loop_16
-        jmp     short bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     short bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
+
         shr     cx, 2                   ; byte = 1/4 dword
 
         sub     di, 4                   ; decrement by double word size
         sub     bx, 4
 
-        mov     eax, [di]
+        mov     eax, ds:[bx]
         sar     eax, 1                  ; shift arithmetic right
-        mov     [bx], eax
+        mov     ds:[di], eax
 
         loop    top_loop_32
         jmp     short bottom
@@ -796,41 +967,48 @@ top_loop_32:
         lahf                            ; save carry flag
         sub     di, 4                   ; decrement by double word size
         sub     bx, 4
-	sahf                            ; restore carry flag
+        sahf                            ; restore carry flag
 
-        mov     eax, [di]
+        mov     eax, ds:[bx]
         rcr     eax, 1                  ; rotate with carry right
-        mov     [bx], eax
+        mov     ds:[di], eax
 
         loop    top_loop_32
+ENDIF
 
 bottom:
 .8086
 
-        mov     dx, ds                  ; return r in dx:ax
-        pop     ds                      ; restore ds
-        mov     ax, word ptr r
+        mov     ds, dx                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 half_bn   ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r /= 2
 half_a_bn   PROC r:bn_t
+
+        mov     ax, ds                  ; save ds
         mov     cx, bnlength
-        push    ds
-        lds     bx, r                   ;               ds:bx
-        add     bx, cx
+        mov     bx, WORD PTR r
+
+        add     bx, cx                  ; start with msb
 
 
+IFDEF BIG16AND32
         cmp     cpu, 386
         je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         shr     cx, 1                   ; byte = 1/2 word
 
         ; handle the first step with sar, the rest with rcr
         sub     bx, 2
 
-        sar     word ptr [bx], 1        ; shift arithmetic right
+        sar     word ptr ds:[bx], 1     ; shift arithmetic right
 
         loop    top_loop_16
         jmp     short bottom
@@ -841,41 +1019,45 @@ top_loop_16:
         dec     bx                      ; sub bx, 2
         dec     bx
 
-        rcr     word ptr [bx], 1        ; rotate with carry right
+        rcr     word ptr ds:[bx], 1     ; rotate with carry right
 
         loop    top_loop_16
-        jmp     short bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     short bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
+
         shr     cx, 2                   ; byte = 1/4 dword
-
         sub     bx, 4                   ; decrement by double word size
-
-        sar     dword ptr [bx], 1       ; shift arithmetic right
+        sar     dword ptr ds:[bx], 1    ; shift arithmetic right
 
         loop    top_loop_32
         jmp     short bottom
 
 top_loop_32:
-        lahf                            ; save carry flag
-        sub     di, 4                   ; decrement by double word size
-        sub     bx, 4
-	sahf                            ; restore carry flag
+        dec     bx                      ; sub bx, 4 but keep carry flag
+        dec     bx
+        dec     bx
+        dec     bx
 
-        rcr     dword ptr [bx], 1       ; rotate with carry right
+        rcr     dword ptr ds:[bx], 1       ; rotate with carry right
 
         loop    top_loop_32
+ENDIF
 
 bottom:
 .8086
 
-        mov     dx, ds                  ; return r in dx:ax
-        pop     ds                      ; restore ds
-        mov     ax, word ptr r
+        mov     ds, ax                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 half_a_bn   ENDP
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r = n1 * n2
@@ -886,39 +1068,38 @@ half_a_bn   ENDP
 unsafe_full_mult_bn   PROC USES di si, r:bn_t, n1:bn_t, n2:bn_t
 LOCAL sign1:byte, sign2:byte, samevar:byte, \
       i:word, j:word, steps:word, doublesteps:word, carry_steps:word, \
-      n1p: ptr byte, n2p: ptr byte
+      n1p: near ptr byte, n2p: near ptr byte
 
-; This routine uses near variables and far pointers together in the
-; inner-most loops.  Therefore, there is little to gain by setting DS
-; to the far segment.  Instead, set ES to the far segment and use segment
-; overrides where necessary.
+        push    ds                          ; save ds
+        mov     es, bignum_seg              ; load es for when ds is a pain
+
+; Test to see if n1 and n2 are the same variable.  It would be better to
+; use square_bn(), but it could happen.
+
+        mov     samevar, 0                  ; assume they are not the same
+        mov     bx, word ptr n1
+        cmp     bx, word ptr n2             ; compare offset
+        jne     end_samevar_check           ; not the same
+        mov     samevar, 1                  ; they are the same
+end_samevar_check:
 
 ; By forcing the bignumber to be positive and keeping track of the sign
 ; bits separately, quite a few multiplies are saved.
 
-        ; set the ES register
-        les     bx, n1                      ; check for sign bits
+                                            ; check for sign bits
         add     bx, bnlength
-        dec     bx
-        mov     al, es:[bx]
+        mov     al, es:[bx-1]
         and     al, 80h                     ; check the sign bit
         mov     sign1, al
         jz      already_pos1
         invoke  neg_a_bn, n1
 already_pos1:
 
-; Test to see if n1 and n2 are the same variable.  It would be better to
-; use square_bn(), but it could happen.
-
-        mov     samevar, 1                  ; assume they are the same
+        cmp     samevar, 1                  ; if it's the same variable
+        je      already_pos2                ; then skip this second check
         mov     bx, word ptr n2
-        cmp     bx, word ptr n1             ; are they the same?
-        je      already_pos2                ; if so, it has already been negated
-        mov     samevar, 0                  ; they weren't the same after all
-
         add     bx, bnlength
-        dec     bx
-        mov     al, es:[bx]
+        mov     al, es:[bx-1]
         and     al, 80h                     ; check the sign bit
         mov     sign2, al
         jz      already_pos2
@@ -927,32 +1108,42 @@ already_pos2:
 
 ; in the following loops, the following pointers are used
 ;   n1p, n2p = points to the part of n1, n2 being used
-;   di = points to part of doublebignumber used in outer loop
-;   si = points to part of doublebignumber used in inner loop
-;   bx = points to part of doublebignumber for carry flag loop
+;   di = points to part of doublebignumber r used in outer loop
+;   si = points to part of doublebignumber r used in inner loop
+;   bx = points to part of doublebignumber r for carry flag loop
+; Also, since r is used more than n1p or n2p, abandon the convention of
+; using ES for r.  Using DS will save a few clock cycles.
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      use_32_bit              ; use faster 32 bit code if possible
+ENDIF
 
-        mov     ax, word ptr n1         ; load pointers
-        mov     n1p, ax
-
+IFDEF BIG16
+        ; set variables
         mov     dx, bnlength            ; set outer loop counter
         shr     dx, 1                   ; byte = 1/2 word
         mov     steps, dx               ; save in steps
         mov     i, dx
         shl     dx, 1                   ; double steps
 
+        ; clear r
         sub     ax, ax                  ; clear ax
         mov     cx, dx                  ; size of doublebignumber (r) in words
-        mov     di, word ptr r          ; es already set
+        mov     di, word ptr r          ; load r in es:di for stos
         rep     stosw                   ; initialize r to 0
 
         sub     dx, 2                   ; only 2*s-2 steps are really needed
         mov     doublesteps, dx
         mov     carry_steps, dx
+
+        ; prepare segments and offsets for loops
         mov     di, word ptr r
         mov     si, di                  ; both si and di are used here
+        mov     ds, bignum_seg          ; load ds
+        mov     ax, word ptr n1         ; load pointers
+        mov     n1p, ax
+        ; use ds for all pointers
 
 top_outer_loop_16:
         mov     ax, word ptr n2         ; set n2p pointer
@@ -962,15 +1153,14 @@ top_outer_loop_16:
 
 top_inner_loop_16:
         mov     bx, n1p
-        mov     ax, es:[bx]
+        mov     ax, ds:[bx]
         mov     bx, n2p
-        mul     word ptr es:[bx]
+        mul     word ptr ds:[bx]
 
         mov     bx, si
-        add     es:[bx], ax             ; add low word
-        inc     bx                      ; increase by size of word
-        inc     bx
-        adc     es:[bx], dx             ; add high word
+        add     bx, 2                   ; increase by size of word
+        add     ds:[bx-2], ax           ; add low word
+        adc     ds:[bx], dx             ; add high word
         jnc     no_more_carry_16        ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -979,7 +1169,7 @@ top_inner_loop_16:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_16:
-        add     word ptr es:[bx], 1     ; use add, not inc
+        add     word ptr ds:[bx], 1     ; use add, not inc
         jnc     no_more_carry_16
         add     bx, 2                   ; increase by size of word
         loop    top_carry_loop_16
@@ -1004,30 +1194,38 @@ no_more_carry_16:
         ja      top_outer_loop_16
 
         ; result is now r, a double wide bignumber
+ENDIF
+
+IFDEF BIG16AND32
         jmp     bottom
+ENDIF
 
-
+IFDEF BIG32
 use_32_bit:
 .386
-        mov     ax, word ptr n1         ; load pointers
-        mov     n1p, ax
-
+        ; set variables
         mov     dx, bnlength            ; set outer loop counter
         shr     dx, 2                   ; byte = 1/4 dword
         mov     steps, dx               ; save in steps
         mov     i, dx
         shl     dx, 1                   ; double steps
 
+        ; clear r
         sub     eax, eax                ; clear eax
         mov     cx, dx                  ; size of doublebignumber in dwords
-        mov     di, word ptr r          ; es already set
+        mov     di, word ptr r          ; load r in es:di for stos
         rep     stosd                   ; initialize r to 0
 
         sub     dx, 2                   ; only 2*s-2 steps are really needed
         mov     doublesteps, dx
         mov     carry_steps, dx
+
+        ; prepare segments and offsets for loops
         mov     di, word ptr r
         mov     si, di                  ; both si and di are used here
+        mov     ds, bignum_seg          ; load ds
+        mov     ax, word ptr n1         ; load pointers
+        mov     n1p, ax
 
 top_outer_loop_32:
         mov     ax, word ptr n2         ; set n2p pointer
@@ -1037,16 +1235,14 @@ top_outer_loop_32:
 
 top_inner_loop_32:
         mov     bx, n1p
-        mov     eax, es:[bx]
+        mov     eax, ds:[bx]
         mov     bx, n2p
-        mul     dword ptr es:[bx]
+        mul     dword ptr ds:[bx]
 
         mov     bx, si
-        add     es:[bx], eax            ; add low dword
-        lahf                            ; save carry flag
         add     bx, 4                   ; increase by size of dword
-        sahf                            ; restor carry flag
-        adc     es:[bx], edx            ; add high dword
+        add     ds:[bx-4], eax          ; add low dword
+        adc     ds:[bx], edx            ; add high dword
         jnc     no_more_carry_32        ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -1055,7 +1251,7 @@ top_inner_loop_32:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_32:
-        add     dword ptr es:[bx], 1    ; use add, not inc
+        add     dword ptr ds:[bx], 1    ; use add, not inc
         jnc     no_more_carry_32
         add     bx, 4                   ; increase by size of dword
         loop    top_carry_loop_32
@@ -1080,25 +1276,25 @@ no_more_carry_32:
         ja      top_outer_loop_32
 
         ; result is now r, a double wide bignumber
+ENDIF
 
 bottom:
 .8086
 
+        pop     ds                      ; restore ds
         cmp     samevar, 1              ; were the variable the same ones?
         je      pos_answer              ; if yes, then jump
 
         mov     al, sign1               ; is result + or - ?
         cmp     al, sign2               ; sign(n1) == sign(n2) ?
         je      pos_answer              ; yes
-        push    bnlength                ; save bnlength
         shl     bnlength, 1             ; temporarily double bnlength
                                         ; for double wide bignumber
         invoke  neg_a_bn, r             ; does not affect ES
-        pop     bnlength                ; restore bnlength
+        shr     bnlength, 1             ; restore bnlength
 pos_answer:
 
-        mov     dx, es                  ; return r in dx:ax
-        mov     ax, word ptr r
+        mov     ax, word ptr r          ; return r in ax
         ret
 unsafe_full_mult_bn   ENDP
 
@@ -1115,61 +1311,71 @@ LOCAL sign1:byte, sign2:byte, samevar:byte, \
       carry_steps:word, skips:word, \
       n1p: ptr byte, n2p: ptr byte
 
+        push    ds                          ; save ds
+        mov     es, bignum_seg              ; load es for when ds is a pain
+
+; Test to see if n1 and n2 are the same variable.  It would be better to
+; use square_bn(), but it could happen.
+
+        mov     samevar, 0                  ; assume they are not the same
+        mov     bx, word ptr n1
+        cmp     bx, word ptr n2             ; compare offset
+        jne     end_samevar_check           ; not the same
+        mov     samevar, 1                  ; they are the same
+end_samevar_check:
+
 ; By forcing the bignumber to be positive and keeping track of the sign
 ; bits separately, quite a few multiplies are saved.
 
-        ; set the ES register here
-        les     bx, n1                      ; check for sign bits
+                                            ; check for sign bits
         add     bx, bnlength
-        dec     bx
-        mov     al, es:[bx]
+        mov     al, es:[bx-1]
         and     al, 80h                     ; check the sign bit
         mov     sign1, al
         jz      already_pos1
         invoke  neg_a_bn, n1
 already_pos1:
 
-; Test to see if n1 and n2 are the same variable.  It would be better to
-; use square_bn(), but it could happen.
-
-        mov     samevar, 1                  ; assume they are the same
+        cmp     samevar, 1                  ; if it's the same variable
+        je      already_pos2                ; then skip this second check
         mov     bx, word ptr n2
-        cmp     bx, word ptr n1             ; are they the same?
-        je      already_pos2                ; if so, it has already been negated
-        mov     samevar, 0                  ; they weren't the same after all
-
         add     bx, bnlength
-        dec     bx
-        mov     al, es:[bx]
+        mov     al, es:[bx-1]
         and     al, 80h                     ; check the sign bit
         mov     sign2, al
         jz      already_pos2
         invoke  neg_a_bn, n2
 already_pos2:
 
-        mov     ax, word ptr n1         ; load pointers
-        mov     n1p, ax
-
+        ; adjust n2 pointer for partial precision
         mov     ax, bnlength
         shl     ax, 1                   ; 2*bnlength
         sub     ax, rlength             ; 2*bnlength-rlength
         add     word ptr n2, ax         ; n2 = n2+2*bnlength-rlength
+
 
 ; in the following loops, the following pointers are used
 ;   n1p, n2p = points to the part of n1, n2 being used
 ;   di = points to part of doublebignumber used in outer loop
 ;   si = points to part of doublebignumber used in inner loop
 ;   bx = points to part of doublebignumber for carry flag loop
+; Also, since r is used more than n1p or n2p, abandon the convention of
+; using ES for r.  Using DS will save a few clock cycles.
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      use_32_bit              ; use faster 32 bit code if possible
+ENDIF
 
+IFDEF BIG16
+        ; clear r
         sub     ax, ax                  ; clear ax
         mov     cx, rlength             ; size of r in bytes
         shr     cx, 1                   ; byte = 1/2 word
-        mov     di, word ptr r          ; es already set
+        mov     di, word ptr r          ; load r in es:di for stos
         rep     stosw                   ; initialize r to 0
 
+        ; set variables
         mov     ax, rlength             ; set steps for first loop
         sub     ax, bnlength
         shr     ax, 1                   ; byte = 1/2 word
@@ -1188,8 +1394,14 @@ already_pos2:
         mov     doublesteps, ax
         mov     carry_steps, ax
 
-        mov     di, word ptr r          ; this is r
+        ; prepare segments and offsets for loops
+        mov     di, word ptr r
         mov     si, di                  ; both si and di are used here
+        mov     ds, bignum_seg          ; load ds
+        mov     ax, word ptr n1         ; load pointers
+        mov     n1p, ax
+        ; use ds for all pointers
+
 
 top_outer_loop_16:
         mov     ax, word ptr n2         ; set n2p pointer
@@ -1199,15 +1411,14 @@ top_outer_loop_16:
 
 top_inner_loop_16:
         mov     bx, n1p
-        mov     ax, es:[bx]
+        mov     ax, ds:[bx]
         mov     bx, n2p
-        mul     word ptr es:[bx]
+        mul     word ptr ds:[bx]
 
         mov     bx, si
-        add     es:[bx], ax             ; add low word
-        inc     bx                      ; increase by size of word
-        inc     bx
-        adc     es:[bx], dx             ; add high word
+        add     bx, 2                   ; increase by size of word
+        add     ds:[bx-2], ax           ; add low word
+        adc     ds:[bx], dx             ; add high word
         jnc     no_more_carry_16        ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -1216,7 +1427,7 @@ top_inner_loop_16:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_16:
-        add     word ptr es:[bx], 1     ; use add, not inc
+        add     word ptr ds:[bx], 1     ; use add, not inc
         jnc     no_more_carry_16
         add     bx, 2                   ; increase by size of word
         loop    top_carry_loop_16
@@ -1249,18 +1460,24 @@ shifts_bottom_16:
         ja      top_outer_loop_16
 
         ; result is in r
+ENDIF
+
+IFDEF BIG16AND32
         jmp     bottom
+ENDIF
 
-
+IFDEF BIG32
 use_32_bit:
 .386
 
+        ; clear r
         sub     eax, eax                ; clear eax
         mov     cx, rlength             ; size of r in bytes
         shr     cx, 2                   ; byte = 1/4 dword
-        mov     di, word ptr r          ; es already set
+        mov     di, word ptr r          ; load r in es:di for stos
         rep     stosd                   ; initialize r to 0
 
+        ; set variables
         mov     ax, rlength             ; set steps for first loop
         sub     ax, bnlength
         shr     ax, 2                   ; byte = 1/4 dword
@@ -1279,8 +1496,12 @@ use_32_bit:
         mov     doublesteps, ax
         mov     carry_steps, ax
 
-        mov     di, word ptr r          ; this is r
+        ; prepare segments and offsets for loops
+        mov     di, word ptr r
         mov     si, di                  ; both si and di are used here
+        mov     ds, bignum_seg          ; load ds
+        mov     ax, word ptr n1         ; load pointers
+        mov     n1p, ax
 
 
 top_outer_loop_32:
@@ -1291,16 +1512,14 @@ top_outer_loop_32:
 
 top_inner_loop_32:
         mov     bx, n1p
-        mov     eax, es:[bx]
+        mov     eax, ds:[bx]
         mov     bx, n2p
-        mul     dword ptr es:[bx]
+        mul     dword ptr ds:[bx]
 
         mov     bx, si
-        add     es:[bx], eax            ; add low dword
-        lahf                            ; save carry flag
         add     bx, 4                   ; increase by size of dword
-        sahf                            ; restor carry flag
-        adc     es:[bx], edx            ; add high dword
+        add     ds:[bx-4], eax          ; add low dword
+        adc     ds:[bx], edx            ; add high dword
         jnc     no_more_carry_32        ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -1309,7 +1528,7 @@ top_inner_loop_32:
 
         ; loop until no more carry or until end of r
 top_carry_loop_32:
-        add     dword ptr es:[bx], 1    ; use add, not inc
+        add     dword ptr ds:[bx], 1    ; use add, not inc
         jnc     no_more_carry_32
         add     bx, 4                   ; increase by size of dword
         loop    top_carry_loop_32
@@ -1342,9 +1561,11 @@ shifts_bottom_32:
         ja      top_outer_loop_32
 
         ; result is in r
+ENDIF
 
 bottom:
 .8086
+        pop     ds                      ; restore ds
         cmp     samevar, 1              ; were the variable the same ones?
         je      pos_answer              ; if yes, then jump
 
@@ -1358,8 +1579,7 @@ bottom:
         pop     bnlength                ; restore bnlength
 pos_answer:
 
-        mov     dx, es                  ; return r in dx:ax
-        mov     ax, word ptr r
+        mov     ax, word ptr r          ; return r in ax
         ret
 unsafe_mult_bn   ENDP
 
@@ -1377,42 +1597,45 @@ unsafe_mult_bn   ENDP
 ;
 unsafe_full_square_bn   PROC USES di si, r:bn_t, n:bn_t
 LOCAL i:word, j:word, steps:word, doublesteps:word, carry_steps:word, \
+      save_ds:word, \
       rp1: ptr byte, rp2: ptr byte
 
-; This routine uses near variables and far pointers together in the
-; inner-most loops.  Therefore, there is little to gain by setting DS
-; to the far segment.  Instead, set ES to the far segment and use segment
-; overrides where necessary.
+        mov     save_ds, ds                 ; save ds
+        mov     es, bignum_seg              ; load es for when ds is a pain
 
 ; By forcing the bignumber to be positive and keeping track of the sign
 ; bits separately, quite a few multiplies are saved.
 
-        ; load ES here
-        les     bx, n                       ; check for sign bit
+                                            ; check for sign bit
+        mov     bx, word ptr n
         add     bx, bnlength
-        dec     bx
-        mov     al, es:[bx]
+        mov     al, es:[bx-1]
         and     al, 80h                     ; check the sign bit
         jz      already_pos
         invoke  neg_a_bn, n
 already_pos:
 
 ; in the following loops, the following pointers are used
-;   n1p(di), n2p(si) = points to the parts of n being used
-;   rp1 = points to part of doublebignumber used in outer loop
-;   rp2 = points to part of doublebignumber used in inner loop
-;   bx = points to part of doublebignumber for carry flag loop
+;   n1p(di), n2p(si) = points to the parts of n being used (es)
+;   rp1 = points to part of doublebignumber used in outer loop  (ds)
+;   rp2 = points to part of doublebignumber used in inner loop  (ds)
+;   bx  = points to part of doublebignumber for carry flag loop (ds)
 
         mov     cx, bnlength            ; size of doublebignumber in words
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      use_32_bit              ; use faster 32 bit code if possible
+ENDIF
 
+IFDEF BIG16
+        ; clear r
         sub     ax, ax                  ; clear ax
         ; 2{twice the size}*bnlength/2{bytes per word}
-        mov     di, word ptr r          ; es already set
+        mov     di, word ptr r          ; load r pointer in es:di for stos
         rep     stosw                   ; initialize r to 0
 
+        ; initialize vars
         mov     dx, bnlength            ; set outer loop counter
         shr     dx, 1                   ; byte = 1/2 word
         dec     dx                      ; don't need to do last one
@@ -1422,11 +1645,14 @@ already_pos:
         sub     dx, 1                   ; only 2*s-1 steps are really needed
         mov     doublesteps, dx
         mov     carry_steps, dx
+
+        ; initialize pointers
+        mov     di, word ptr n
         mov     ax, word ptr r
+        mov     ds, bignum_seg          ; load ds
         add     ax, 2                   ; start with second word
         mov     rp1, ax
         mov     rp2, ax                 ; start with rp2=rp1
-        mov     di, word ptr n          ; load n1p pointer
 
         cmp     i, 0                    ; if bignumberlength is 2
         je      skip_middle_terms_16
@@ -1438,14 +1664,13 @@ top_outer_loop_16:
         mov     j, ax
 
 top_inner_loop_16:
-        mov     ax, es:[di]
-        mul     word ptr es:[si]
+        mov     ax, ds:[di]
+        mul     word ptr ds:[si]
 
         mov     bx, rp2
-        add     es:[bx], ax             ; add low word
-        inc     bx                      ; increase by size of word
-        inc     bx
-        adc     es:[bx], dx             ; add high word
+        add     bx, 2                   ; increase by size of word
+        add     ds:[bx-2], ax           ; add low word
+        adc     ds:[bx], dx             ; add high word
         jnc     no_more_carry_16        ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -1454,7 +1679,7 @@ top_inner_loop_16:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_16:
-        add     word ptr es:[bx], 1     ; use add, not inc
+        add     word ptr ds:[bx], 1     ; use add, not inc
         jnc     no_more_carry_16
         add     bx, 2                   ; increase by size of word
         loop    top_carry_loop_16
@@ -1480,20 +1705,22 @@ no_more_carry_16:
         ja      top_outer_loop_16
 
         ; All the middle terms have been multiplied.  Now double it.
-        push    bnlength
+        mov     ds, save_ds             ; restore ds to get bnlength
         shl     bnlength, 1             ; r is a double wide bignumber
-        invoke  double_a_bn, r
-        pop     bnlength
+        invoke  double_a_bn, r          ; doesn't change es
+        shr     bnlength, 1             ; restore r
 
-skip_middle_terms_16:
+skip_middle_terms_16:                   ; ds is not necessarily restored here
+
 ; Now go back and add in the squared terms.
 ; In the following loops, the following pointers are used
-;   n1p(di) = points to the parts of n being used
-;   rp1(si) = points to part of doublebignumber used in outer loop
-;   bx = points to part of doublebignumber for carry flag loop
+;   n1p(di) = points to the parts of n being used (es)
+;   rp1(si) = points to part of doublebignumber used in outer loop  (ds)
+;   bx      = points to part of doublebignumber for carry flag loop (ds)
 
-        mov     di, word ptr n          ; load n1p pointer
+        mov     di, word ptr n          ; load n1p pointer in di
 
+        mov     ds, save_ds             ; restore ds to get bnlength
         mov     dx, bnlength            ; set outer loop counter
         shr     dx, 1                   ; 1 bytes = 1/2 word
         mov     i, dx                   ; loop counter
@@ -1503,17 +1730,18 @@ skip_middle_terms_16:
         mov     doublesteps, dx
         mov     carry_steps, dx
         mov     si, word ptr r          ; set rp1
+        mov     ds, bignum_seg          ; load ds
+
 
 top_outer_loop_squares_16:
 
-        mov     ax, es:[di]
+        mov     ax, ds:[di]
         mul     ax                      ; square it
 
         mov     bx, si
-        add     es:[bx], ax             ; add low word
-        inc     bx                      ; increase by size of word
-        inc     bx
-        adc     es:[bx], dx             ; add high word
+        add     bx, 2                   ; increase by size of word
+        add     ds:[bx-2], ax           ; add low word
+        adc     ds:[bx], dx             ; add high word
         jnc     no_more_carry_squares_16 ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -1522,7 +1750,7 @@ top_outer_loop_squares_16:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_squares_16:
-        add     word ptr es:[bx], 1     ; use add, not inc
+        add     word ptr ds:[bx], 1     ; use add, not inc
         jnc     no_more_carry_squares_16
         add     bx, 2                   ; increase by size of word
         loop    top_carry_loop_squares_16
@@ -1540,33 +1768,41 @@ no_more_carry_squares_16:
 
 
         ; result is in r, a double wide bignumber
+ENDIF
+
+IFDEF BIG16AND32
         jmp     bottom
+ENDIF
 
-
+IFDEF BIG32
 use_32_bit:
 .386
-
+        ; clear r
         sub     eax, eax                ; clear eax
         ; 2{twice the size}*bnlength/4{bytes per word}
         shr     cx, 1                   ; size of doublebignumber in dwords
-        mov     di, word ptr r          ; es already set
+        mov     di, word ptr r          ; load r pointer in es:di for stos
         rep     stosd                   ; initialize r to 0
 
+        ; initialize vars
         mov     dx, bnlength            ; set outer loop counter
         shr     dx, 2                   ; byte = 1/4 dword
         dec     dx                      ; don't need to do last one
         mov     i, dx                   ; loop counter
         mov     steps, dx               ; save in steps
         shl     dx, 1                   ; double steps
-
         sub     dx, 1                   ; only 2*s-1 steps are really needed
         mov     doublesteps, dx
         mov     carry_steps, dx
+
+        ; initialize pointers
+        mov     di, word ptr n          ; load n1p pointer
         mov     ax, word ptr r
+        mov     ds, bignum_seg          ; load ds
+
         add     ax, 4                   ; start with second dword
         mov     rp1, ax
         mov     rp2, ax                 ; start with rp2=rp1
-        mov     di, word ptr n          ; load n1p pointer
 
         cmp     i, 0                    ; if bignumberlength is 4
         je      skip_middle_terms_32
@@ -1578,15 +1814,13 @@ top_outer_loop_32:
         mov     j, ax
 
 top_inner_loop_32:
-        mov     eax, es:[di]
-        mul     dword ptr es:[si]
+        mov     eax, ds:[di]
+        mul     dword ptr ds:[si]
 
         mov     bx, rp2
-        add     es:[bx], eax            ; add low dword
-        lahf
         add     bx, 4                   ; increase by size of dword
-        sahf
-        adc     es:[bx], edx            ; add high dword
+        add     ds:[bx-4], eax          ; add low dword
+        adc     ds:[bx], edx            ; add high dword
         jnc     no_more_carry_32        ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -1595,7 +1829,7 @@ top_inner_loop_32:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_32:
-        add     dword ptr es:[bx], 1    ; use add, not inc
+        add     dword ptr ds:[bx], 1    ; use add, not inc
         jnc     no_more_carry_32
         add     bx, 4                   ; increase by size of dword
         loop    top_carry_loop_32
@@ -1621,21 +1855,22 @@ no_more_carry_32:
         ja      top_outer_loop_32
 
         ; All the middle terms have been multiplied.  Now double it.
-        push    bnlength
+        mov     ds, save_ds             ; restore ds to get bnlength
         shl     bnlength, 1             ; r is a double wide bignumber
         invoke  double_a_bn, r
-        pop     bnlength
+        shr     bnlength, 1             ; restore r
 
-skip_middle_terms_32:
+skip_middle_terms_32:                   ; ds is not necessarily restored here
 
 ; Now go back and add in the squared terms.
 ; In the following loops, the following pointers are used
-;   n1p(di) = points to the parts of n being used
-;   rp1(si) = points to part of doublebignumber used in outer loop
-;   bx = points to part of doublebignumber for carry flag loop
+;   n1p(di) = points to the parts of n being used (es)
+;   rp1(si) = points to part of doublebignumber used in outer loop (ds)
+;   bx = points to part of doublebignumber for carry flag loop     (ds)
 
-        mov     di, word ptr n          ; load n1p pointer
+        mov     di, word ptr n          ; load n1p pointer in ds:di
 
+        mov     ds, save_ds             ; restore ds to get bnlength
         mov     dx, bnlength            ; set outer loop counter
         shr     dx, 2                   ; 1 bytes = 1/4 dword
         mov     i, dx                   ; loop counter
@@ -1645,18 +1880,17 @@ skip_middle_terms_32:
         mov     doublesteps, dx
         mov     carry_steps, dx
         mov     si, word ptr r          ; set rp1
+        mov     ds, bignum_seg          ; load ds
 
 top_outer_loop_squares_32:
 
-        mov     eax, es:[di]
+        mov     eax, ds:[di]
         mul     eax                     ; square it
 
         mov     bx, si
-        add     es:[bx], eax            ; add low dword
-        lahf
         add     bx, 4                   ; increase by size of dword
-        sahf
-        adc     es:[bx], edx            ; add high dword
+        add     ds:[bx-4], eax          ; add low dword
+        adc     ds:[bx], edx            ; add high dword
         jnc     no_more_carry_squares_32 ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -1665,7 +1899,7 @@ top_outer_loop_squares_32:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_squares_32:
-        add     dword ptr es:[bx], 1    ; use add, not inc
+        add     dword ptr ds:[bx], 1    ; use add, not inc
         jnc     no_more_carry_squares_32
         add     bx, 4                   ; increase by size of dword
         loop    top_carry_loop_squares_32
@@ -1683,14 +1917,15 @@ no_more_carry_squares_32:
 
 
         ; result is in r, a double wide bignumber
+ENDIF
 
 bottom:
 .8086
 
 ; since it is a square, the result has to already be positive
 
-        mov     dx, es                  ; return r in dx:ax
-        mov     ax, word ptr r
+        mov     ds, save_ds             ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 unsafe_full_square_bn   ENDP
 
@@ -1710,6 +1945,7 @@ unsafe_full_square_bn   ENDP
 unsafe_square_bn   PROC USES di si, r:bn_t, n:bn_t
 LOCAL i:word, j:word, steps:word, doublesteps:word, carry_steps:word, \
       skips:word, rodd:word, \
+      save_ds:word, \
       n3p: ptr byte, \
       rp1: ptr byte, rp2: ptr byte
 
@@ -1720,47 +1956,47 @@ LOCAL i:word, j:word, steps:word, doublesteps:word, carry_steps:word, \
         shr     ax, 1                   ; 1/2 * rlength
         cmp     ax, bnlength            ; 1/2 * rlength == bnlength?
         jne     not_full_square
-ifndef ??version
         invoke  unsafe_full_square_bn, r, n
-else
-        invoke2 unsafe_full_square_bn, r, n
-endif
         ; dx:ax is still loaded with return value
         jmp     quit_proc               ; we're outa here
 not_full_square:
 
-; This routine uses near variables and far pointers together in the
-; inner-most loops.  Therefore, there is little to gain by setting DS
-; to the far segment.  Instead, set ES to the far segment and use segment
-; overrides where necessary.
+        mov     save_ds, ds
+        mov     es, bignum_seg              ; load es for when ds is a pain
 
 ; By forcing the bignumber to be positive and keeping track of the sign
 ; bits separately, quite a few multiplies are saved.
 
-        ; set ES here
-        les     bx, n                       ; check for sign bit
+                                            ; check for sign bit
+        mov     bx, word ptr n              ; load n1 pointer in es:bx
         add     bx, bnlength
-        dec     bx
-        mov     al, es:[bx]
+        mov     al, es:[bx-1]
         and     al, 80h                     ; check the sign bit
         jz      already_pos
         invoke  neg_a_bn, n
 already_pos:
 
 ; in the following loops, the following pointers are used
-;   n1p(di), n2p(si) = points to the parts of n being used
-;   rp1 = points to part of doublebignumber used in outer loop
-;   rp2 = points to part of doublebignumber used in inner loop
-;   bx = points to part of doublebignumber for carry flag loop
+;   n1p(di), n2p(si) = points to the parts of n being used (es)
+;   rp1 = points to part of doublebignumber used in outer loop  (ds)
+;   rp2 = points to part of doublebignumber used in inner loop  (ds)
+;   bx  = points to part of doublebignumber for carry flag loop (ds)
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      use_32_bit              ; use faster 32 bit code if possible
+ENDIF
 
+IFDEF BIG16
+        ; clear r
         sub     ax, ax                  ; clear ax
         mov     cx, rlength             ; size of rlength in bytes
         shr     cx, 1                   ; byte = 1/2 word
-        mov     di, word ptr r          ; es already set
+        mov     di, word ptr r          ; load r pointer in es:di for stos
         rep     stosw                   ; initialize r to 0
+
+
+        ; initialize vars
 
         ; determine whether r is on an odd or even word in the number
         ; (even if rlength==2*bnlength, dec r alternates odd/even)
@@ -1793,10 +2029,8 @@ already_pos:
         shr     ax, 1                   ; for both words and dwords
         mov     skips, ax               ; how long to skip over pointer shifts
 
-        mov     ax, word ptr r
-        mov     rp1, ax
-        mov     rp2, ax                 ; start with rp2=rp1
-        mov     di, word ptr n          ; load n1p pointer
+        ; initialize pointers
+        mov     di, word ptr n
         mov     si, di
         mov     ax, bnlength
         shr     ax, 1                   ; 1 byte = 1/2 word
@@ -1804,6 +2038,10 @@ already_pos:
         shl     ax, 1                   ; 1 byte = 1/2 word
         add     si, ax                  ; n2p = n1p + 2*(bnlength/2 - steps)
         mov     n3p, si                 ; save for later use
+        mov     ax, word ptr r
+        mov     ds, bignum_seg          ; load ds
+        mov     rp1, ax
+        mov     rp2, ax                 ; start with rp2=rp1
 
         cmp     i, 0                    ; if bignumberlength is 2
         je      skip_middle_terms_16
@@ -1813,14 +2051,13 @@ top_outer_loop_16:
         mov     j, ax
 
 top_inner_loop_16:
-        mov     ax, es:[di]
-        mul     word ptr es:[si]
+        mov     ax, ds:[di]
+        mul     word ptr ds:[si]
 
         mov     bx, rp2
-        add     es:[bx], ax             ; add low word
-        inc     bx                      ; increase by size of word
-        inc     bx
-        adc     es:[bx], dx             ; add high word
+        add     bx, 2                   ; increase by size of word
+        add     ds:[bx-2], ax           ; add low word
+        adc     ds:[bx], dx             ; add high word
         jnc     no_more_carry_16        ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -1829,7 +2066,7 @@ top_inner_loop_16:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_16:
-        add     word ptr es:[bx], 1     ; use add, not inc
+        add     word ptr ds:[bx], 1     ; use add, not inc
         jnc     no_more_carry_16
         add     bx, 2                   ; increase by size of word
         loop    top_carry_loop_16
@@ -1882,6 +2119,7 @@ shifts_bottom_16:
         ja      top_outer_loop_16
 
         ; All the middle terms have been multiplied.  Now double it.
+        mov     ds, save_ds             ; restore ds to get bnlength
         push    bnlength                ; save bnlength
         mov     ax, rlength
         mov     bnlength, ax            ; r is of length rlength
@@ -1891,9 +2129,9 @@ shifts_bottom_16:
 skip_middle_terms_16:
 ; Now go back and add in the squared terms.
 ; In the following loops, the following pointers are used
-;   n1p(di) = points to the parts of n being used
-;   rp1(si) = points to part of doublebignumber used in outer loop
-;   bx = points to part of doublebignumber for carry flag loop
+;   n1p(di) = points to the parts of n being used (es)
+;   rp1(si) = points to part of doublebignumber used in outer loop (ds)
+;   bx = points to part of doublebignumber for carry flag loop     (ds)
 
         ; be careful, the next dozen or so lines are confusing!
 
@@ -1904,13 +2142,14 @@ skip_middle_terms_16:
         mov     dx, ax                  ; save this for a moment
         and     ax, 0002h               ; check the odd sign bit
 
-        mov     si, word ptr r
+        mov     si, word ptr r          ; load r pointer in ds:si
         add     si, ax                  ; depending on odd or even byte
 
         shr     dx, 1                   ; assumes word size
         inc     dx
         and     dx, 0FFFEh              ; ~2+1, turn off last bit, mult of 2
-        mov     di, word ptr n
+        mov     di, word ptr n          ; load n1p pointer in di
+                                        ; es is still set from before
         add     di, dx
 
         mov     ax, bnlength
@@ -1923,16 +2162,17 @@ skip_middle_terms_16:
         mov     doublesteps, ax
         mov     carry_steps, ax
 
+        mov     ds, bignum_seg          ; load ds
+
 top_outer_loop_squares_16:
 
-        mov     ax, es:[di]
+        mov     ax, ds:[di]
         mul     ax                      ; square it
 
         mov     bx, si
-        add     es:[bx], ax             ; add low word
-        inc     bx                      ; increase by size of word
-        inc     bx
-        adc     es:[bx], dx             ; add high word
+        add     bx, 2                   ; increase by size of word
+        add     ds:[bx-2], ax           ; add low word
+        adc     ds:[bx], dx             ; add high word
         jnc     no_more_carry_squares_16 ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -1941,7 +2181,7 @@ top_outer_loop_squares_16:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_squares_16:
-        add     word ptr es:[bx], 1     ; use add, not inc
+        add     word ptr ds:[bx], 1     ; use add, not inc
         jnc     no_more_carry_squares_16
         add     bx, 2                   ; increase by size of word
         loop    top_carry_loop_squares_16
@@ -1959,16 +2199,23 @@ no_more_carry_squares_16:
 
 
         ; result is in r
+ENDIF
+
+IFDEF BIG16AND32
         jmp     bottom
+ENDIF
 
-
+IFDEF BIG32
 use_32_bit:
 .386
+        ; clear r
         sub     eax, eax                ; clear eax
         mov     cx, rlength             ; size of rlength in bytes
         shr     cx, 2                   ; byte = 1/4 dword
-        mov     di, word ptr r          ; es already set
+        mov     di, word ptr r          ; load r pointer in es:di for stos
         rep     stosd                   ; initialize r to 0
+
+        ; initialize vars
 
         ; determine whether r is on an odd or even dword in the number
         ; (even if rlength==2*bnlength, dec r alternates odd/even)
@@ -2001,9 +2248,7 @@ use_32_bit:
         shr     ax, 1                   ; for both words and dwords
         mov     skips, ax               ; how long to skip over pointer shifts
 
-        mov     ax, word ptr r
-        mov     rp1, ax
-        mov     rp2, ax                 ; start with rp2=rp1
+        ; initialize pointers
         mov     di, word ptr n          ; load n1p pointer
         mov     si, di
         mov     ax, bnlength
@@ -2012,6 +2257,10 @@ use_32_bit:
         shl     ax, 2                   ; 1 byte = 1/4 dword
         add     si, ax                  ; n2p = n1p + bnlength/4 - steps
         mov     n3p, si                 ; save for later use
+        mov     ax, word ptr r
+        mov     ds, bignum_seg          ; load ds
+        mov     rp1, ax
+        mov     rp2, ax                 ; start with rp2=rp1
 
         cmp     i, 0                    ; if bignumberlength is 2
         je      skip_middle_terms_32
@@ -2021,15 +2270,13 @@ top_outer_loop_32:
         mov     j, ax
 
 top_inner_loop_32:
-        mov     eax, es:[di]
-        mul     dword ptr es:[si]
+        mov     eax, ds:[di]
+        mul     dword ptr ds:[si]
 
         mov     bx, rp2
-        add     es:[bx], eax            ; add low dword
-        lahf                            ; save carry flag
         add     bx, 4                   ; increase by size of dword
-        sahf                            ; restore carry flag
-        adc     es:[bx], edx            ; add high dword
+        add     ds:[bx-4], eax          ; add low dword
+        adc     ds:[bx], edx            ; add high dword
         jnc     no_more_carry_32        ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -2038,7 +2285,7 @@ top_inner_loop_32:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_32:
-        add     dword ptr es:[bx], 1    ; use add, not inc
+        add     dword ptr ds:[bx], 1    ; use add, not inc
         jnc     no_more_carry_32
         add     bx, 4                   ; increase by size of dword
         loop    top_carry_loop_32
@@ -2091,6 +2338,7 @@ shifts_bottom_32:
         ja      top_outer_loop_32
 
         ; All the middle terms have been multiplied.  Now double it.
+        mov     ds, save_ds             ; restore ds to get bnlength
         push    bnlength                ; save bnlength
         mov     ax, rlength
         mov     bnlength, ax            ; r is of length rlength
@@ -2100,9 +2348,9 @@ shifts_bottom_32:
 skip_middle_terms_32:
 ; Now go back and add in the squared terms.
 ; In the following loops, the following pointers are used
-;   n1p(di) = points to the parts of n being used
-;   rp1(si) = points to part of doublebignumber used in outer loop
-;   bx = points to part of doublebignumber for carry flag loop
+;   n1p(di) = points to the parts of n being used (es)
+;   rp1(si) = points to part of doublebignumber used in outer loop (ds)
+;   bx = points to part of doublebignumber for carry flag loop     (ds)
 
         ; be careful, the next dozen or so lines are confusing!
 
@@ -2113,14 +2361,15 @@ skip_middle_terms_32:
         mov     dx, ax                  ; save this for a moment
         and     ax, 0004h               ; check the odd sign bit
 
-        mov     si, word ptr r
+        mov     si, word ptr r          ; load r pointer in ds:si
         add     si, ax                  ; depending on odd or even byte
 
         shr     dx, 2                   ; assumes dword size
         inc     dx
         and     dx, 0FFFEh              ; ~2+1, turn off last bit, mult of 2
         shl     dx, 1
-        mov     di, word ptr n
+        mov     di, word ptr n          ; load n1p pointer in di
+                                        ; es is still set from before
         add     di, dx
 
         mov     ax, bnlength
@@ -2133,17 +2382,17 @@ skip_middle_terms_32:
         mov     doublesteps, ax
         mov     carry_steps, ax
 
+        mov     ds, bignum_seg          ; load ds
+
 top_outer_loop_squares_32:
 
-        mov     eax, es:[di]
+        mov     eax, ds:[di]
         mul     eax                     ; square it
 
         mov     bx, si
-        add     es:[bx], eax            ; add low dword
-        lahf                            ; save carry flag
         add     bx, 4                   ; increase by size of dword
-        sahf                            ; restore carry flag
-        adc     es:[bx], edx            ; add high dword
+        add     ds:[bx-4], eax          ; add low dword
+        adc     ds:[bx], edx            ; add high dword
         jnc     no_more_carry_squares_32 ; carry loop not necessary
 
         mov     cx, carry_steps         ; how many till end of double big number
@@ -2152,7 +2401,7 @@ top_outer_loop_squares_32:
 
         ; loop until no more carry or until end of double big number
 top_carry_loop_squares_32:
-        add     dword ptr es:[bx], 1    ; use add, not inc
+        add     dword ptr ds:[bx], 1    ; use add, not inc
         jnc     no_more_carry_squares_32
         add     bx, 4                   ; increase by size of dword
         loop    top_carry_loop_squares_32
@@ -2170,78 +2419,93 @@ no_more_carry_squares_32:
 
 
         ; result is in r
+ENDIF
 
 bottom:
 .8086
 
 ; since it is a square, the result has to already be positive
 
-        mov     dx, es                  ; return r in dx:ax
-        mov     ax, word ptr r
+        mov     ds, save_ds             ; restore ds
+        mov     ax, word ptr r          ; return r in ax
+
 quit_proc:
         ret
 unsafe_square_bn   ENDP
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r = n * u  where u is an unsigned integer
 mult_bn_int   PROC USES di si, r:bn_t, n:bn_t, u:word
 LOCAL   lu:dword  ; long unsigned integer in 32 bit math
 
-        mov     cx, bnlength            ; set outer loop counter
-        mov     ax, ds                  ; mov DS to ES for one segment override
-        mov     es, ax
-        mov     si, word ptr n          ; load pointers ds:si
-        lds     di, r                   ;               ds:di
+        push    ds                      ; save ds
+        mov     cx, bnlength
+        mov     di, WORD PTR r
+        mov     si, WORD PTR n
 
+
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      use_32_bit              ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         ; no need to clear r
+
         shr     cx, 1                   ; byte = 1/2 word
         sub     bx, bx                  ; use bx for temp holding carried word
 
 top_loop_16:
-        mov     ax, [si]                ; load next word from n
-        mul     es:u                    ; n * u
+        mov     ax, ds:[si]             ; load next word from n
+        mul     u                       ; n * u
         add     ax, bx                  ; add last carried upper word
         adc     dx, 0                   ; inc the carried word if carry flag set
         mov     bx, dx                  ; save high word in bx
-        mov     [di], ax                ; save low word
+        mov     ds:[di], ax             ; save low word
 
         add     di, 2                   ; next word in r
         add     si, 2                   ; next word in n
         loop    top_loop_16
-        jmp     bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
+
         ; no need to clear r
 
         shr     cx, 2                   ; byte = 1/4 dword
         sub     ebx, ebx                ; use ebx for temp holding carried dword
 
         sub     eax, eax                ; clear upper eax
-        mov     ax, es:u                ; convert u (unsigned int)
-        mov     es:lu, eax              ;   to lu (long unsigned int)
+        mov     ax, u                   ; convert u (unsigned int)
+        mov     lu, eax                 ;   to lu (long unsigned int)
 
 top_loop_32:
-        mov     eax, [si]               ; load next dword from n
-        mul     es:lu                   ; n * lu
+        mov     eax, ds:[si]            ; load next dword from n
+        mul     lu                      ; n * lu
         add     eax, ebx                ; add last carried upper dword
         adc     edx, 0                  ; inc the carried dword if carry flag set
         mov     ebx, edx                ; save high dword in ebx
-        mov     [di], eax               ; save low dword
+        mov     ds:[di], eax            ; save low dword
 
         add     di, 4                   ; next dword in r
         add     si, 4                   ; next dword in n
         loop    top_loop_32
+ENDIF
 
 bottom:
 .8086
 
-        mov     dx, ds                  ; return r in dx:ax
-        mov     ax, es                  ; restore ds
-        mov     ds, ax
-        mov     ax, word ptr r
+        pop     ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 mult_bn_int   ENDP
 
@@ -2249,56 +2513,66 @@ mult_bn_int   ENDP
 ; r *= u  where u is an unsigned integer
 mult_a_bn_int   PROC USES di si, r:bn_t, u:word
 
+        push    ds                      ; save ds
         mov     cx, bnlength            ; set outer loop counter
-        mov     ax, ds                  ; save ds
-        mov     es, ax
-        mov     si, u                   ; save u in    ds:si
-        lds     di, r                   ; load pointer ds:di
+        mov     si, WORD PTR r
 
+
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      use_32_bit              ; use faster 32 bit code if possible
+ENDIF
 
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
         ; no need to clear r
         shr     cx, 1                   ; byte = 1/2 word
         sub     bx, bx                  ; use bx for temp holding carried word
+        mov     di, u                   ; save u in di
 
 top_loop_16:
-        mov     ax, [di]                ; load next word from r
-        mul     si                      ; r * u
+        mov     ax, ds:[si]             ; load next word from r
+        mul     di                      ; r * u
         add     ax, bx                  ; add last carried upper word
         adc     dx, 0                   ; inc the carried word if carry flag set
         mov     bx, dx                  ; save high word in bx
-        mov     [di], ax                ; save low word
+        mov     ds:[si], ax             ; save low word
 
-        add     di, 2                   ; next word in r
+        add     si, 2                   ; next word in r
         loop    top_loop_16
-        jmp     bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
         ; no need to clear r
         shr     cx, 2                   ; byte = 1/4 dword
         sub     ebx, ebx                ; use ebx for temp holding carried dword
-        sub     esi, esi                ; clear upper esi
+        sub     edi, edi                ; clear upper edi
+        mov     di, u                   ; save u in lower di
 
 top_loop_32:
-        mov     eax, [di]               ; load next dword from r
-        mul     esi                     ; r * u
+        mov     eax, ds:[si]            ; load next dword from r
+        mul     edi                     ; r * u
         add     eax, ebx                ; add last carried upper dword
         adc     edx, 0                  ; inc the carried dword if carry flag set
         mov     ebx, edx                ; save high dword in ebx
-        mov     [di], eax               ; save low dword
+        mov     ds:[si], eax            ; save low dword
 
-        add     di, 4                   ; next dword in r
+        add     si, 4                   ; next dword in r
         loop    top_loop_32
+ENDIF
 
 bottom:
 .8086
 
-        mov     dx, ds                  ; return r in dx:ax
-        mov     ax, es                  ; restore ds
-        mov     ds, ax
-        mov     ax, word ptr r
+        pop     ds                      ; restore ds
+        mov     ax, word ptr r          ; return r in ax
         ret
 mult_a_bn_int   ENDP
 
@@ -2307,30 +2581,36 @@ mult_a_bn_int   ENDP
 unsafe_div_bn_int   PROC USES di si, r:bn_t, n:bn_t, u:word
 LOCAL  sign:byte
 
-        les     bx, n                       ; check for sign bits
+        push    ds
+                                            ; check for sign bits
+        mov     bx, WORD PTR n
+        mov     es, bignum_seg              ; load n pointer es:bx
         add     bx, bnlength
-        dec     bx
-        mov     al, es:[bx]
+        mov     al, es:[bx-1]
         and     al, 80h                     ; check the sign bit
         mov     sign, al
         jz      already_pos
         invoke  neg_a_bn, n
 already_pos:
-        mov     cx, bnlength            ; set outer loop counter
-        mov     ax, ds                  ; use es for default ds
-        mov     es, ax
-        ; past most significant portion of the number
+
+        mov     cx, bnlength                ; set outer loop counter
+        mov     di, word ptr r
         mov     si, word ptr n              ; load pointers ds:si
+        ; past most significant portion of the number
         add     si, cx
-        lds     di, r                       ; ds:di
         add     di, cx
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      use_32_bit              ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         ; no need to clear r here, values get mov'ed, not add'ed
         shr     cx, 1                   ; byte = 1/2 word
-        mov     bx, es:u
+        mov     bx, u
 
         ; need to start with most significant portion of the number
         sub     si, 2                   ; most sig word
@@ -2339,22 +2619,29 @@ already_pos:
         sub     dx, dx                  ; clear dx register
                                         ; for first time through loop
 top_loop_16:
-        mov     ax, [si]                ; load next word from n
+        mov     ax, ds:[si]             ; load next word from n
         div     bx
-        mov     [di], ax                ; store low word
+        mov     ds:[di], ax             ; store low word
                                         ; leave remainder in dx
 
         sub     si, 2                   ; next word in n
         sub     di, 2                   ; next word in r
         loop    top_loop_16
-        jmp     bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
+
         ; no need to clear r here, values get mov'ed, not add'ed
         shr     cx, 2                   ; byte = 1/4 dword
         sub     ebx, ebx                ; clear upper word or ebx
-        mov     bx, es:u
+        mov     bx, u
 
         ; need to start with most significant portion of the number
         sub     si, 4                   ; most sig dword
@@ -2363,42 +2650,41 @@ use_32_bit:
         sub     edx, edx                ; clear edx register
                                         ; for first time through loop
 top_loop_32:
-        mov     eax, [si]               ; load next dword from n
+        mov     eax, ds:[si]            ; load next dword from n
         div     ebx
-        mov     [di], eax               ; store low dword
+        mov     ds:[di], eax            ; store low dword
                                         ; leave remainder in edx
 
         sub     si, 4                   ; next dword in n
         sub     di, 4                   ; next dword in r
         loop    top_loop_32
+ENDIF
 
 bottom:
 .8086
 
-        mov     ax, es                  ; swap es & ds
-        mov     bx, ds
-        mov     ds, ax
-        mov     es, bx
+        pop     ds                      ; restore ds
 
         cmp     sign, 0                 ; is result + or - ?
         je      pos_answer              ; yes
         invoke  neg_a_bn, r             ; does not affect ES
 pos_answer:
 
-        mov     dx, es                  ; return r in dx:ax
-        mov     ax, word ptr r          ;
+        mov     ax, word ptr r          ; return r in ax
         ret
 unsafe_div_bn_int   ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; r /= u  where u is an unsigned integer
-div_a_bn_int   PROC USES di, r:bn_t, u:word
+div_a_bn_int   PROC USES si, r:bn_t, u:word
 LOCAL  sign:byte
 
-        les     bx, r                       ; check for sign bits
+        push    ds
+
+        mov     bx, WORD PTR r
+        mov     es, bignum_seg              ; load r pointer es:bx
         add     bx, bnlength
-        dec     bx
-        mov     al, es:[bx]
+        mov     al, es:[bx-1]
         and     al, 80h                     ; check the sign bit
         mov     sign, al
         jz      already_pos
@@ -2406,70 +2692,794 @@ LOCAL  sign:byte
 already_pos:
 
         mov     cx, bnlength            ; set outer loop counter
-        mov     ax, ds                  ; save ds in es
-        mov     es, ax
-        lds     di, r                   ; load pointer r in ds:di
-        add     di, cx
+        mov     si, WORD PTR r
+        ; past most significant portion of the number
+        add     si, cx
 
 
+IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
         je      use_32_bit              ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load ds
 
         ; no need to clear r here, values get mov'ed, not add'ed
         shr     cx, 1                   ; byte = 1/2 word
-        mov     bx, es:u
+        mov     bx, u
 
         ; need to start with most significant portion of the number
-        sub     di, 2                   ; most sig word
+        sub     si, 2                   ; most sig word
 
         sub     dx, dx                  ; clear dx register
                                         ; for first time through loop
 top_loop_16:
-        mov     ax, [di]                ; load next word from r
+        mov     ax, ds:[si]             ; load next word from r
         div     bx
-        mov     [di], ax                ; store low word
+        mov     ds:[si], ax             ; store low word
                                         ; leave remainder in dx
 
-        sub     di, 2                   ; next word in r
+        sub     si, 2                   ; next word in r
         loop    top_loop_16
-        jmp     bottom
+ENDIF
 
+IFDEF BIG16AND32
+        jmp     bottom
+ENDIF
+
+IFDEF BIG32
 use_32_bit:
 .386
+        mov     ds, bignum_seg          ; load ds
+
         ; no need to clear r here, values get mov'ed, not add'ed
         shr     cx, 2                   ; byte = 1/4 dword
         sub     ebx, ebx                ; clear upper word or ebx
-        mov     bx, es:u
+        mov     bx, u
 
         ; need to start with most significant portion of the number
-        sub     di, 4                   ; most sig dword
+        sub     si, 4                   ; most sig dword
 
         sub     edx, edx                ; clear edx register
                                         ; for first time through loop
 top_loop_32:
-        mov     eax, [di]               ; load next dword from r
+        mov     eax, ds:[si]            ; load next dword from r
         div     ebx
-        mov     [di], eax               ; store low dword
+        mov     ds:[si], eax            ; store low dword
                                         ; leave remainder in edx
 
-        sub     di, 4                   ; next dword in r
+        sub     si, 4                   ; next dword in r
         loop    top_loop_32
+ENDIF
 
 bottom:
 .8086
-        mov     ax, es                  ; swap es & ds
-        mov     bx, ds
-        mov     ds, ax
-        mov     es, bx
+        pop     ds                      ; restore ds
 
         cmp     sign, 0                 ; is result + or - ?
         je      pos_answer              ; yes
         invoke  neg_a_bn, r             ; does not affect ES
 pos_answer:
 
-        mov     dx, es                  ; return r in dx:ax
-        mov     ax, word ptr r          ;
+        mov     ax, word ptr r          ; return r in ax
         ret
 div_a_bn_int   ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; bf_t routines
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; r = 0    (just like clear_bn() but loads bflength+2 instead of bnlength)
+clear_bf   PROC USES di, r:bf_t
+
+        mov     cx, bflength
+        mov     di, word ptr r
+        mov     es, bignum_seg          ; load pointer in es:di
+
+IFDEF BIG16AND32
+        cmp     cpu, 386                ; check cpu
+        je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        sub     ax, ax                  ; clear ax
+        shr     cx, 1                   ; 1 byte = 1/2 word
+        inc     cx                      ; plus the exponent
+        rep     stosw                   ; clear r, word at a time
+ENDIF
+
+IFDEF BIG16AND32
+        jmp     bottom
+ENDIF
+
+IFDEF BIG32
+use_32_bit:
+.386
+        sub     eax, eax                ; clear eax
+        shr     cx, 2                   ; 1 byte = 1/4 word
+        rep     stosd                   ; clear r, dword at a time
+        stosw                           ; plus the exponent
+ENDIF
+
+bottom:
+.8086
+        mov     ax, word ptr r          ; return r in ax
+        ret
+
+clear_bf   ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; r = n
+copy_bf   PROC USES di si, r:bf_t, n:bf_t
+
+        mov     ax, ds                  ; save ds for later
+        mov     cx, bflength
+        add     cx, 2
+        mov     di, word ptr r
+        mov     es, bignum_seg          ; load pointer in es:di
+        mov     si, word ptr n
+
+IFDEF BIG16AND32
+        cmp     cpu, 386                ; check cpu
+        je      short use_32_bit        ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+        mov     ds, bignum_seg          ; load pointer in ds:si for movs
+
+        shr     cx, 1                   ; 1 byte = 1/2 word
+        inc     cx                      ; plus the exponent
+        rep     movsw                   ; copy word at a time
+ENDIF
+
+IFDEF BIG16AND32
+        jmp     bottom
+ENDIF
+
+IFDEF BIG32
+use_32_bit:
+.386
+        mov     ds, bignum_seg          ; load pointer in ds:si for movs
+
+        shr     cx, 2                   ; 1 byte = 1/4 word
+        rep     movsd                   ; copy dword at a time
+        movsw                           ; plus the exponent
+ENDIF
+
+bottom:
+.8086
+        mov     ds, ax                  ; restore ds
+        mov     ax, word ptr r          ; return r in ax
+        ret
+
+copy_bf   ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; LDBL bftofloat(bf_t n);
+; converts a bf number to a 10 byte real
+;
+bftofloat   PROC USES di si, n:bf_t
+   LOCAL value[11]:BYTE   ; 11=10+1
+
+      mov      ax, ds                  ; save ds
+
+      mov      cx, 9                   ; need up to 9 bytes
+      cmp      bflength, 10            ; but no more than bflength-1
+      jae      movebytes_set
+      mov      cx, bflength            ; bflength is less than 10
+      dec      cx                      ; cx=movebytes=bflength-1, 1 byte padding
+movebytes_set:
+
+IFDEF BIG16AND32
+      cmp     cpu, 386              ; check cpu
+      je      use_32_bit            ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+; 16 bit code
+      ; clear value
+      mov      word ptr value[0], 0
+      mov      word ptr value[2], 0
+      mov      word ptr value[4], 0
+      mov      word ptr value[6], 0
+      mov      word ptr value[8], 0
+      mov      byte ptr value[10], 0
+
+      ; copy bytes from n to value
+      lea      di, value+9
+      sub      di, cx               ; cx holds movebytes
+      mov      dx, ss               ; move ss to es for movs
+      mov      es, dx               ; ie: move ss:value+9-cx to es:di
+      mov      bx, bflength
+      dec      bx
+      sub      bx, cx               ; cx holds movebytes
+      mov      si, word ptr n
+      mov      ds, bignum_seg       ; move n to ds:si for movs
+      add      si, bx               ; n+bflength-1-movebytes
+      rep movsb
+      mov      bl, ds:[si]          ; save sign byte, si now points to it
+      inc      si                   ; point to exponent
+      mov      dx, ds:[si]          ; use dx as exponent
+      mov      cl, 3                ; put exponent (dx) in base 2
+      shl      dx, cl               ; 256^n = 2^(8n)
+
+      ; adjust for negative values
+      and      bl, 10000000b           ; isolate sign bit
+      jz       not_neg_16
+      neg      word ptr value[0]       ; take the negative of the 9 byte number
+      cmc                              ; toggle carry flag
+      not      word ptr value[2]
+      adc      word ptr value[2], 0
+      not      word ptr value[4]
+      adc      word ptr value[4], 0
+      not      word ptr value[6]
+      adc      word ptr value[6], 0
+      not      byte ptr value[8]       ; notice this last one is byte ptr
+      adc      byte ptr value[8], 0
+not_neg_16:
+
+      cmp      byte ptr value[8], 0          ; test for 0
+      jnz      top_shift_16
+      fldz
+      jmp      return
+
+      ; Shift until most signifcant bit is set.
+top_shift_16:
+      test     byte ptr value[8], 10000000b  ; test msb
+      jnz      bottom_shift_16
+      dec      dx                      ; decrement exponent
+      shl      word ptr value[0], 1    ; shift left the 9 byte number
+      rcl      word ptr value[2], 1
+      rcl      word ptr value[4], 1
+      rcl      word ptr value[6], 1
+      rcl      byte ptr value[8], 1    ; notice this last one is byte ptr
+      jmp      top_shift_16
+bottom_shift_16:
+
+      ; round last byte
+      cmp      byte ptr value[0], 80h  ;
+      jb       bottom                  ; no rounding necessary
+      add      word ptr value[1], 1
+      adc      word ptr value[3], 0
+      adc      word ptr value[5], 0
+      adc      word ptr value[7], 0
+      jnc      bottom
+
+      ; to get to here, the pattern was rounded from +FFFF...
+      ; to +10000... with the 1 getting moved to the carry bit
+ENDIF
+
+IFDEF BIG16AND32
+      jmp      rounded_past_end
+ENDIF
+
+IFDEF BIG32
+use_32_bit:
+.386
+      ; clear value
+      mov      dword ptr value[0], 0
+      mov      dword ptr value[4], 0
+      mov      word ptr value[8],  0
+      mov      byte ptr value[10], 0
+
+      ; copy bytes from n to value
+      lea      di, value+9
+      sub      di, cx               ; cx holds movebytes
+      mov      dx, ss               ; move ss to es for movs
+      mov      es, dx               ; ie: move ss:value+9-cx to es:di
+      mov      bx, bflength
+      dec      bx
+      sub      bx, cx               ; cx holds movebytes
+      mov      si, word ptr n
+      mov      ds, bignum_seg       ; move n to ds:si for movs
+      add      si, bx               ; n+bflength-1-movebytes
+      rep movsb
+      mov      bl, ds:[si]          ; save sign byte, si now points to it
+      inc      si                   ; point to exponent
+      mov      dx, ds:[si]          ; use dx as exponent
+      shl      dx, 3                ; 256^n = 2^(8n)
+
+      ; adjust for negative values
+      and      bl, 10000000b           ; determine sign
+      jz       not_neg_32
+      neg      dword ptr value[0]      ; take the negative of the 9 byte number
+      cmc                              ; toggle carry flag
+      not      dword ptr value[4]
+      adc      dword ptr value[4], 0
+      not      byte ptr value[8]       ; notice this last one is byte ptr
+      adc      byte ptr value[8], 0
+not_neg_32:
+
+      cmp      byte ptr value[8], 0          ; test for 0
+      jnz      top_shift_32
+      fldz
+      jmp      return
+
+      ; Shift until most signifcant bit is set.
+top_shift_32:
+      test     byte ptr value[8], 10000000b  ; test msb
+      jnz      bottom_shift_32
+      dec      dx                      ; decrement exponent
+      shl      dword ptr value[0], 1   ; shift left the 9 byte number
+      rcl      dword ptr value[4], 1
+      rcl      byte ptr value[8], 1    ; notice this last one is byte ptr
+      jmp      top_shift_32
+bottom_shift_32:
+
+      ; round last byte
+      cmp      byte ptr value[0], 80h  ;
+      jb       bottom                  ; no rounding necessary
+      add      dword ptr value[1], 1
+      adc      dword ptr value[5], 0
+      jnc      bottom
+
+      ; to get to here, the pattern was rounded from +FFFF...
+      ; to +10000... with the 1 getting moved to the carry bit
+ENDIF
+
+rounded_past_end:
+.8086 ; used in 16 it code as well
+      mov      byte ptr value[8], 10000000b
+      inc      dx                      ; adjust the exponent
+
+bottom:
+      ; adjust exponent
+      add      dx, 3FFFh+7             ; unbiased -> biased, + adjusted
+      or       dh, bl                  ; set sign bit if set
+      mov      word ptr value[9], dx
+
+      ; unlike float and double, long double is returned on fpu stack
+      fld      real10 ptr value[1]    ; load return value
+return:
+      mov      ds, ax                  ; restore ds
+      ret
+
+bftofloat   endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; LDBL floattobf(bf_t n, LDBL f);
+; converts a 10 byte real to a bf number
+;
+floattobf   PROC USES di si, n:bf_t, f:REAL10
+   LOCAL value[9]:BYTE   ; 9=8+1
+; I figured out a way to do this with no local variables,
+; but it's not worth the extra overhead.
+
+      invoke   clear_bf, n
+
+      ; check to see if f is 0
+      cmp      byte ptr f[7], 0        ; f[7] can only be 0 if f is 0
+      jz       return                  ; if f is 0, bailout now
+
+      mov      cx, 9                   ; need up to 9 bytes
+      cmp      bflength, 10            ; but no more than bflength-1
+      jae      movebytes_set
+      mov      cx, bflength            ; bflength is less than 10
+      dec      cx                      ; movebytes = bflength-1, 1 byte padding
+movebytes_set:
+
+IFDEF BIG16AND32
+      cmp     cpu, 386              ; check cpu
+      je      use_32_bit            ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+; 16 bit code
+      ; copy bytes from f's mantissa to value
+      mov      byte ptr value[0], 0    ; clear least sig byte
+      mov      ax, word ptr f[0]
+      mov      word ptr value[1], ax
+      mov      ax, word ptr f[2]
+      mov      word ptr value[3], ax
+      mov      ax, word ptr f[4]
+      mov      word ptr value[5], ax
+      mov      ax, word ptr f[6]
+      mov      word ptr value[7], ax
+
+      ; get exponent in dx
+      mov      dx, word ptr f[8]       ; location of exponent
+      and      dx, 7FFFh               ; remove sign bit
+      sub      dx, 3FFFh+7             ; biased -> unbiased, + adjust
+
+      ; Shift down until exponent is a mult of 8 (2^8n=256n)
+top_shift_16:
+      test     dx, 111b                ; expon mod 8
+      jz       bottom
+      inc      dx                      ; increment exponent
+      shr      word ptr value[7], 1    ; shift right the 9 byte number
+      rcr      word ptr value[5], 1
+      rcr      word ptr value[3], 1
+      rcr      word ptr value[1], 1
+      rcr      byte ptr value[0], 1    ; notice this last one is byte ptr
+      jmp      top_shift_16
+ENDIF
+
+IFDEF BIG32
+use_32_bit:
+.386
+      ; copy bytes from f's mantissa to value
+      mov      byte ptr value[0], 0    ; clear least sig byte
+      mov      eax, dword ptr f[0]
+      mov      dword ptr value[1], eax
+      mov      eax, dword ptr f[4]
+      mov      dword ptr value[5], eax
+
+      ; get exponent in dx
+      mov      dx, word ptr f[8]       ; location of exponent
+      and      dx, 7FFFh               ; remove sign bit
+      sub      dx, 3FFFh+7             ; biased -> unbiased, + adjust
+
+      ; Shift down until exponent is a mult of 8 (2^8n=256n)
+top_shift_32:
+      test     dx, 111b                ; expon mod 8
+      jz       bottom
+      inc      dx                      ; increment exponent
+      shr      dword ptr value[5], 1   ; shift right the 9 byte number
+      rcr      dword ptr value[1], 1
+      rcr      byte ptr value[0], 1    ; notice this last one is byte ptr
+      jmp      top_shift_32
+ENDIF
+
+bottom:
+.8086
+      ; Don't bother rounding last byte as it would only make a difference
+      ; when bflength < 9, and then only on the last bit.
+
+      ; move data into place, from value to n
+      lea      si, value+9
+      sub      si, cx               ; cx holds movebytes
+      mov      ax, ds               ; save ds
+      mov      bx, ss               ; copy ss to ds for movs
+      mov      ds, bx               ; ds:si
+      mov      di, word ptr n
+      mov      es, bignum_seg       ; move n to es:di for movs
+      add      di, bflength
+      dec      di
+      sub      di, cx               ; cx holds movebytes
+      rep movsb
+      inc      di
+      mov      cl, 3
+      sar      dx, cl               ; divide expon by 8, 256^n=2^8n
+      mov      word ptr es:[di], dx ; store exponent
+      mov      ds, ax               ; restore ds
+
+      ; get sign
+      test     byte ptr f[9], 10000000b           ; test sign bit
+      jz       not_negative
+      invoke   neg_a_bf, n
+not_negative:
+return:
+      mov      ax, word ptr n
+      mov      dx, word ptr n+2        ; return r in dx:ax
+      ret
+floattobf   endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; LDBL bntofloat(bf_t n);
+; converts a bn number to a 10 byte real
+; (the most speed critical of these to/from float routines)
+bntofloat   PROC USES di si, n:bn_t
+   LOCAL value[11]:BYTE   ; 11=10+1
+
+      ; determine the most significant byte, not 0 or FF
+      mov      si, word ptr n
+      mov      es, bignum_seg
+      dec      si
+      add      si, bnlength            ; n+bnlength-1
+      mov      bl, es:[si]             ; top byte
+      mov      cx, bnlength            ; initialize cx with full bnlength
+      cmp      bl, 0                   ; test top byte against 0
+      je       determine_sig_bytes
+      cmp      bl, 0FFh                ; test top byte against -1
+      jne      sig_bytes_determined
+
+determine_sig_bytes:
+      dec      cx                      ; now bnlength-1
+top_sig_byte:
+      dec      si                      ; previous byte
+      cmp      es:[si], bl             ; does it have the right stuff?
+      jne      sig_bytes_determined    ; (ie: does it match top byte?)
+      loop     top_sig_byte            ; decrement cx and repeat
+
+; At this point, it must be 0 with no sig figs at all
+; or -1/(256^bnlength), one bit away from being zero.
+      cmp      bl, 0                   ; was it zero?
+      jnz      not_zero                ; no, it was a very small negative
+                                       ; yes
+      fldz                             ; return zero
+      jmp      return
+not_zero:
+      mov      ax, intlength
+      sub      ax, bnlength
+      mov      cl, 3
+      shl      ax, cl                  ; 256^n=2^8n, now more like movebits
+      add      ax, 3FFFh+0             ; bias, no adjustment necessary
+      or       ah, 10000000b           ; turn on sign flag
+      mov      word ptr value[9], ax   ; store exponent
+      mov      word ptr value[7], 8000h ; store mantissa of 1 in most sig bit
+      ; clear rest of value that is actually used
+      mov      word ptr value[1], 0
+      mov      word ptr value[3], 0
+      mov      word ptr value[5], 0
+
+      fld      real10 ptr value[1]
+      jmp      return
+
+sig_bytes_determined:
+      mov      dx, cx               ; save in dx for later
+      cmp      cx, 9-1              ; no more than cx bytes
+      jb       set_movebytes
+      mov      cx, 9-1              ; up to 8 bytes
+set_movebytes:                      ; cx now holds movebytes
+                                    ; si still points to most non-0 sig byte
+      sub      si, cx               ; si now points to first byte to be moved
+      inc      cx                   ; can be up to 9
+
+IFDEF BIG16AND32
+      cmp     cpu, 386              ; check cpu
+      je      use_32_bit            ; use faster 32 bit code if possible
+ENDIF
+
+IFDEF BIG16
+; 16 bit code
+      ; clear value
+      mov      word ptr value[0], 0
+      mov      word ptr value[2], 0
+      mov      word ptr value[4], 0
+      mov      word ptr value[6], 0
+      mov      word ptr value[8], 0
+      mov      byte ptr value[10], 0
+
+      ; copy bytes from n to value  ; es:si still holds first move byte of n
+      lea      di, value+9
+      sub      di, cx               ; cx holds movebytes
+      mov      ax, ss               ; move ss to es
+      mov      es, ax               ; value[9] is in es:di
+      mov      ax, ds               ; save ds
+      mov      ds, bignum_seg       ; first move byte of n is now in ds:si
+      rep movsb
+      mov      ds, ax               ; restore ds
+
+      ; adjust for negative values
+      xor      ax, ax                  ; use ax as a flag
+      ; get sign flag                  ; top byte is still in bl
+      and      bl, 10000000b           ; isolate the sign bit
+      jz       not_neg_16
+      neg      word ptr value[0]       ; take the negative of the 9 byte number
+      cmc                              ; toggle carry flag
+      not      word ptr value[2]
+      adc      word ptr value[2], 0
+      not      word ptr value[4]
+      adc      word ptr value[4], 0
+      not      word ptr value[6]
+      adc      word ptr value[6], 0
+      not      byte ptr value[8]       ; notice this last one is byte ptr
+      adc      byte ptr value[8], 0
+      jnc      not_neg_16              ; normal
+      mov      byte ptr value[8], 10000000b    ;n was FFFF...0000...
+      inc      ax                      ; set ax to 1 to flag this special case
+
+not_neg_16:
+      sub      dx, bnlength            ; adjust exponent
+      add      dx, intlength           ; adjust exponent
+      mov      cl, 3
+      shl      dx, cl                  ; 256^n=2^8n
+      add      dx, ax                  ; see special case above
+      ; Shift until most signifcant bit is set.
+top_shift_16:
+      test     byte ptr value[8], 10000000b  ; test msb
+      jnz      bottom
+      dec      dx                      ; decrement exponent
+      shl      word ptr value[0], 1    ; shift left the 9 byte number
+      rcl      word ptr value[2], 1
+      rcl      word ptr value[4], 1
+      rcl      word ptr value[6], 1
+      rcl      byte ptr value[8], 1    ; notice this last one is byte ptr
+      jmp      top_shift_16
+
+; don't bother rounding, not really needed while speed is.
+ENDIF
+
+IFDEF BIG32
+use_32_bit:
+.386
+      ; clear value
+      mov      dword ptr value[0], 0
+      mov      dword ptr value[4], 0
+      mov      word ptr value[8],  0
+      mov      byte ptr value[10], 0
+
+      ; copy bytes from n to value  ; es:si still holds first move byte of n
+      lea      di, value+9
+      sub      di, cx               ; cx holds movebytes
+      mov      ax, ss               ; move ss to es
+      mov      es, ax               ; value[9] is in es:di
+      mov      ax, ds               ; save ds
+      mov      ds, bignum_seg       ; first move byte of n is now in ds:si
+      rep movsb
+      mov      ds, ax               ; restore ds
+
+      ; adjust for negative values
+      xor      ax, ax                  ; use ax as a flag
+      ; get sign flag                  ; top byte is still in bl
+      and      bl, 10000000b           ; determine sign
+      jz       not_neg_32
+      neg      dword ptr value[0]      ; take the negative of the 9 byte number
+      cmc                              ; toggle carry flag
+      not      dword ptr value[4]
+      adc      dword ptr value[4], 0
+      not      byte ptr value[8]       ; notice this last one is byte ptr
+      adc      byte ptr value[8], 0
+      jnc      not_neg_32              ; normal
+      mov      byte ptr value[8], 10000000b    ;n was FFFF...0000...
+      inc      ax                      ; set ax to 1 to flag this special case
+
+not_neg_32:
+      sub      dx, bnlength            ; adjust exponent
+      add      dx, intlength           ; adjust exponent
+      shl      dx, 3                   ; 256^n=2^8n
+      add      dx, ax                  ; see special case above
+      ; Shift until most signifcant bit is set.
+top_shift_32:
+      test     byte ptr value[8], 10000000b  ; test msb
+      jnz      bottom
+      dec      dx                      ; decrement exponent
+      shl      dword ptr value[0], 1   ; shift left the 9 byte number
+      rcl      dword ptr value[4], 1
+      rcl      byte ptr value[8], 1    ; notice this last one is byte ptr
+      jmp      top_shift_32
+
+; don't bother rounding, not really needed while speed is.
+ENDIF
+
+bottom:
+.8086
+      ; adjust exponent
+      add      dx, 3FFFh+7-8           ; unbiased -> biased, + adjusted
+      or       dh, bl                  ; set sign bit if set
+      mov      word ptr value[9], dx
+
+      ; unlike float and double, long double is returned on fpu stack
+      fld      real10 ptr value[1]    ; load return value
+return:
+      ret
+
+bntofloat   endp
+
+;
+; LDBL floattobn(bf_t n, LDBL f) is in BIGNUM.C
+;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; These last two functions do not use bignum type numbers, but take
+; long doubles as arguments.  These routines are called by the C code.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; LDBL extract_256(LDBL f, int *exp_ptr)
+;
+; extracts the mantissa and exponant of f
+; finds m and n such that 1<=|m|<256 and f = m*256^n
+; n is stored in *exp_ptr and m is returned, sort of like frexp()
+
+extract_256   PROC f:real10, exp_ptr: ptr sword
+local  expon:sword, exf:real10, tmp_word:word
+
+        fld     f               ; f
+        ftst                    ; test for zero
+        fstsw   tmp_word
+        fwait
+        mov     ax,tmp_word
+        sahf
+        jnz     not_zero        ; proceed
+
+        mov     bx, exp_ptr
+        mov     word ptr [bx], 0    ; save = in *exp_ptr
+        jmp     bottom          ; f, which is zero, is already on stack
+
+not_zero:
+
+; since a key fpu operation, fxtract, is not emulated by the MS floating
+; point library, separate code is included under use_emul:
+        cmp     fpu, 0
+        je      use_emul
+
+                                ; f is already on stack
+        fxtract                 ; mant exp, where f=mant*2^exp
+        fxch                    ; exp mant
+        fistp   expon           ; mant
+        fwait
+        mov     ax, expon
+        mov     dx, ax          ; make copy for later use
+
+        cmp     ax, 0           ;
+        jge     pos_exp         ; jump if exp >= 0
+
+                                ; exp is neg, adjust exp
+        add     ax, 8           ; exp+8
+
+pos_exp:
+; adjust mantissa
+        and     ax, 7           ; ax mod 8
+        jz      adjust_exponent ; don't bother with zero adjustments
+        mov     expon, ax       ; use expon as a temp var
+        fild    expon           ; exp mant
+
+        fxch                    ; mant exp
+        fscale                  ; mant*2^exp exp
+        fstp    st(1)           ; mant*2^exp (store in 1 and pop)
+
+adjust_exponent:
+        mov     cl, 3
+        sar     dx, cl          ; exp / 8
+        mov     bx, exp_ptr
+        mov     [bx], dx        ; save in *exp_ptr
+
+        fwait
+        jmp     bottom
+
+
+use_emul:
+; emulate above code by direct manipulation of 80 bit floating point format
+                                    ; f is already on stack
+        fstp    exf
+
+        mov     ax, word ptr exf+8  ; get word with the exponent in it
+        mov     dx, ax              ; make copy for later use
+
+        and     dx, 8000h           ; keep just the sign bit
+        or      dx, 3FFFh           ; 1<=f<2
+
+        and     ax, 7FFFh           ; throw away the sign bit
+        sub     ax, 3FFFh           ; unbiased -> biased
+        mov     bx, ax
+        cmp     bx, 0
+        jge     pos_exp_emul
+        add     bx, 8               ; adjust negative exponent
+pos_exp_emul:
+        and     bx, 7               ; bx mod 8
+        add     dx, bx
+        mov     word ptr exf+8, dx  ; put back word with the exponent in it
+
+        mov     cl, 3
+        sar     ax, cl              ; div by 8,  2^(8n) = 256^n
+        mov     bx, exp_ptr
+        mov     [bx], ax            ; save in *exp_ptr
+
+        fld     exf                 ; for return value
+
+bottom:
+        ; unlike float and double, long double is returned on fpu stack
+        ret
+extract_256   ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; LDBL scale_256( LDBL f, int n );
+; calculates and returns the value of f*256^n
+; sort of like ldexp()
+;
+; n must be in the range -2^12 <= n < 2^12 (2^12=4096),
+; which should not be a problem
+
+scale_256   PROC f:real10, n: sword
+
+        cmp     n, 0
+        jne     non_zero
+        fld     f
+        jmp     bottom          ; don't bother with scales of zero
+
+non_zero:
+        mov     cl, 3
+        shl     n, cl           ; 8n
+        fild    n               ; 8n
+        fld     f               ; f 8n
+; the fscale range limits for 8087/287 processors won't be a problem here
+        fscale                  ; new_f=f*2^(8n)=f*256^n  8n
+        fstp    st(1)           ; new_f
+
+bottom:
+        ; unlike float and double, long double is returned on fpu stack
+        ret
+scale_256   ENDP
 
 END

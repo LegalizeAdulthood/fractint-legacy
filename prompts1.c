@@ -1,5 +1,5 @@
 /*
-	Various routines that prompt for things.
+        Various routines that prompt for things.
 */
 
 #include <stdlib.h>
@@ -31,32 +31,32 @@
 
 /* Routines used in prompts2.c */
 
-	int prompt_checkkey(int curkey);
-	long get_file_entry(int,char *,char *,char *,char *);
+        int prompt_checkkey(int curkey);
+        long get_file_entry(int,char *,char *,char *,char *);
 
-/* Routines in this module	*/
+/* Routines in this module      */
 
 int prompt_valuestring(char *buf,struct fullscreenvalues *val);
-static	int input_field_list(int attr,char *fld,int vlen,char **list,int llen,
-			     int row,int col,int (*checkkey)(int));
-static	int select_fracttype(int t);
-static	int sel_fractype_help(int curkey, int choice);
-	int select_type_params(int newfractype,int oldfractype);
-      	void set_default_parms(void);
-static	long gfe_choose_entry(int,char *,char *,char *);
-static	int check_gfe_key(int curkey,int choice);
-static	void load_entry_text(FILE *entfile,char far *buf,int maxlines);
-static	void format_parmfile_line(int,char *);
-static	int get_light_params(void );
-static	int check_mapfile(void );
-static	int get_funny_glasses_params(void );
+static  int input_field_list(int attr,char *fld,int vlen,char **list,int llen,
+                             int row,int col,int (*checkkey)(int));
+static  int select_fracttype(int t);
+static  int sel_fractype_help(int curkey, int choice);
+        int select_type_params(int newfractype,int oldfractype);
+        void set_default_parms(void);
+static  long gfe_choose_entry(int,char *,char *,char *);
+static  int check_gfe_key(int curkey,int choice);
+static  void load_entry_text(FILE *entfile,char far *buf,int maxlines);
+static  void format_parmfile_line(int,char *);
+static  int get_light_params(void );
+static  int check_mapfile(void );
+static  int get_funny_glasses_params(void );
 
 /* fullscreen_choice options */
-#define CHOICEHELP	4
+#define CHOICEHELP      4
 
 #define GETFORMULA 0
 #define GETLSYS    1
-#define GETIFS	   2
+#define GETIFS     2
 #define GETPARM    3
 
 static char funnyglasses_map_name[16];
@@ -72,14 +72,14 @@ int julibrot;   /* flag for julibrot */
 
 int promptfkeys;
 
-int fullscreen_prompt(	/* full-screen prompting routine */
-	char far *hdg,		/* heading, lines separated by \n */
-	int numprompts, 	/* there are this many prompts (max) */
-	char far **prompts,     /* array of prompting pointers */
-	struct fullscreenvalues *values, /* array of values */
-	int fkeymask,		/* bit n on if Fn to cause return */
-	char far *extrainfo	/* extra info box to display, \n separated */
-	)
+int fullscreen_prompt(  /* full-screen prompting routine */
+        char far *hdg,          /* heading, lines separated by \n */
+        int numprompts,         /* there are this many prompts (max) */
+        char far **prompts,     /* array of prompting pointers */
+        struct fullscreenvalues *values, /* array of values */
+        int fkeymask,           /* bit n on if Fn to cause return */
+        char far *extrainfo     /* extra info box to display, \n separated */
+        )
 {
    char far *hdgscan;
    int titlelines,titlewidth,titlerow;
@@ -109,54 +109,54 @@ static FCODE instr3a[] = {"Press ENTER when finished (or ESCAPE to back out)"};
 static FCODE instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or F1 for help"};
 static FCODE instr0a[] = {"No changeable parameters; press ENTER to exit"};
 static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE to back out, F1 for help"};
-/*   if (numprompts <= 0) { */	/* ?? nothing to do! */
+/*   if (numprompts <= 0) { */  /* ?? nothing to do! */
 /*      return(0); */
 /*      } */
    savelookatmouse = lookatmouse;
    lookatmouse = 0;
    promptfkeys = fkeymask;
-   helptitle(); 		       /* clear screen, display title line  */
+   helptitle();                        /* clear screen, display title line  */
    setattr(1,0,C_PROMPT_BKGRD,24*80);  /* init rest of screen to background */
 
-   hdgscan = hdg;		       /* count title lines, find widest */
+   hdgscan = hdg;                      /* count title lines, find widest */
    i = titlewidth = 0;
    titlelines = 1;
    while (*hdgscan) {
       if (*(hdgscan++) == '\n') {
-	 ++titlelines;
-	 i = -1;
-	 }
+         ++titlelines;
+         i = -1;
+         }
       if (++i > titlewidth)
-	 titlewidth = i;
+         titlewidth = i;
       }
    extralines = extrawidth = i = 0;
    if ((hdgscan = extrainfo) != 0)
       if (*hdgscan == 0)
-	 extrainfo = NULL;
+         extrainfo = NULL;
       else { /* count extra lines, find widest */
-	 extralines = 3;
-	 while (*hdgscan) {
-	    if (*(hdgscan++) == '\n') {
-	       if (extralines + numprompts + titlelines >= 20) {
-		   *hdgscan = 0; /* full screen, cut off here */
-		   break;
-		   }
-	       ++extralines;
-	       i = -1;
-	       }
-	    if (++i > extrawidth)
-	       extrawidth = i;
-	    }
-	 }
+         extralines = 3;
+         while (*hdgscan) {
+            if (*(hdgscan++) == '\n') {
+               if (extralines + numprompts + titlelines >= 20) {
+                   *hdgscan = 0; /* full screen, cut off here */
+                   break;
+                   }
+               ++extralines;
+               i = -1;
+               }
+            if (++i > extrawidth)
+               extrawidth = i;
+            }
+         }
 
    /* work out vertical positioning */
    i = numprompts + titlelines + extralines + 3; /* total rows required */
-   j = (25 - i) / 2;		       /* top row of it all when centered */
-   j -= j / 4;			       /* higher is better if lots extra */
+   j = (25 - i) / 2;                   /* top row of it all when centered */
+   j -= j / 4;                         /* higher is better if lots extra */
    boxlines = numprompts;
    titlerow = 1 + j;
    promptrow = boxrow = titlerow + titlelines;
-   if (titlerow > 2) {		       /* room for blank between title & box? */
+   if (titlerow > 2) {                 /* room for blank between title & box? */
       --titlerow;
       --boxrow;
       ++boxlines;
@@ -166,7 +166,7 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
       ++boxlines;    /* blank at bottom of box */
       ++instrrow;
       if (instrrow + 3 + extralines < 25)
-	 ++instrrow; /* blank before instructions */
+         ++instrrow; /* blank before instructions */
       }
    extrarow = instrrow + 2;
    if (numprompts > 1) /* 3 instructions lines */
@@ -178,22 +178,22 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
    maxfldwidth = maxpromptwidth = maxcomment = anyinput = 0;
    for (i = 0; i < numprompts; i++) {
       if (values[i].type == 'y') {
-	 static char *noyes[2] = {s_no,s_yes};
-	 values[i].type = 'l';
-	 values[i].uval.ch.vlen = 3;
-	 values[i].uval.ch.list = noyes;
-	 values[i].uval.ch.llen = 2;
-	 }
+         static char *noyes[2] = {s_no,s_yes};
+         values[i].type = 'l';
+         values[i].uval.ch.vlen = 3;
+         values[i].uval.ch.list = noyes;
+         values[i].uval.ch.llen = 2;
+         }
       j = far_strlen(prompts[i]);
       if (values[i].type == '*') {
-	 if (j > maxcomment)	 maxcomment = j;
-	 }
+         if (j > maxcomment)     maxcomment = j;
+         }
       else {
          anyinput = 1;
-	 if (j > maxpromptwidth) maxpromptwidth = j;
-	 j = prompt_valuestring(buf,&values[i]);
-	 if (j > maxfldwidth)	 maxfldwidth = j;
-	 }
+         if (j > maxpromptwidth) maxpromptwidth = j;
+         j = prompt_valuestring(buf,&values[i]);
+         if (j > maxfldwidth)    maxfldwidth = j;
+         }
       }
    boxwidth = maxpromptwidth + maxfldwidth + 2;
    if (maxcomment > boxwidth) boxwidth = maxcomment;
@@ -201,7 +201,7 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
    boxcol = (80 - boxwidth) / 2;       /* center the box */
    promptcol = boxcol + 2;
    valuecol = boxcol + boxwidth - maxfldwidth - 2;
-   if (boxwidth <= 76) {	       /* make margin a bit wider if we can */
+   if (boxwidth <= 76) {               /* make margin a bit wider if we can */
       boxwidth += 2;
       --boxcol;
       }
@@ -209,7 +209,7 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
       j = extrawidth;
    if ((i = j + 4 - boxwidth) > 0) {   /* expand box for title/extra */
       if (boxwidth + i > 80)
-	 i = 80 - boxwidth;
+         i = 80 - boxwidth;
       boxwidth += i;
       boxcol -= i / 2;
       }
@@ -255,7 +255,7 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
       for (i = 1; i < extralines-1; ++i) {
          putstring(extrarow+i,0,C_PROMPT_BKGRD,S4);
          putstring(extrarow+i,boxwidth-1,C_PROMPT_BKGRD,S4);
-	 }
+         }
       textcbase += (boxwidth - extrawidth) / 2;
       putstring(extrarow+1,0,C_PROMPT_TEXT,extrainfo);
       }
@@ -305,7 +305,7 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
    if (numprompts > 1)
       putstringcenter(instrrow++,0,80,C_PROMPT_BKGRD,instr1);
    putstringcenter(instrrow+1,0,80,C_PROMPT_BKGRD,
-	 (helpmode > 0) ? instr3b : instr3a);
+         (helpmode > 0) ? instr3b : instr3a);
 
    curchoice = done = 0;
    while (values[curchoice].type == '*') ++curchoice;
@@ -315,49 +315,49 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
       curtype = values[curchoice].type;
       curlen = prompt_valuestring(buf,&values[curchoice]);
       putstringcenter(instrrow,0,80,C_PROMPT_BKGRD,
-		      (curtype == 'l') ? instr2b : instr2a);
+                      (curtype == 'l') ? instr2b : instr2a);
       putstring(promptrow+curchoice,promptcol,C_PROMPT_HI,prompts[curchoice]);
 
       if (curtype == 'l') {
-	 i = input_field_list(
-		C_PROMPT_CHOOSE, buf, curlen,
-		values[curchoice].uval.ch.list, values[curchoice].uval.ch.llen,
-		promptrow+curchoice,valuecol, prompt_checkkey);
-	 for (j = 0; j < values[curchoice].uval.ch.llen; ++j)
-	    if (strcmp(buf,values[curchoice].uval.ch.list[j]) == 0) break;
-	 values[curchoice].uval.ch.val = j;
-	 }
+         i = input_field_list(
+                C_PROMPT_CHOOSE, buf, curlen,
+                values[curchoice].uval.ch.list, values[curchoice].uval.ch.llen,
+                promptrow+curchoice,valuecol, prompt_checkkey);
+         for (j = 0; j < values[curchoice].uval.ch.llen; ++j)
+            if (strcmp(buf,values[curchoice].uval.ch.list[j]) == 0) break;
+         values[curchoice].uval.ch.val = j;
+         }
       else {
-	 j = 0;
-	 if (curtype == 'i') j = 3;
-	 if (curtype == 'L') j = 3;
-	 if (curtype == 'd') j = 5;
-	 if (curtype == 'D') j = 7;
-	 if (curtype == 'f') j = 1;
-	 i = input_field(j, C_PROMPT_INPUT, buf, curlen,
-		promptrow+curchoice,valuecol,prompt_checkkey);
-	 switch (values[curchoice].type) {
-	    case 'd':
-	    case 'D':
-	       values[curchoice].uval.dval = atof(buf);
-	       break;
-	    case 'f':
-	       values[curchoice].uval.dval = atof(buf);
-	       roundfloatd(&values[curchoice].uval.dval);
-	       break;
-	    case 'i':
-	       values[curchoice].uval.ival = atoi(buf);
-	       break;
-	    case 'L':
-	       values[curchoice].uval.Lval = atol(buf);
-	       break;
-	    case 's':
-	       strncpy(values[curchoice].uval.sval,buf,16);
-	       break;
-	    default: /* assume 0x100+n */
-	       far_strcpy(values[curchoice].uval.sbuf,buf);
-	    }
-	 }
+         j = 0;
+         if (curtype == 'i') j = 3;
+         if (curtype == 'L') j = 3;
+         if (curtype == 'd') j = 5;
+         if (curtype == 'D') j = 7;
+         if (curtype == 'f') j = 1;
+         i = input_field(j, C_PROMPT_INPUT, buf, curlen,
+                promptrow+curchoice,valuecol,prompt_checkkey);
+         switch (values[curchoice].type) {
+            case 'd':
+            case 'D':
+               values[curchoice].uval.dval = atof(buf);
+               break;
+            case 'f':
+               values[curchoice].uval.dval = atof(buf);
+               roundfloatd(&values[curchoice].uval.dval);
+               break;
+            case 'i':
+               values[curchoice].uval.ival = atoi(buf);
+               break;
+            case 'L':
+               values[curchoice].uval.Lval = atol(buf);
+               break;
+            case 's':
+               strncpy(values[curchoice].uval.sval,buf,16);
+               break;
+            default: /* assume 0x100+n */
+               far_strcpy(values[curchoice].uval.sbuf,buf);
+            }
+         }
 
       putstring(promptrow+curchoice,promptcol,C_PROMPT_LO,prompts[curchoice]);
       j = strlen(buf);
@@ -365,38 +365,38 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
       putstring(promptrow+curchoice, valuecol, C_PROMPT_LO,  buf);
 
       switch(i) {
-	 case 0:  /* enter  */
-	    done = 13;
-	    break;
-	 case -1: /* escape */
-	 case F2:
-	 case F3:
-	 case F4:
-	 case F5:
-	 case F6:
-	 case F7:
-	 case F8:
-	 case F9:
-	 case F10:
-	    done = i;
-	    break;
-	 case PAGE_UP:
-	    curchoice = -1;
-	 case DOWN_ARROW:
-	 case DOWN_ARROW_2:
-	    do {
-	       if (++curchoice >= numprompts) curchoice = 0;
-	       } while (values[curchoice].type == '*');
-	    break;
-	 case PAGE_DOWN:
-	    curchoice = numprompts;
-	 case UP_ARROW:
-	 case UP_ARROW_2:
-	    do {
-	       if (--curchoice < 0) curchoice = numprompts - 1;
-	       } while (values[curchoice].type == '*');
-	    break;
-	 }
+         case 0:  /* enter  */
+            done = 13;
+            break;
+         case -1: /* escape */
+         case F2:
+         case F3:
+         case F4:
+         case F5:
+         case F6:
+         case F7:
+         case F8:
+         case F9:
+         case F10:
+            done = i;
+            break;
+         case PAGE_UP:
+            curchoice = -1;
+         case DOWN_ARROW:
+         case DOWN_ARROW_2:
+            do {
+               if (++curchoice >= numprompts) curchoice = 0;
+               } while (values[curchoice].type == '*');
+            break;
+         case PAGE_DOWN:
+            curchoice = numprompts;
+         case UP_ARROW:
+         case UP_ARROW_2:
+            do {
+               if (--curchoice < 0) curchoice = numprompts - 1;
+               } while (values[curchoice].type == '*');
+            break;
+         }
       }
 
 fullscreen_exit:
@@ -410,50 +410,50 @@ int prompt_valuestring(char *buf,struct fullscreenvalues *val)
    int i,ret;
    switch (val->type) {
       case 'd':
-	 ret = 20;
-	 i = 16;    /* cellular needs 16 (was 15)*/
-	 for(;;) {
-	    sprintf(buf,"%.*g",i,val->uval.dval);
-	    if ((int)strlen(buf) <= ret) break;
-	    --i;
-	    }
-	 break;
+         ret = 20;
+         i = 16;    /* cellular needs 16 (was 15)*/
+         for(;;) {
+            sprintf(buf,"%.*g",i,val->uval.dval);
+            if ((int)strlen(buf) <= ret) break;
+            --i;
+            }
+         break;
       case 'D':
-	 if (val->uval.dval<0) { /* We have to round the right way */
-	     sprintf(buf,"%ld",(long)(val->uval.dval-.5));
-	 }
-	 else {
-	     sprintf(buf,"%ld",(long)(val->uval.dval+.5));
-	 }
-	 ret = 20;
-	 break;
+         if (val->uval.dval<0) { /* We have to round the right way */
+             sprintf(buf,"%ld",(long)(val->uval.dval-.5));
+         }
+         else {
+             sprintf(buf,"%ld",(long)(val->uval.dval+.5));
+         }
+         ret = 20;
+         break;
       case 'f':
-	 sprintf(buf,"%.7g",val->uval.dval);
-	 ret = 14;
-	 break;
+         sprintf(buf,"%.7g",val->uval.dval);
+         ret = 14;
+         break;
       case 'i':
-	 sprintf(buf,"%d",val->uval.ival);
-	 ret = 6;
-	 break;
+         sprintf(buf,"%d",val->uval.ival);
+         ret = 6;
+         break;
       case 'L':
-	 sprintf(buf,"%ld",val->uval.Lval);
-	 ret = 10;
-	 break;
+         sprintf(buf,"%ld",val->uval.Lval);
+         ret = 10;
+         break;
       case '*':
-	 *buf = (char)(ret = 0);
-	 break;
+         *buf = (char)(ret = 0);
+         break;
       case 's':
-	 strncpy(buf,val->uval.sval,16);
-	 buf[15] = 0;
-	 ret = 15;
-	 break;
+         strncpy(buf,val->uval.sval,16);
+         buf[15] = 0;
+         ret = 15;
+         break;
       case 'l':
-	 strcpy(buf,val->uval.ch.list[val->uval.ch.val]);
-	 ret = val->uval.ch.vlen;
-	 break;
+         strcpy(buf,val->uval.ch.list[val->uval.ch.val]);
+         ret = val->uval.ch.vlen;
+         break;
       default: /* assume 0x100+n */
-	 far_strcpy(buf,val->uval.sbuf);
-	 ret = val->type & 0xff;
+         far_strcpy(buf,val->uval.sbuf);
+         ret = val->type & 0xff;
       }
    return ret;
 }
@@ -467,7 +467,7 @@ int prompt_checkkey(int curkey)
       case PAGE_DOWN:
       case UP_ARROW:
       case UP_ARROW_2:
-	 return(curkey);
+         return(curkey);
       case F2:
       case F3:
       case F4:
@@ -477,22 +477,22 @@ int prompt_checkkey(int curkey)
       case F8:
       case F9:
       case F10:
-	 if (promptfkeys & (1<<(curkey+1-F1)) )
-	    return(curkey);
+         if (promptfkeys & (1<<(curkey+1-F1)) )
+            return(curkey);
       }
    return(0);
 }
 
 static int input_field_list(
-	int attr,	      /* display attribute */
-	char *fld,	      /* display form field value */
-	int vlen,	      /* field length */
-	char **list,	      /* list of values */
-	int llen,	      /* number of entries in list */
-	int row,	      /* display row */
-	int col,	      /* display column */
-	int (*checkkey)(int)  /* routine to check non data keys, or NULL */
-	)
+        int attr,             /* display attribute */
+        char *fld,            /* display form field value */
+        int vlen,             /* field length */
+        char **list,          /* list of values */
+        int llen,             /* number of entries in list */
+        int row,              /* display row */
+        int col,              /* display column */
+        int (*checkkey)(int)  /* routine to check non data keys, or NULL */
+        )
 {
    int initval,curval;
    char buf[81];
@@ -510,46 +510,46 @@ static int input_field_list(
       strcpy(buf,list[curval]);
       i = strlen(buf);
       while (i < vlen)
-	 buf[i++] = ' ';
+         buf[i++] = ' ';
       buf[vlen] = 0;
       putstring(row,col,attr,buf);
       curkey = keycursor(row,col); /* get a keystroke */
       switch (curkey) {
-	 case ENTER:
-	 case ENTER_2:
-	    ret = 0;
-	    goto inpfldl_end;
-	 case ESC:
-	    goto inpfldl_end;
-	 case RIGHT_ARROW:
-	 case RIGHT_ARROW_2:
-	    if (++curval >= llen)
-	       curval = 0;
-	    break;
-	 case LEFT_ARROW:
-	 case LEFT_ARROW_2:
-	    if (--curval < 0)
-	       curval = llen - 1;
-	    break;
-	 case F5:
-	    curval = initval;
-	    break;
-	 default:
+         case ENTER:
+         case ENTER_2:
+            ret = 0;
+            goto inpfldl_end;
+         case ESC:
+            goto inpfldl_end;
+         case RIGHT_ARROW:
+         case RIGHT_ARROW_2:
+            if (++curval >= llen)
+               curval = 0;
+            break;
+         case LEFT_ARROW:
+         case LEFT_ARROW_2:
+            if (--curval < 0)
+               curval = llen - 1;
+            break;
+         case F5:
+            curval = initval;
+            break;
+         default:
             if (nonalpha(curkey)) {
-	       if (checkkey && (ret = (*checkkey)(curkey)) != 0)
-		  goto inpfldl_end;
-	       break;				     /* non alphanum char */
-	       }
-	    j = curval;
-	    for (i = 0; i < llen; ++i) {
-	       if (++j >= llen)
-		  j = 0;
-	       if ((*list[j] & 0xdf) == (curkey & 0xdf)) {
-		  curval = j;
-		  break;
-		  }
-	       }
-	 }
+               if (checkkey && (ret = (*checkkey)(curkey)) != 0)
+                  goto inpfldl_end;
+               break;                                /* non alphanum char */
+               }
+            j = curval;
+            for (i = 0; i < llen; ++i) {
+               if (++j >= llen)
+                  j = 0;
+               if ((*list[j] & 0xdf) == (curkey & 0xdf)) {
+                  curval = j;
+                  break;
+                  }
+               }
+         }
       }
 inpfldl_end:
    strcpy(fld,list[curval]);
@@ -567,7 +567,7 @@ inpfldl_end:
 static int compare(const VOIDPTR i, const VOIDPTR j)
 {
    return(strcmp(fractalspecific[(int)*((BYTE*)i)].name,
-	       fractalspecific[(int)*((BYTE*)j)].name));
+               fractalspecific[(int)*((BYTE*)j)].name));
 }
 
 /* --------------------------------------------------------------------- */
@@ -583,20 +583,20 @@ static void clear_line(int row, int start, int stop, int color) /* clear part of
 
 /* --------------------------------------------------------------------- */
 
-int get_fracttype()		/* prompt for and select fractal type */
+int get_fracttype()             /* prompt for and select fractal type */
 {
    int done,i,oldfractype,t;
    done = -1;
    oldfractype = fractype;
    for(;;) {
       if ((t = select_fracttype(fractype)) < 0)
-	 break;
+         break;
       if ((i = select_type_params(t, fractype)) == 0) { /* ok, all done */
-	 done = 0;
-	 break;
-	 }
+         done = 0;
+         break;
+         }
       if (i > 0) /* can't return to prior image anymore */
-	 done = 1;
+         done = 1;
       }
    if (done < 0)
       fractype = oldfractype;
@@ -611,7 +611,7 @@ struct FT_CHOICE {
 static struct FT_CHOICE far **ft_choices; /* for sel_fractype_help subrtn */
 
 static int select_fracttype(int t) /* subrtn of get_fracttype, separated */
-				   /* so that storage gets freed up	 */
+                                   /* so that storage gets freed up      */
 {
    static FCODE head1[] = {"Select a Fractal Type"};
    static FCODE head2[] = {"Select Orbit Algorithm for Julibrot"};
@@ -642,25 +642,25 @@ static int select_fracttype(int t) /* subrtn of get_fracttype, separated */
    if(julibrot)
       far_strcpy(head,head2);
    else
-      far_strcpy(head,head1);    
+      far_strcpy(head,head1);
    if (t == IFS3D) t = IFS;
    i = j = -1;
    while(fractalspecific[++i].name) {
       if(julibrot)
-	if (!((fractalspecific[i].flags & OKJB) && *fractalspecific[i].name != '*'))
-	   continue;
+        if (!((fractalspecific[i].flags & OKJB) && *fractalspecific[i].name != '*'))
+           continue;
       if (fractalspecific[i].name[0] == '*')
-	 continue;
+         continue;
       far_strcpy(choices[++j]->name,fractalspecific[i].name);
       choices[j]->name[14] = 0; /* safety */
-      choices[j]->num = i;	/* remember where the real item is */
+      choices[j]->num = i;      /* remember where the real item is */
       }
    numtypes = j + 1;
    shell_sort(choices,numtypes,sizeof(char far *),lccompare); /* sort list */
    j = 0;
    for (i = 0; i < numtypes; ++i) /* find starting choice in sorted list */
       if (choices[i]->num == t || choices[i]->num == fractalspecific[t].tofloat)
-	 j = i;
+         j = i;
 
    tname[0] = 0;
    done = fullscreen_choice(CHOICEHELP+8,head,NULL,instr,numtypes,
@@ -683,10 +683,10 @@ static int sel_fractype_help(int curkey,int choice)
    return(0);
 }
 
-int select_type_params(	/* prompt for new fractal type parameters */
-	int newfractype,	/* new fractal type */
-	int oldfractype 	/* previous fractal type */
-	)
+int select_type_params( /* prompt for new fractal type parameters */
+        int newfractype,        /* new fractal type */
+        int oldfractype         /* previous fractal type */
+        )
 {
    int ret,oldhelpmode;
 
@@ -699,23 +699,23 @@ sel_type_restart:
    if (fractype == LSYSTEM) {
       helpmode = HT_LSYS;
       if (get_file_entry(GETLSYS,"L-System",lsysmask,LFileName,LName) < 0) {
-	 ret = 1;
-	 goto sel_type_exit;
-	 }
+         ret = 1;
+         goto sel_type_exit;
+         }
       }
    if (fractype == FORMULA || fractype == FFORMULA) {
       helpmode = HT_FORMULA;
       if (get_file_entry(GETFORMULA,"Formula",formmask,FormFileName,FormName) < 0) {
-	 ret = 1;
-	 goto sel_type_exit;
-	 }
+         ret = 1;
+         goto sel_type_exit;
+         }
       }
    if (fractype == IFS || fractype == IFS3D) {
       helpmode = HT_IFS;
       if (get_file_entry(GETIFS,"IFS",ifsmask,IFSFileName,IFSName) < 0) {
-	ret = 1;
-	goto sel_type_exit;
-	}
+        ret = 1;
+        goto sel_type_exit;
+        }
       }
 
 /* Added the following to accommodate fn bifurcations.  JCO 7/2/92 */
@@ -746,9 +746,9 @@ sel_type_restart:
          ret = 1;
    else {
       if (newfractype != oldfractype) {
-	 invert = 0;
-	 inversion[0] = inversion[1] = inversion[2] = 0;
-	 }
+         invert = 0;
+         inversion[0] = inversion[1] = inversion[2] = 0;
+         }
       }
 
 sel_type_exit:
@@ -766,7 +766,7 @@ void set_default_parms()
    yymax = curfractalspecific->ymax;
    xx3rd = xxmin;
    yy3rd = yymin;
-   
+
    if (viewcrop && finalaspectratio != screenaspect)
       aspectratio_crop(screenaspect,finalaspectratio);
    for (i = 0; i < 4; i++) {
@@ -775,7 +775,7 @@ void set_default_parms()
          roundfloatd(&param[i]);   /* don't round cellular or frothybasin */
    }
    if((extra=find_extra_param(fractype)) > -1)
-      for(i=0;i<MAXPARAMS-4;i++) 
+      for(i=0;i<MAXPARAMS-4;i++)
          param[i+4] = moreparams[extra].paramvalue[i];
    if(debugflag != 3200)
       bf_math = 0;
@@ -783,7 +783,7 @@ void set_default_parms()
       fractal_floattobf();
 }
 
-#define MAXFRACTALS 25 
+#define MAXFRACTALS 25
 
 int build_fractal_list(int fractals[], int *last_val, char *nameptr[])
 {
@@ -792,16 +792,16 @@ int build_fractal_list(int fractals[], int *last_val, char *nameptr[])
     numfractals = 0;
     for (i = 0; i < num_fractal_types; i++)
     {
-	if ((fractalspecific[i].flags & OKJB) && *fractalspecific[i].name != '*')
-	{
-	    fractals[numfractals] = i;
-	    if (i == neworbittype || i == fractalspecific[neworbittype].tofloat)
-		*last_val = numfractals;
-	    nameptr[numfractals] = fractalspecific[i].name;
-	    numfractals++;
-	    if (numfractals >= MAXFRACTALS)
-		break;
-	}
+        if ((fractalspecific[i].flags & OKJB) && *fractalspecific[i].name != '*')
+        {
+            fractals[numfractals] = i;
+            if (i == neworbittype || i == fractalspecific[neworbittype].tofloat)
+                *last_val = numfractals;
+            nameptr[numfractals] = fractalspecific[i].name;
+            numfractals++;
+            if (numfractals >= MAXFRACTALS)
+                break;
+        }
     }
     return (numfractals);
 }
@@ -845,7 +845,7 @@ static FCODE JIIMstr2[] = "Left first or Right first?";
 char *JIIMleftright[] = {"left", "right"};
 
 /* --------------------------------------------------------------------- */
-int get_fract_params(int caller)	/* prompt for type-specific parms */
+int get_fract_params(int caller)        /* prompt for type-specific parms */
 {
    char far *v0 = v0a;
    char far *v1 = v1a;
@@ -874,7 +874,7 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
 #ifdef XFRACT
    static /* Can't initialize aggregates on the stack */
 #endif
-   char *bailnameptr[] = {s_mod,s_real,s_imag,s_or,s_and};
+   char *bailnameptr[] = {s_mod,s_real,s_imag,s_or,s_and,s_manh,s_manr};
    struct fractalspecificstuff far *jborbit = NULL;
    struct fractalspecificstuff far *savespecific;
    int firstparm =0;
@@ -895,27 +895,27 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
    tstack[0] = 0;
    if ((i = curfractalspecific->helpformula) < -1) {
       if (i == -2) { /* special for formula */
-	 filename = FormFileName;
-	 entryname = FormName;
-	 }
-      else if (i == -3)  {	 /* special for lsystem */
-	 filename = LFileName;
-	 entryname = LName;
-	 }
-      else if (i == -4)  {	 /* special for ifs */
-	 filename = IFSFileName;
-	 entryname = IFSName;
-	 }
+         filename = FormFileName;
+         entryname = FormName;
+         }
+      else if (i == -3)  {       /* special for lsystem */
+         filename = LFileName;
+         entryname = LName;
+         }
+      else if (i == -4)  {       /* special for ifs */
+         filename = IFSFileName;
+         entryname = IFSName;
+         }
       else { /* this shouldn't happen */
          filename = NULL;
          entryname = NULL;
-      }   	 
+      }
       if (find_file_item(filename,entryname,&entryfile) == 0) {
-	 load_entry_text(entryfile,tstack,16);
-	 fclose(entryfile);
-	 if(fractype == FORMULA || fractype == FFORMULA)
-	   RunForm(entryname); /* no error check, should be okay, from above */
-	 }
+         load_entry_text(entryfile,tstack,16);
+         fclose(entryfile);
+         if(fractype == FORMULA || fractype == FFORMULA)
+           RunForm(entryname); /* no error check, should be okay, from above */
+         }
       }
    else if (i >= 0) {
       int c,lines;
@@ -923,33 +923,33 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
       tstack[2000-i] = 0;
       i = j = lines = 0; k = 1;
       while ((c = tstack[i++]) != 0) {
-	 /* stop at ctl, blank, or line with col 1 nonblank, max 16 lines */
-	 if (k && c == ' ' && ++k <= 5) { } /* skip 4 blanks at start of line */
-	 else {
-	    if (c == '\n') {
-	       if (k) break; /* blank line */
-	       if (++lines >= 16) break;
-	       k = 1;
-	       }
-	    else if (c < 16) /* a special help format control char */
-	       break;
-	    else {
-	       if (k == 1) /* line starts in column 1 */
-		  break;
-	       k = 0;
-	       }
-	    tstack[j++] = (char)c;
-	    }
-	 }
+         /* stop at ctl, blank, or line with col 1 nonblank, max 16 lines */
+         if (k && c == ' ' && ++k <= 5) { } /* skip 4 blanks at start of line */
+         else {
+            if (c == '\n') {
+               if (k) break; /* blank line */
+               if (++lines >= 16) break;
+               k = 1;
+               }
+            else if (c < 16) /* a special help format control char */
+               break;
+            else {
+               if (k == 1) /* line starts in column 1 */
+                  break;
+               k = 0;
+               }
+            tstack[j++] = (char)c;
+            }
+         }
       while (--j >= 0 && tstack[j] == '\n') { }
       tstack[j+1] = 0;
       }
-gfp_top:   
+gfp_top:
    promptnum = 0;
    if (julibrot)
    {
       i = select_fracttype(neworbittype);
-      if (i < 0) 
+      if (i < 0)
       {
          if (ret == 0)
             ret = -1;
@@ -985,19 +985,19 @@ gfp_top:
    {
       curfractalspecific = jborbit;
       firstparm = 2; /* in most case Julibrot does not need first two parms */
-      if(neworbittype == QUATJULFP     ||   /* all parameters needed */ 
+      if(neworbittype == QUATJULFP     ||   /* all parameters needed */
          neworbittype == HYPERCMPLXJFP)
       {
          firstparm = 0;
          lastparm = 4;
-      }    
+      }
       if(neworbittype == QUATFP        ||   /* no parameters needed */
          neworbittype == HYPERCMPLXFP)
-         firstparm = 4; 
-   }   
+         firstparm = 4;
+   }
    numparams = 0;
-   
-   for (i = firstparm; i < lastparm; i++) 
+
+   for (i = firstparm; i < lastparm; i++)
    {
       char tmpbuf[30];
       char *parm;
@@ -1006,13 +1006,13 @@ gfp_top:
       numparams++;
       choices[promptnum] = parm;
       paramvalues[promptnum].type = 'd';
-   
-      if (choices[promptnum][0] == '+') 
+
+      if (choices[promptnum][0] == '+')
       {
          choices[promptnum]++;
          paramvalues[promptnum].type = 'D';
       }
-      else if (choices[promptnum][0] == '#') 
+      else if (choices[promptnum][0] == '#')
          choices[promptnum]++;
       sprintf(tmpbuf,"%.17g",param[i]);
       paramvalues[promptnum].uval.dval = atof(tmpbuf);
@@ -1041,39 +1041,38 @@ gfp_top:
    i = curfractalspecific->orbit_bailout;
 
    if( i != 0 && curfractalspecific->calctype == StandardFractal &&
-       (curfractalspecific->flags & BAILTEST) &&
-       potparam[0] == 0.0 && potparam[2] == 0.0 ) {
-        static FCODE bailteststr[] = {"Bailout Test (mod, real, imag, or, and)"};
+       (curfractalspecific->flags & BAILTEST) ) {
+        static FCODE bailteststr[] = {"Bailout Test (mod, real, imag, or, and, manh, manr)"};
       paramvalues[promptnum].type = 'l';
       paramvalues[promptnum].uval.ch.val  = (int)bailoutest;
-      paramvalues[promptnum].uval.ch.llen = 5;
+      paramvalues[promptnum].uval.ch.llen = 7;
       paramvalues[promptnum].uval.ch.vlen = 6;
       paramvalues[promptnum].uval.ch.list = bailnameptr;
       choices[promptnum++] = bailteststr;
    }
 
    if (i)
-      if (potparam[0] != 0.0 && potparam[2] != 0.0) 
+      if (potparam[0] != 0.0 && potparam[2] != 0.0)
       {
         static FCODE bailpotstr[] = {"Bailout: continuous potential (Y screen) value in use"};
-	 paramvalues[promptnum].type = '*';
-	 choices[promptnum++] = bailpotstr;
+         paramvalues[promptnum].type = '*';
+         choices[promptnum++] = bailpotstr;
       }
-      else 
+      else
       {
          static FCODE bailoutstr[] = {"Bailout value (0 means use default)"};
-	 choices[promptnum] = bailoutstr;
-	 paramvalues[promptnum].type = 'L';
-	 paramvalues[promptnum++].uval.Lval = (oldbailout = bailout);
-	 paramvalues[promptnum].type = '*';
-	 tmpptr = typename;
-	 if (usr_biomorph != -1) 
-	 {
-	    i = 100;
-	    tmpptr = "biomorph";
-	 }
-	 sprintf(bailoutmsg,"    (%s default is %d)",tmpptr,i);
-	 choices[promptnum++] = bailoutmsg;
+         choices[promptnum] = bailoutstr;
+         paramvalues[promptnum].type = 'L';
+         paramvalues[promptnum++].uval.Lval = (oldbailout = bailout);
+         paramvalues[promptnum].type = '*';
+         tmpptr = typename;
+         if (usr_biomorph != -1)
+         {
+            i = 100;
+            tmpptr = "biomorph";
+         }
+         sprintf(bailoutmsg,"    (%s default is %d)",tmpptr,i);
+         choices[promptnum++] = bailoutmsg;
       }
    if (julibrot)
    {
@@ -1157,7 +1156,7 @@ gfp_top:
       paramvalues[promptnum++].uval.ch.val  = minor_method;
    }
 
-   if (caller				/* <z> command ? */
+   if (caller                           /* <z> command ? */
 /*      && (display3d > 0 || promptnum == 0)) */
       && (display3d > 0))
       {
@@ -1182,37 +1181,37 @@ gfp_top:
       helpmode = curfractalspecific->helptext;
       i = fullscreen_prompt(msg,promptnum,choices,paramvalues,fkeymask,tstack);
       helpmode = oldhelpmode;
-      if (i < 0) 
+      if (i < 0)
       {
          if(julibrot)
            goto gfp_top;
-	 if (ret == 0)
-	    ret = -1;
-	 goto gfp_exit;
+         if (ret == 0)
+            ret = -1;
+         goto gfp_exit;
       }
-      if (i != F6) 
+      if (i != F6)
          break;
       if(bf_math == 0)
          if (get_corners() > 0)
-	    ret = 1;
+            ret = 1;
      }
      promptnum = 0;
-     for ( i = firstparm; i < numparams+firstparm; i++) 
+     for ( i = firstparm; i < numparams+firstparm; i++)
      {
-        if (oldparam[i] != paramvalues[promptnum].uval.dval) 
+        if (oldparam[i] != paramvalues[promptnum].uval.dval)
         {
            param[i] = paramvalues[promptnum].uval.dval;
-   	   ret = 1;
+           ret = 1;
         }
         ++promptnum;
     }
 
-   for ( i = 0; i < numtrig; i++) 
+   for ( i = 0; i < numtrig; i++)
    {
-      if (paramvalues[promptnum].uval.ch.val != (int)trigndx[i]) 
+      if (paramvalues[promptnum].uval.ch.val != (int)trigndx[i])
       {
-	 set_trig_array(i,trigfn[paramvalues[promptnum].uval.ch.val].name);
-	 ret = 1;
+         set_trig_array(i,trigfn[paramvalues[promptnum].uval.ch.val].name);
+         ret = 1;
       }
       ++promptnum;
    }
@@ -1221,13 +1220,12 @@ gfp_top:
    {
       savespecific = curfractalspecific;
       curfractalspecific = jborbit;
-   }   
+   }
 
    i = curfractalspecific->orbit_bailout;
 
    if( i != 0 && curfractalspecific->calctype == StandardFractal &&
-       (curfractalspecific->flags & BAILTEST) &&
-       potparam[0] == 0.0 && potparam[2] == 0.0 ) {
+       (curfractalspecific->flags & BAILTEST) ) {
       if (paramvalues[promptnum].uval.ch.val != (int)bailoutest) {
         bailoutest = (enum bailouts)paramvalues[promptnum].uval.ch.val;
         ret = 1;
@@ -1239,41 +1237,41 @@ gfp_top:
    setbailoutformula(bailoutest);
 
    if (i)
-      if (potparam[0] != 0.0 && potparam[2] != 0.0) 
-	 promptnum++;
-      else 
+      if (potparam[0] != 0.0 && potparam[2] != 0.0)
+         promptnum++;
+      else
       {
          bailout = paramvalues[promptnum++].uval.Lval;
          if (bailout != 0 && (bailout < 1 || bailout > 2100000000L))
-	    bailout = oldbailout;
+            bailout = oldbailout;
          if (bailout != oldbailout)
-	    ret = 1;
-	 promptnum++;
+            ret = 1;
+         promptnum++;
       }
 
      if (julibrot)
      {
-	mxmaxfp    = paramvalues[promptnum++].uval.dval;
-	mymaxfp    = paramvalues[promptnum++].uval.dval;
-	mxminfp    = paramvalues[promptnum++].uval.dval;
-	myminfp    = paramvalues[promptnum++].uval.dval;
-	zdots      = paramvalues[promptnum++].uval.ival;
+        mxmaxfp    = paramvalues[promptnum++].uval.dval;
+        mymaxfp    = paramvalues[promptnum++].uval.dval;
+        mxminfp    = paramvalues[promptnum++].uval.dval;
+        myminfp    = paramvalues[promptnum++].uval.dval;
+        zdots      = paramvalues[promptnum++].uval.ival;
         juli3Dmode = paramvalues[promptnum++].uval.ch.val;
-	eyesfp     = (float)paramvalues[promptnum++].uval.dval;
-	originfp   = (float)paramvalues[promptnum++].uval.dval;
-	depthfp    = (float)paramvalues[promptnum++].uval.dval;
-	heightfp   = (float)paramvalues[promptnum++].uval.dval;
-	widthfp    = (float)paramvalues[promptnum++].uval.dval;
-	distfp     = (float)paramvalues[promptnum++].uval.dval;
+        eyesfp     = (float)paramvalues[promptnum++].uval.dval;
+        originfp   = (float)paramvalues[promptnum++].uval.dval;
+        depthfp    = (float)paramvalues[promptnum++].uval.dval;
+        heightfp   = (float)paramvalues[promptnum++].uval.dval;
+        widthfp    = (float)paramvalues[promptnum++].uval.dval;
+        distfp     = (float)paramvalues[promptnum++].uval.dval;
         ret = 1;  /* force new calc since not resumable anyway */
      }
       if (curtype == INVERSEJULIA || curtype == INVERSEJULIAFP)
       {
-	 if (paramvalues[promptnum].uval.ch.val != major_method ||
-	     paramvalues[promptnum+1].uval.ch.val != minor_method)
-	    ret = 1;
-	 major_method = (enum Major)paramvalues[promptnum  ].uval.ch.val;
-	 minor_method = (enum Minor)paramvalues[promptnum+1].uval.ch.val;
+         if (paramvalues[promptnum].uval.ch.val != major_method ||
+             paramvalues[promptnum+1].uval.ch.val != minor_method)
+            ret = 1;
+         major_method = (enum Major)paramvalues[promptnum  ].uval.ch.val;
+         minor_method = (enum Minor)paramvalues[promptnum+1].uval.ch.val;
       }
 
 gfp_exit:
@@ -1292,21 +1290,21 @@ int find_extra_param(int type)
       while((curtyp=moreparams[++i].type) != type && curtyp != -1);
       if(curtyp == type)
         ret = i;
-   }  
+   }
    return(ret);
-}     
+}
 
 void load_params(int fractype)
 {
    int i, extra;
-   for (i = 0; i < 4; ++i) 
+   for (i = 0; i < 4; ++i)
    {
       param[i] = fractalspecific[fractype].paramvalue[i];
       if(fractype != CELLULAR) /* don't round cellular */
         roundfloatd(&param[i]);
    }
    if((extra=find_extra_param(fractype)) > -1)
-      for(i=0;i<MAXPARAMS-4;i++) 
+      for(i=0;i<MAXPARAMS-4;i++)
          param[i+4] = moreparams[extra].paramvalue[i];
 }
 
@@ -1336,7 +1334,7 @@ int check_orbit_name(char *orbitname)
 static FILE *gfe_file;
 
 long get_file_entry(int type,char *title,char *fmask,
-			  char *filename,char *entryname)
+                          char *filename,char *entryname)
 {
    /* Formula, LSystem, etc type structure, select from file */
    /* containing definitions in the form    name { ... }     */
@@ -1346,46 +1344,46 @@ long get_file_entry(int type,char *title,char *fmask,
    for(;;) {
       firsttry = 0;
       /* pb: binary mode used here - it is more work, but much faster, */
-      /*     especially when ftell or fgetpos is used		       */
+      /*     especially when ftell or fgetpos is used                  */
       while (newfile || (gfe_file = fopen(filename, "rb")) == NULL) {
-	 char buf[60];
-	 newfile = 0;
-	 if (firsttry) {
-	    sprintf(temp1,s_cantfind, filename);
-	    stopmsg(0,temp1);
-	    }
-	 sprintf(buf,"Select %s File",title);
-	 if (getafilename(buf,fmask,filename) < 0)
-	    return -1;
-	    
-	 firsttry = 1; /* if around open loop again it is an error */
-	 }
+         char buf[60];
+         newfile = 0;
+         if (firsttry) {
+            sprintf(temp1,s_cantfind, filename);
+            stopmsg(0,temp1);
+            }
+         sprintf(buf,"Select %s File",title);
+         if (getafilename(buf,fmask,filename) < 0)
+            return -1;
+
+         firsttry = 1; /* if around open loop again it is an error */
+         }
       setvbuf(gfe_file,tstack,_IOFBF,4096); /* improves speed when file is big */
       newfile = 0;
       if ((entry_pointer = gfe_choose_entry(type,title,filename,entryname)) == -2) {
-	 newfile = 1; /* go to file list, */
-	 continue;    /* back to getafilename */
-	 }
+         newfile = 1; /* go to file list, */
+         continue;    /* back to getafilename */
+         }
       if (entry_pointer == -1)
-	 return -1;
+         return -1;
       switch (type) {
-	 case GETFORMULA:
-	    if (RunForm(entryname) == 0) return 0;
-	    break;
-	 case GETLSYS:
-	    if (LLoad() == 0) return 0;
-	    break;
-	 case GETIFS:
-	    if (ifsload() == 0) {
-	       fractype = (ifs_type == 0) ? IFS : IFS3D;
-	       curfractalspecific = &fractalspecific[fractype];
-	       set_default_parms(); /* to correct them if 3d */
-	       return 0;
-	       }
-	    break;
-	 case GETPARM:
-	    return entry_pointer;
-	 }
+         case GETFORMULA:
+            if (RunForm(entryname) == 0) return 0;
+            break;
+         case GETLSYS:
+            if (LLoad() == 0) return 0;
+            break;
+         case GETIFS:
+            if (ifsload() == 0) {
+               fractype = (ifs_type == 0) ? IFS : IFS3D;
+               curfractalspecific = &fractalspecific[fractype];
+               set_default_parms(); /* to correct them if 3d */
+               return 0;
+               }
+            break;
+         case GETPARM:
+            return entry_pointer;
+         }
       }
 }
 
@@ -1403,7 +1401,7 @@ int skip_white_space(FILE *infile, long *file_offset)
    do
    {
       c = getc(infile);
-      (*file_offset)++; 
+      (*file_offset)++;
    }
    while (c == ' ' || c == '\t' || c == '\n' || c == '\r');
    return(c);
@@ -1416,10 +1414,10 @@ int skip_comment(FILE *infile, long *file_offset)
    do
    {
       c = getc(infile);
-      (*file_offset)++; 
+      (*file_offset)++;
    }
    while (c != '\n' && c != '\r' && c != EOF && c != '\032');
-   return(c); 
+   return(c);
 }
 
 #define MAXENTRIES 2000L
@@ -1445,7 +1443,7 @@ top:
       }
       name_offset = file_offset;
       /* next equiv roughly to fscanf(..,"%40[^* \n\r\t({\032]",buf) */
-      len = 0; 
+      len = 0;
       while (c != ' ' && c != '\t' && c != '(' && c != ';'
            && c != '{' && c != '\n' && c != '\r' && c != EOF && c != '\032')
       {
@@ -1462,12 +1460,12 @@ top:
          if(c == ';')
             c = skip_comment(infile, &file_offset);
          else
-         { 
+         {
             c = getc(infile);
             ++file_offset;
             if(c == '\n' || c == '\r')
                goto top;
-         }   
+         }
       }
       if (c == '{')
       {
@@ -1479,7 +1477,7 @@ top:
             {
                c = getc(infile);
                ++file_offset;
-            }   
+            }
          }
          if (c != '}')
             break;
@@ -1525,11 +1523,11 @@ static long gfe_choose_entry(int type,char *title,char *filename,char *entryname
    int boxwidth,boxdepth,colwidth;
    static int dosort = 1;
    int options = 8;
-   char far *instr;   
+   char far *instr;
    /* steal existing array for "choices" */
    choices = (struct entryinfo far *far*)MK_FP(extraseg,0);
-   /* leave room for details F2 */  
-   choices = choices + (2048/sizeof(struct entryinfo far *far*)); 
+   /* leave room for details F2 */
+   choices = choices + (2048/sizeof(struct entryinfo far *far*));
    choices[0] = (struct entryinfo far *)(choices + MAXENTRIES+1);
    attributes = (int far *)(choices[0] + MAXENTRIES+1);
    instr = (char far *)(attributes + MAXENTRIES +1);
@@ -1561,7 +1559,7 @@ retry:
    }
    else
       far_strcat(instr,"on");
-   
+
    strcpy(buf,entryname); /* preset to last choice made */
    sprintf(temp1,"%s Selection\nFile: %s",title,filename);
    formatitem = NULL;
@@ -1575,10 +1573,10 @@ retry:
    if(dosort)
       options = 8;
    else
-      options = 8+32;   
+      options = 8+32;
    i = fullscreen_choice(options,temp1,NULL,instr,numentries,(char far*far*)choices,
                            attributes,boxwidth,boxdepth,colwidth,0,
-			   formatitem,buf,NULL,check_gfe_key);
+                           formatitem,buf,NULL,check_gfe_key);
    if (i == 0-F4)
    {
      rewind(gfe_file);
@@ -1588,7 +1586,7 @@ retry:
    fclose(gfe_file);
    if (i < 0) {
       if (i == 0-F6)
-	 return -2; /* go back to file list */
+         return -2; /* go back to file list */
       return -1;    /* cancel */
       }
    far_strcpy(entryname, choices[i]->name);
@@ -1638,26 +1636,26 @@ static void load_entry_text(FILE *entfile,char far *buf,int maxlines)
       if (c == ';')
          comment = 1;
       else if (c == '\n' || c == '\r')
-         comment = 0;         
+         comment = 0;
       if (c != '\r') {
-	 if (c == '\t') {
-	    while ((linelen % 8) != 7 && linelen < 75) { /* 76 wide max */
-	       *(buf++) = ' ';
-	       ++linelen;
-	       }
-	    c = ' ';
-	    }
-	 if (c == '\n') {
-	    if (++linect > maxlines) break;
-	    linelen = -1;
-	    }
-	 if (++linelen > 75) {
-	    if (linelen == 76) *(buf++) = '\021';
-	    }
-	 else
-	    *(buf++) = (char)c;
-	 if (comment == 0 && c == '}') break;
-	 }
+         if (c == '\t') {
+            while ((linelen % 8) != 7 && linelen < 75) { /* 76 wide max */
+               *(buf++) = ' ';
+               ++linelen;
+               }
+            c = ' ';
+            }
+         if (c == '\n') {
+            if (++linect > maxlines) break;
+            linelen = -1;
+            }
+         if (++linelen > 75) {
+            if (linelen == 76) *(buf++) = '\021';
+            }
+         else
+            *(buf++) = (char)c;
+         if (comment == 0 && c == '}') break;
+         }
       }
    *buf = 0;
 }
@@ -1675,7 +1673,7 @@ static void format_parmfile_line(int choice,char *buf)
       c = getc(gfe_file);
       }
    line[i] = 0;
-#ifndef XFRACT   
+#ifndef XFRACT
    sprintf(buf,"%-20Fs%-56s",gfe_choices[choice]->name,line);
 #else
    sprintf(buf,"%-20s%-56s",gfe_choices[choice]->name,line);
@@ -1694,7 +1692,7 @@ int get_fract3d_params() /* prompt for 3D fractal parameters */
    static FCODE p4[] = {"Perspective distance [1 - 999, 0 for no persp]"};
    static FCODE p5[] = {"X shift with perspective (positive = right)"};
    static FCODE p6[] = {"Y shift with perspective (positive = up   )"};
-   static FCODE p7[] = {"Stereo (R/B 3D)? (0=no,1=alternate,2=superimpose,3=photo)"};
+   static FCODE p7[] = {"Stereo (R/B 3D)? (0=no,1=alternate,2=superimpose,3=photo,4=stereo pair)"};
    struct fullscreenvalues uvalues[20];
    char far *ifs3d_prompts[8];
 
@@ -1739,10 +1737,10 @@ int get_fract3d_params() /* prompt for 3D fractal parameters */
    XSHIFT  =  uvalues[k++].uval.ival;
    YSHIFT  =  uvalues[k++].uval.ival;
    glassestype = uvalues[k++].uval.ival;
-   if (glassestype < 0 || glassestype > 3) glassestype = 0;
+   if (glassestype < 0 || glassestype > 4) glassestype = 0;
    if (glassestype)
       if (get_funny_glasses_params() || check_mapfile())
-	 ret = -1;
+         ret = -1;
 
 get_f3d_exit:
    unstackscreen();
@@ -1750,7 +1748,7 @@ get_f3d_exit:
 }
 
 /* --------------------------------------------------------------------- */
-/* These macros streamline the "save near space" campaign */ 
+/* These macros streamline the "save near space" campaign */
 
 #define LOADPROMPTS3D(X)     {\
    static FCODE tmp[] = { X };\
@@ -1761,8 +1759,8 @@ get_f3d_exit:
    static FCODE tmp[] = { X };\
    choices[k++]= tmp;\
    }
-   
-int get_3d_params()	/* prompt for 3D parameters */
+
+int get_3d_params()     /* prompt for 3D parameters */
 {
    static FCODE hdg[]={"3D Mode Selection"};
    static FCODE hdg1[]={"Select 3D Fill Type"};
@@ -1789,8 +1787,8 @@ Pre-rotation Z axis is coming at you out of the screen!"};
      }
 #endif
 restart_1:
-	if (Targa_Out && overlay3d)
-		Targa_Overlay = 1;
+        if (Targa_Out && overlay3d)
+                Targa_Overlay = 1;
 
    k= -1;
 
@@ -1801,7 +1799,7 @@ restart_1:
    LOADPROMPTS3D("    Show Box?");
    uvalues[k].type = 'y';
    uvalues[k].uval.ch.val = showbox;
-   
+
    LOADPROMPTS3D("Coarseness, preview/grid/ray (in y dir)");
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = previewfactor;
@@ -1810,9 +1808,12 @@ restart_1:
    uvalues[k].type = 'y';
    uvalues[k].uval.ch.val = sphere = SPHERE;
 
-   LOADPROMPTS3D("Stereo (R/B 3D)? (0=no,1=alternate,2=superimpose,3=photo)");
+   LOADPROMPTS3D("Stereo (R/B 3D)? (0=no,1=alternate,2=superimpose,");
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = glassestype;
+
+   LOADPROMPTS3D("                  3=photo,4=stereo pair)");
+   uvalues[k].type = '*';
 
    LOADPROMPTS3D("Ray trace out? (0=No, 1=DKB/POVRay, 2=VIVID, 3=RAW,");
    uvalues[k].type = 'i';
@@ -1858,6 +1859,7 @@ restart_1:
    sphere = uvalues[k++].uval.ch.val;
 
    glassestype = uvalues[k++].uval.ival;
+   k++;
 
    RAY = uvalues[k++].uval.ival;
    k++;
@@ -1894,8 +1896,8 @@ the online documentation."};
 
    if(glassestype < 0)
       glassestype = 0;
-   if(glassestype > 3)
-      glassestype = 3;
+   if(glassestype > 4)
+      glassestype = 4;
    if(glassestype)
       whichimage = 1;
 
@@ -1915,26 +1917,26 @@ the online documentation."};
       LOADPROMPTSCHOICES("solid fill (bars up from \"ground\")");
       if(SPHERE)
       {
-	     LOADPROMPTSCHOICES("light source");
+             LOADPROMPTSCHOICES("light source");
       }
       else
       {
-	     LOADPROMPTSCHOICES("light source before transformation");
-	     LOADPROMPTSCHOICES("light source after transformation");
+             LOADPROMPTSCHOICES("light source before transformation");
+             LOADPROMPTSCHOICES("light source after transformation");
       }
       for (i = 0; i < k; ++i)
-	 attributes[i] = 1;
+         attributes[i] = 1;
       helpmode = HELP3DFILL;
       i = fullscreen_choice(CHOICEHELP,hdg1,NULL,NULL,k,(char far * far *)choices,attributes,
-			      0,0,0,FILLTYPE+1,NULL,NULL,NULL,NULL);
+                              0,0,0,FILLTYPE+1,NULL,NULL,NULL,NULL);
       helpmode = oldhelpmode;
       if (i < 0)
-	 goto restart_1;
+         goto restart_1;
       FILLTYPE = i-1;
 
       if(glassestype)
       {
-	 if(get_funny_glasses_params())
+         if(get_funny_glasses_params())
             goto restart_1;
          }
          if (check_mapfile())
@@ -1956,9 +1958,9 @@ the online documentation."};
       k = -1;
       if (!RAY)
       {
-	     LOADPROMPTS3D("X-axis rotation in degrees");
+             LOADPROMPTS3D("X-axis rotation in degrees");
          LOADPROMPTS3D("Y-axis rotation in degrees");
-	     LOADPROMPTS3D("Z-axis rotation in degrees");
+             LOADPROMPTS3D("Z-axis rotation in degrees");
       }
       LOADPROMPTS3D("X-axis scaling factor in pct");
       LOADPROMPTS3D("Y-axis scaling factor in pct");
@@ -1966,11 +1968,11 @@ the online documentation."};
    k = -1;
    if (!(RAY && !SPHERE))
    {
-      uvalues[++k].uval.ival   = XROT	 ;
+      uvalues[++k].uval.ival   = XROT    ;
       uvalues[k].type = 'i';
-      uvalues[++k].uval.ival   = YROT	 ;
+      uvalues[++k].uval.ival   = YROT    ;
       uvalues[k].type = 'i';
-      uvalues[++k].uval.ival   = ZROT	 ;
+      uvalues[++k].uval.ival   = ZROT    ;
       uvalues[k].type = 'i';
    }
    uvalues[++k].uval.ival   = XSCALE    ;
@@ -1991,28 +1993,28 @@ the online documentation."};
    {
       LOADPROMPTS3D("Perspective distance [1 - 999, 0 for no persp])");
       uvalues[k].type = 'i';
-      uvalues[k].uval.ival = ZVIEWER	 ;
+      uvalues[k].uval.ival = ZVIEWER     ;
 
       LOADPROMPTS3D("X shift with perspective (positive = right)");
       uvalues[k].type = 'i';
       uvalues[k].uval.ival = XSHIFT    ;
-   
+
       LOADPROMPTS3D("Y shift with perspective (positive = up   )");
       uvalues[k].type = 'i';
       uvalues[k].uval.ival = YSHIFT    ;
-   
+
       LOADPROMPTS3D("Image non-perspective X adjust (positive = right)");
       uvalues[k].type = 'i';
       uvalues[k].uval.ival = xtrans    ;
-   
+
       LOADPROMPTS3D("Image non-perspective Y adjust (positive = up)");
       uvalues[k].type = 'i';
       uvalues[k].uval.ival = ytrans    ;
-   
+
       LOADPROMPTS3D("First transparent color");
       uvalues[k].type = 'i';
       uvalues[k].uval.ival = transparent[0];
-   
+
       LOADPROMPTS3D("Last transparent color");
       uvalues[k].type = 'i';
       uvalues[k].uval.ival = transparent[1];
@@ -2059,8 +2061,8 @@ the online documentation."};
    if (RANDOMIZE <= 0) RANDOMIZE = 0;
 
    if ((Targa_Out || ILLUMINE || RAY))
-	if(get_light_params())
-	    goto restart_3;
+        if(get_light_params())
+            goto restart_3;
 return(0);
 }
 
@@ -2092,8 +2094,8 @@ static int get_light_params()
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = ZLIGHT    ;
 
-		if (!RAY)
-		{
+                if (!RAY)
+                {
    LOADPROMPTS3D("Light Source Smoothing Factor");
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = LIGHTAVG  ;
@@ -2101,20 +2103,20 @@ static int get_light_params()
    LOADPROMPTS3D("Ambient");
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = Ambient;
-		}
+                }
    }
 
    if (Targa_Out && !RAY)
    {
-	LOADPROMPTS3D("Haze Factor        (0 - 100, '0' disables)");
-	uvalues[k].type = 'i';
-	uvalues[k].uval.ival= haze;
+        LOADPROMPTS3D("Haze Factor        (0 - 100, '0' disables)");
+        uvalues[k].type = 'i';
+        uvalues[k].uval.ival= haze;
 
-		if (!Targa_Overlay)
-	check_writefile(light_name,".tga");
+                if (!Targa_Overlay)
+        check_writefile(light_name,".tga");
       LOADPROMPTS3D("Targa File Name  (Assume .tga)");
-	uvalues[k].type = 's';
-	strcpy(uvalues[k].uval.sval,light_name);
+        uvalues[k].type = 's';
+        strcpy(uvalues[k].uval.sval,light_name);
 
       LOADPROMPTS3D("Back Ground Color (0 - 255)");
       uvalues[k].type = '*';
@@ -2153,27 +2155,27 @@ static int get_light_params()
       YLIGHT   = uvalues[k++].uval.ival;
       ZLIGHT   = uvalues[k++].uval.ival;
       if (!RAY)
-		{
+                {
       LIGHTAVG = uvalues[k++].uval.ival;
       Ambient  = uvalues[k++].uval.ival;
       if (Ambient >= 100) Ambient = 100;
       if (Ambient <= 0) Ambient = 0;
-		}
+                }
    }
 
    if (Targa_Out && !RAY)
    {
-	haze  =  uvalues[k++].uval.ival;
-	if (haze >= 100) haze = 100;
-	if (haze <= 0) haze = 0;
-    	strcpy(light_name,uvalues[k++].uval.sval);
-		/* In case light_name conflicts with an existing name it is checked
-			again in line3d */
-		k++;
-    	back_color[0] = (char)(uvalues[k++].uval.ival % 255);
-    	back_color[1] = (char)(uvalues[k++].uval.ival % 255);
-    	back_color[2] = (char)(uvalues[k++].uval.ival % 255);
-    	Targa_Overlay = uvalues[k].uval.ch.val;
+        haze  =  uvalues[k++].uval.ival;
+        if (haze >= 100) haze = 100;
+        if (haze <= 0) haze = 0;
+        strcpy(light_name,uvalues[k++].uval.sval);
+                /* In case light_name conflicts with an existing name it is checked
+                        again in line3d */
+                k++;
+        back_color[0] = (char)(uvalues[k++].uval.ival % 255);
+        back_color[1] = (char)(uvalues[k++].uval.ival % 255);
+        back_color[2] = (char)(uvalues[k++].uval.ival % 255);
+        Targa_Overlay = uvalues[k].uval.ch.val;
    }
    return(0);
 }
@@ -2194,18 +2196,18 @@ static int check_mapfile()
       askflag = 1;
    else
       merge_pathnames(temp1,funnyglasses_map_name,0);
-   
+
    for(;;) {
       if (askflag) {
          static FCODE msg[] = {"\
 Enter name of .MAP file to use,\n\
 or '*' to use palette from the image to be loaded."};
-	 oldhelpmode = helpmode;
-	 helpmode = -1;
-	 i = field_prompt(0,msg,NULL,temp1,60,NULL);
-	 helpmode = oldhelpmode;
-	 if (i < 0)
-	    return(-1);
+         oldhelpmode = helpmode;
+         helpmode = -1;
+         i = field_prompt(0,msg,NULL,temp1,60,NULL);
+         helpmode = oldhelpmode;
+         if (i < 0)
+            return(-1);
          if (temp1[0] == '*') {
             mapset = 0;
             break;
@@ -2242,13 +2244,13 @@ static int get_funny_glasses_params()
    {
       if(fractype==IFS3D || fractype==LLORENZ3D || fractype==FPLORENZ3D)
       {
-	 eyeseparation =  2;
-	 xadjust       = -2;
+         eyeseparation =  2;
+         xadjust       = -2;
       }
       else
       {
-	 eyeseparation =  3;
-	 xadjust       =  0;
+         eyeseparation =  3;
+         xadjust       =  0;
       }
    }
 
@@ -2257,11 +2259,11 @@ static int get_funny_glasses_params()
    else if(glassestype == 2)
    {
       if(FILLTYPE == -1)
-	 strcpy(funnyglasses_map_name,"grid.map");
+         strcpy(funnyglasses_map_name,"grid.map");
       else
       {
-	 strcpy(funnyglasses_map_name,Glasses1Map);
-	 funnyglasses_map_name[7] = '2';
+         strcpy(funnyglasses_map_name,Glasses1Map);
+         funnyglasses_map_name[7] = '2';
       }
    }
 
@@ -2314,13 +2316,13 @@ static int get_funny_glasses_params()
 
    k = 0;
    eyeseparation   =  uvalues[k++].uval.ival;
-   xadjust	   =  uvalues[k++].uval.ival;
+   xadjust         =  uvalues[k++].uval.ival;
    red_crop_left   =  uvalues[k++].uval.ival;
    red_crop_right  =  uvalues[k++].uval.ival;
    blue_crop_left  =  uvalues[k++].uval.ival;
    blue_crop_right =  uvalues[k++].uval.ival;
-   red_bright	   =  uvalues[k++].uval.ival;
-   blue_bright	   =  uvalues[k++].uval.ival;
+   red_bright      =  uvalues[k++].uval.ival;
+   blue_bright     =  uvalues[k++].uval.ival;
 
    if(glassestype == 1 || glassestype == 2)
       strcpy(funnyglasses_map_name,uvalues[k].uval.sval);
@@ -2332,11 +2334,11 @@ void setbailoutformula(enum bailouts test) {
    switch(test) {
      case Mod:
      default:{
-         if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
+         if (fpu >= 287 && debugflag != 72)     /* Fast 287 math */
            floatbailout = (int (near *)(void))asmfpMODbailout;
          else
            floatbailout = (int (near *)(void))fpMODbailout;
-         if (cpu >=386 && debugflag != 8088)	/* Fast 386 math */
+         if (cpu >=386 && debugflag != 8088)    /* Fast 386 math */
            longbailout = (int (near *)(void))asm386lMODbailout;
          else
            longbailout = (int (near *)(void))asmlMODbailout;
@@ -2344,11 +2346,11 @@ void setbailoutformula(enum bailouts test) {
          bigfltbailout = (int (near *)(void))bfMODbailout;
          break;}
      case Real: {
-         if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
+         if (fpu >= 287 && debugflag != 72)     /* Fast 287 math */
            floatbailout = (int (near *)(void))asmfpREALbailout;
          else
            floatbailout = (int (near *)(void))fpREALbailout;
-         if (cpu >=386 && debugflag != 8088)	/* Fast 386 math */
+         if (cpu >=386 && debugflag != 8088)    /* Fast 386 math */
            longbailout = (int (near *)(void))asm386lREALbailout;
          else
            longbailout = (int (near *)(void))asmlREALbailout;
@@ -2356,11 +2358,11 @@ void setbailoutformula(enum bailouts test) {
          bigfltbailout = (int (near *)(void))bfREALbailout;
          break;}
      case Imag:{
-         if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
+         if (fpu >= 287 && debugflag != 72)     /* Fast 287 math */
            floatbailout = (int (near *)(void))asmfpIMAGbailout;
          else
            floatbailout = (int (near *)(void))fpIMAGbailout;
-         if (cpu >=386 && debugflag != 8088)	/* Fast 386 math */
+         if (cpu >=386 && debugflag != 8088)    /* Fast 386 math */
            longbailout = (int (near *)(void))asm386lIMAGbailout;
          else
            longbailout = (int (near *)(void))asmlIMAGbailout;
@@ -2368,11 +2370,11 @@ void setbailoutformula(enum bailouts test) {
          bigfltbailout = (int (near *)(void))bfIMAGbailout;
          break;}
      case Or:{
-         if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
+         if (fpu >= 287 && debugflag != 72)     /* Fast 287 math */
            floatbailout = (int (near *)(void))asmfpORbailout;
          else
            floatbailout = (int (near *)(void))fpORbailout;
-         if (cpu >=386 && debugflag != 8088)	/* Fast 386 math */
+         if (cpu >=386 && debugflag != 8088)    /* Fast 386 math */
            longbailout = (int (near *)(void))asm386lORbailout;
          else
            longbailout = (int (near *)(void))asmlORbailout;
@@ -2380,16 +2382,40 @@ void setbailoutformula(enum bailouts test) {
          bigfltbailout = (int (near *)(void))bfORbailout;
          break;}
      case And:{
-         if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
+         if (fpu >= 287 && debugflag != 72)     /* Fast 287 math */
            floatbailout = (int (near *)(void))asmfpANDbailout;
          else
            floatbailout = (int (near *)(void))fpANDbailout;
-         if (cpu >=386 && debugflag != 8088)	/* Fast 386 math */
+         if (cpu >=386 && debugflag != 8088)    /* Fast 386 math */
            longbailout = (int (near *)(void))asm386lANDbailout;
          else
            longbailout = (int (near *)(void))asmlANDbailout;
          bignumbailout = (int (near *)(void))bnANDbailout;
          bigfltbailout = (int (near *)(void))bfANDbailout;
+         break;}
+     case Manh:{
+         if (fpu >= 287 && debugflag != 72)     /* Fast 287 math */
+           floatbailout = (int (near *)(void))asmfpMANHbailout;
+         else
+           floatbailout = (int (near *)(void))fpMANHbailout;
+         if (cpu >=386 && debugflag != 8088)    /* Fast 386 math */
+           longbailout = (int (near *)(void))asm386lMANHbailout;
+         else
+           longbailout = (int (near *)(void))asmlMANHbailout;
+         bignumbailout = (int (near *)(void))bnMANHbailout;
+         bigfltbailout = (int (near *)(void))bfMANHbailout;
+         break;}
+     case Manr:{
+         if (fpu >= 287 && debugflag != 72)     /* Fast 287 math */
+           floatbailout = (int (near *)(void))asmfpMANRbailout;
+         else
+           floatbailout = (int (near *)(void))fpMANRbailout;
+         if (cpu >=386 && debugflag != 8088)    /* Fast 386 math */
+           longbailout = (int (near *)(void))asm386lMANRbailout;
+         else
+           longbailout = (int (near *)(void))asmlMANRbailout;
+         bignumbailout = (int (near *)(void))bnMANRbailout;
+         bigfltbailout = (int (near *)(void))bfMANRbailout;
          break;}
    }
 }

@@ -47,7 +47,7 @@ static void lsysi_dodrawlt(struct lsys_turtlestatei *cmd);
      bug at end of readLSystemFile, the line which said rulind=0 fixed
        to say *rulind=0
      the calloc was not worthwhile, it was just for a 54 byte area, cheaper
-       to keep it as a static;	but there was a static 201 char buffer I
+       to keep it as a static;  but there was a static 201 char buffer I
        changed to not be static
      use of strdup was a nono, caused problems running out of space cause
        the memory allocated each time was never freed; I've changed to
@@ -140,63 +140,63 @@ static int _fastcall readLSystemFile(char *str)
    {
       linenum++;
       if ((word = strchr(inline,';')) != NULL) /* strip comment */
-	 *word = 0;
+         *word = 0;
       strlwr(inline);
 
       if (strspn(inline," \t\n") < strlen(inline)) /* not a blank line */
       {
-	 word=strtok(inline," =\t\n");
-	 if (!strcmp(word,"axiom"))
-	 {
-	    if (save_rule(strtok(NULL," \t\n"),&ruleptrs[0])) {
-	        strcat(msgbuf,"Error:  out of memory\n");
-	        ++err;
-		break;
-            }
-	    check=1;
-	 }
-	 else if (!strcmp(word,"angle"))
-	 {
-	    maxangle=(char)atoi(strtok(NULL," \t\n"));
-	    check=1;
-	 }
-	 else if (!strcmp(word,"}"))
-	    break;
-	 else if (strcspn(word,"+-/\\@|!c<>][") == 0 && strlen(word) == 1)
-	    {
-	       sprintf(&msgbuf[strlen(msgbuf)],
-	       "Syntax error line %d: Redefined reserved symbol %s\n",linenum,word);
-	       ++err;
-	       break;
-	    }
-	 else if (strlen(word)==1)
-	 {
-	    strcat(strcpy(fixed,word),strtok(NULL," \t\n"));
-	    if (save_rule(fixed,rulind++)) {
-		strcat(msgbuf, "Error:  out of memory\n");
-		++err;
+         word=strtok(inline," =\t\n");
+         if (!strcmp(word,"axiom"))
+         {
+            if (save_rule(strtok(NULL," \t\n"),&ruleptrs[0])) {
+                strcat(msgbuf,"Error:  out of memory\n");
+                ++err;
                 break;
             }
-	    check=1;
-	 }
-	 else
-	    if (err<6)
-	    {
-	       sprintf(&msgbuf[strlen(msgbuf)],
-		       "Syntax error line %d: %s\n",linenum,word);
-	       ++err;
-	    }
-	 if (check)
-	 {
-	    check=0;
-	    if((word=strtok(NULL," \t\n"))!=NULL)
-	       if (err<6)
-	       {
-		  sprintf(&msgbuf[strlen(msgbuf)],
-			 "Extra text after command line %d: %s\n",linenum,word);
-		  ++err;
-	       }
-	 }
+            check=1;
+         }
+         else if (!strcmp(word,"angle"))
+         {
+            maxangle=(char)atoi(strtok(NULL," \t\n"));
+            check=1;
+         }
+         else if (!strcmp(word,"}"))
+            break;
+         else if (strcspn(word,"+-/\\@|!c<>][") == 0 && strlen(word) == 1)
+            {
+               sprintf(&msgbuf[strlen(msgbuf)],
+               "Syntax error line %d: Redefined reserved symbol %s\n",linenum,word);
+               ++err;
+               break;
+            }
+         else if (strlen(word)==1)
+         {
+            strcat(strcpy(fixed,word),strtok(NULL," \t\n"));
+            if (save_rule(fixed,rulind++)) {
+                strcat(msgbuf, "Error:  out of memory\n");
+                ++err;
+                break;
+            }
+            check=1;
+         }
+         else
+            if (err<6)
+            {
+               sprintf(&msgbuf[strlen(msgbuf)],
+                       "Syntax error line %d: %s\n",linenum,word);
+               ++err;
+            }
+         if (check)
+         {
+            check=0;
+            if((word=strtok(NULL," \t\n"))!=NULL)
+               if (err<6)
+               {
+                  sprintf(&msgbuf[strlen(msgbuf)],
+                         "Extra text after command line %d: %s\n",linenum,word);
+                  ++err;
+               }
+         }
       }
    }
    fclose(infile);
@@ -230,41 +230,41 @@ int Lsystem(void)
    if ( (!loaded) && LLoad())
      return -1;
 
-   overflow = 0;		/* reset integer math overflow flag */
+   overflow = 0;                /* reset integer math overflow flag */
 
    order=(int)param[0];
    if (order<=0)
      order=0;
    if (usr_floatflag)
-	overflow = 1;
+        overflow = 1;
    else {
-	struct lsys_turtlestatei ts;
+        struct lsys_turtlestatei ts;
 
-	ts.stackoflow = 0;
-	ts.maxangle = maxangle;
+        ts.stackoflow = 0;
+        ts.maxangle = maxangle;
         ts.dmaxangle = (char)(maxangle - 1);
 
-	sc = rules2;
-	for (rulesc = ruleptrs; *rulesc; rulesc++)
-	    *sc++ = LSysISizeTransform(*rulesc, &ts);
-	*sc = NULL;
+        sc = rules2;
+        for (rulesc = ruleptrs; *rulesc; rulesc++)
+            *sc++ = LSysISizeTransform(*rulesc, &ts);
+        *sc = NULL;
 
-	lsysi_dosincos();
-	if (lsysi_findscale(rules2[0], &ts, &rules2[1], order)) {
-	    ts.realangle = ts.angle = ts.reverse = 0;
+        lsysi_dosincos();
+        if (lsysi_findscale(rules2[0], &ts, &rules2[1], order)) {
+            ts.realangle = ts.angle = ts.reverse = 0;
 
-	    free_lcmds();
-	    sc = rules2;
-	    for (rulesc = ruleptrs; *rulesc; rulesc++)
-		*sc++ = LSysIDrawTransform(*rulesc, &ts);
-	    *sc = NULL;
+            free_lcmds();
+            sc = rules2;
+            for (rulesc = ruleptrs; *rulesc; rulesc++)
+                *sc++ = LSysIDrawTransform(*rulesc, &ts);
+            *sc = NULL;
 
-	    /* !! HOW ABOUT A BETTER WAY OF PICKING THE DEFAULT DRAWING COLOR */
-	    if ((ts.curcolor=15) > colors)
-	    	ts.curcolor=(char)(colors-1);
-	    drawLSysI(rules2[0], &ts, &rules2[1], order);
-	}
-	stackoflow = ts.stackoflow;
+            /* !! HOW ABOUT A BETTER WAY OF PICKING THE DEFAULT DRAWING COLOR */
+            if ((ts.curcolor=15) > colors)
+                ts.curcolor=(char)(colors-1);
+            drawLSysI(rules2[0], &ts, &rules2[1], order);
+        }
+        stackoflow = ts.stackoflow;
    }
 
    if (stackoflow) {
@@ -272,36 +272,36 @@ int Lsystem(void)
       stopmsg(0,msg);
    }
    else if (overflow) {
-	struct lsys_turtlestatef ts;
+        struct lsys_turtlestatef ts;
 
-	overflow = 0;
+        overflow = 0;
 
-	ts.stackoflow = 0;
-	ts.maxangle = maxangle;
+        ts.stackoflow = 0;
+        ts.maxangle = maxangle;
         ts.dmaxangle = (char)(maxangle - 1);
 
-	sc = rules2;
-	for (rulesc = ruleptrs; *rulesc; rulesc++)
-	    *sc++ = LSysFSizeTransform(*rulesc, &ts);
-	*sc = NULL;
+        sc = rules2;
+        for (rulesc = ruleptrs; *rulesc; rulesc++)
+            *sc++ = LSysFSizeTransform(*rulesc, &ts);
+        *sc = NULL;
 
-	lsysf_dosincos();
-	if (lsysf_findscale(rules2[0], &ts, &rules2[1], order)) {
-	    ts.realangle = ts.angle = ts.reverse = 0;
+        lsysf_dosincos();
+        if (lsysf_findscale(rules2[0], &ts, &rules2[1], order)) {
+            ts.realangle = ts.angle = ts.reverse = 0;
 
-	    free_lcmds();
-	    sc = rules2;
-	    for (rulesc = ruleptrs; *rulesc; rulesc++)
-		*sc++ = LSysFDrawTransform(*rulesc, &ts);
-	    *sc = NULL;
+            free_lcmds();
+            sc = rules2;
+            for (rulesc = ruleptrs; *rulesc; rulesc++)
+                *sc++ = LSysFDrawTransform(*rulesc, &ts);
+            *sc = NULL;
 
-	    /* !! HOW ABOUT A BETTER WAY OF PICKING THE DEFAULT DRAWING COLOR */
-	    if ((ts.curcolor=15) > colors)
-	    	ts.curcolor=(char)(colors-1);
-	    lsys_prepfpu(&ts);
-	    drawLSysF(rules2[0], &ts, &rules2[1], order);
-	    lsys_donefpu(&ts);
-	}
+            /* !! HOW ABOUT A BETTER WAY OF PICKING THE DEFAULT DRAWING COLOR */
+            if ((ts.curcolor=15) > colors)
+                ts.curcolor=(char)(colors-1);
+            lsys_prepfpu(&ts);
+            drawLSysF(rules2[0], &ts, &rules2[1], order);
+            lsys_donefpu(&ts);
+        }
         overflow = 0;
    }
    free_rules_mem();
@@ -367,14 +367,14 @@ void lsys_donefpu(struct lsys_turtlestatef *x) { }
 static void lsysi_doplus(struct lsys_turtlestatei *cmd)
 {
     if (cmd->reverse) {
-	if (++cmd->angle == cmd->maxangle)
-	    cmd->angle = 0;
+        if (++cmd->angle == cmd->maxangle)
+            cmd->angle = 0;
     }
     else {
-	if (cmd->angle)
-	    cmd->angle--;
-	else
-	    cmd->angle = cmd->dmaxangle;
+        if (cmd->angle)
+            cmd->angle--;
+        else
+            cmd->angle = cmd->dmaxangle;
     }
 }
 #else
@@ -386,12 +386,12 @@ extern void lsysi_doplus(struct lsys_turtlestatei *cmd);
 static void lsysi_doplus_pow2(struct lsys_turtlestatei *cmd)
 {
     if (cmd->reverse) {
-	cmd->angle++;
-	cmd->angle &= cmd->dmaxangle;
+        cmd->angle++;
+        cmd->angle &= cmd->dmaxangle;
     }
     else {
-	cmd->angle--;
-	cmd->angle &= cmd->dmaxangle;
+        cmd->angle--;
+        cmd->angle &= cmd->dmaxangle;
     }
 }
 #else
@@ -402,14 +402,14 @@ extern void lsysi_doplus_pow2(struct lsys_turtlestatei *cmd);
 static void lsysi_dominus(struct lsys_turtlestatei *cmd)
 {
     if (cmd->reverse) {
-	if (cmd->angle)
-	    cmd->angle--;
-	else
-	    cmd->angle = cmd->dmaxangle;
+        if (cmd->angle)
+            cmd->angle--;
+        else
+            cmd->angle = cmd->dmaxangle;
     }
     else {
-	if (++cmd->angle == cmd->maxangle)
-	    cmd->angle = 0;
+        if (++cmd->angle == cmd->maxangle)
+            cmd->angle = 0;
     }
 }
 #else
@@ -420,12 +420,12 @@ extern void lsysi_dominus(struct lsys_turtlestatei *cmd);
 static void lsysi_dominus_pow2(struct lsys_turtlestatei *cmd)
 {
     if (cmd->reverse) {
-	cmd->angle--;
-	cmd->angle &= cmd->dmaxangle;
+        cmd->angle--;
+        cmd->angle &= cmd->dmaxangle;
     }
     else {
-	cmd->angle++;
-	cmd->angle &= cmd->dmaxangle;
+        cmd->angle++;
+        cmd->angle &= cmd->dmaxangle;
     }
 }
 #else
@@ -435,9 +435,9 @@ extern void lsysi_dominus_pow2(struct lsys_turtlestatei *cmd);
 static void lsysi_doslash(struct lsys_turtlestatei *cmd)
 {
     if (cmd->reverse)
-	cmd->realangle -= cmd->num;
+        cmd->realangle -= cmd->num;
     else
-	cmd->realangle += cmd->num;
+        cmd->realangle += cmd->num;
 }
 
 #ifndef XFRACT
@@ -447,9 +447,9 @@ extern void lsysi_doslash_386(struct lsys_turtlestatei *cmd);
 static void lsysi_dobslash(struct lsys_turtlestatei *cmd)
 {
     if (cmd->reverse)
-	cmd->realangle += cmd->num;
+        cmd->realangle += cmd->num;
     else
-	cmd->realangle -= cmd->num;
+        cmd->realangle -= cmd->num;
 }
 
 #ifndef XFRACT
@@ -611,46 +611,46 @@ if (overflow)     /* integer math routines overflowed */
 
    while (command->ch && command->ch !=']') {
       if (! (ts->counter++)) {
-	 /* let user know we're not dead */
-	 if (thinking(1,"L-System thinking (higher orders take longer)")) {
-	    ts->counter--;
-	    return NULL;
-	 }
+         /* let user know we're not dead */
+         if (thinking(1,"L-System thinking (higher orders take longer)")) {
+            ts->counter--;
+            return NULL;
+         }
       }
       tran=0;
       if (depth) {
-	 for(rulind=rules;*rulind;rulind++)
-	    if ((*rulind)->ch==command->ch) {
-	       tran=1;
-	       if (findsize((*rulind)+1,ts,rules,depth-1) == NULL)
-		  return(NULL);
-	    }
+         for(rulind=rules;*rulind;rulind++)
+            if ((*rulind)->ch==command->ch) {
+               tran=1;
+               if (findsize((*rulind)+1,ts,rules,depth-1) == NULL)
+                  return(NULL);
+            }
       }
       if (!depth || !tran) {
-	if (command->f) {
-	  ts->num = command->n;
-	  (*command->f)(ts);
-	  }
-	else if (command->ch == '[') {
-	  char saveang,saverev;
-	  long savesize,savex,savey;
-	  unsigned long saverang;
+        if (command->f) {
+          ts->num = command->n;
+          (*command->f)(ts);
+          }
+        else if (command->ch == '[') {
+          char saveang,saverev;
+          long savesize,savex,savey;
+          unsigned long saverang;
 
-	  saveang=ts->angle;
-	  saverev=ts->reverse;
-	  savesize=ts->size;
-	  saverang=ts->realangle;
-	  savex=ts->xpos;
-	  savey=ts->ypos;
-	  if ((command=findsize(command+1,ts,rules,depth)) == NULL)
-	     return(NULL);
-	  ts->angle=saveang;
-	  ts->reverse=saverev;
-	  ts->size=savesize;
-	  ts->realangle=saverang;
-	  ts->xpos=savex;
-	  ts->ypos=savey;
-	}
+          saveang=ts->angle;
+          saverev=ts->reverse;
+          savesize=ts->size;
+          saverang=ts->realangle;
+          savex=ts->xpos;
+          savey=ts->ypos;
+          if ((command=findsize(command+1,ts,rules,depth)) == NULL)
+             return(NULL);
+          ts->angle=saveang;
+          ts->reverse=saverev;
+          ts->size=savesize;
+          ts->realangle=saverang;
+          ts->xpos=savex;
+          ts->ypos=savey;
+        }
       }
       command++;
    }
@@ -712,7 +712,7 @@ lsysi_findscale(struct lsys_cmd far *command, struct lsys_turtlestatei *ts, stru
    return 1;
 }
 
-static struct lsys_cmd far * 
+static struct lsys_cmd far *
 drawLSysI(struct lsys_cmd far *command,struct lsys_turtlestatei *ts, struct lsys_cmd far **rules,int depth)
 {
    struct lsys_cmd far **rulind;
@@ -730,47 +730,47 @@ if (overflow)     /* integer math routines overflowed */
 
    while (command->ch && command->ch !=']') {
       if (!(ts->counter++)) {
-	 if (keypressed()) {
-	    ts->counter--;
-	    return NULL;
-	 }
+         if (keypressed()) {
+            ts->counter--;
+            return NULL;
+         }
       }
       tran=0;
       if (depth) {
-	 for(rulind=rules;*rulind;rulind++)
-	    if ((*rulind)->ch == command->ch) {
-	       tran=1;
-	       if (drawLSysI((*rulind)+1,ts,rules,depth-1) == NULL)
-		  return NULL;
-	    }
+         for(rulind=rules;*rulind;rulind++)
+            if ((*rulind)->ch == command->ch) {
+               tran=1;
+               if (drawLSysI((*rulind)+1,ts,rules,depth-1) == NULL)
+                  return NULL;
+            }
       }
       if (!depth||!tran) {
-	if (command->f) {
-	  ts->num = command->n;
-	  (*command->f)(ts);
-	  }
-	else if (command->ch == '[') {
-	  char saveang,saverev,savecolor;
-	  long savesize,savex,savey;
-	  unsigned long saverang;
+        if (command->f) {
+          ts->num = command->n;
+          (*command->f)(ts);
+          }
+        else if (command->ch == '[') {
+          char saveang,saverev,savecolor;
+          long savesize,savex,savey;
+          unsigned long saverang;
 
-	  saveang=ts->angle;
-	  saverev=ts->reverse;
-	  savesize=ts->size;
-	  saverang=ts->realangle;
-	  savex=ts->xpos;
-	  savey=ts->ypos;
-	  savecolor=ts->curcolor;
-	  if ((command=drawLSysI(command+1,ts,rules,depth)) == NULL)
-	     return(NULL);
-	  ts->angle=saveang;
-	  ts->reverse=saverev;
-	  ts->size=savesize;
-	  ts->realangle=saverang;
-	  ts->xpos=savex;
-	  ts->ypos=savey;
-	  ts->curcolor=savecolor;
-	}
+          saveang=ts->angle;
+          saverev=ts->reverse;
+          savesize=ts->size;
+          saverang=ts->realangle;
+          savex=ts->xpos;
+          savey=ts->ypos;
+          savecolor=ts->curcolor;
+          if ((command=drawLSysI(command+1,ts,rules,depth)) == NULL)
+             return(NULL);
+          ts->angle=saveang;
+          ts->reverse=saverev;
+          ts->size=savesize;
+          ts->realangle=saverang;
+          ts->xpos=savex;
+          ts->ypos=savey;
+          ts->curcolor=savecolor;
+        }
       }
       command++;
    }
@@ -820,8 +820,8 @@ LSysISizeTransform(char far *s, struct lsys_turtlestatei *ts)
       case '[': num = 1;        break;
       case ']': num = 2;        break;
       default:
-	num = 3;
-	break;
+        num = 3;
+        break;
     }
 #ifdef XFRACT
     ret[n].f = (void (*)())f;
@@ -905,8 +905,8 @@ LSysIDrawTransform(char far *s, struct lsys_turtlestatei *ts)
       case '[': num = 1;        break;
       case ']': num = 2;        break;
       default:
-	num = 3;
-	break;
+        num = 3;
+        break;
     }
 #ifdef XFRACT
     ret[n].f = (void (*)())f;

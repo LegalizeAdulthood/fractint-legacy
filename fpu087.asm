@@ -56,13 +56,13 @@ SUBTTL All rights reserved.
 ;r16Mul     PROC    uses si di, x1:word, x2:word, y1:word, y2:word
 ;RegFloat2Fg     PROC    x1:word, x2:word, Fudge:word
 ;RegFg2Float     PROC   x1:word, x2:word, FudgeFact:byte
-;ExpFudged      PROC	uses si, x_low:word, x_high:word, Fudge:word
-;LogFudged      PROC	uses si di, x_low:word, x_high:word, Fudge:word
+;ExpFudged      PROC    uses si, x_low:word, x_high:word, Fudge:word
+;LogFudged      PROC    uses si di, x_low:word, x_high:word, Fudge:word
 ;LogFloat14     PROC     x1:word, x2:word
 ;RegSftFloat     PROC   x1:word, x2:word, Shift:byte
 ;RegDivFloat     PROC  uses si di, x1:word, x2:word, y1:word, y2:word
 ;SinCos086   PROC     uses si di, LoNum:WORD, HiNum:WORD, SinAddr:WORD, \
-;_e2xLT   PROC		;argument in dx.ax (bitshift=16 is hard coded here)
+;_e2xLT   PROC          ;argument in dx.ax (bitshift=16 is hard coded here)
 ;Exp086    PROC     uses si di, LoNum:WORD, HiNum:WORD
 ;SinhCosh086    PROC     uses si di, LoNum:WORD, HiNum:WORD, SinhAddr:WORD, \
 ;Log086   PROC     uses si di, LoNum:WORD, HiNum:WORD, Fudge:WORD
@@ -83,8 +83,9 @@ extrn compiled_by_turboc:word
 .data
 
 extrn cpu:WORD
-
-PUBLIC TrigLimit, TrigOverflow
+extrn overflow:word
+extrn save_release:word
+PUBLIC TrigLimit
 
 ; CAE 6Nov92 made these public for PARSERA.ASM */
 PUBLIC _1_, _2_, PointFive, infinity
@@ -94,22 +95,21 @@ InvPiFg33      dd       0a2f9836eh
 InvPiFg16      dw       517ch
 Ln2Fg16        dw       0b172h ;ln(2) * 2^16 . True value is b172.18
 Ln2Fg15        dw       058b9h ;used by e2xLT. True value is 58b9.0C
-TrigOverflow   dw       0
 TrigLimit      dd       0
 ;
 ;Table of 2^(n/16) for n=0 to 15. All entries fg15.
 ;Used by e2xLT
 ;
-Table		dw	08000h,085abh,08b96h,091c4h
-		dw	09838h,09ef5h,0a5ffh,0ad58h
-		dw	0b505h,0bd09h,0c567h,0ce25h
-		dw	0d745h,0e0cdh,0eac1h,0f525h
+Table           dw      08000h,085abh,08b96h,091c4h
+                dw      09838h,09ef5h,0a5ffh,0ad58h
+                dw      0b505h,0bd09h,0c567h,0ce25h
+                dw      0d745h,0e0cdh,0eac1h,0f525h
 one            dw       ?
 expSign        dw       ?
 a              dw       ?
-SinNeg         dw       ?	;CJLT - not now needed by SinCos086, but by
-CosNeg	       dw	?	;       ArcTan086
-Ans	       dq	?
+SinNeg         dw       ?       ;CJLT - not now needed by SinCos086, but by
+CosNeg         dw       ?       ;       ArcTan086
+Ans            dq       ?
 fake_es        dw       ?         ; <BDT> Windows can't use ES for storage
 
 TaylorTerm  MACRO
@@ -137,6 +137,8 @@ Sign        dw     ?
 
 extrn fpu:word
 
+infinity          dq    1.0E+300
+
 .code
 
 
@@ -160,16 +162,6 @@ FPUcplxmul     PROC     x:word, y:word, z:word
    fstp  QWORD PTR [bx+8]
    ret
 FPUcplxmul     ENDP
-
-
-.DATA
-
-infinity          dq    1.0E+300
-
-PUBLIC DivideOverflow
-DivideOverflow    dw    0
-
-.CODE
 
 
 FPUcplxdiv     PROC     x:word, y:word, z:word
@@ -204,7 +196,10 @@ LOCAL Status:WORD
    mov   bx, z
    fstp  QWORD PTR [bx]
    fstp  QWORD PTR [bx+8]
-   inc   DivideOverflow
+   mov   ax,save_release
+   cmp   ax,1920
+   jle   ExitDiv       ; before 19.20 overflow wasn't set
+   mov   overflow, 1
    jmp   ExitDiv
 
 NotZero:
@@ -367,7 +362,7 @@ DuplicateX:
    cmp   BYTE PTR [bx+7], 0
    jns   ExitFexp
 
-   fdivr _1_                  ; e**x      
+   fdivr _1_                  ; e**x
 
 ExitFexp:
    fld   st                   ; e**x, e**x
@@ -623,7 +618,7 @@ RegFg2Float      ENDP
 
 
 PUBLIC ExpFudged
-ExpFudged      PROC	uses si, x_low:word, x_high:word, Fudge:word
+ExpFudged      PROC     uses si, x_low:word, x_high:word, Fudge:word
 LOCAL exp:WORD
       xor   ax, ax
       mov   WORD PTR Ans, ax
@@ -721,7 +716,7 @@ ExpFudged      ENDP
 
 
 PUBLIC   LogFudged
-LogFudged      PROC	uses si di, x_low:word, x_high:word, Fudge:word
+LogFudged      PROC     uses si di, x_low:word, x_high:word, Fudge:word
 LOCAL exp:WORD
       xor   bx, bx
       mov   cx, 16
@@ -846,8 +841,8 @@ LogFloat14     PROC     x1:word, x2:word
       xchg  cl, dh
 
       stc
-		rcr   dl, 1
-		rcr   ax, 1
+                rcr   dl, 1
+                rcr   ax, 1
 
       sub   cx, 127 + 23
       neg   cx
@@ -1002,26 +997,26 @@ Sin         equ      <si>
 Cos         equ      <di>
 e           equ      <si>
 Inve        equ      <di>
-         
+
 SinCos086   PROC     uses si di, LoNum:WORD, HiNum:WORD, SinAddr:WORD, \
                                 CosAddr:WORD
-   mov   ax, LoNum 
+   mov   ax, LoNum
    mov   dx, HiNum
-   
+
    xor   cx, cx
-;   mov   SinNeg, cx	;CJLT - not needed now
+;   mov   SinNeg, cx    ;CJLT - not needed now
 ;   mov   CosNeg, cx     ;CJLT - not needed now
-   mov   a, cx		;CJLT - Not needed by the original code, but it
-   			;       is now!
+   mov   a, cx          ;CJLT - Not needed by the original code, but it
+                        ;       is now!
    or    dx, dx
    jns   AnglePositive
-   
+
    not   ax
    not   dx
    add   ax, 1
-   adc   dx, cx		;conveniently zero
-   mov   a,8		;a now has 4 bits: Sign+quadrant+octant
-      
+   adc   dx, cx         ;conveniently zero
+   mov   a,8            ;a now has 4 bits: Sign+quadrant+octant
+
 AnglePositive:
    mov   si, ax
    mov   di, dx
@@ -1040,17 +1035,17 @@ AnglePositive:
    add   ax, cx
    adc   dx, 0
 
-   and   dx, 3	;Remove multiples of 2 pi
+   and   dx, 3  ;Remove multiples of 2 pi
    shl   dx, 1  ;move over to make space for octant number
 ;
 ;CJLT - new code to reduce angle to:  0 <= angle <= 45
 ;
    or    ax, ax
    jns   Lessthan45
-   inc   dx	;octant number
-   not   ax	;angle=90-angle if it was >45 degrees
+   inc   dx     ;octant number
+   not   ax     ;angle=90-angle if it was >45 degrees
 Lessthan45:
-   add   a,  dx	;remember octant and Sign in a
+   add   a,  dx ;remember octant and Sign in a
    mov   Num, ax ;ax=Term, now
 ;
 ; We do the Taylor series with all numbers scaled by pi/2
@@ -1060,7 +1055,7 @@ Lessthan45:
    mov   one, Factorial
    mov   Cos, Factorial          ; Cos = 1
    mov   Sin, Num                ; Sin = Num
-      
+
 LoopIntSinCos:
    TaylorTerm                    ; ax=Term = Num * (Num/2) * (Num/3) * . . .
    sub   Cos, Term               ; Cos = 1 - Num*(Num/2) + (Num**4)/4! - . . .
@@ -1081,20 +1076,20 @@ LoopIntSinCos:
    add   Sin, Term
    cmp   Term, WORD PTR TrigLimit
    jnbe  LoopIntSinCos
-      
+
 ExitIntSinCos:
    xor   ax, ax
    mov   cx, ax
    cmp   Cos, WORD PTR InvPiFg33 + 2
    jb    CosDivide               ; Cos < 1.0
-      
+
    inc   cx                      ; Cos == 1.0
    jmp   StoreCos
 
 CosDivide:
    mov   dx, Cos
    div   WORD PTR InvPiFg33 + 2
-      
+
 StoreCos:
    mov   Cos, ax                 ; cx:Cos
 
@@ -1102,41 +1097,41 @@ StoreCos:
    mov   bx, ax
    cmp   Sin, WORD PTR InvPiFg33 + 2
    jb    SinDivide               ; Sin < 1.0
-   
+
    inc   bx                      ; Sin == 1.0
    jmp   StoreSin
-      
+
 SinDivide:
    mov   dx, Sin
    div   WORD PTR InvPiFg33 + 2
-      
+
 StoreSin:
    mov   Sin, ax                 ; bx:Sin
 ; CJLT again. New tests are needed to correct signs and exchange sin/cos values
    mov   ax, a
-   inc   al	;forces bit 1 to xor of previous bits 0 and 1
+   inc   al     ;forces bit 1 to xor of previous bits 0 and 1
    test  al, 2
    jz    ChkNegCos
 
    xchg  cx, bx
    xchg  Sin, Cos
-;   mov   ax, SinNeg	commented out by CJLT. This was a bug.
+;   mov   ax, SinNeg    commented out by CJLT. This was a bug.
 ;   xchg  ax, CosNeg
 ;   mov   CosNeg, ax    and this was meant to be  mov  SinNeg,ax
 
 ChkNegCos:
-   inc   al	;forces bit 2 to xor of original bits 1 and 2
-   test  al, 4 
+   inc   al     ;forces bit 2 to xor of original bits 1 and 2
+   test  al, 4
    jz    ChkNegSin
 
-   not   Cos	;negate cos if quadrant 2 or 3
+   not   Cos    ;negate cos if quadrant 2 or 3
    not   cx
    add   Cos, 1
    adc   cx, 0
 
 ChkNegSin:
    inc   al
-   inc   al	;forces bit 3 to xor of original bits 2 and 3
+   inc   al     ;forces bit 3 to xor of original bits 2 and 3
    test  al, 8
    jz    CorrectQuad
 
@@ -1147,7 +1142,7 @@ ChkNegSin:
 
 CorrectQuad:
 
-CosPolarized:     
+CosPolarized:
    mov   dx, bx
    mov   bx, CosAddr
    mov   WORD PTR [bx], Cos
@@ -1159,7 +1154,7 @@ SinPolarized:
    mov   WORD PTR [bx+2], dx
    ret
 SinCos086      ENDP
-      
+
 
 PUBLIC ArcTan086
 ;
@@ -1180,45 +1175,45 @@ ArcTan086     PROC  uses si di, x1:word, x2:word, y1:word, y2:word
       not   si
       not   bx
       add   bx, 1
-      adc   si, 0	;We have abs(x) now
- xplus:           
+      adc   si, 0       ;We have abs(x) now
+ xplus:
       mov   di, y1 ;Lo
       mov   cx, y2 ;Hi
       or    cx, cx ;Sign set?
       jns   yplus
       inc   ax
-      inc   ax	   ;Set bit 1 of ax
-      shl   ax, 1  ; and shift it all left 
+      inc   ax     ;Set bit 1 of ax
+      shl   ax, 1  ; and shift it all left
       not  di
       not   cx
       add   di, 1
       adc   cx, 0  ;We have abs(y) now
 yplus:
-      cmp   bx, cx	;y>x?
+      cmp   bx, cx      ;y>x?
       jl    no_xchg
       jg    xchg_xy
-      cmp   si, di	;Hi words zero. What about lo words?
+      cmp   si, di      ;Hi words zero. What about lo words?
       jle   no_xchg
-xchg_xy:		;Exchange them
-      inc   ax		;Flag the exchange
+xchg_xy:                ;Exchange them
+      inc   ax          ;Flag the exchange
       xchg  si, di
       xchg  bx, cx
 no_xchg:
-      mov   SinNeg, ax	;Remember signs of x and y, and whether exchanged
-      or    cx, cx	;y<x now, but is y>=1.0 ?      
-      jz    ynorm	;no, so continue
-normy:			;yes, normalise by reducing y to 16 bits max.
-      rcr   cx, 1	; (We don't really lose any precision)
+      mov   SinNeg, ax  ;Remember signs of x and y, and whether exchanged
+      or    cx, cx      ;y<x now, but is y>=1.0 ?
+      jz    ynorm       ;no, so continue
+normy:                  ;yes, normalise by reducing y to 16 bits max.
+      rcr   cx, 1       ; (We don't really lose any precision)
       rcr   di, 1
       clc
       rcr   bx, 1
       rcr   si, 1
       or    cx, cx
-      jnz   normy      
+      jnz   normy
 ynorm:
 
       ret
-ArcTan086	ENDP
+ArcTan086       ENDP
 
 ;
 ;There now follows Chris Lusby Taylor's novel (such modesty!) method
@@ -1227,7 +1222,7 @@ ArcTan086	ENDP
 ;
 ;  th            -i
 ; i   term=ln(1+2  )
-;									 -i
+;                                                                        -i
 ;If x>term[i] we subtract term[i] from x and multiply the answer by 1 + 2
 ;
 ;We can multiply by that factor by shifting and adding. Neat eh!
@@ -1238,74 +1233,74 @@ ArcTan086	ENDP
 ;2^(n/16). This leaves the remainder so small that the polynomial Taylor series
 ;converges in just 1+x+x^2/2 which is calculated as 1+x(1+x/2).
 ;
-_e2xLT   PROC		;argument in dx.ax (bitshift=16 is hard coded here)
+_e2xLT   PROC           ;argument in dx.ax (bitshift=16 is hard coded here)
    or    dx, dx
    jns   CalcExpLT
-      
-   not   ax		; if negative, calc exp(abs(x))
+
+   not   ax             ; if negative, calc exp(abs(x))
    not   dx
    add   ax, 1
    adc   dx, 0
-   
+
 CalcExpLT:
          shl   ax, 1
       rcl   dx, 1
       shl   ax, 1
       rcl   dx, 1
       shl   ax, 1
-      rcl   dx, 1		;x is now in fg19 form for accuracy
-				; so, relative to fg16, we have:
-   div   Ln2Fg15		; 8x==(a * Ln(2)/2) + Rem
-   				;  x=(a * Ln(2)/16) + Rem/8
-   				;so exp(x)=exp((a * Ln(2)/16) + Rem/8)
-				;         =exp(a/16 * Ln(2)) * exp(Rem/8)
-				;         =2^(a/16) * exp(Rem)
-				;a mod 16 will give us an initial estimate 
+      rcl   dx, 1               ;x is now in fg19 form for accuracy
+                                ; so, relative to fg16, we have:
+   div   Ln2Fg15                ; 8x==(a * Ln(2)/2) + Rem
+                                ;  x=(a * Ln(2)/16) + Rem/8
+                                ;so exp(x)=exp((a * Ln(2)/16) + Rem/8)
+                                ;         =exp(a/16 * Ln(2)) * exp(Rem/8)
+                                ;         =2^(a/16) * exp(Rem)
+                                ;a mod 16 will give us an initial estimate
    mov  cl, 4
-   mov  di, ax			;Remember original
-   shr  ax, cl		
-   mov   a, ax			;a/16 will give us a bit shift
+   mov  di, ax                  ;Remember original
+   shr  ax, cl
+   mov   a, ax                  ;a/16 will give us a bit shift
    mov  ax, di
-   and  ax, 0000fh		;a mod 16
-   shl  ax, 1			;used as an index into 2 byte per element Table
+   and  ax, 0000fh              ;a mod 16
+   shl  ax, 1                   ;used as an index into 2 byte per element Table
    mov  di, ax
-   dec  cx			;3, please
-   add   dx, 4			;to control rounding up/down
-   shr   dx, cl			;Num=Rem/8 (convert back to fg16)
-				; 
+   dec  cx                      ;3, please
+   add   dx, 4                  ;to control rounding up/down
+   shr   dx, cl                 ;Num=Rem/8 (convert back to fg16)
+                                ;
    mov   ax, dx
-   shr   ax, 1 			;Num/2  fg 16
-   inc   ax			;rounding control
+   shr   ax, 1                  ;Num/2  fg 16
+   inc   ax                     ;rounding control
    stc
-   rcr   ax, 1			;1+Num/2   fg15
-   mul   dx			;dx:ax=Num(1+Num/2) fg31, so dx alone is fg15
-   shl   ax, 1			;more rounding control
-   adc   dx, 8000H 		;dx=1+Num(1+Num/2) fg15
-   mov   ax, Table[di]		;Get table entry fg15
-   mul   dx			;Only two multiplys used!  fg14, now (15+15-16)
+   rcr   ax, 1                  ;1+Num/2   fg15
+   mul   dx                     ;dx:ax=Num(1+Num/2) fg31, so dx alone is fg15
+   shl   ax, 1                  ;more rounding control
+   adc   dx, 8000H              ;dx=1+Num(1+Num/2) fg15
+   mov   ax, Table[di]          ;Get table entry fg15
+   mul   dx                     ;Only two multiplys used!  fg14, now (15+15-16)
    shl   ax, 1
-   rcl   dx, 1			;fg15
-   mov   e,  dx 
+   rcl   dx, 1                  ;fg15
+   mov   e,  dx
    ret                          ; return e=e**x * (2**15), 1 < e**x < 2
-_e2xLT   ENDP			;        a= bitshift needed 
+_e2xLT   ENDP                   ;        a= bitshift needed
 
 
-      
+
 Exp086    PROC     uses si di, LoNum:WORD, HiNum:WORD
-   mov   ax, LoNum 
+   mov   ax, LoNum
    mov   dx, HiNum
-   mov   TrigOverflow, 0
-   
-    call  _e2xLT	;Use Chris Lusby Taylor's e2x
+;   mov   overflow, 0
 
-   cmp   a, 15		;CJLT - was 16
+    call  _e2xLT        ;Use Chris Lusby Taylor's e2x
+
+   cmp   a, 15          ;CJLT - was 16
    jae   Overflow
-      
+
 ;   cmp   expSign, 0
 ;   jnz   NegNumber
-   cmp   HiNum, 0	;CJLT - we don't really need expSign
+   cmp   HiNum, 0       ;CJLT - we don't really need expSign
    jl   NegNumber
-      
+
    mov   ax, e
    mov   dx, ax
    inc   a
@@ -1315,21 +1310,21 @@ Exp086    PROC     uses si di, LoNum:WORD, HiNum:WORD
    mov   cx, a
    shl   ax, cl
    jmp   ExitExp086
-      
+
 Overflow:
    xor   ax, ax
    xor   dx, dx
-   mov   TrigOverflow, 1
+   mov   overflow, 1
    jmp   ExitExp086
-      
+
 NegNumber:
    cmp   e, 8000h
    jne   DivideE
-      
+
    mov   ax, e
    dec   a
    jmp   ShiftE
-      
+
 DivideE:
    xor   ax, ax
    mov   dx, ax
@@ -1341,7 +1336,7 @@ ShiftE:
    xor   dx, dx
    mov   cx, a
    shr   ax, cl
-      
+
 ExitExp086:
    ret
 Exp086    ENDP
@@ -1353,9 +1348,9 @@ SinhCosh086    PROC     uses si di, LoNum:WORD, HiNum:WORD, SinhAddr:WORD, \
    mov   ax, LoNum
    mov   dx, HiNum
 
-   call  _e2xLT		;calculate exp(|x|) fg 15
-			;answer is e*2^a
-   cmp   e, 8000h	;e==1 ?	
+   call  _e2xLT         ;calculate exp(|x|) fg 15
+                        ;answer is e*2^a
+   cmp   e, 8000h       ;e==1 ?
    jne   InvertE        ; e > 1, so we can invert it.
 
    mov   dx, 1
@@ -1441,17 +1436,17 @@ LOCAL Exp:WORD, Accum:WORD, LoAns:WORD, HiAns:WORD
       mov   cx, Fudge
       mov   ax, LoNum
       mov   dx, HiNum
-      mov   TrigOverflow, 0
+;      mov   overflow, 0
 
       or    dx, dx
       js    Overflow
       jnz   ShiftUp
 
       or    ax, ax
-      jnz   ShiftUp      
+      jnz   ShiftUp
 
    Overflow:
-      mov   TrigOverflow, 1
+      mov   overflow, 1
       jmp   ExitLog086
 
    ShiftUp:
@@ -1459,40 +1454,40 @@ LOCAL Exp:WORD, Accum:WORD, LoAns:WORD, HiAns:WORD
       shl   ax, 1
       rcl   dx, 1
       or    dx, dx
-      jns   ShiftUp		;shift until dx in fg15 form
+      jns   ShiftUp             ;shift until dx in fg15 form
 
       neg   cx
       add   cx, 31
       mov   Exp, cx
 ;CJLT method starts here. We try to reduce x to make it very close to 1
 ;store LoAns in bx for now (fg 16; initially 0)
-      mov  cl,2		;shift count
+      mov  cl,2         ;shift count
 redoterm2:
-      cmp  dx, 0AAABH	;x > 4/3 ?
+      cmp  dx, 0AAABH   ;x > 4/3 ?
       jb  doterm3
       mov  ax, dx
       shr  ax, cl
-      sub  dx, ax	;x:=x(1-1/4)
-      add  bx, 49a5H	;ln(4/3) fg 15
+      sub  dx, ax       ;x:=x(1-1/4)
+      add  bx, 49a5H    ;ln(4/3) fg 15
       jmp  redoterm2
- doterm3:     
-      inc  cl		;count=3
+ doterm3:
+      inc  cl           ;count=3
 redoterm3:
-      cmp  dx, 9249H	;x > 8/7 ?
+      cmp  dx, 9249H    ;x > 8/7 ?
       jb  doterm4
       mov  ax, dx
       shr  ax, cl
-      sub  dx, ax	;x:=x(1-1/8)
-      add  bx, 222eH	;ln(8/7)
+      sub  dx, ax       ;x:=x(1-1/8)
+      add  bx, 222eH    ;ln(8/7)
       jmp  redoterm3
  doterm4:
-      inc  cl		;count=4
-      cmp  dx, 8889H	;x > 16/15 ?
+      inc  cl           ;count=4
+      cmp  dx, 8889H    ;x > 16/15 ?
       jb  skipterm4
       mov  ax, dx
       shr  ax, cl
-      sub  dx, ax	;x:=x(1-1/16)
-      add  bx, 1085h	;ln(16/15)
+      sub  dx, ax       ;x:=x(1-1/16)
+      add  bx, 1085h    ;ln(16/15)
 ;No need to retry term4 as error is acceptably low if we ignore it
 skipterm4:
 ;Now we have reduced x to the range 1 <=x <1.072
@@ -1501,14 +1496,14 @@ skipterm4:
 ;can ignore all terms except the first!
 ;i.e.:
 ;ln(x)=2(x-1)/(x+1)
-      sub   dx, 8000h		; dx= x-1, fg 15
+      sub   dx, 8000h           ; dx= x-1, fg 15
       mov   cx, dx
-      stc	
-      rcr   cx, 1		; cx = 1 + (x-1)/2   fg 15
-      				;   = 1+x            fg 14
-      mov   ax,4000H		;rounding control (Trust me)
-      div   cx			;ax=ln(x)
-      add   bx, ax		;so add it to the rest of the Ans. No carry
+      stc
+      rcr   cx, 1               ; cx = 1 + (x-1)/2   fg 15
+                                ;   = 1+x            fg 14
+      mov   ax,4000H            ;rounding control (Trust me)
+      div   cx                  ;ax=ln(x)
+      add   bx, ax              ;so add it to the rest of the Ans. No carry
    MultExp:
       mov   cx, Exp
       mov   ax, Ln2Fg16
@@ -1516,12 +1511,12 @@ skipterm4:
       js    SubFromAns
 
       mul   cx                      ; cx = Exp * Lg2Fg16, fg 16
-      add   ax, bx		;add bx part of answer
+      add   ax, bx              ;add bx part of answer
       adc   dx, 0
       jmp   ExitLog086
 
    SubFromAns:
-      inc   bx		;Somewhat artificial, but we need to add 1 somewhere
+      inc   bx          ;Somewhat artificial, but we need to add 1 somewhere
       neg   cx
       mul   cx
    not   ax

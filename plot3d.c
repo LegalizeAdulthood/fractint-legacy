@@ -34,7 +34,7 @@ int blue_crop_left  = 0;
 int blue_crop_right = 4;
 int red_bright      = 80;
 int blue_bright     = 100;
-  
+
 BYTE T_RED;
 
 /* Bresenham's algorithm for drawing line */
@@ -165,7 +165,7 @@ void _fastcall plot3dsuperimpose16b(int x,int y,int color)
         if(red_local_left < x && x < red_local_right)
         {
             putcolor(x,y,color|tmp);
-            if (Targa_Out)                              
+            if (Targa_Out)
                 targa_color(x, y, color|tmp);
         }
     }
@@ -174,7 +174,7 @@ void _fastcall plot3dsuperimpose16b(int x,int y,int color)
         {
             color = color <<2;
             putcolor(x,y,color|tmp);
-            if (Targa_Out)                              
+            if (Targa_Out)
                 targa_color(x, y, color|tmp);
         }
 }
@@ -195,7 +195,7 @@ void _fastcall plot3dsuperimpose16(int x,int y,int color)
         if(red_local_left < x && x < red_local_right)
         {
             putcolor(x,y,color);
-            if (Targa_Out)                              
+            if (Targa_Out)
                 targa_color(x, y, color);
         }
     }
@@ -206,7 +206,7 @@ void _fastcall plot3dsuperimpose16(int x,int y,int color)
             if(tmp > 0 && tmp != color)
                 color = PAL_MAGENTA;
             putcolor(x,y,color);
-            if (Targa_Out)                              
+            if (Targa_Out)
                 targa_color(x, y, color);
         }
 }
@@ -249,7 +249,7 @@ void _fastcall plot3dsuperimpose256(int x,int y,int color)
             /* Overwrite previous blue, don't mess with existing red */
             color = color <<4;
             putcolor(x,y,color|(tmp&15));
-            if (Targa_Out)                              
+            if (Targa_Out)
                 if (!ILLUMINE)
                     targa_color(x, y, color|(tmp&15));
                 else
@@ -285,7 +285,7 @@ void _fastcall plotIFS3dsuperimpose256(int x,int y,int color)
         if(red_local_left < x && x < red_local_right)
         {
             putcolor(x,y,color|tmp);
-            if (Targa_Out)                              
+            if (Targa_Out)
                 if (!ILLUMINE)
                     targa_color(x, y, color|tmp);
                 else
@@ -297,7 +297,7 @@ void _fastcall plotIFS3dsuperimpose256(int x,int y,int color)
         {
             color = color <<4;
             putcolor(x,y,color|tmp);
-            if (Targa_Out)                              
+            if (Targa_Out)
                 if (!ILLUMINE)
                     targa_color(x, y, color|tmp);
                 else
@@ -323,7 +323,7 @@ void _fastcall plot3dalternate(int x,int y,int color)
         if(red_local_left < x && x < red_local_right)
         {
             putcolor(x,y,color>>1);
-            if (Targa_Out)                              
+            if (Targa_Out)
                 if (!ILLUMINE)
                     targa_color(x, y, color>>1);
                 else
@@ -335,13 +335,44 @@ void _fastcall plot3dalternate(int x,int y,int color)
         if(blue_local_left < x && x < blue_local_right)
         {
             putcolor(x,y,(color>>1)+(colors>>1));
-            if (Targa_Out)                              
+            if (Targa_Out)
                 if (!ILLUMINE)
                     targa_color(x, y, (color>>1)+(colors>>1));
                 else
                     targa_writedisk (x+sxoffs, y+syoffs, T_RED, 0, t_c);
         }
     }
+}
+
+void _fastcall plot3dcrosseyedA(int x,int y,int color)
+{
+   x /= 2;
+   y /= 2;
+   if(whichimage == 2)
+      x += xdots/2;
+   if(rowcount >= ydots/2)
+      /* hidden surface kludge */
+      if(getcolor(x,y) != 0)
+         return;
+   putcolor(x,y,color);
+}
+
+void _fastcall plot3dcrosseyedB(int x,int y,int color)
+{
+   x /= 2;
+   y /= 2;
+   if(whichimage == 2)
+      x += xdots/2;
+   putcolor(x,y,color);
+}
+
+void _fastcall plot3dcrosseyedC(int x,int y,int color)
+{
+   if(rowcount >= ydots/2)
+      /* hidden surface kludge */
+      if(getcolor(x,y) != 0)
+         return;
+   putcolor(x,y,color);
 }
 
 void plot_setup()
@@ -365,6 +396,20 @@ void plot_setup()
                 standardplot = plotIFS3dsuperimpose256;
         else
             standardplot = plot3dsuperimpose16;
+        break;
+
+    case 4: /* crosseyed mode */
+        if(sxdots < 2*xdots)
+        {
+           if(XROT == 0 && YROT == 0)
+              standardplot = plot3dcrosseyedA; /* use hidden surface kludge */
+           else
+              standardplot = plot3dcrosseyedB;
+        }
+        else if(XROT == 0 && YROT == 0)
+           standardplot = plot3dcrosseyedC; /* use hidden surface kludge */
+        else
+           standardplot = putcolor;
         break;
 
     default:
@@ -391,17 +436,21 @@ void plot_setup()
             xxadjust = (int)(((xtrans+xadjust)* (double)xdots)/100);
             xshift1 -= (int)((eyeseparation* (double)xdots)/200);
             xxadjust1 = (int)(((xtrans-xadjust)* (double)xdots)/100);
+            if(glassestype == 4 && sxdots >= 2*xdots)
+               sxoffs = sxdots / 2 - xdots;
             break;
 
         case 2:
             xshift  -= (int)((eyeseparation* (double)xdots)/200);
             xxadjust = (int)(((xtrans-xadjust)* (double)xdots)/100);
+            if(glassestype == 4 && sxdots >= 2*xdots)
+               sxoffs = sxdots / 2;
             break;
         }
     }
     else
         xxadjust = (int)((xtrans* (double)xdots)/100);
-        yyadjust = (int)(-(ytrans* (double)ydots)/100);
+    yyadjust = (int)(-(ytrans* (double)ydots)/100);
 
     if (mapset)
     {

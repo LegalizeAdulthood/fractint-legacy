@@ -12,7 +12,7 @@
 #include "targa_lc.h"
 #include "prototyp.h"
 
-static FILE *fptarga = NULL;		/* FILE pointer 	  */
+static FILE *fptarga = NULL;            /* FILE pointer           */
 
 /* Main entry decoder */
 tgaview()
@@ -31,15 +31,15 @@ tgaview()
        t16_getline(fptarga, width, (U16 *)boxx);
        if ((*outln)((void *)boxx,width))
        {
-	  fclose(fptarga);
-	  fptarga = NULL;
-	  return(-1);
+          fclose(fptarga);
+          fptarga = NULL;
+          return(-1);
        }
        if (keypressed())
        {
-	  fclose(fptarga);
-	  fptarga = NULL;
-	  return(-1);
+          fclose(fptarga);
+          fptarga = NULL;
+          return(-1);
        }
    }
    fclose(fptarga);
@@ -54,7 +54,7 @@ outlin16(BYTE *buffer,int linelen)
     U16 *buf;
     buf = (U16 *)buffer;
     for(i=0;i<linelen;i++)
-       putcolor(i,rowcount,buf[i]>>8); 
+       putcolor(i,rowcount,buf[i]>>8);
     rowcount++;
     return(0);
 }

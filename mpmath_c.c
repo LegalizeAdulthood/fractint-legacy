@@ -223,11 +223,11 @@ _CMPLX ComplexPower(_CMPLX xx, _CMPLX yy) {
    return(z);
 }
 
-/* 
+/*
 
   The following Complex function routines added by Tim Wegner November 1994.
-  
-*/  
+
+*/
 
 #define Sqrtz(z,rz) (*(rz) = ComplexSqrtFloat((z).x, (z).y))
 
@@ -236,24 +236,18 @@ void Arcsinz(_CMPLX z,_CMPLX *rz)
 {
   _CMPLX tempz1,tempz2;
 
-  if(z.y == 0 && z.x > 1)
-  {
-     rz->x = HUGE_VAL;
-     rz->y = 0;
-     return;
-  }  
   FPUcplxmul( &z, &z, &tempz1);
   tempz1.x = 1 - tempz1.x; tempz1.y = -tempz1.y;  /* tempz1 = 1 - tempz1 */
   Sqrtz( tempz1, &tempz1);
 
-  tempz2.x = -z.y; tempz2.y = z.x;                /* tempz2 = i*z  */  
+  tempz2.x = -z.y; tempz2.y = z.x;                /* tempz2 = i*z  */
   tempz1.x += tempz2.x;  tempz1.y += tempz2.y;    /* tempz1 += tempz2 */
   FPUcplxlog( &tempz1, &tempz1);
   rz->x = tempz1.y;  rz->y = -tempz1.x;           /* rz = (-i)*tempz1 */
 }   /* end. Arcsinz */
 
 
-/* rz=Arccos(z)=-i*Log{z+sqrt(z*z-1)} */  
+/* rz=Arccos(z)=-i*Log{z+sqrt(z*z-1)} */
 void Arccosz(_CMPLX z,_CMPLX *rz)
 {
   _CMPLX temp;
@@ -263,7 +257,7 @@ void Arccosz(_CMPLX z,_CMPLX *rz)
   Sqrtz( temp, &temp);
 
   temp.x += z.x; temp.y += z.y;                /* temp = z + temp */
-  
+
   FPUcplxlog( &temp, &temp);
   rz->x = temp.y;  rz->y = -temp.x;              /* rz = (-i)*tempz1 */
 }   /* end. Arccosz */
@@ -294,7 +288,7 @@ void Arccoshz(_CMPLX z,_CMPLX *rz)
 void Arctanhz(_CMPLX z,_CMPLX *rz)
 {
   _CMPLX temp0,temp1,temp2;
-   
+
   if( z.x == 0.0){
     rz->x = 0;
     rz->y = atan( z.y);
@@ -308,7 +302,7 @@ void Arctanhz(_CMPLX z,_CMPLX *rz)
       rz->x = log((1+z.x)/(1-z.x))/2;
       rz->y = 0;
       return;
-    } 
+    }
     else{
       temp0.x = 1 + z.x; temp0.y = z.y;             /* temp0 = 1 + z */
       temp1.x = 1 - z.x; temp1.y = -z.y;            /* temp1 = 1 - z */
@@ -334,7 +328,7 @@ void Arctanz(_CMPLX z,_CMPLX *rz)
     temp0.x = z.y;  temp0.y = 0.0;
     Arctanhz( temp0, &temp0);
     rz->x = -temp0.y; rz->y = temp0.x;              /* i*temp0 */
-  } 
+  }
   else if( z.x != 0.0 && z.y != 0.0){
 
     temp0.x = -z.y; temp0.y = z.x;                  /* i*z */
@@ -356,27 +350,27 @@ long lsqrt(long f)
     static long a=0, b=0, c=0;                  /* constant factors */
 
     if (f == 0)
-	return f;
+        return f;
     if (f <  0)
-	return 0;
+        return 0;
 
     if (a==0)                                   /* one-time compute consts */
     {
-	a = (long)(fudge * .41731);
-	b = (long)(fudge * .59016);
-	c = (long)(fudge * .7071067811);
+        a = (long)(fudge * .41731);
+        b = (long)(fudge * .59016);
+        c = (long)(fudge * .7071067811);
     }
 
     N  = 0;
     while (f & 0xff000000L)                     /* shift arg f into the */
     {                                           /* range: 0.5 <= f < 1  */
-	N++;
-	f /= 2;
+        N++;
+        f /= 2;
     }
     while (!(f & 0xff800000L))
     {
-	N--;
-	f *= 2;
+        N--;
+        f *= 2;
     }
 
     y0 = a + multiply(b, f,  bitshift);         /* Newton's approximation */
@@ -386,14 +380,14 @@ long lsqrt(long f)
 
     if (N % 2)
     {
-	N++;
-	y0 = multiply(c,y0, bitshift);
+        N++;
+        y0 = multiply(c,y0, bitshift);
     }
     N /= 2;
     if (N >= 0)
-	return y0 <<  N;                        /* correct for shift above */
+        return y0 <<  N;                        /* correct for shift above */
     else
-	return y0 >> -N;
+        return y0 >> -N;
 }
 #endif
 LCMPLX ComplexSqrtLong(long x, long y)
@@ -404,7 +398,7 @@ LCMPLX ComplexSqrtLong(long x, long y)
 
 #ifndef LONGSQRT
    mag       = sqrt(sqrt(((double) multiply(x,x,bitshift))/fudge +
-			 ((double) multiply(y,y,bitshift))/ fudge));
+                         ((double) multiply(y,y,bitshift))/ fudge));
    maglong   = (long)(mag * fudge);
 #else
    maglong   = lsqrt(lsqrt(multiply(x,x,bitshift)+multiply(y,y,bitshift)));
@@ -426,7 +420,7 @@ _CMPLX ComplexSqrtFloat(double x, double y)
    if(x == 0.0 && y == 0.0)
       result.x = result.y = 0.0;
    else
-   {   
+   {
       mag   = sqrt(sqrt(x*x + y*y));
       theta = atan2(y, x) / 2;
       FPUsincos(&theta, &result.y, &result.x);
@@ -442,7 +436,10 @@ _CMPLX ComplexSqrtFloat(double x, double y)
 #ifndef TESTING_MATH
 
 BYTE far *LogTable = (BYTE far *)0;
-int MaxLTSize;
+long MaxLTSize;
+int  Log_Calc = 0;
+static double mlf;
+static unsigned long lf;
 
    /* int LogFlag;
       LogFlag == 1  -- standard log palettes
@@ -453,11 +450,38 @@ int MaxLTSize;
 
 void SetupLogTable(void) {
    float l, f, c, m;
-   unsigned n, prev, limit, lf;
+   unsigned long prev, limit, sptop;
+   unsigned n;
+
+ if (save_release > 1920 || Log_Fly_Calc == 1) { /* set up on-the-fly variables */
+   if (LogFlag > 0) { /* new log function */
+      lf = (LogFlag > 1) ? LogFlag : 0;
+      if (lf >= (unsigned long)MaxLTSize)
+         lf = MaxLTSize - 1;
+      mlf = (colors - (lf?2:1)) / log(MaxLTSize - lf);
+   } else if (LogFlag == -1) { /* old log function */
+      mlf = (colors - 1) / log(MaxLTSize);
+   } else if (LogFlag <= -2) { /* sqrt function */
+      if ((lf = 0 - LogFlag) >= (unsigned long)MaxLTSize)
+         lf = MaxLTSize - 1;
+      mlf = (colors - 2) / sqrt(MaxLTSize - lf);
+   }
+ }
+
+ if (Log_Calc)
+    return; /* LogTable not defined, bail out now */
+
+ if (save_release > 1920 && !Log_Calc) {
+    Log_Calc = 1;   /* turn it on */
+    for (prev = 0; prev <= (unsigned long)MaxLTSize; prev++)
+        LogTable[prev] = (BYTE)logtablecalc((long)prev);
+    Log_Calc = 0;   /* turn it off, again */
+    return;
+ }
 
    if (LogFlag > -2) {
       lf = (LogFlag > 1) ? LogFlag : 0;
-      if (lf >= (unsigned int)MaxLTSize)
+      if (lf >= (unsigned long)MaxLTSize)
          lf = MaxLTSize - 1;
       Fg2Float((long)(MaxLTSize-lf), 0, m);
       fLog14(m, m);
@@ -469,14 +493,14 @@ void SetupLogTable(void) {
          Fg2Float((long)n, 0, f);
          fMul16(f, m, f);
          fExp14(f, l);
-         limit = (unsigned int)Float2Fg(l, 0) + lf;
-         if (limit > (unsigned int)MaxLTSize || n == (unsigned int)(colors-1))
+         limit = (unsigned long)Float2Fg(l, 0) + lf;
+         if (limit > (unsigned long)MaxLTSize || n == (unsigned int)(colors-1))
             limit = MaxLTSize;
          while (prev <= limit)
             LogTable[prev++] = (BYTE)n;
       }
    } else {
-      if ((lf = 0 - LogFlag) >= (unsigned int)MaxLTSize)
+      if ((lf = 0 - LogFlag) >= (unsigned long)MaxLTSize)
          lf = MaxLTSize - 1;
       Fg2Float((long)(MaxLTSize-lf), 0, m);
       fSqrt14(m, m);
@@ -488,8 +512,8 @@ void SetupLogTable(void) {
          Fg2Float((long)n, 0, f);
          fMul16(f, m, f);
          fMul16(f, f, l);
-         limit = (unsigned int)(Float2Fg(l, 0) + lf);
-         if (limit > (unsigned int)MaxLTSize || n == (unsigned int)(colors-1))
+         limit = (unsigned long)(Float2Fg(l, 0) + lf);
+         if (limit > (unsigned long)MaxLTSize || n == (unsigned int)(colors-1))
             limit = MaxLTSize;
          while (prev <= limit)
             LogTable[prev++] = (BYTE)n;
@@ -497,9 +521,40 @@ void SetupLogTable(void) {
    }
    LogTable[0] = 0;
    if (LogFlag != -1)
-      for (n = 1; n < (unsigned int)MaxLTSize; n++) /* spread top to incl unused colors */
-         if (LogTable[n] > LogTable[n-1])
-            LogTable[n] = (BYTE)(LogTable[n-1]+1);
+      for (sptop = 1; sptop < (unsigned long)MaxLTSize; sptop++) /* spread top to incl unused colors */
+         if (LogTable[sptop] > LogTable[sptop-1])
+            LogTable[sptop] = (BYTE)(LogTable[sptop-1]+1);
+}
+
+long logtablecalc(long citer) {
+   long ret = 0;
+
+   if (LogFlag == 0) /* Oops, how did we get here? */
+      return(citer);
+   if (LogTable && !Log_Calc)
+      return(LogTable[(long)min(coloriter, MaxLTSize)]);
+
+   if (LogFlag > 0) { /* new log function */
+      if ((unsigned long)citer <= lf)
+         ret = 1;
+      else if((citer - lf) / log(citer - lf) <= mlf)
+         ret = (long)(citer - lf + (lf?1:0));
+      else
+         ret = (long)(mlf * log(citer - lf)) + 1;
+   } else if (LogFlag == -1) { /* old log function */
+      if (citer == 0)
+         ret = 1;
+      else
+         ret = (long)(mlf * log(citer)) + 1;
+   } else if (LogFlag <= -2) { /* sqrt function */
+      if ((unsigned long)citer <= lf)
+         ret = 1;
+      else if((unsigned long)(citer - lf) <= (unsigned long)(mlf * mlf))
+         ret = (long)(citer - lf + 1);
+      else
+         ret = (long)(mlf * sqrt(citer - lf)) + 1;
+   }
+   return (ret);
 }
 
 long far ExpFloat14(long xx) {
@@ -555,9 +610,8 @@ int ComplexNewton(void) {
 
    FPUcplxmul(&temp, &cdegree, &cd1);
    FPUcplxdiv(&tmp, &cd1, &old);
-   if(DivideOverflow)
+   if(overflow)
    {
-      DivideOverflow = 0;
       return(1);
    }
    new = old;
@@ -605,9 +659,8 @@ int ComplexBasin(void) {
 
    FPUcplxmul(&temp, &cdegree, &cd1);
    FPUcplxdiv(&tmp, &cd1, &old);
-   if(DivideOverflow)
+   if(overflow)
    {
-      DivideOverflow = 0;
       return(1);
    }
    new = old;

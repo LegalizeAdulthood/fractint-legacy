@@ -18,7 +18,7 @@ Miscellaneous fractal-specific code (formerly in CALCFRAC.C)
 #include "targa_lc.h"
 #include "prototyp.h"
 
-/* routines in this module	*/
+/* routines in this module      */
 
 static void set_Plasma_palette(void);
 static U16 _fastcall adjust(int xa,int ya,int x,int y,int xb,int yb);
@@ -56,29 +56,29 @@ int test()
    {
       for (row = startrow; row <= iystop; row=row+1+numpasses)
       {
-	 register int col;
-	 for (col = 0; col <= ixstop; col++)	   /* look at each point on screen */
-	 {
-	    register color;
-	    init.y = dy0[row]+dy1[col];
-	    init.x = dx0[col]+dx1[row];
-	    if(keypressed())
-	    {
-	       testend();
-	       alloc_resume(20,1);
-	       put_resume(sizeof(int),&row,sizeof(int),&passes,0);
-	       return(-1);
-	    }
-	    color = testpt(init.x,init.y,parm.x,parm.y,maxit,inside);
-	    if (color >= colors) /* avoid trouble if color is 0 */
-	       if (colors < 16)
-		  color &= andcolor;
-	       else
-		  color = ((color-1) % andcolor) + 1; /* skip color zero */
-	    (*plot)(col,row,color);
-	    if(numpasses && (passes == 0))
-	       (*plot)(col,row+1,color);
-	 }
+         register int col;
+         for (col = 0; col <= ixstop; col++)       /* look at each point on screen */
+         {
+            register color;
+            init.y = dy0[row]+dy1[col];
+            init.x = dx0[col]+dx1[row];
+            if(keypressed())
+            {
+               testend();
+               alloc_resume(20,1);
+               put_resume(sizeof(int),&row,sizeof(int),&passes,0);
+               return(-1);
+            }
+            color = testpt(init.x,init.y,parm.x,parm.y,maxit,inside);
+            if (color >= colors) /* avoid trouble if color is 0 */
+               if (colors < 16)
+                  color &= andcolor;
+               else
+                  color = ((color-1) % andcolor) + 1; /* skip color zero */
+            (*plot)(col,row,color);
+            if(numpasses && (passes == 0))
+               (*plot)(col,row+1,color);
+         }
       }
       startrow = passes + 1;
    }
@@ -342,33 +342,33 @@ mode (and color-cycled only on VGA adapters [or EGA adapters in their\n\
    {
       if (pot_startdisk() >= 0)
       {
-	 /* max_plasma = (U16)(1L << 16) -1; */
+         /* max_plasma = (U16)(1L << 16) -1; */
          max_plasma = 0xFFFF;
          if(outside >= 0)
-	    plot    = (PLOT)putpotborder;
-	 else
-	    plot    = (PLOT)putpot;
-	 getpix =  getpot;
-	 OldPotFlag = potflag;
-	 OldPot16bit = pot16bit;
+            plot    = (PLOT)putpotborder;
+         else
+            plot    = (PLOT)putpot;
+         getpix =  getpot;
+         OldPotFlag = potflag;
+         OldPot16bit = pot16bit;
       }
       else
       {
-	 max_plasma = 0;	/* can't do potential (startdisk failed) */
-	 param[3]   = 0;
+         max_plasma = 0;        /* can't do potential (startdisk failed) */
+         param[3]   = 0;
          if(outside >= 0)
-	    plot    = putcolorborder;
-	 else
-	    plot    = putcolor;
-	 getpix  = (U16(_fastcall *)(int,int))getcolor;
+            plot    = putcolorborder;
+         else
+            plot    = putcolor;
+         getpix  = (U16(_fastcall *)(int,int))getcolor;
       }
    }
    else
    {
       if(outside >= 0)
-	plot    = putcolorborder;
+        plot    = putcolorborder;
        else
-	plot    = putcolor;
+        plot    = putcolor;
       getpix  = (U16(_fastcall *)(int,int))getcolor;
    }
    srand(rseed);
@@ -406,7 +406,7 @@ mode (and color-cycled only on VGA adapters [or EGA adapters in their\n\
    if(debugflag==3600)
       for(n = 0; n < 4; n++)
          rnd[n] = 1;
-      
+
    plot(      0,      0,  rnd[0]);
    plot(xdots-1,      0,  rnd[1]);
    plot(xdots-1,ydots-1,  rnd[2]);
@@ -749,14 +749,14 @@ int diffusion()
 /* back in Population (or lPopulation).  They should return 0  */
 /* if all is ok, or any non-zero value if calculation bailout  */
 /* is desirable (eg in case of errors, or the series tending   */
-/* to infinity).		Have fun !		       */
+/* to infinity).                Have fun !                     */
 /***************************************************************/
 
 #define DEFAULTFILTER 1000     /* "Beauty of Fractals" recommends using 5000
-			       (p.25), but that seems unnecessary. Can
-			       override this value with a nonzero param1 */
+                               (p.25), but that seems unnecessary. Can
+                               override this value with a nonzero param1 */
 
-#define SEED 0.66		/* starting value for population */
+#define SEED 0.66               /* starting value for population */
 
 static int far *verhulst_array;
 unsigned long filter_cycles;
@@ -797,11 +797,11 @@ int Bifurcation(void)
    {
       if (inside)
       {
-	 outside_x = 0;
-	 inside = 1;
+         outside_x = 0;
+         inside = 1;
       }
       else
-	 outside_x = 1;
+         outside_x = 1;
    }
 
    filter_cycles = (parm.x <= 0) ? DEFAULTFILTER : (long)parm.x;
@@ -813,7 +813,7 @@ int Bifurcation(void)
    }
 
    if (integerfractal)
-      linit.y = ly0[iystop];   /* Y-value of	*/
+      linit.y = ly0[iystop];   /* Y-value of    */
    else
       init.y = dy0[iystop];   /* bottom pixels */
 
@@ -821,29 +821,29 @@ int Bifurcation(void)
    {
       if(keypressed())
       {
-	 farmemfree((char far *)verhulst_array);
-	 alloc_resume(10,1);
-	 put_resume(sizeof(int),&column,0);
-	 return(-1);
+         farmemfree((char far *)verhulst_array);
+         alloc_resume(10,1);
+         put_resume(sizeof(int),&column,0);
+         return(-1);
       }
       if (integerfractal)
-	 lRate = lx0[column];
+         lRate = lx0[column];
       else
-	 Rate = dx0[column];
-      verhulst();	 /* calculate array once per column */
+         Rate = dx0[column];
+      verhulst();        /* calculate array once per column */
 
       for (row = iystop; row >= 0; row--) /* should be iystop & >=0 */
       {
-	 int color;
-	 color = verhulst_array[row];
-	 if(color && mono)
-	    color = inside;
-	 else if((!color) && mono)
-	    color = outside_x;
-	 else if (color>=colors)
-	    color = colors-1;
-	 verhulst_array[row] = 0;
-	 (*plot)(column,row,color); /* was row-1, but that's not right? */
+         int color;
+         color = verhulst_array[row];
+         if(color && mono)
+            color = inside;
+         else if((!color) && mono)
+            color = outside_x;
+         else if (color>=colors)
+            color = colors-1;
+         verhulst_array[row] = 0;
+         (*plot)(column,row,color); /* was row-1, but that's not right? */
       }
       column++;
    }
@@ -851,7 +851,7 @@ int Bifurcation(void)
    return(0);
 }
 
-static void verhulst()		/* P. F. Verhulst (1845) */
+static void verhulst()          /* P. F. Verhulst (1845) */
 {
    unsigned int pixel_row, errors;
    unsigned long counter;
@@ -867,24 +867,24 @@ static void verhulst()		/* P. F. Verhulst (1845) */
    {
       errors = curfractalspecific->orbitcalc();
       if (errors)
-	 return;
+         return;
    }
    if (half_time_check) /* check for periodicity at half-time */
    {
       Bif_Period_Init();
       for (counter=0 ; counter < (unsigned long)maxit ; counter++)
       {
-	 errors = curfractalspecific->orbitcalc();
-	 if (errors) return;
-	 if (periodicitycheck && Bif_Periodic(counter)) break;
+         errors = curfractalspecific->orbitcalc();
+         if (errors) return;
+         if (periodicitycheck && Bif_Periodic(counter)) break;
       }
       if (counter >= (unsigned long)maxit)   /* if not periodic, go the distance */
       {
-	 for (counter=0 ; counter < filter_cycles ; counter++)
-	 {
-	    errors = curfractalspecific->orbitcalc();
-	    if (errors) return;
-	 }
+         for (counter=0 ; counter < filter_cycles ; counter++)
+         {
+            errors = curfractalspecific->orbitcalc();
+            if (errors) return;
+         }
       }
    }
 
@@ -896,25 +896,25 @@ static void verhulst()		/* P. F. Verhulst (1845) */
 
       /* assign population value to Y coordinate in pixels */
       if (integerfractal)
-	 pixel_row = iystop - (int)((lPopulation - linit.y) / dely); /* iystop */
+         pixel_row = iystop - (int)((lPopulation - linit.y) / dely); /* iystop */
       else
-	 pixel_row = iystop - (int)((Population - init.y) / deltaY);
+         pixel_row = iystop - (int)((Population - init.y) / deltaY);
 
       /* if it's visible on the screen, save it in the column array */
       if (pixel_row <= (unsigned int)iystop) /* JCO 6/6/92 */
-	 verhulst_array[ pixel_row ] ++;
+         verhulst_array[ pixel_row ] ++;
       if (periodicitycheck && Bif_Periodic(counter))
       {
-	 if (pixel_row <= (unsigned int)iystop) /* JCO 6/6/92 */
-	    verhulst_array[ pixel_row ] --;
-	 break;
+         if (pixel_row <= (unsigned int)iystop) /* JCO 6/6/92 */
+            verhulst_array[ pixel_row ] --;
+         break;
       }
    }
 }
-static	long	lBif_closenuf, lBif_savedpop;	/* poss future use  */
-static	double	 Bif_closenuf,	Bif_savedpop;
-static	int	 Bif_savedinc;
-static	long	 Bif_savedand;
+static  long    lBif_closenuf, lBif_savedpop;   /* poss future use  */
+static  double   Bif_closenuf,  Bif_savedpop;
+static  int      Bif_savedinc;
+static  long     Bif_savedand;
 
 static void Bif_Period_Init()
 {
@@ -935,36 +935,36 @@ static void Bif_Period_Init()
 static int _fastcall Bif_Periodic (long time)  /* Bifurcation Population Periodicity Check */
 /* Returns : 1 if periodicity found, else 0 */
 {
-   if ((time & Bif_savedand) == 0)	/* time to save a new value */
+   if ((time & Bif_savedand) == 0)      /* time to save a new value */
    {
       if (integerfractal) lBif_savedpop = lPopulation;
-      else		     Bif_savedpop =  Population;
+      else                   Bif_savedpop =  Population;
       if (--Bif_savedinc == 0)
       {
-	 Bif_savedand = (Bif_savedand << 1) + 1;
-	 Bif_savedinc = 4;
+         Bif_savedand = (Bif_savedand << 1) + 1;
+         Bif_savedinc = 4;
       }
    }
-   else 			/* check against an old save */
+   else                         /* check against an old save */
    {
       if (integerfractal)
       {
-	 if (labs(lBif_savedpop-lPopulation) <= lBif_closenuf)
-	    return(1);
+         if (labs(lBif_savedpop-lPopulation) <= lBif_closenuf)
+            return(1);
       }
       else
       {
-	 if (fabs(Bif_savedpop-Population) <= Bif_closenuf)
-	    return(1);
+         if (fabs(Bif_savedpop-Population) <= Bif_closenuf)
+            return(1);
       }
    }
    return(0);
 }
 
 /**********************************************************************/
-/*												      */
+/*                                                                                                    */
 /* The following are Bifurcation "orbitcalc" routines...              */
-/*												      */
+/*                                                                                                    */
 /**********************************************************************/
 #ifdef XFRACT
 int BifurcLambda() /* Used by lyanupov */
@@ -1018,7 +1018,7 @@ int LongBifurcStewartTrig()
     ltmp.y = 0;
     LCMPLXtrig0(ltmp, ltmp);
     lPopulation = multiply(ltmp.x,ltmp.x,bitshift);
-    lPopulation = multiply(lPopulation,lRate,	   bitshift);
+    lPopulation = multiply(lPopulation,lRate,      bitshift);
     lPopulation -= fudge;
     return (overflow);
 #endif
@@ -1087,7 +1087,7 @@ int LongBifurcLambdaTrig()
   }
 
 #define LCMPLXpwr(arg1,arg2,out)    Arg2->l = (arg1); Arg1->l = (arg2);\
-	 lStkPwr(); Arg1++; Arg2++; (out) = Arg2->l
+         lStkPwr(); Arg1++; Arg2++; (out) = Arg2->l
 
 long beta;
 
@@ -1132,7 +1132,7 @@ int BifurcMaySetup()
 
 /******************* standalone engine for "popcorn" ********************/
 
-int popcorn()	/* subset of std engine */
+int popcorn()   /* subset of std engine */
 {
    int start_row;
    start_row = 0;
@@ -1150,13 +1150,13 @@ int popcorn()	/* subset of std engine */
       reset_periodicity = 1;
       for (col = 0; col <= ixstop; col++)
       {
-	 if (StandardFractal() == -1) /* interrupted */
-	 {
-	    alloc_resume(10,1);
-	    put_resume(sizeof(int),&row,0);
-	    return(-1);
-	 }
-	 reset_periodicity = 0;
+         if (StandardFractal() == -1) /* interrupted */
+         {
+            alloc_resume(10,1);
+            put_resume(sizeof(int),&row,0);
+            return(-1);
+         }
+         reset_periodicity = 0;
       }
    }
    calc_status = 4;
@@ -1164,17 +1164,17 @@ int popcorn()	/* subset of std engine */
 }
 
 /******************* standalone engine for "lyapunov" *********************/
-/*** Roy Murphy [76376,721]						***/
-/*** revision history:							***/
-/*** initial version: Winter '91					***/
-/***    Fall '92 integration of Nicholas Wilt's ASM speedups		***/
-/***	Jan 93' integration with calcfrac() yielding boundary tracing,	***/
-/***	tesseral, and solid guessing, and inversion, inside=nnn		***/
-/*** save_release behavior:						***/
-/***    1730 & prior: ignores inside=, calcmode='1', (a,b)->(x,y)	***/
-/***	1731: other calcmodes and inside=nnn				***/
-/***	1732: the infamous axis swap: (b,a)->(x,y),			***/
-/***		the order parameter becomes a long int			***/
+/*** Roy Murphy [76376,721]                                             ***/
+/*** revision history:                                                  ***/
+/*** initial version: Winter '91                                        ***/
+/***    Fall '92 integration of Nicholas Wilt's ASM speedups            ***/
+/***    Jan 93' integration with calcfrac() yielding boundary tracing,  ***/
+/***    tesseral, and solid guessing, and inversion, inside=nnn         ***/
+/*** save_release behavior:                                             ***/
+/***    1730 & prior: ignores inside=, calcmode='1', (a,b)->(x,y)       ***/
+/***    1731: other calcmodes and inside=nnn                            ***/
+/***    1732: the infamous axis swap: (b,a)->(x,y),                     ***/
+/***            the order parameter becomes a long int                  ***/
 /**************************************************************************/
 int lyaLength, lyaSeedOK;
 int lyaRxy[34];
@@ -1192,45 +1192,45 @@ lyapunov () {
     double a, b;
 
     if (keypressed()) {
-	return -1;
-    	}
+        return -1;
+        }
     overflow=FALSE;
     if (param[1]==1) Population = (1.0+rand())/(2.0+RAND_MAX);
     else if (param[1]==0) {
-	if (fabs(Population)>BIG || Population==0 || Population==1)
-	    Population = (1.0+rand())/(2.0+RAND_MAX);
-	}
+        if (fabs(Population)>BIG || Population==0 || Population==1)
+            Population = (1.0+rand())/(2.0+RAND_MAX);
+        }
     else Population = param[1];
     (*plot)(col, row, 1);
     if (invert) {
-	invertz2(&init);
-	a = init.y;
-	b = init.x;
-	}
+        invertz2(&init);
+        a = init.y;
+        b = init.x;
+        }
     else {
-	a = dy0[row]+dy1[col];
-	b = dx0[col]+dx1[row];
-	}
+        a = dy0[row]+dy1[col];
+        b = dx0[col]+dx1[row];
+        }
 #ifndef XFRACT
     /*  the assembler routines don't work for a & b outside the
-	ranges 0 < a < 4 and 0 < b < 4. So, fall back on the C
-	routines if part of the image sticks out.
-	*/
+        ranges 0 < a < 4 and 0 < b < 4. So, fall back on the C
+        routines if part of the image sticks out.
+        */
 #if WES
         color=lyapunov_cycles(a, b);
 #else
     if (lyaSeedOK && a>0 && b>0 && a<=4 && b<=4)
-	color=lyapunov_cycles(filter_cycles, Population, a, b);
+        color=lyapunov_cycles(filter_cycles, Population, a, b);
     else
-	color=lyapunov_cycles_in_c(filter_cycles, a, b);
+        color=lyapunov_cycles_in_c(filter_cycles, a, b);
 #endif
 #else
     color=lyapunov_cycles_in_c(filter_cycles, a, b);
 #endif
     if (inside>0 && color==0)
-	color = inside;
+        color = inside;
     else if (color>=colors)
-	color = colors-1;
+        color = colors-1;
     (*plot)(col, row, color);
     return color;
 }
@@ -1238,38 +1238,38 @@ lyapunov () {
 
 lya_setup () {
     /* This routine sets up the sequence for forcing the Rate parameter
-	to vary between the two values.  It fills the array lyaRxy[] and
-	sets lyaLength to the length of the sequence.
+        to vary between the two values.  It fills the array lyaRxy[] and
+        sets lyaLength to the length of the sequence.
 
-	The sequence is coded in the bit pattern in an integer.
-	Briefly, the sequence starts with an A the leading zero bits
-	are ignored and the remaining bit sequence is decoded.  The
-	sequence ends with a B.  Not all possible sequences can be
-	represented in this manner, but every possible sequence is
-	either represented as itself, as a rotation of one of the
-	representable sequences, or as the inverse of a representable
-	sequence (swapping 0s and 1s in the array.)  Sequences that
-	are the rotation and/or inverses of another sequence will generate
-	the same lyapunov exponents.
+        The sequence is coded in the bit pattern in an integer.
+        Briefly, the sequence starts with an A the leading zero bits
+        are ignored and the remaining bit sequence is decoded.  The
+        sequence ends with a B.  Not all possible sequences can be
+        represented in this manner, but every possible sequence is
+        either represented as itself, as a rotation of one of the
+        representable sequences, or as the inverse of a representable
+        sequence (swapping 0s and 1s in the array.)  Sequences that
+        are the rotation and/or inverses of another sequence will generate
+        the same lyapunov exponents.
 
-	A few examples follow:
-	    number    sequence
-  		0	ab
-  		1	aab
-  		2	aabb
-  		3	aaab
-  		4	aabbb
-  		5	aabab
-  		6	aaabb (this is a duplicate of 4, a rotated inverse)
-  		7	aaaab
-  		8	aabbbb	etc.
-	 */
+        A few examples follow:
+            number    sequence
+                0       ab
+                1       aab
+                2       aabb
+                3       aaab
+                4       aabbb
+                5       aabab
+                6       aaabb (this is a duplicate of 4, a rotated inverse)
+                7       aaaab
+                8       aabbbb  etc.
+         */
 
     long i;
     int t;
 
     if ((filter_cycles=(long)param[2])==0)
-	filter_cycles=maxit/2;
+        filter_cycles=maxit/2;
     lyaSeedOK = param[1]>0 && param[1]<=1 && debugflag!=90;
     lyaLength = 1;
 
@@ -1279,23 +1279,23 @@ lya_setup () {
 #endif
     lyaRxy[0] = 1;
     for (t=31; t>=0; t--)
-	if (i & (1<<t)) break;
+        if (i & (1<<t)) break;
     for (; t>=0; t--)
-	lyaRxy[lyaLength++] = (i & (1<<t)) != 0;
+        lyaRxy[lyaLength++] = (i & (1<<t)) != 0;
     lyaRxy[lyaLength++] = 0;
-    if (save_release<1732)		/* swap axes prior to 1732 */
-	for (t=lyaLength; t>=0; t--)
-	    lyaRxy[t] = !lyaRxy[t];
-    if (save_release<1731) {		/* ignore inside=, stdcalcmode */
-    	stdcalcmode='1';
-	if (inside==1) inside = 0;
-	}
+    if (save_release<1732)              /* swap axes prior to 1732 */
+        for (t=lyaLength; t>=0; t--)
+            lyaRxy[t] = !lyaRxy[t];
+    if (save_release<1731) {            /* ignore inside=, stdcalcmode */
+        stdcalcmode='1';
+        if (inside==1) inside = 0;
+        }
     if (inside<0) {
         static FCODE msg[]=
-	    {"Sorry, inside options other than inside=nnn are not supported by the lyapunov"};
+            {"Sorry, inside options other than inside=nnn are not supported by the lyapunov"};
         stopmsg(0,(char far *)msg);
         inside=1;
-	}
+        }
     return 1;
 }
 
@@ -1308,47 +1308,47 @@ int lyapunov_cycles_in_c(long filter_cycles, double a, double b) {
     total = 1.0;
     lnadjust = 0;
     for (i=0; i<filter_cycles; i++) {
-	for (count=0; count<lyaLength; count++) {
-	    Rate = lyaRxy[count] ? a : b;
-	    if (curfractalspecific->orbitcalc()) {
-		overflow = TRUE;
-		goto jumpout;
-		}
-	    }
-	}
+        for (count=0; count<lyaLength; count++) {
+            Rate = lyaRxy[count] ? a : b;
+            if (curfractalspecific->orbitcalc()) {
+                overflow = TRUE;
+                goto jumpout;
+                }
+            }
+        }
     for (i=0; i < maxit/2; i++) {
-	for (count = 0; count < lyaLength; count++) {
-	    Rate = lyaRxy[count] ? a : b;
-	    if (curfractalspecific->orbitcalc()) {
-		overflow = TRUE;
-		goto jumpout;
-		}
-	    temp = fabs(Rate-2.0*Rate*Population);
-		if ((total *= (temp))==0) {
-		overflow = TRUE;
-		goto jumpout;
-		}
-	    }
-	while (total > 22026.4657948) {
-	    total *= 0.0000453999297625;
-	    lnadjust += 10;
-	    }
-	while (total < 0.0000453999297625) {
-	    total *= 22026.4657948;
-	    lnadjust -= 10;
-	    }
-	}
+        for (count = 0; count < lyaLength; count++) {
+            Rate = lyaRxy[count] ? a : b;
+            if (curfractalspecific->orbitcalc()) {
+                overflow = TRUE;
+                goto jumpout;
+                }
+            temp = fabs(Rate-2.0*Rate*Population);
+                if ((total *= (temp))==0) {
+                overflow = TRUE;
+                goto jumpout;
+                }
+            }
+        while (total > 22026.4657948) {
+            total *= 0.0000453999297625;
+            lnadjust += 10;
+            }
+        while (total < 0.0000453999297625) {
+            total *= 22026.4657948;
+            lnadjust -= 10;
+            }
+        }
 
 jumpout:
     if (overflow || total <= 0 || (temp = log(total) + lnadjust) > 0)
-	color = 0;
+        color = 0;
     else {
-	if (LogFlag)
-	lyap = -temp/((double) lyaLength*i);
+        if (LogFlag)
+        lyap = -temp/((double) lyaLength*i);
     else
-	lyap = 1 - exp(temp/((double) lyaLength*i));
-	color = 1 + (int)(lyap * (colors-1));
-	}
+        lyap = 1 - exp(temp/((double) lyaLength*i));
+        color = 1 + (int)(lyap * (colors-1));
+        }
     return color;
 }
 
@@ -1757,13 +1757,13 @@ static void set_Cellular_palette()
    static Palettetype Yellow = { 60,58,18 };
    static Palettetype Brown  = { 42,21, 0 };
 
-   if (mapdacbox) return;		/* map= specified */
+   if (mapdacbox) return;               /* map= specified */
 
    dac[0].red  = 0 ;
    dac[0].green= 0 ;
    dac[0].blue = 0 ;
 
-   dac[1].red	 = Red.red;
+   dac[1].red    = Red.red;
    dac[1].green = Red.green;
    dac[1].blue  = Red.blue;
 
@@ -2021,7 +2021,7 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
      int found_attractor=0;
 
    if (check_key()) {
-	return -1;
+        return -1;
         }
 
    if (fsp == NULL)
@@ -2036,50 +2036,50 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
    if (!integerfractal) /* fp mode */
       {
       if(invert)
-	 {
-	 invertz2(&tmp);
+         {
+         invertz2(&tmp);
          old = tmp;
-	 }
+         }
       else
-	 {
+         {
          old.x = dx0[col]+dx1[row];
          old.y = dy0[row]+dy1[col];
-	 }
+         }
 
       while (!found_attractor
              && ((tempsqrx=sqr(old.x)) + (tempsqry=sqr(old.y)) < rqlim)
              && (coloriter < maxit))
-	 {
+         {
          /* simple formula: z = z^2 + conj(z*(-1+ai)) */
-	 /* but it's the attractor that makes this so interesting */
+         /* but it's the attractor that makes this so interesting */
          new.x = tempsqrx - tempsqry - old.x - fsp->fl.f.a*old.y;
          old.y += (old.x+old.x)*old.y - fsp->fl.f.a*old.x;
          old.x = new.x;
          if (fsp->repeat_mapping)
-	    {
+            {
             new.x = sqr(old.x) - sqr(old.y) - old.x - fsp->fl.f.a*old.y;
             old.y += (old.x+old.x)*old.y - fsp->fl.f.a*old.x;
             old.x = new.x;
-	    }
+            }
 
-	 coloriter++;
+         coloriter++;
 
-	 if (show_orbit)
+         if (show_orbit)
             plot_orbit(old.x, old.y, -1);
 
          if (fabs(fsp->fl.f.halfa-old.y) < FROTH_CLOSE
                 && old.x >= fsp->fl.f.top_x1 && old.x <= fsp->fl.f.top_x2)
-	    {
+            {
             if ((!fsp->repeat_mapping && fsp->attractors == 2)
                 || (fsp->repeat_mapping && fsp->attractors == 3))
                found_attractor = 1;
             else if (old.x <= fsp->fl.f.top_x3)
-	       found_attractor = 1;
+               found_attractor = 1;
             else if (old.x >= fsp->fl.f.top_x4)
                if (!fsp->repeat_mapping)
                   found_attractor = 1;
-	    else
-	       found_attractor = 2;
+            else
+               found_attractor = 2;
             }
          else if (fabs(FROTH_SLOPE*old.x - fsp->fl.f.a - old.y) < FROTH_CLOSE
                   && old.x <= fsp->fl.f.right_x1 && old.x >= fsp->fl.f.right_x2)
@@ -2098,10 +2098,10 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
                   found_attractor = 3;
                else
                   found_attractor = 6;
-	    }
+            }
          else if (fabs(-FROTH_SLOPE*old.x - fsp->fl.f.a - old.y) < FROTH_CLOSE
                   && old.x <= fsp->fl.f.left_x1 && old.x >= fsp->fl.f.left_x2)
-	    {
+            {
             if (!fsp->repeat_mapping && fsp->attractors == 2)
                found_attractor = 2;
             else if (fsp->repeat_mapping && fsp->attractors == 3)
@@ -2116,62 +2116,62 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
                   found_attractor = 2;
                else
                   found_attractor = 3;
-	    }
-	 }
+            }
+         }
       }
    else /* integer mode */
       {
       if(invert)
-	 {
-	 invertz2(&tmp);
+         {
+         invertz2(&tmp);
          lold.x = (long)(tmp.x * fudge);
          lold.y = (long)(tmp.y * fudge);
-	 }
+         }
       else
-	 {
+         {
          lold.x = lx0[col] + lx1[row];
          lold.y = ly0[row] + ly1[col];
-	 }
+         }
 
       while (!found_attractor && ((lmagnitud = (ltempsqrx=lsqr(lold.x)) + (ltempsqry=lsqr(lold.y))) < llimit)
-	     && (lmagnitud > 0) && (coloriter < maxit))
-	 {
+             && (lmagnitud > 0) && (coloriter < maxit))
+         {
          /* simple formula: z = z^2 + conj(z*(-1+ai)) */
-	 /* but it's the attractor that makes this so interesting */
+         /* but it's the attractor that makes this so interesting */
          lnew.x = ltempsqrx - ltempsqry - lold.x - multiply(fsp->fl.l.a,lold.y,bitshift);
          lold.y += (multiply(lold.x,lold.y,bitshift)<<1) - multiply(fsp->fl.l.a,lold.x,bitshift);
          lold.x = lnew.x;
          if (fsp->repeat_mapping)
-	    {
+            {
             lmagnitud = (ltempsqrx=lsqr(lold.x)) + (ltempsqry=lsqr(lold.y));
-	    if ((lmagnitud > llimit) || (lmagnitud < 0))
-	       break;
+            if ((lmagnitud > llimit) || (lmagnitud < 0))
+               break;
             lnew.x = ltempsqrx - ltempsqry - lold.x - multiply(fsp->fl.l.a,lold.y,bitshift);
             lold.y += (multiply(lold.x,lold.y,bitshift)<<1) - multiply(fsp->fl.l.a,lold.x,bitshift);
             lold.x = lnew.x;
-	    }
-	 coloriter++;
+            }
+         coloriter++;
 
-	 if (show_orbit)
+         if (show_orbit)
             iplot_orbit(lold.x, lold.y, -1);
 
          if (labs(fsp->fl.l.halfa-lold.y) < FROTH_LCLOSE
               && lold.x > fsp->fl.l.top_x1 && lold.x < fsp->fl.l.top_x2)
-	    {
+            {
             if ((!fsp->repeat_mapping && fsp->attractors == 2)
                 || (fsp->repeat_mapping && fsp->attractors == 3))
                found_attractor = 1;
             else if (lold.x <= fsp->fl.l.top_x3)
-	       found_attractor = 1;
+               found_attractor = 1;
             else if (lold.x >= fsp->fl.l.top_x4)
                if (!fsp->repeat_mapping)
                   found_attractor = 1;
-	    else
-	       found_attractor = 2;
-	    }
+            else
+               found_attractor = 2;
+            }
          else if (labs(multiply(FROTH_LSLOPE,lold.x,bitshift)-fsp->fl.l.a-lold.y) < FROTH_LCLOSE
                   && lold.x <= fsp->fl.l.right_x1 && lold.x >= fsp->fl.l.right_x2)
-	    {
+            {
             if (!fsp->repeat_mapping && fsp->attractors == 2)
                found_attractor = 2;
             else if (fsp->repeat_mapping && fsp->attractors == 3)
@@ -2188,7 +2188,7 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
                   found_attractor = 6;
             }
          else if (labs(multiply(-FROTH_LSLOPE,lold.x,bitshift)-fsp->fl.l.a-lold.y) < FROTH_LCLOSE)
-	    {
+            {
             if (!fsp->repeat_mapping && fsp->attractors == 2)
                found_attractor = 2;
             else if (fsp->repeat_mapping && fsp->attractors == 3)
@@ -2203,8 +2203,8 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
                   found_attractor = 2;
                else
                   found_attractor = 3;
-	    }
-	 }
+            }
+         }
       }
    if (show_orbit)
       scrub_orbit();
@@ -2213,7 +2213,7 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
    if ((kbdcount -= abs((int)realcoloriter)) <= 0)
       {
       if (check_key())
-	 return (-1);
+         return (-1);
       kbdcount = max_kbdcount;
       }
 
@@ -2223,51 +2223,51 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
    if (found_attractor)
       {
       if (colors >= 256)
-	 {
+         {
          if (!fsp->altcolor)
-	    {
+            {
             if (coloriter > fsp->shades)
                 coloriter = fsp->shades;
-	    }
-	 else
+            }
+         else
             coloriter = fsp->shades * coloriter / maxit;
-	 if (coloriter == 0)
-	    coloriter = 1;
+         if (coloriter == 0)
+            coloriter = 1;
          coloriter += fsp->shades * (found_attractor-1);
-	 }
+         }
       else if (colors >= 16)
-	 { /* only alternate coloring scheme available for 16 colors */
-	 long lshade;
+         { /* only alternate coloring scheme available for 16 colors */
+         long lshade;
 
 /* Trying to make a better 16 color distribution. */
 /* Since their are only a few possiblities, just handle each case. */
 /* This is a mostly guess work here. */
-	 lshade = (coloriter<<16)/maxit;
+         lshade = (coloriter<<16)/maxit;
          if (fsp->attractors != 6) /* either 2 or 3 attractors */
-	    {
-	    if (lshade < 2622)       /* 0.04 */
-	       coloriter = 1;
-	    else if (lshade < 10486) /* 0.16 */
-	       coloriter = 2;
-	    else if (lshade < 23593) /* 0.36 */
-	       coloriter = 3;
-	    else if (lshade < 41943L) /* 0.64 */
-	       coloriter = 4;
-	    else
-	       coloriter = 5;
-	    coloriter += 5 * (found_attractor-1);
-	    }
+            {
+            if (lshade < 2622)       /* 0.04 */
+               coloriter = 1;
+            else if (lshade < 10486) /* 0.16 */
+               coloriter = 2;
+            else if (lshade < 23593) /* 0.36 */
+               coloriter = 3;
+            else if (lshade < 41943L) /* 0.64 */
+               coloriter = 4;
+            else
+               coloriter = 5;
+            coloriter += 5 * (found_attractor-1);
+            }
          else /* 6 attractors */
-	    {
-	    if (lshade < 10486)      /* 0.16 */
-	       coloriter = 1;
-	    else
-	       coloriter = 2;
-	    coloriter += 2 * (found_attractor-1);
-	    }
-	 }
+            {
+            if (lshade < 10486)      /* 0.16 */
+               coloriter = 1;
+            else
+               coloriter = 2;
+            coloriter += 2 * (found_attractor-1);
+            }
+         }
       else /* use a color corresponding to the attractor */
-	 coloriter = found_attractor;
+         coloriter = found_attractor;
       oldcoloriter = coloriter;
       }
    else /* outside, or inside but didn't get sucked in by attractor. */

@@ -17,7 +17,7 @@
     (203) 276-9721
 */
 
-/*	Chuck Ebbert (CompuServe [76306,1226] ) changed code marked 'CAE fp'	*/
+/*      Chuck Ebbert (CompuServe [76306,1226] ) changed code marked 'CAE fp'    */
 /*   for fast 387 floating-point math.  See PARSERA.ASM and PARSERFP.C */
 /*   (13 Dec 1992.)  */
 /* */
@@ -32,7 +32,7 @@
 #include "mpmath.h"
 #include "prototyp.h"
 
- 
+
 #ifdef WATCH_MP
 double x1, y1, x2, y2;
 #endif
@@ -41,16 +41,24 @@ enum MATH_TYPE MathType = D_MATH;
 /* moved _LCMPLX and union ARg to mpmath.h -6-20-90 TIW */
 
 /* PB 910417 added MAX_OPS and MAX_ARGS defines */
-#define MAX_ARGS 100
+/* TW 960101 made all defines depend on MAX_OPS */
+
 #define MAX_OPS 250
+#define MAX_ARGS 100
+
+unsigned Max_Ops  = MAX_OPS;
+unsigned Max_Args = MAX_ARGS;
+
 struct PEND_OP {
    void (far *f)(void);
    int p;
 };
 /* CAE fp added MAX_STORES and LOADS */
 /* MAX_STORES must be even to make Unix alignment work */
-#define MAX_STORES 128  /* at most only half the ops can be stores */
-#define MAX_LOADS  200  /* and 80% can be loads */
+/* TW made dependent on Max_Ops */
+
+#define MAX_STORES ((Max_Ops/4)*2)  /* at most only half the ops can be stores */
+#define MAX_LOADS  ((unsigned)(Max_Ops*.8))  /* and 80% can be loads */
 
 /* PB 901103 made some of the following static for safety */
 static struct PEND_OP far *o;
@@ -62,16 +70,16 @@ union Arg *Arg1, *Arg2;
 
 /* CAE fp  made some of the following non-static for PARSERA.ASM */
 /* Some of these variables should be renamed for safety */
-union Arg s[20], far * far *Store, far * far *Load;	/* static CAE fp */
-int StoPtr, LodPtr, OpPtr;	/* static CAE fp */
+union Arg s[20], far * far *Store, far * far *Load;     /* static CAE fp */
+int StoPtr, LodPtr, OpPtr;      /* static CAE fp */
 
-void (far * far *f)(void) = (void(far * far *)(void))0;	/* static CAE fp */
+void (far * far *f)(void) = (void(far * far *)(void))0; /* static CAE fp */
 
-unsigned vsp, LastOp;	/* CAE fp made non-static */
-static unsigned n, ErrPtr, posp, NextOp, InitN;
+unsigned posp, vsp, LastOp;     /* CAE fp made non-static */
+static unsigned n, ErrPtr, NextOp, InitN;
 static int paren, SyntaxErr, ExpectingArg;
-struct ConstArg far *v = (struct ConstArg far *)0;	/* was static CAE fp */
-int InitLodPtr, InitStoPtr, InitOpPtr, LastInitOp;	/* was static CAE fp */
+struct ConstArg far *v = (struct ConstArg far *)0;      /* was static CAE fp */
+int InitLodPtr, InitStoPtr, InitOpPtr, LastInitOp;      /* was static CAE fp */
 static int Delta16;
 double fgLimit;           /* TIW 05-04-91 */
 static double fg;
@@ -80,6 +88,20 @@ static int SetRandom;     /* MCP 11-21-91 */
 static int Randomized;
 static unsigned long RandNum;
 int uses_p1, uses_p2, uses_p3;
+
+#ifndef XFRACT
+#define ChkLongDenom(denom)\
+    if (denom == 0 || (overflow && save_release > 1920)) {\
+        overflow = 1;\
+        return;\
+    }
+#endif
+
+#define ChkFloatDenom(denom)\
+    if (fabs(denom) <= DBL_MIN) {\
+        overflow = 1;\
+        return;\
+    }
 
 #ifndef TESTING_MATH
 #define dShiftx dx1[row]
@@ -125,10 +147,10 @@ unsigned SkipWhiteSpace(char *Str) {
 
 /* use the following when only float functions are implemented to
    get MP math and Integer math */
-   
+
 #ifndef XFRACT
 #define FUNCT
-#ifdef FUNCT /* use function form save space - isn't really slower */  
+#ifdef FUNCT /* use function form save space - isn't really slower */
 static void mStkFunct(void (*fct)(void))   /* call lStk via dStk */
 {
    Arg1->d = MPC2cmplx(Arg1->m);
@@ -139,8 +161,8 @@ static void mStkFunct(void (*fct)(void))   /* call lStk via dStk */
 static void lStkFunct(void (*fct)(void))   /* call lStk via dStk */
 {
    double y;
-   /* 
-      intermediate variable needed for safety because of 
+   /*
+      intermediate variable needed for safety because of
       different size of double and long in Arg union
    */
    y = (double)Arg1->l.y / fg;
@@ -160,7 +182,7 @@ static void lStkFunct(void (*fct)(void))   /* call lStk via dStk */
    Arg1->d = MPC2cmplx(Arg1->m);\
    (*fct)();\
    Arg1->m = cmplx2MPC(Arg1->d);
-   
+
 
 /* call lStk via dStk */
 #define lStkFunct(fct) {\
@@ -200,7 +222,7 @@ void dRandom(void)
    long x, y;
 
    /* Use the same algorithm as for fixed math so that they will generate
-	  the same fractals when the srand() function is used. */
+          the same fractals when the srand() function is used. */
    x = NewRandNum() >> (32 - bitshift);
    y = NewRandNum() >> (32 - bitshift);
    v[7].a.d.x = ((double)x / (1L << bitshift));
@@ -553,6 +575,14 @@ void lStkMod(void) {
       overflow = 1;
    Arg1->l.y = 0L;
 }
+
+void lStkModOld(void) {
+   Arg1->l.x = multiply(Arg2->l.x, Arg1->l.x, bitshift) +
+   multiply(Arg2->l.y, Arg1->l.y, bitshift);
+   if(Arg1->l.x < 0)
+      overflow = 1;
+   Arg1->l.y = 0L;
+}
 #endif
 
 void (*StkMod)(void) = dStkMod;
@@ -642,7 +672,7 @@ void dStkTan(void) {
    FPUsincos(&Arg1->d.x, &sinx, &cosx);
    FPUsinhcosh(&Arg1->d.y, &sinhy, &coshy);
    denom = cosx + coshy;
-   if(fabs(denom) <= DBL_MIN) return;
+   ChkFloatDenom(denom);
    Arg1->d.x = sinx/denom;
    Arg1->d.y = sinhy/denom;
 }
@@ -661,7 +691,7 @@ void lStkTan(void) {
    SinCos086(x, &sinx, &cosx);
    SinhCosh086(y, &sinhy, &coshy);
    denom = cosx + coshy;
-   if(denom == 0) return;
+   ChkLongDenom(denom);
    Arg1->l.x = divide(sinx,denom,bitshift);
    Arg1->l.y = divide(sinhy,denom,bitshift);
 }
@@ -676,7 +706,7 @@ void dStkTanh(void) {
    FPUsincos(&Arg1->d.y, &siny, &cosy);
    FPUsinhcosh(&Arg1->d.x, &sinhx, &coshx);
    denom = coshx + cosy;
-   if(fabs(denom) <= DBL_MIN) return;
+   ChkFloatDenom(denom);
    Arg1->d.x = sinhx/denom;
    Arg1->d.y = siny/denom;
 }
@@ -695,7 +725,7 @@ void lStkTanh(void) {
    SinCos086(y, &siny, &cosy);
    SinhCosh086(x, &sinhx, &coshx);
    denom = coshx + cosy;
-   if(denom == 0) return;
+   ChkLongDenom(denom);
    Arg1->l.x = divide(sinhx,denom,bitshift);
    Arg1->l.y = divide(siny,denom,bitshift);
 }
@@ -710,7 +740,7 @@ void dStkCoTan(void) {
    FPUsincos(&Arg1->d.x, &sinx, &cosx);
    FPUsinhcosh(&Arg1->d.y, &sinhy, &coshy);
    denom = coshy - cosx;
-   if(fabs(denom) <= DBL_MIN) return;
+   ChkFloatDenom(denom);
    Arg1->d.x = sinx/denom;
    Arg1->d.y = -sinhy/denom;
 }
@@ -729,7 +759,7 @@ void lStkCoTan(void) {
    SinCos086(x, &sinx, &cosx);
    SinhCosh086(y, &sinhy, &coshy);
    denom = coshy - cosx;
-   if(denom == 0) return;
+   ChkLongDenom(denom);
    Arg1->l.x = divide(sinx,denom,bitshift);
    Arg1->l.y = -divide(sinhy,denom,bitshift);
 }
@@ -744,7 +774,7 @@ void dStkCoTanh(void) {
    FPUsincos(&Arg1->d.y, &siny, &cosy);
    FPUsinhcosh(&Arg1->d.x, &sinhx, &coshx);
    denom = coshx - cosy;
-   if(fabs(denom) <= DBL_MIN) return;
+   ChkFloatDenom(denom);
    Arg1->d.x = sinhx/denom;
    Arg1->d.y = -siny/denom;
 }
@@ -763,7 +793,7 @@ void lStkCoTanh(void) {
    SinCos086(y, &siny, &cosy);
    SinhCosh086(x, &sinhx, &coshx);
    denom = coshx - cosy;
-   if(denom == 0) return;
+   ChkLongDenom(denom);
    Arg1->l.x = divide(sinhx,denom,bitshift);
    Arg1->l.y = -divide(siny,denom,bitshift);
 }
@@ -780,7 +810,7 @@ void (*StkCoTanh)(void) = dStkCoTanh;
 void dStkRecip(void) {
    double mod;
    mod =Arg1->d.x * Arg1->d.x + Arg1->d.y * Arg1->d.y;
-   if(mod <= DBL_MIN) return;
+   ChkFloatDenom(mod);
    Arg1->d.x =  Arg1->d.x/mod;
    Arg1->d.y = -Arg1->d.y/mod;
 }
@@ -789,7 +819,10 @@ void dStkRecip(void) {
 void mStkRecip(void) {
    struct MP mod;
    mod = *MPadd(*MPmul(Arg1->m.x, Arg1->m.x),*MPmul(Arg1->m.y, Arg1->m.y));
-   if(mod.Mant == 0L) return;
+   if(mod.Mant == 0L) {
+      overflow = 1;
+      return;
+   }
    Arg1->m.x = *MPdiv(Arg1->m.x,mod);
    Arg1->m.y = *MPdiv(Arg1->m.y,mod);
    Arg1->m.y.Exp ^= 0x8000;
@@ -799,7 +832,9 @@ void lStkRecip(void) {
    long mod;
    mod = multiply(Arg1->l.x,Arg1->l.x,bitshift)
       + multiply(Arg1->l.y,Arg1->l.y,bitshift);
-   if(mod<=0L) return;
+   if(save_release > 1920) {
+      ChkLongDenom(mod);
+   } else if(mod<=0L) return;
    Arg1->l.x =  divide(Arg1->l.x,mod,bitshift);
    Arg1->l.y = -divide(Arg1->l.y,mod,bitshift);
 }
@@ -1351,10 +1386,27 @@ void EndInit(void) {
 #pragma code_seg ("parser1_text")     /* place following in an overlay */
 #endif
 
+/* detect if constant is part of a (a,b) construct */
+static int isconst_pair(char *Str) {
+   int n,j;
+   int answer = 0;
+   /* skip past first number */
+   for(n = 0; isdigit(Str[n]) || Str[n] == '.'; n++);
+   if(Str[n] == ',') {
+      j = n + SkipWhiteSpace(&Str[n+1]) + 1;
+      if(isdigit(Str[j])
+          || (Str[j] == '-' && (isdigit(Str[j+1]) || Str[j+1] == '.'))
+          || Str[j] == '.') {
+            answer = 1;
+      }
+   }
+   return(answer);
+}
+
 struct ConstArg far *isconst(char *Str, int Len) {
    _CMPLX z;
    unsigned n, j;
-
+   /* next line enforces variable vs constant naming convention */
    for(n = 0; n < vsp; n++) {
       if(v[n].len == Len) {
          if(!strnicmp(v[n].s, Str, Len))
@@ -1367,13 +1419,28 @@ struct ConstArg far *isconst(char *Str, int Len) {
                RandomSeed();
             if(n == 8)        /* The formula uses 'p3'. */
                uses_p3 = 1;
-            return(&v[n]);
+            if(!isconst_pair(Str))
+               return(&v[n]);
          }
       }
    }
    v[vsp].s = Str;
    v[vsp].len = Len;
    v[vsp].a.d.x = v[vsp].a.d.y = 0.0;
+
+#ifndef XFRACT
+   /* v[vsp].a should already be zeroed out */
+   switch(MathType) {
+   case M_MATH:
+      v[vsp].a.m.x.Mant = v[vsp].a.m.x.Exp = 0;
+      v[vsp].a.m.y.Mant = v[vsp].a.m.y.Exp = 0;
+      break;
+   case L_MATH:
+      v[vsp].a.l.x = v[vsp].a.l.y = 0;
+      break;
+   }
+#endif
+
    if(isdigit(Str[0])
        || (Str[0] == '-' && (isdigit(Str[1]) || Str[1] == '.'))
        || Str[0] == '.') {
@@ -1386,7 +1453,7 @@ struct ConstArg far *isconst(char *Str, int Len) {
       for(n = 1; isdigit(Str[n]) || Str[n] == '.'; n++);
       if(Str[n] == ',') {
          j = n + SkipWhiteSpace(&Str[n+1]) + 1;
-         if(isdigit(Str[j]) 
+         if(isdigit(Str[j])
              || (Str[j] == '-' && (isdigit(Str[j+1]) || Str[j+1] == '.'))
              || Str[j] == '.') {
             z.y = atof(&Str[j]);
@@ -1528,8 +1595,8 @@ static char *Constants[] = {
    "p2",           /* v[2] */
    "z",            /* v[3] */
    "LastSqr",      /* v[4] */
-   "spare1",       /* v[5] */   /* use this slot for next constant */
-   "spare2",       /* v[6] */   /* use this slot for next constant */
+   "pi",           /* v[5] */
+   "e",            /* v[6] */
    "rand",         /* v[7] */
    "p3",           /* v[8] */
 };
@@ -1555,16 +1622,25 @@ struct SYMETRY {
    "", 0
 };
 
-int ParseStr(char *Str) {
+static int ParseStr(char *Str, int pass) {
    struct ConstArg far *c;
    int ModFlag = 999, Len, Equals = 0, Mod[20], mdstk = 0;
    int NewStatement;
    struct ERROR { int n, s; } far *e;
+   double const_pi, const_e;
 
    SetRandom = Randomized = 0;
    e = (struct ERROR far *)farmemalloc(sizeof(struct ERROR) * 100L);
    /* PB 910417 changed "o" to be a temporary alloc, during ParseStr only */
-   o = (struct PEND_OP far *)farmemalloc(sizeof(struct PEND_OP) * (long)MAX_OPS);
+   if(pass == 0)
+      o = (struct PEND_OP far *)
+         ((char far *)typespecific_workarea + total_formula_mem-sizeof(struct PEND_OP) * Max_Ops);
+   else if(used_extra == 1)
+      o = (struct PEND_OP far *)
+         ((char far *)typespecific_workarea + total_formula_mem-sizeof(struct PEND_OP) * Max_Ops);
+   else
+      o = (struct PEND_OP far *)farmemalloc(sizeof(struct PEND_OP) * (long)Max_Ops);
+
    if(!e || !o || !typespecific_workarea) {
       static char far msg[]={"Insufficient memory to run fractal type 'formula'"};
       stopmsg(0,msg);
@@ -1678,7 +1754,10 @@ int ParseStr(char *Str) {
       StkSinh = lStkSinh;
       StkLT = lStkLT;
       StkLTE = lStkLTE;
-      StkMod = lStkMod;
+    if (save_release > 1826)
+        StkMod = lStkMod;
+    else
+        StkMod = lStkModOld;
       StkSqr = lStkSqr;
       StkCos = lStkCos;
       StkCosh = lStkCosh;
@@ -1724,18 +1803,20 @@ int ParseStr(char *Str) {
       v[vsp].len = strlen(Constants[vsp]);
    }
 
-   /* 
-   v[6].a.d.x = v[6].a.d.y = 0.0;
-   v[7].a = v[6].a;
-   */
+   const_pi = atan(1.0) * 4;
+   const_e  = exp(1.0);
    v[7].a.d.x = v[7].a.d.y = 0.0;
-   
+
    switch(MathType) {
    case D_MATH:
       v[1].a.d.x = param[0];
       v[1].a.d.y = param[1];
       v[2].a.d.x = param[2];
       v[2].a.d.y = param[3];
+      v[5].a.d.x = const_pi;
+      v[5].a.d.y = 0.0;
+      v[6].a.d.x = const_e;
+      v[6].a.d.y = 0.0;
       v[8].a.d.x = param[4];
       v[8].a.d.y = param[5];
       break;
@@ -1745,6 +1826,10 @@ int ParseStr(char *Str) {
       v[1].a.m.y = *d2MP(param[1]);
       v[2].a.m.x = *d2MP(param[2]);
       v[2].a.m.y = *d2MP(param[3]);
+      v[5].a.m.x = *d2MP(const_pi);
+      v[5].a.m.y = *d2MP(0.0);
+      v[6].a.m.x = *d2MP(const_e);
+      v[6].a.m.y = *d2MP(0.0);
       v[8].a.m.x = *d2MP(param[4]);
       v[8].a.m.y = *d2MP(param[5]);
       break;
@@ -1753,6 +1838,10 @@ int ParseStr(char *Str) {
       v[1].a.l.y = (long)(param[1] * fg);
       v[2].a.l.x = (long)(param[2] * fg);
       v[2].a.l.y = (long)(param[3] * fg);
+      v[5].a.l.x = (long)(const_pi * fg);
+      v[5].a.l.y = (long)(0.0);
+      v[6].a.l.x = (long)(const_e * fg);
+      v[6].a.l.y = (long)(0.0);
       v[8].a.l.x = (long)(param[4] * fg);
       v[8].a.l.y = (long)(param[5] * fg);
       break;
@@ -1976,7 +2065,7 @@ int ParseStr(char *Str) {
                o[posp].f = StkLod;
                o[posp++].p = 1 - (paren + Equals)*15;
                n = InitN + c->len - 1;
-               if(vsp >= MAX_ARGS-1) { /* PB 910417 safety test */
+               if(vsp >= Max_Args-1) { /* PB 910417 safety test */
                   e[ErrPtr].n = InitN;
                   e[ErrPtr++].s = 7;
                   break;
@@ -1997,7 +2086,7 @@ int ParseStr(char *Str) {
          e[ErrPtr++].s = SyntaxErr;
          SyntaxErr = -1;
       }
-      if(posp >= MAX_OPS-1) { /* PB 901103 added safety test here */
+      if(posp >= Max_Ops-1) { /* PB 901103 added safety test here */
          e[ErrPtr].n = InitN;
          e[ErrPtr++].s = 7;
          break;
@@ -2014,7 +2103,8 @@ int ParseStr(char *Str) {
    }
    if (ErrPtr) {
       int i, j, k, m;
-      char msgbuf[700];  /* PB replaced printf loop by build msgbuf & stopmsg */
+      char msgbuf[700];
+      /* PB replaced printf loop by build msgbuf & stopmsg */
       /* stopmsg defined to have max 9 lines, show at most first 3 errors */
       msgbuf[0] = 0;
       for(n = 0; n < ErrPtr && n < 3; n++) {
@@ -2055,7 +2145,8 @@ int ParseStr(char *Str) {
          msgbuf[k++] = '^';
          msgbuf[k] = 0;
       }
-      stopmsg(8,msgbuf);
+      if(pass > 0)
+         stopmsg(8,msgbuf);
    }
    if(!ErrPtr) {
       NextOp = 0;
@@ -2071,7 +2162,8 @@ int ParseStr(char *Str) {
    }
    else
       posp = 0;
-   farmemfree(o);
+   if(pass > 0 && used_extra == 0)
+      farmemfree(o);
    farmemfree(e);
    /* PB 910417 free all arrays if error */
    if (ErrPtr)
@@ -2164,8 +2256,8 @@ int form_per_pixel(void) {
             /* watch out for overflow */
             if(sqr(old.x)+sqr(old.y) >= 127)
             {
-	       old.x = 8;  /* value to bail out in one iteration */
-	       old.y = 8;
+               old.x = 8;  /* value to bail out in one iteration */
+               old.y = 8;
             }
             /* convert to fudged longs */
             v[0].a.l.x = (long)(old.x*fg);
@@ -2214,7 +2306,7 @@ int form_per_pixel(void) {
       break;
    case L_MATH:
       lold = v[3].a.l;
-      break; 
+      break;
 #endif
    }
 
@@ -2242,7 +2334,7 @@ char *FindFormula(char *Str) {
 
    symmetry = 0;
    if((File = fopen(fullfilename, "rt")) != NULL) { /* BDT use variable files */
-      while(StrBuff[0]=0,/* TIW 04-22-91 */ fscanf(File, "%200[^ \n\t({]", StrBuff) != EOF) {
+      while(StrBuff[0]=0,/* TIW 04-22-91 */ fscanf(File, "%200[^ ;\n\t({]", StrBuff) != EOF) {
          if(!stricmp(StrBuff, Str) || !Str[0]) {
             while((c = getc(File)) != EOF) {
                if(c == '(') {
@@ -2297,7 +2389,7 @@ UnexpectedEOF:
                   break;
                case ' ':                     /* Also strip out the
                                                    white spaces */
-                                    
+
                case '\t':
                   break;
                case '\n':
@@ -2320,15 +2412,15 @@ UnexpectedEOF:
             c = getc(File);
             if( c != ';' && c != EOF)
                ungetc(c,File);
-            else if(c == EOF) 
+            else if(c == EOF)
                goto UnexpectedEOF;
             else /* skip comment */
                while((c = getc(File)) != '\n') {
                   if(c == EOF)
                      goto UnexpectedEOF;
                }
-         }   
-        
+         }
+
          StrBuff[0]=0;  /* TIW 04-22-91 */
          fscanf(File, "%200[ \n\t({]", StrBuff);
          if(StrBuff[strcspn(StrBuff, "{")]) {
@@ -2368,14 +2460,13 @@ int RunForm(char *Name) {  /*  returns 1 if an error occurred  */
       return 1;  /*  and don't reset the pointers  */
    }
 
-   parser_allocate();  /*  ParseStr() will test if this alloc worked  */
-
    /* TW 5-31-94 add search for FRM files in directory */
    find_file_item(FormFileName,Name,NULL);
 
    if((FormStr = FindFormula(Name)) != NULL ){
       /*  formula was found  */
-      if (ParseStr(FormStr)){
+      parser_allocate();  /*  ParseStr() will test if this alloc worked  */
+      if (ParseStr(FormStr,1)){
          /*  parse failed, don't change fn pointers  */
          return 1;
       }
@@ -2394,13 +2485,14 @@ int RunForm(char *Name) {  /*  returns 1 if an error occurred  */
 
 int fpFormulaSetup(void) {
 #ifndef XFRACT
-   int RunFormRes;		/* CAE fp */
+   int RunFormRes;              /* CAE fp */
 
    if (fpu > 0) {
       MathType = D_MATH;
       /* CAE changed below for fp */
       RunFormRes = !RunForm(FormName); /* RunForm() returns 1 for failure */
-      if (RunFormRes && fpu >=387 && debugflag != 90)  /* && !invert  */
+      if (RunFormRes && fpu >=387 && debugflag != 90 && (orbitsave&2) == 0
+         /* && !invert  */ )
          return CvtStk(); /* run fast assembler code in parsera.asm */
       return RunFormRes;
    }
@@ -2444,12 +2536,14 @@ void init_misc()
 }
 
 /* PB 910417 here to end changed.
-	Allocate sub-arrays from one main farmemalloc, using global variable
-	typespecific_workarea; calcfrac.c releases this area when calculation
-	ends or is terminated.
-	Moved the "f" array to be allocated as part of this.
-	*/
+        Allocate sub-arrays from one main farmemalloc, using global variable
+        typespecific_workarea; calcfrac.c releases this area when calculation
+        ends or is terminated.
+        Moved the "f" array to be allocated as part of this.
+        */
 
+long total_formula_mem;
+BYTE used_extra = 0;
 static void parser_allocate(void)
 {
    /* CAE fp changed below for v18 */
@@ -2457,33 +2551,85 @@ static void parser_allocate(void)
    /* Somewhat more memory is now allocated than in v17 here */
    /* however Store and Load were reduced in size to help make up for it */
 
-   unsigned int f_size,Store_size,Load_size,v_size, p_size;
-   free_workarea();
-   f_size = sizeof(void(far * far *)(void)) * MAX_OPS;
-   Store_size = sizeof(union Arg far *) * MAX_STORES;
-   Load_size = sizeof(union Arg far *) * MAX_LOADS;
-   v_size = sizeof(struct ConstArg) * MAX_ARGS;
-   p_size = sizeof(struct fls far *) * MAX_OPS;
-   typespecific_workarea =
-   farmemalloc((long)(f_size+Load_size+Store_size+v_size+p_size));
-   f = (void(far * far *)(void))typespecific_workarea;
-   Store = (union Arg far * far *)(f + MAX_OPS);
-   Load = (union Arg far * far *)(Store + MAX_STORES);
-   v = (struct ConstArg far *)(Load + MAX_LOADS);
-   pfls = (struct fls far *)(v + MAX_ARGS);
+   long f_size,Store_size,Load_size,v_size, p_size;
+   int pass;
+   long end_dx_array;
+   /* TW Jan 1 1996 Made two passes to determine actual values of
+      Max_Ops and Max_Args. Now use the end of extraseg if possible, so
+      if less than 2048x2048 resolution is used, usually no farmemalloc
+      calls are needed */
+   for(pass = 0; pass < 2; pass++)
+   {
+      free_workarea();
+      if(pass == 0) {
+         Max_Ops = 2300; /* this value uses up about 64K memory */
+         Max_Args = (unsigned)(Max_Ops/2.5);
+      }
+      f_size = sizeof(void(far * far *)(void)) * Max_Ops;
+      Store_size = sizeof(union Arg far *) * MAX_STORES;
+      Load_size = sizeof(union Arg far *) * MAX_LOADS;
+      v_size = sizeof(struct ConstArg) * Max_Args;
+      p_size = sizeof(struct fls far *) * Max_Ops;
+      total_formula_mem = f_size+Load_size+Store_size+v_size+p_size
+         + sizeof(struct PEND_OP) * Max_Ops;
+      used_extra = 0;
+      end_dx_array = 2L*(long)(xdots+ydots)*sizeof(double);
+      if(pass == 0)
+      {
+         typespecific_workarea = (char far *)MK_FP(extraseg,0);
+         used_extra = 1;
+      }
+      else if(1L<<16 > end_dx_array + total_formula_mem)
+      {
+         typespecific_workarea = (char far *)MK_FP(extraseg,0) + end_dx_array;
+         used_extra = 1;
+      }
+      else
+      {
+         typespecific_workarea =
+            farmemalloc((long)(f_size+Load_size+Store_size+v_size+p_size));
+         used_extra = 0;
+      }
+      f = (void(far * far *)(void))typespecific_workarea;
+      Store = (union Arg far * far *)(f + Max_Ops);
+      Load = (union Arg far * far *)(Store + MAX_STORES);
+      v = (struct ConstArg far *)(Load + MAX_LOADS);
+      pfls = (struct fls far *)(v + Max_Args);
+
+      if(pass == 0)
+      {
+         if (ParseStr(FormStr,pass) == 0)
+         {
+            /* per Chuck Ebbert, fudge these up a little */
+            Max_Ops = posp+4;
+            Max_Args = vsp+4;
+         }
+         else
+         {
+            Max_Ops = MAX_OPS;
+            Max_Args = MAX_ARGS;
+         }
+         typespecific_workarea = NULL;
+         /* restore extraseg array */
+         if(integerfractal && !invert)
+            fill_lx_array();
+         else
+            fill_dx_array();
+      }
+   }
    uses_p1 = uses_p2 = uses_p3 = 0;
 }
 
 void free_workarea()
 {
-   if(typespecific_workarea) {
+   if(typespecific_workarea && used_extra == 0) {
       farmemfree(typespecific_workarea);
-      typespecific_workarea = NULL;
    }
+   typespecific_workarea = NULL;
    Store = (union Arg far * far *)0;
    Load = (union Arg far * far *)0;
    v = (struct ConstArg far *)0;
-   f = (void(far * far *)(void))0;	/* CAE fp */
+   f = (void(far * far *)(void))0;      /* CAE fp */
    pfls = (struct fls far * )0;   /* CAE fp */
-
+   total_formula_mem = 0;
 }

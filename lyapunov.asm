@@ -20,7 +20,7 @@ overflowcheck EQU 5
 
 EXTRN   Population:QWORD,Rate:QWORD
 EXTRN   colors:WORD, maxit:DWORD, lyaLength:WORD
-EXTRN   lyaRxy:WORD, LogFlag:WORD
+EXTRN   lyaRxy:WORD, LogFlag:DWORD
 EXTRN   fpu:WORD
 EXTRN   filter_cycles:DWORD
 
@@ -88,7 +88,7 @@ LOCAL positive_x_long, was_positive_x_long, done
         jl      not_387
 
 ;.386   ; a 387 or better is present so we might as well use .386/7 here
-;.387   ; so "fstsw ax" can be used.  Note that the same can be accomplished 
+;.387   ; so "fstsw ax" can be used.  Note that the same can be accomplished
 .286    ; with .286/7 which is recognized by more more assemblers.
 .287    ; (ie: MS QuickAssembler doesn't recognize .386/7)
 
@@ -106,7 +106,7 @@ LOCAL positive_x_long, was_positive_x_long, done
         ja      long_way_386            ; do it the long way
         f2xm1                           ; e^x-1=2^(x*log_2(e))-1
         fchs                            ; 1-e^x which is what we wanted anyway
-	jmp     done                    ; done here.
+        jmp     done                    ; done here.
 
 long_way_386:
 ; mostly taken from NW's code
@@ -251,7 +251,7 @@ filter_cycles_use_b:
 filter_cycles_used_a:
         ; leave Rate on stack for use in BifurcLambdaMacro
         ; BifurcLambdaMacro               ; returns in flag register
-	
+
         fld     st(1)                   ; Population Rate Population
         fmul    st,st                   ; Population^2 Rate Population
         fsubp   st(2),st                ; Rate Population-Population^2
@@ -481,7 +481,9 @@ not_positive:                           ; temp is still on stack
         fild    lyaLength               ; lyaLength temp
         fimul   halfmax                 ; lyaLength*halfmax temp
         fdiv                            ; temp/(lyaLength*halfmax)
-        cmp     LogFlag,0               ; is LogFlag set?
+        cmp     word ptr LogFlag,0      ; is LogFlag set?
+        jz      LogFlag_not_set         ; if !LogFlag goto LogFlag_not_set:
+        cmp     word ptr LogFlag+2,0      ; is LogFlag set?
         jz      LogFlag_not_set         ; if !LogFlag goto LogFlag_not_set:
         fchs                            ; -temp/(lyaLength*halfmax)
         jmp     calc_color

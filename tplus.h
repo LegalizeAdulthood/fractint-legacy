@@ -1,15 +1,15 @@
 /* TPLUS.H, (C) 1991 The Yankee Programmer
    All Rights Reserved
-   
-   This code may be distributed only when bundled with the Fractint 
+
+   This code may be distributed only when bundled with the Fractint
    source code.
-   
+
    Mark C. Peterson
    The Yankee Programmer
    405-C Queen Street, Suite #181
    Southington, CT 06489
    (203) 276-9721
-   
+
 */
 
 #ifndef TPLUS_H
@@ -20,27 +20,27 @@
 #endif
 
 #ifdef __TURBOC__
-#define		OUTPORTB	outportb
-#define		INPORTB 	inportb
-#define		OUTPORTW	outport
-#define		INPORTW 	inport
+#define         OUTPORTB        outportb
+#define         INPORTB         inportb
+#define         OUTPORTW        outport
+#define         INPORTW         inport
 #else
-#define		OUTPORTB	outp
-#define		INPORTB 	inp
-#define		OUTPORTW	outpw
-#define		INPORTW 	inpw
+#define         OUTPORTB        outp
+#define         INPORTB         inp
+#define         OUTPORTW        outpw
+#define         INPORTW         inpw
 #endif
 
 struct TPWrite {
-   unsigned 
+   unsigned
       COLOR0,  COLOR1,  COLOR2,  COLOR3,  VIDCON,  INDIRECT,   HUESAT,
-      OVSTRT,  MASKL,   MASKH,   LBNK,    HBNK,    MODE1,      MODE2,    
+      OVSTRT,  MASKL,   MASKH,   LBNK,    HBNK,    MODE1,      MODE2,
       WBL,     WBH;
 };
 
 struct TPRead {
    unsigned
-      VIDSTAT,          CTL,     MASKL,   LBNK,    READAD,     MODE1,       
+      VIDSTAT,          CTL,     MASKL,   LBNK,    READAD,     MODE1,
       OVSTRT,  USCAN,   MASKH,   OSCAN,   HBNK,    ROWCNT,     MODE2,
       RBL,     RBH;
 };

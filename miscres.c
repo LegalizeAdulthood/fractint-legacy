@@ -1,5 +1,5 @@
 /*
-	Resident odds and ends that don't fit anywhere else.
+        Resident odds and ends that don't fit anywhere else.
 */
 
 #include <string.h>
@@ -25,9 +25,9 @@
 #include "helpdefs.h"
 #include "prototyp.h"
 
-/* routines in this module	*/
+/* routines in this module      */
 
-static	void trigdetails(char *);
+static  void trigdetails(char *);
 static void area(void);
 static int find_one_file_item(char *, char *, FILE **);
 
@@ -65,15 +65,15 @@ void findpath(char far *filename, char *fullpathname) /* return full pathnames *
          makepath(temp_path,""   ,"" ,fname,ext);
          }
       }
-   fullpathname[0] = 0; 			/* indicate none found */
-/* #ifdef __TURBOC__ */				/* look for the file */
+   fullpathname[0] = 0;                         /* indicate none found */
+/* #ifdef __TURBOC__ */                         /* look for the file */
 /*   strcpy(fullpathname,searchpath(temp_path)); */
 /* #else */
    _searchenv(temp_path,"PATH",fullpathname);
 /* #endif */
-   if (fullpathname[0] != 0)			/* found it! */
+   if (fullpathname[0] != 0)                    /* found it! */
       if (strncmp(&fullpathname[2],SLASHSLASH,2) == 0) /* stupid klooge! */
-	 strcpy(&fullpathname[3],temp_path);
+         strcpy(&fullpathname[3],temp_path);
 }
 #endif
 
@@ -109,11 +109,11 @@ int putstringwrap(int *row,int col1,int col2,int color,char far *str,int maxrow)
     if(decpt >= length)
        decpt = 0;
     if(decpt < padding)
-       padding -= decpt;   
+       padding -= decpt;
     else
        padding = 0;
-    col1 += padding;   
-    decpt += col1+1; /* column just past where decimal is */         
+    col1 += padding;
+    decpt += col1+1; /* column just past where decimal is */
     while(length > 0)
     {
        if(col2-col1 < length)
@@ -488,21 +488,21 @@ void updatesavename(char *filename) /* go to the next file name */
    hold = fname + strlen(fname) - 1; /* start at the end */
    while(hold >= fname && (*hold == ' ' || isdigit(*hold))) /* skip backwards */
       hold--;
-   hold++;			/* recover first digit */
+   hold++;                      /* recover first digit */
    while (*hold == '0')         /* skip leading zeros */
       hold++;
    save = hold;
-   while (*save) {		/* check for all nines */
+   while (*save) {              /* check for all nines */
       if (*save != '9')
-	 break;
+         break;
       save++;
       }
-   if (!*save)			/* if the whole thing is nines then back */
-      save = hold - 1;		/* up one place. Note that this will eat */
-				/* your last letter if you go to far.	 */
+   if (!*save)                  /* if the whole thing is nines then back */
+      save = hold - 1;          /* up one place. Note that this will eat */
+                                /* your last letter if you go to far.    */
    else
       save = hold;
-   sprintf(save,"%d",atoi(hold)+1); /* increment the number */
+   sprintf(save,"%ld",atol(hold)+1); /* increment the number */
    makepath(filename,drive,dir,fname,ext);
 }
 
@@ -516,18 +516,18 @@ int check_writefile(char *name,char *ext)
 nextname:
    strcpy(openfile,name);
    strcpy(opentype,ext);
-#if 0   
+#if 0
    for (i = 0; i < (int)strlen(openfile); i++)
       if (openfile[i] == '.') {
-	 strcpy(opentype,&openfile[i]);
-	 openfile[i] = 0;
-	 }
+         strcpy(opentype,&openfile[i]);
+         openfile[i] = 0;
+         }
 #endif
    if((period = has_ext(openfile)) != NULL)
    {
       strcpy(opentype,period);
       *period = 0;
-   }   	 
+   }
    strcat(openfile,opentype);
    if (access(openfile,0) != 0) /* file doesn't exist */
    {
@@ -641,16 +641,16 @@ static void trigdetails(char *buf)
    else
       numfn = (curfractalspecific->flags >> 6) & 7;
    if(curfractalspecific == &fractalspecific[FORMULA] ||
-      curfractalspecific == &fractalspecific[FFORMULA]	)
+      curfractalspecific == &fractalspecific[FFORMULA]  )
       numfn = maxfn;
    *buf = 0; /* null string if none */
    if (numfn>0) {
       strcpy(buf,trigfn[trigndx[0]].name);
       i = 0;
       while(++i < numfn) {
-	 sprintf(tmpbuf,"/%s",trigfn[trigndx[i]].name);
-	 strcat(buf,tmpbuf);
-	 }
+         sprintf(tmpbuf,"/%s",trigfn[trigndx[i]].name);
+         strcat(buf,tmpbuf);
+         }
       }
 }
 
@@ -672,9 +672,9 @@ int set_trig_array(int k, char *name)
    {
       if(strcmp(trigname,trigfn[i].name)==0)
       {
-	 trigndx[k] = (BYTE)i;
-	 set_trig_pointers(k);
-	 break;
+         trigndx[k] = (BYTE)i;
+         set_trig_pointers(k);
+         break;
       }
    }
    return(0);
@@ -715,7 +715,7 @@ void set_trig_pointers(int which)
       break;
    default: /* do 'em all */
       for(i=0;i<4;i++)
-	 set_trig_pointers(i);
+         set_trig_pointers(i);
       break;
    }
 }
@@ -762,7 +762,7 @@ static FCODE spressanykey1[] = {"Press any key to continue, Backspace for first 
 static FCODE sbatch[] = {" (Batch mode)"};
 static FCODE ssavename[] = {"Savename: "};
 static FCODE sstopsecret[] = {"Top Secret Developer's Screen"};
-static FCODE sthreepass[] = {" (threepass)"};   
+static FCODE sthreepass[] = {" (threepass)"};
 
 static void show_str_var(char *name, char *var, int *row, char *msg)
 {
@@ -778,56 +778,66 @@ static void show_str_var(char *name, char *var, int *row, char *msg)
 int tab_display_2(char *msg)
 {
    extern long maxptr, maxstack, startstack;
-   int row,key,ret=0;
+   int s_row,key,ret=0;
    helptitle();
    setattr(1,0,C_GENERAL_MED,24*80); /* init rest to background */
 
-   row = 1;
-   putstringcenter(row++,0,80,C_PROMPT_HI, sstopsecret);
+   s_row = 1;
+   putstringcenter(s_row++,0,80,C_PROMPT_HI, sstopsecret);
    sprintf(msg,"%u bytes conventional stack free",stackavail());
-   putstring(++row,2,C_GENERAL_HI,msg);
+   putstring(++s_row,2,C_GENERAL_HI,msg);
    sprintf(msg,"%ld of %ld bignum memory used",maxptr,maxstack);
-   putstring(++row,2,C_GENERAL_HI,msg);
+   putstring(++s_row,2,C_GENERAL_HI,msg);
    sprintf(msg,"   %ld used for bignum globals", startstack);
-   putstring(++row,2,C_GENERAL_HI,msg);
+   putstring(++s_row,2,C_GENERAL_HI,msg);
    sprintf(msg,"   %ld stack used == %ld variables of length %d",
          maxptr-startstack,(long)((maxptr-startstack)/(rbflength+2)),rbflength+2);
-   putstring(++row,2,C_GENERAL_HI,msg);
+   putstring(++s_row,2,C_GENERAL_HI,msg);
    if(bf_math)
    {
       sprintf(msg,"intlength %-d bflength %-d ",intlength, bflength);
-      putstring(++row,2,C_GENERAL_HI,msg);
+      putstring(++s_row,2,C_GENERAL_HI,msg);
    }
-   row++;   
-   show_str_var(s_tempdir,    tempdir,      &row, msg);
-   show_str_var(s_workdir,    workdir,      &row, msg);
-   show_str_var(s_printfile,  PrintName,    &row, msg);
-   show_str_var(s_filename,   readname,     &row, msg);
-   show_str_var(s_formulafile,FormFileName, &row, msg);
-   show_str_var(s_savename,   savename,     &row, msg);
-   show_str_var(s_parmfile,   CommandFile,  &row, msg);
-   show_str_var(s_ifsfile,    IFSFileName,  &row, msg);
-   show_str_var(s_autokeyname,autoname,     &row, msg);
-   show_str_var(s_lightname,  light_name,   &row, msg);
-   show_str_var(s_map,        MAP_name,     &row, msg);
+   s_row++;
+   show_str_var(s_tempdir,    tempdir,      &s_row, msg);
+   show_str_var(s_workdir,    workdir,      &s_row, msg);
+   show_str_var(s_printfile,  PrintName,    &s_row, msg);
+   show_str_var(s_filename,   readname,     &s_row, msg);
+   show_str_var(s_formulafile,FormFileName, &s_row, msg);
+   show_str_var(s_savename,   savename,     &s_row, msg);
+   show_str_var(s_parmfile,   CommandFile,  &s_row, msg);
+   show_str_var(s_ifsfile,    IFSFileName,  &s_row, msg);
+   show_str_var(s_autokeyname,autoname,     &s_row, msg);
+   show_str_var(s_lightname,  light_name,   &s_row, msg);
+   show_str_var(s_map,        MAP_name,     &s_row, msg);
    sprintf(msg,"Sizeof fractalspecific array %d",
       num_fractal_types*(int)sizeof(struct fractalspecificstuff));
-   putstring(row++,2,C_GENERAL_HI,msg);
+   putstring(s_row++,2,C_GENERAL_HI,msg);
    sprintf(msg,"checkcurdir %d",checkcurdir);
-   putstring(row++,2,C_GENERAL_HI,msg);
-   sprintf(msg,"calc_status %d",calc_status);
-   putstring(row++,2,C_GENERAL_HI,msg);
+   putstring(s_row++,2,C_GENERAL_HI,msg);
+   sprintf(msg,"calc_status %d pixel [%d,%d]",calc_status,col,row);
+   putstring(s_row++,2,C_GENERAL_HI,msg);
+   sprintf(msg,"total_formula_mem %ld Max_Ops (posp) %u Max_Args (vsp) %u Used_extra %u",
+      total_formula_mem,posp,vsp,used_extra);
+   putstring(s_row++,2,C_GENERAL_HI,msg);
+   sprintf(msg,"   Store ptr %d Loadptr %d Max_Ops var %u Max_Args var %u LastInitOp %d",
+      StoPtr,LodPtr,Max_Ops,Max_Args,LastInitOp);
+   putstring(s_row++,2,C_GENERAL_HI,msg);
+   sprintf(msg,"xdots %d ydots %d sxdots %d sydots %d",xdots,ydots,sxdots,sydots);
+   putstring(s_row++,2,C_GENERAL_HI,msg);
+   sprintf(msg,"maxit %ld realcoloriter %ld orbitptr %d",maxit,realcoloriter,orbit_ptr);
+   putstring(s_row++,2,C_GENERAL_HI,msg);
 
    putstringcenter(24,0,80,C_GENERAL_LO,spressanykey1);
    key=getakeynohelp();
    if(key == BACKSPACE)
       ret = 1;
-   return(ret);      
+   return(ret);
 }
 
-int tab_display()	/* display the status of the current image */
+int tab_display()       /* display the status of the current image */
 {
-   int row, i, j, addrow=0;
+   int s_row, i, j, addrow=0;
    double Xctr, Yctr;
    LDBL Magnification;
    double Xmagfactor, Rotation, Skew;
@@ -838,10 +848,10 @@ int tab_display()	/* display the status of the current image */
    int saved=0;
    int dec;
 
-   if (calc_status < 0) { 	/* no active fractal image */
-      return(0);		/* (no TAB on the credits screen) */
+   if (calc_status < 0) {       /* no active fractal image */
+      return(0);                /* (no TAB on the credits screen) */
    }
-   if (calc_status == 1)	/* next assumes CLK_TCK is 10^n, n>=2 */
+   if (calc_status == 1)        /* next assumes CLK_TCK is 10^n, n>=2 */
       calctime += (clock_ticks() - timer_start) / (CLK_TCK/100);
    stackscreen();
    if(bf_math)
@@ -853,169 +863,172 @@ int tab_display()	/* display the status of the current image */
 top:
    helptitle();
    setattr(1,0,C_GENERAL_MED,24*80); /* init rest to background */
-   row = 2;
-   putstring(row,2,C_GENERAL_MED,sfractal_type);
+   s_row = 2;
+   putstring(s_row,2,C_GENERAL_MED,sfractal_type);
    if (display3d > 0)
-      putstring(row,16,C_GENERAL_HI,s3D_transform);
+      putstring(s_row,16,C_GENERAL_HI,s3D_transform);
    else {
-      putstring(row,16,C_GENERAL_HI,
-	   curfractalspecific->name[0] == '*' ?
-	     &curfractalspecific->name[1] :
-	     curfractalspecific->name);
+      putstring(s_row,16,C_GENERAL_HI,
+           curfractalspecific->name[0] == '*' ?
+             &curfractalspecific->name[1] :
+             curfractalspecific->name);
       i = 0;
       if (fractype == FORMULA || fractype == FFORMULA)
       {
-         putstring(row+1,3,C_GENERAL_MED,sitem_name);
-	 putstring(row+1,16,C_GENERAL_HI,FormName);
+         putstring(s_row+1,3,C_GENERAL_MED,sitem_name);
+         putstring(s_row+1,16,C_GENERAL_HI,FormName);
          i = strlen(FormName)+1;
-         putstring(row+2,3,C_GENERAL_MED,sitem_file);
+         putstring(s_row+2,3,C_GENERAL_MED,sitem_file);
          if(strlen(FormFileName) >= 29)
             addrow = 1;
-         putstring(row+2+addrow,16,C_GENERAL_HI,FormFileName);
+         putstring(s_row+2+addrow,16,C_GENERAL_HI,FormFileName);
       }
       trigdetails(msg);
-      putstring(row+1,16+i,C_GENERAL_HI,msg);
-      if (fractype == LSYSTEM) 
+      putstring(s_row+1,16+i,C_GENERAL_HI,msg);
+      if (fractype == LSYSTEM)
       {
-         putstring(row+1,3,C_GENERAL_MED,sitem_name);
-	 putstring(row+1,16,C_GENERAL_HI,LName);
-         putstring(row+2,3,C_GENERAL_MED,sitem_file);
+         putstring(s_row+1,3,C_GENERAL_MED,sitem_name);
+         putstring(s_row+1,16,C_GENERAL_HI,LName);
+         putstring(s_row+2,3,C_GENERAL_MED,sitem_file);
          if(strlen(LFileName) >= 28)
             addrow = 1;
-         putstring(row+2+addrow,16,C_GENERAL_HI,LFileName);
+         putstring(s_row+2+addrow,16,C_GENERAL_HI,LFileName);
       }
-      if (fractype == IFS || fractype == IFS3D) 
+      if (fractype == IFS || fractype == IFS3D)
       {
-         putstring(row+1,3,C_GENERAL_MED,sitem_name);
-	 putstring(row+1,16,C_GENERAL_HI,IFSName);
-         putstring(row+2,3,C_GENERAL_MED,sitem_file);
+         putstring(s_row+1,3,C_GENERAL_MED,sitem_name);
+         putstring(s_row+1,16,C_GENERAL_HI,IFSName);
+         putstring(s_row+2,3,C_GENERAL_MED,sitem_file);
          if(strlen(IFSFileName) >= 28)
             addrow = 1;
-         putstring(row+2+addrow,16,C_GENERAL_HI,IFSFileName);
+         putstring(s_row+2+addrow,16,C_GENERAL_HI,IFSFileName);
       }
    }
 
    switch (calc_status) {
       case 0:  msgptr = sparms_chgd;
-	       break;
+               break;
       case 1:  msgptr = sstill_being;
-	       break;
+               break;
       case 2:  msgptr = sinterrupted_resumable;
-	       break;
+               break;
       case 3:  msgptr = sinterrupted_non_resumable;
-	       break;
+               break;
       case 4:  msgptr = simage_completed;
-	       break;
+               break;
       default: msgptr = "";
       }
-   putstring(row,45,C_GENERAL_HI,msgptr);
+   putstring(s_row,45,C_GENERAL_HI,msgptr);
    if(initbatch && calc_status != 0)
       putstring(-1,-1,C_GENERAL_HI,sbatch);
-   
+
    if (helpmode == HELPCYCLING)
-      putstring(row+1,45,C_GENERAL_HI,syou_are_cycling);
-   ++row;
-   /* if(bf_math == 0) */ 
-     ++row;
+      putstring(s_row+1,45,C_GENERAL_HI,syou_are_cycling);
+   ++s_row;
+   /* if(bf_math == 0) */
+     ++s_row;
 
     i = j = 0;
     if (display3d > 0) {
        if (usr_floatflag)
-	  j = 1;
+          j = 1;
        }
     else
        if (floatflag)
-	  j = (usr_floatflag) ? 1 : 2;
+          j = (usr_floatflag) ? 1 : 2;
     if(bf_math==0)
     {
     if (j) {
-       putstring(row,45,C_GENERAL_HI,sfloating_point);
- 
+       putstring(s_row,45,C_GENERAL_HI,sfloating_point);
+
        putstring(-1,-1,C_GENERAL_HI,(j == 1) ? sflag_is_activated
-					     : sin_use_required );
+                                             : sin_use_required );
       i = 1;
       }
       else
       {
-       putstring(row,45,C_GENERAL_HI,sinteger_math);
+       putstring(s_row,45,C_GENERAL_HI,sinteger_math);
       i = 1;
       }
    } else
    {
        sprintf(msg,"(%-d decimals)",decimals /*getprecbf(CURRENTREZ)*/);
-       putstring(row,45,C_GENERAL_HI,sarbitrary_precision);
+       putstring(s_row,45,C_GENERAL_HI,sarbitrary_precision);
        putstring(-1,-1,C_GENERAL_HI,msg);
 
       i = 1;
-   }   
+   }
 
-   row += i;
+   s_row += i;
 
    if (calc_status == 1 || calc_status == 2)
       if (curfractalspecific->flags&NORESUME)
       {
-	 static FCODE msg[] = {"Note: can't resume this type after interrupts other than <tab> and <F1>"};
-	 putstring(row++,2,C_GENERAL_HI,msg);
+         static FCODE msg[] = {"Note: can't resume this type after interrupts other than <tab> and <F1>"};
+         putstring(s_row++,2,C_GENERAL_HI,msg);
       }
-   row += addrow;
-   putstring(row,2,C_GENERAL_MED,ssavename);
-   putstring(row,-1,C_GENERAL_HI,savename);
-   
+   s_row += addrow;
+   putstring(s_row,2,C_GENERAL_MED,ssavename);
+   putstring(s_row,-1,C_GENERAL_HI,savename);
+
    /* if(bf_math == 0) */
-     ++row;
+     ++s_row;
 
    if (got_status >= 0 && (calc_status == 1 || calc_status == 2)) {
       switch (got_status) {
-	 case 0:
-	    sprintf(msg,"%d Pass Mode",totpasses);
-	    putstring(row,2,C_GENERAL_HI,msg);
+         case 0:
+            sprintf(msg,"%d Pass Mode",totpasses);
+            putstring(s_row,2,C_GENERAL_HI,msg);
             if(usr_stdcalcmode=='3')
-     	       putstring(row,-1,C_GENERAL_HI,sthreepass);
-	    break;
-	 case 1:
-	    putstring(row,2,C_GENERAL_HI,ssolid_guessing);
+               putstring(s_row,-1,C_GENERAL_HI,sthreepass);
+            break;
+         case 1:
+            putstring(s_row,2,C_GENERAL_HI,ssolid_guessing);
             if(usr_stdcalcmode=='3')
-     	       putstring(row,-1,C_GENERAL_HI,sthreepass);
-	    break;
-	 case 2:
-	    putstring(row,2,C_GENERAL_HI,sboundary_tracing);
-	    break;
-	 case 3:
-	    sprintf(msg,"Processing row %d (of %d) of input image",currow,fileydots);
-	    putstring(row,2,C_GENERAL_HI,msg);
-	    break;
-	 case 4:
-	    putstring(row,2,C_GENERAL_HI,stesseral);
-	    break;
-	 }
-      ++row;
+               putstring(s_row,-1,C_GENERAL_HI,sthreepass);
+            break;
+         case 2:
+            putstring(s_row,2,C_GENERAL_HI,sboundary_tracing);
+            break;
+         case 3:
+            sprintf(msg,"Processing row %d (of %d) of input image",currow,fileydots);
+            putstring(s_row,2,C_GENERAL_HI,msg);
+            break;
+         case 4:
+            putstring(s_row,2,C_GENERAL_HI,stesseral);
+            break;
+         }
+      ++s_row;
       if (got_status != 3) {
-	 sprintf(msg,"Working on block (y,x) [%d,%d]...[%d,%d], ",
-		yystart,xxstart,yystop,xxstop);
-	 putstring(row,2,C_GENERAL_MED,msg);
-	 if (got_status == 2 || got_status == 4) { /* btm or tesseral */
-	    putstring(-1,-1,C_GENERAL_MED,"at ");
-	    sprintf(msg,"[%d,%d]",currow,curcol);
-	    putstring(-1,-1,C_GENERAL_HI,msg);
-	    }
-	 else {
-	    if (totpasses > 1) {
-	       putstring(-1,-1,C_GENERAL_MED,"pass ");
-	       sprintf(msg,"%d",curpass);
-	       putstring(-1,-1,C_GENERAL_HI,msg);
-	       putstring(-1,-1,C_GENERAL_MED," of ");
-	       sprintf(msg,"%d",totpasses);
-	       putstring(-1,-1,C_GENERAL_HI,msg);
-	       putstring(-1,-1,C_GENERAL_MED,", ");
-	       }
-	    putstring(-1,-1,C_GENERAL_MED,"at row ");
-	    sprintf(msg,"%d",currow);
-	    putstring(-1,-1,C_GENERAL_HI,msg);
-	    }
-	 ++row;
-	 }
+         sprintf(msg,"Working on block (y,x) [%d,%d]...[%d,%d], ",
+                yystart,xxstart,yystop,xxstop);
+         putstring(s_row,2,C_GENERAL_MED,msg);
+         if (got_status == 2 || got_status == 4) { /* btm or tesseral */
+            putstring(-1,-1,C_GENERAL_MED,"at ");
+            sprintf(msg,"[%d,%d]",currow,curcol);
+            putstring(-1,-1,C_GENERAL_HI,msg);
+            }
+         else {
+            if (totpasses > 1) {
+               putstring(-1,-1,C_GENERAL_MED,"pass ");
+               sprintf(msg,"%d",curpass);
+               putstring(-1,-1,C_GENERAL_HI,msg);
+               putstring(-1,-1,C_GENERAL_MED," of ");
+               sprintf(msg,"%d",totpasses);
+               putstring(-1,-1,C_GENERAL_HI,msg);
+               putstring(-1,-1,C_GENERAL_MED,", ");
+               }
+            putstring(-1,-1,C_GENERAL_MED,"at row ");
+            sprintf(msg,"%d",currow);
+            putstring(-1,-1,C_GENERAL_HI,msg);
+            putstring(-1,-1,C_GENERAL_MED," col ");
+            sprintf(msg,"%d",col);
+            putstring(-1,-1,C_GENERAL_HI,msg);
+            }
+         ++s_row;
+         }
       }
-   putstring(row,2,C_GENERAL_MED,scalculation_time);
+   putstring(s_row,2,C_GENERAL_MED,scalculation_time);
    if (calctime >= 0)
       sprintf(msg,"%3ld:%02ld:%02ld.%02ld", calctime/360000L,
              (calctime%360000L)/6000, (calctime%6000)/100, calctime%100);
@@ -1025,19 +1038,19 @@ top:
    /* XXX */
 
    if ((curfractalspecific->flags&INFCALC) && (coloriter != 0)) {
-      putstring(row,-1,C_GENERAL_MED,siterations);
+      putstring(s_row,-1,C_GENERAL_MED,siterations);
       sprintf(msg," %ld of %ld",coloriter-2,maxct);
-      putstring(row,-1,C_GENERAL_HI,msg);
+      putstring(s_row,-1,C_GENERAL_HI,msg);
    }
-   
-   ++row;
+
+   ++s_row;
    if(bf_math == 0)
-     ++row;
+     ++s_row;
    if (videoentry.xdots && bf_math==0) {
       sprintf(msg,"Video: %dx%dx%d %s %s",
-	      videoentry.xdots, videoentry.ydots, videoentry.colors,
-	      videoentry.name, videoentry.comment);
-      putstring(row++,2,C_GENERAL_MED,msg);
+              videoentry.xdots, videoentry.ydots, videoentry.colors,
+              videoentry.name, videoentry.comment);
+      putstring(s_row++,2,C_GENERAL_MED,msg);
       }
    if(!(curfractalspecific->flags&NOZOOM))
    {
@@ -1054,23 +1067,23 @@ top:
       if(dec < decimals)
          truncate = 1;
       truncaterow = row;
-      putstring(++row,2,C_GENERAL_MED,scenter);
-      putstring(row,8,C_GENERAL_MED,s_x);
+      putstring(++s_row,2,C_GENERAL_MED,scenter);
+      putstring(s_row,8,C_GENERAL_MED,s_x);
       bftostr(msg,dec,bfXctr);
-      if(putstringwrap(&row,10,78,C_GENERAL_HI,msg,5)==1)
+      if(putstringwrap(&s_row,10,78,C_GENERAL_HI,msg,5)==1)
          truncate = 1;
-      putstring(++row,8,C_GENERAL_MED,s_y);
+      putstring(++s_row,8,C_GENERAL_MED,s_y);
       bftostr(msg,dec,bfYctr);
-      if(putstringwrap(&row,10,78,C_GENERAL_HI,msg,5)==1 || truncate)
+      if(putstringwrap(&s_row,10,78,C_GENERAL_HI,msg,5)==1 || truncate)
          putstring(truncaterow,2,C_GENERAL_MED,struncate);
-      putstring(++row,2,C_GENERAL_MED,smag);
+      putstring(++s_row,2,C_GENERAL_MED,smag);
 #ifdef USE_LONG_DOUBLE
       sprintf(msg,"%10.8Le",Magnification);
 #else
       sprintf(msg,"%10.8le",Magnification);
 #endif
       putstring(-1,11,C_GENERAL_HI,msg);
-      putstring(++row,2,C_GENERAL_MED,sxmag);
+      putstring(++s_row,2,C_GENERAL_MED,sxmag);
       sprintf(msg,"%11.4f   ",Xmagfactor);
       putstring(-1,-1,C_GENERAL_HI,msg);
       putstring(-1,-1,C_GENERAL_MED,srot);
@@ -1082,22 +1095,22 @@ top:
    }
    else /* bf != 1 */
    {
-      putstring(row,2,C_GENERAL_MED,scornersxy);
-      putstring(++row,3,C_GENERAL_MED,stop_left);
+      putstring(s_row,2,C_GENERAL_MED,scornersxy);
+      putstring(++s_row,3,C_GENERAL_MED,stop_left);
       sprintf(msg,"%20.16f  %20.16f",xxmin,yymax);
       putstring(-1,17,C_GENERAL_HI,msg);
-      putstring(++row,3,C_GENERAL_MED,sbottom_right);
+      putstring(++s_row,3,C_GENERAL_MED,sbottom_right);
       sprintf(msg,"%20.16f  %20.16f",xxmax,yymin);
       putstring(-1,17,C_GENERAL_HI,msg);
 
       if (xxmin != xx3rd || yymin != yy3rd)
       {
-         putstring(++row,3,C_GENERAL_MED,sbottom_left);
+         putstring(++s_row,3,C_GENERAL_MED,sbottom_left);
          sprintf(msg,"%20.16f  %20.16f",xx3rd,yy3rd);
          putstring(-1,17,C_GENERAL_HI,msg);
       }
       cvtcentermag(&Xctr, &Yctr, &Magnification, &Xmagfactor, &Rotation, &Skew);
-      putstring(row+=2,2,C_GENERAL_MED,scenter);
+      putstring(s_row+=2,2,C_GENERAL_MED,scenter);
       sprintf(msg,"%20.16f %20.16f  ",Xctr,Yctr);
       putstring(-1,-1,C_GENERAL_HI,msg);
       putstring(-1,-1,C_GENERAL_MED,smag);
@@ -1107,7 +1120,7 @@ top:
       sprintf(msg," %10.8le",Magnification);
 #endif
       putstring(-1,-1,C_GENERAL_HI,msg);
-      putstring(++row,2,C_GENERAL_MED,sxmag);
+      putstring(++s_row,2,C_GENERAL_MED,sxmag);
       sprintf(msg,"%11.4f   ",Xmagfactor);
       putstring(-1,-1,C_GENERAL_HI,msg);
       putstring(-1,-1,C_GENERAL_MED,srot);
@@ -1118,7 +1131,7 @@ top:
       putstring(-1,-1,C_GENERAL_HI,msg);
 
    }
-   }      
+   }
    for (i = 0; i < MAXPARAMS; i++)
    {
       char *p;
@@ -1126,7 +1139,7 @@ top:
       p = typehasparm(fractype,i);
       if(i%4 == 0)
       {
-         row++;
+         s_row++;
          col = 9;
       }
       else
@@ -1134,19 +1147,19 @@ top:
       if(p)
       {
          if(i==0)
-            putstring(++row,2,C_GENERAL_MED,sparams);
+            putstring(++s_row,2,C_GENERAL_MED,sparams);
          sprintf(msg,"%3d: ",i+1);
-         putstring(row,col,C_GENERAL_MED,msg);
+         putstring(s_row,col,C_GENERAL_MED,msg);
          if(*p == '+')
             sprintf(msg,"%-12d",(int)param[i]);
          else if(*p == '#')
             sprintf(msg,"%-12lu",(U32)param[i]);
-         else   
+         else
             sprintf(msg,"%-12.9f",param[i]);
          putstring(-1,-1,C_GENERAL_HI,msg);
       }
    }
-   putstring(row+=2,2,C_GENERAL_MED,siteration_maximum);
+   putstring(s_row+=2,2,C_GENERAL_MED,siteration_maximum);
    sprintf(msg,"%ld",maxit);
    putstring(-1,-1,C_GENERAL_HI,msg);
    putstring(-1,-1,C_GENERAL_MED,seffective_bailout);
@@ -1154,13 +1167,13 @@ top:
    putstring(-1,-1,C_GENERAL_HI,msg);
 
    if (fractype == PLASMA || fractype == ANT || fractype == CELLULAR) {
-      putstring(++row,2,C_GENERAL_MED,scurrent_rseed);
+      putstring(++s_row,2,C_GENERAL_MED,scurrent_rseed);
       sprintf(msg,"%d",rseed);
       putstring(-1,-1,C_GENERAL_HI,msg);
       }
 
    if(invert) {
-      putstring(++row,2,C_GENERAL_MED,sinversion_radius);
+      putstring(++s_row,2,C_GENERAL_MED,sinversion_radius);
       sprintf(msg,"%12.9f",f_radius);
       putstring(-1,-1,C_GENERAL_HI,msg);
       putstring(-1,-1,C_GENERAL_MED,sxcenter);
@@ -1171,9 +1184,9 @@ top:
       putstring(-1,-1,C_GENERAL_HI,msg);
       }
 
-   if ((row += 2) < 23) ++row;
+   if ((s_row += 2) < 23) ++s_row;
 /*waitforkey:*/
-   putstringcenter(/*row*/24,0,80,C_GENERAL_LO,spressanykey);
+   putstringcenter(/*s_row*/24,0,80,C_GENERAL_LO,spressanykey);
    movecursor(25,80);
 #ifdef XFRACT
    while (keypressed()) {
@@ -1188,7 +1201,7 @@ top:
 /*       goto waitforkey;*/
         goto top;
    }
-   else if(key==CTL_TAB) {    
+   else if(key==CTL_TAB) {
       if(tab_display_2(msg))
          goto top;
    }
@@ -1203,7 +1216,7 @@ static void area(void)
 {
     /* apologies to UNIX folks, we PC guys have to save near space */
     static FCODE warning[] = {"Warning: inside may not be unique\n"};
-    static FCODE total_area[] = {".  Total area "}; 
+    static FCODE total_area[] = {".  Total area "};
     char far *msg;
     int x,y;
     char buf[160];
@@ -1243,7 +1256,7 @@ int endswithslash(char *fl)
    len = strlen(fl);
    if(len)
       if(fl[--len] == SLASHC)
-	 return(1);
+         return(1);
    return(0);
 }
 
@@ -1268,7 +1281,7 @@ char *get_ifs_token(char *buf,FILE *ifsfile)
 
 FCODE insufficient_ifs_mem[]={"Insufficient memory for IFS"};
 int numaffine;
-int ifsload()			/* read in IFS parameters */
+int ifsload()                   /* read in IFS parameters */
 {
    int i;
    FILE *ifsfile;
@@ -1289,14 +1302,14 @@ int ifsload()			/* read in IFS parameters */
    file_gets(buf,200,ifsfile);
    if((bufptr = strchr(buf,';')) != NULL) /* use ';' as comment to eol */
       *bufptr = 0;
-   
+
    strlwr(buf);
    bufptr = &buf[0];
    while (*bufptr) {
       if (strncmp(bufptr,"(3d)",4) == 0) {
-	 ifs_type = 1;
-	 rowsize = IFS3DPARM;
-	 }
+         ifs_type = 1;
+         rowsize = IFS3DPARM;
+         }
       ++bufptr;
       }
 
@@ -1308,12 +1321,12 @@ int ifsload()			/* read in IFS parameters */
    {
       if(sscanf(bufptr," %f ",&((float *)tstack)[i]) != 1)
          break ;
-      if (++i >= NUMIFS*rowsize) 
+      if (++i >= NUMIFS*rowsize)
       {
          static FCODE msg[]={"IFS definition has too many lines"};
-	    stopmsg(0,msg);
-	    ret = -1;
-	    break;
+            stopmsg(0,msg);
+            ret = -1;
+            break;
       }
       if((bufptr = strtok( NULL, seps ))==NULL)
       {
@@ -1321,14 +1334,14 @@ int ifsload()			/* read in IFS parameters */
          {
             ret = -1;
             break;
-         }   
+         }
       }
       if(ret == -1)
          break;
       if(*bufptr == '}')
          break;
    }
-   
+
    if ((i % rowsize) != 0 || *bufptr != '}') {
       static FCODE msg[]={"invalid IFS definition"};
       stopmsg(0,msg);
@@ -1344,13 +1357,13 @@ int ifsload()			/* read in IFS parameters */
    if (ret == 0) {
       numaffine = i/rowsize;
       if ((ifs_defn = (float far *)farmemalloc(
-			(long)((NUMIFS+1)*IFS3DPARM*sizeof(float)))) == NULL) {
+                        (long)((NUMIFS+1)*IFS3DPARM*sizeof(float)))) == NULL) {
      stopmsg(0,insufficient_ifs_mem);
-	 ret = -1;
-	 }
+         ret = -1;
+         }
       else
-	 for (i = 0; i < (NUMIFS+1)*IFS3DPARM; ++i)
-	    ifs_defn[i] = ((float *)tstack)[i];
+         for (i = 0; i < (NUMIFS+1)*IFS3DPARM; ++i)
+            ifs_defn[i] = ((float *)tstack)[i];
    }
    return(ret);
 }
@@ -1361,7 +1374,7 @@ int find_file_item(char *filename,char *itemname,FILE **fileptr)
 {
    FILE *infile=NULL;
    int found = 0;
-   if((found=find_one_file_item(filename,itemname,&infile)) != 0) 
+   if((found=find_one_file_item(filename,itemname,&infile)) != 0)
    {  /* search for file */
       int out;
       char drive[FILE_MAX_DRIVE];
@@ -1373,26 +1386,26 @@ int find_file_item(char *filename,char *itemname,FILE **fileptr)
       makepath(fullpath,drive,dir,"*",ext);
       out = fr_findfirst(fullpath);
       found = 0;
-      while(out == 0) 
+      while(out == 0)
       {
          char msg[200];
          DTA.filename[FILE_MAX_FNAME+FILE_MAX_EXT-2]=0;
          sprintf(msg,"Searching %13s for %s      ",DTA.filename,itemname);
          showtempmsg(msg);
-         if(!(DTA.attribute & SUBDIR) && 
+         if(!(DTA.attribute & SUBDIR) &&
              strcmp(DTA.filename,".")&&
-             strcmp(DTA.filename,"..")) {    
+             strcmp(DTA.filename,"..")) {
 #ifndef XFRACT
             strlwr(DTA.filename);
 #endif
             splitpath(DTA.filename,NULL,NULL,fname,ext);
             makepath(fullpath,drive,dir,fname,ext);
-            if((found=find_one_file_item(fullpath,itemname,&infile)) == 0) 
+            if((found=find_one_file_item(fullpath,itemname,&infile)) == 0)
             {
                strcpy(filename,fullpath);
                break;
-            }   
-         }   
+            }
+         }
          out = fr_findnext();
       }
       cleartempmsg();
@@ -1403,11 +1416,11 @@ int find_file_item(char *filename,char *itemname,FILE **fileptr)
          return(-1);
       }
    }
-   /* found file */   
+   /* found file */
    if(fileptr != NULL)
       *fileptr = infile;
    else if(infile != NULL)
-      fclose(infile);   
+      fclose(infile);
    return(0);
 }
 
@@ -1422,13 +1435,13 @@ static int find_one_file_item(char *filename,char *itemname,FILE **infile)
 
    /* first try current directory */
    if(checkcurdir == 0 || access(fullpathname,0) != 0)
-      strcpy(fullpathname,filename);   
-   
+      strcpy(fullpathname,filename);
+
    /* now binary node as of 2/95 TW */
    if ((*infile = fopen(fullpathname,"rb")) == NULL) {
        return(-1);
       }
-   /* 
+   /*
       Scan_entries() resuses code from gfe_choose_entry() in PROMPTS1.C. The
       original code used text mode, which made ftell() and fseek() unreliable
       in cases where files have garbage after the EOF.
@@ -1449,9 +1462,9 @@ int file_gets(char *buf,int maxlen,FILE *infile)
    len = 0;
    while (len < maxlen) {
       if ((c = getc(infile)) == EOF || c == '\032') {
-	 if (len) break;
-	 return -1;
-	 }
+         if (len) break;
+         return -1;
+         }
       if (c == '\n') break;             /* linefeed is end of line */
       if (c != '\r') buf[len++] = (char)c;    /* ignore c/r */
       }
@@ -1480,53 +1493,53 @@ int _cdecl matherr( struct exception *except )
        static int ct = 0;
        static FILE *fp=NULL;
        if(fp==NULL)
-	  fp = fopen("matherr","w");
+          fp = fopen("matherr","w");
        if(ct++ < 100)
        {
-	  fprintf(fp,"err:  %d\nname: %s\narg:  %e\n",
-		  except->type, except->name, except->arg1);
-	  fflush(fp);
+          fprintf(fp,"err:  %d\nname: %s\narg:  %e\n",
+                  except->type, except->name, except->arg1);
+          fflush(fp);
        }
     }
     if( except->type == DOMAIN )
     {
-	char buf[40];
-	sprintf(buf,"%e",except->arg1);
-	/* This test may be unnecessary - from my experiments if the
-	   argument is too large or small the error is TLOSS not DOMAIN */
-	if(strstr(buf,"IN")||strstr(buf,"NAN"))  /* trashed arg? */
-			   /* "IND" with MSC, "INF" with BC++ */
-	{
-	   if( strcmp( except->name, s_sin ) == 0 )
-	   {
-	      except->retval = 0.0;
-	      return(1);
-	   }
-	   else if( strcmp( except->name, s_cos ) == 0 )
-	   {
-	      except->retval = 1.0;
-	      return(1);
-	   }
-	   else if( strcmp( except->name, s_log ) == 0 )
-	   {
-	      except->retval = 1.0;
-	      return(1);
-	   }
+        char buf[40];
+        sprintf(buf,"%e",except->arg1);
+        /* This test may be unnecessary - from my experiments if the
+           argument is too large or small the error is TLOSS not DOMAIN */
+        if(strstr(buf,"IN")||strstr(buf,"NAN"))  /* trashed arg? */
+                           /* "IND" with MSC, "INF" with BC++ */
+        {
+           if( strcmp( except->name, s_sin ) == 0 )
+           {
+              except->retval = 0.0;
+              return(1);
+           }
+           else if( strcmp( except->name, s_cos ) == 0 )
+           {
+              except->retval = 1.0;
+              return(1);
+           }
+           else if( strcmp( except->name, s_log ) == 0 )
+           {
+              except->retval = 1.0;
+              return(1);
+           }
        }
     }
     if( except->type == TLOSS )
     {
        /* try valiantly to keep going */
-	   if( strcmp( except->name, s_sin ) == 0 )
-	   {
-	      except->retval = 0.5;
-	      return(1);
-	   }
-	   else if( strcmp( except->name, s_cos ) == 0 )
-	   {
-	      except->retval = 0.5;
-	      return(1);
-	   }
+           if( strcmp( except->name, s_sin ) == 0 )
+           {
+              except->retval = 0.5;
+              return(1);
+           }
+           else if( strcmp( except->name, s_cos ) == 0 )
+           {
+              except->retval = 0.5;
+              return(1);
+           }
     }
     /* shucks, no idea what went wrong, but our motto is "keep going!" */
     except->retval = 1.0;
@@ -1538,6 +1551,13 @@ void roundfloatd(double *x) /* make double converted from float look ok */
 {
    char buf[30];
    sprintf(buf,"%-10.7g",*x);
+   *x = atof(buf);
+}
+
+void fix_inversion(double *x) /* make double converted from string look ok */
+{
+   char buf[30];
+   sprintf(buf,"%-1.15lg",*x);
    *x = atof(buf);
 }
 

@@ -13,10 +13,10 @@ always 1, that value is not included in the vector variable to
 save space, but the routines make use of the fourth component
 (see vec_mult()). Similarly, the fourth column of EVERY matrix is
 always
-	 0
-	 0
-	 0
-	 1
+         0
+         0
+         0
+         1
 but currently the C version of a matrix includes this even though
 it could be left out of the data structure and assumed in the
 routines. Vectors are ROW vectors, and are always multiplied with
@@ -24,35 +24,35 @@ matrices FROM THE LEFT (e.g. vector*matrix). Also note the order
 of indices of a matrix is matrix[row][column], and in usual C
 fashion, numbering starts with 0.
 
-TRANSLATION MATRIX =  1     0	  0	0
-		      0     1	  0	0
-		      0     0	  1	0
-		      Tx    Ty	  Tz	1
+TRANSLATION MATRIX =  1     0     0     0
+                      0     1     0     0
+                      0     0     1     0
+                      Tx    Ty    Tz    1
 
-SCALE MATRIX =	      Sx    0	  0	0
-		      0     Sy	  0	0
-		      0     0	  Sz	0
-		      0     0	  0	1
+SCALE MATRIX =        Sx    0     0     0
+                      0     Sy    0     0
+                      0     0     Sz    0
+                      0     0     0     1
 
 Rotation about x axis i degrees:
-ROTX(i) =		1     0     0	  0
-		      0   cosi  sini    0
-		      0  -sini  cosi    0
-		      0     0	  0	1
+ROTX(i) =             1     0     0     0
+                      0   cosi  sini    0
+                      0  -sini  cosi    0
+                      0     0     0     1
 
 Rotation about y axis i degrees:
-ROTY(i) =	      cosi	0  -sini    0
-		      0     1	  0	0
-		    sini    0   cosi    0
-		      0     0	  0	1
+ROTY(i) =           cosi    0  -sini    0
+                      0     1     0     0
+                    sini    0   cosi    0
+                      0     0     0     1
 
 Rotation about z axis i degrees:
-ROTZ(i) =	      cosi  sini	0     0
-		   -sini  cosi    0     0
-		      0     0	  1	0
-		      0     0	  0	1
+ROTZ(i) =           cosi  sini    0     0
+                   -sini  cosi    0     0
+                      0     0     1     0
+                      0     0     0     1
 
-		      --  Tim Wegner  April 22, 1989
+                      --  Tim Wegner  April 22, 1989
 */
 
 #include <stdio.h>
@@ -67,24 +67,24 @@ void identity(MATRIX m)
    for(i=0;i<CMAX;i++)
    for(j=0;j<RMAX;j++)
       if(i==j)
-	 m[j][i] = 1.0;
+         m[j][i] = 1.0;
       else
-	  m[j][i] = 0.0;
+          m[j][i] = 0.0;
 }
 
 /* Multiply two matrices */
 void mat_mul(MATRIX mat1, MATRIX mat2, MATRIX mat3)
 {
      /* result stored in MATRIX new to avoid problems
-	in case parameter mat3 == mat2 or mat 1 */
+        in case parameter mat3 == mat2 or mat 1 */
      MATRIX new;
      int i,j;
      for(i=0;i<4;i++)
      for(j=0;j<4;j++)
-	new[j][i] =  mat1[j][0]*mat2[0][i]+
-		     mat1[j][1]*mat2[1][i]+
-		     mat1[j][2]*mat2[2][i]+
-		     mat1[j][3]*mat2[3][i];
+        new[j][i] =  mat1[j][0]*mat2[0][i]+
+                     mat1[j][1]*mat2[1][i]+
+                     mat1[j][2]*mat2[2][i]+
+                     mat1[j][3]*mat2[3][i];
      memcpy(mat3,new,sizeof(new));
 }
 
@@ -99,7 +99,7 @@ void scale (double sx, double sy, double sz, MATRIX m)
    mat_mul(m,scale,m);
 }
 
-/* rotate about X axis	*/
+/* rotate about X axis  */
 void xrot (double theta, MATRIX m)
 {
    MATRIX rot;
@@ -114,7 +114,7 @@ void xrot (double theta, MATRIX m)
    mat_mul(m,rot,m);
 }
 
-/* rotate about Y axis	*/
+/* rotate about Y axis  */
 void yrot (double theta, MATRIX m)
 {
    MATRIX rot;
@@ -129,7 +129,7 @@ void yrot (double theta, MATRIX m)
    mat_mul(m,rot,m);
 }
 
-/* rotate about Z axis	*/
+/* rotate about Z axis  */
 void zrot (double theta, MATRIX m)
 {
    MATRIX rot;
@@ -212,7 +212,7 @@ int vmult(VECTOR s, MATRIX m, VECTOR t)
    {
       tmp[j] = 0.0;
       for(i=0;i<RMAX-1;i++)
-	 tmp[j] += s[i]*m[i][j];
+         tmp[j] += s[i]*m[i][j];
       /* vector is really four dimensional with last component always 1 */
       tmp[j] += m[3][j];
    }
@@ -233,7 +233,7 @@ void mult_vec_c(VECTOR s)
    {
       tmp[j] = 0.0;
       for(i=0;i<RMAX-1;i++)
-	 tmp[j] += s[i]*m[i][j];
+         tmp[j] += s[i]*m[i][j];
       /* vector is really four dimensional with last component always 1 */
       tmp[j] += m[3][j];
    }
@@ -275,14 +275,14 @@ longvmultpersp(LVECTOR s, LMATRIX m, LVECTOR t0, LVECTOR t, LVECTOR lview,
    LVECTOR tmp;
    int i,j, k;
    overflow = 0;
-   k = CMAX-1;			/* shorten the math if non-perspective and non-illum */
+   k = CMAX-1;                  /* shorten the math if non-perspective and non-illum */
    if (lview[2] == 0 && t0[0] == 0) k--;
 
    for(j=0;j<k;j++)
    {
       tmp[j] = 0;
       for(i=0;i<RMAX-1;i++)
-	 tmp[j] += multiply(s[i],m[i][j],bitshift);
+         tmp[j] += multiply(s[i],m[i][j],bitshift);
       /* vector is really four dimensional with last component always 1 */
       tmp[j] += m[3][j];
    }
@@ -293,20 +293,20 @@ longvmultpersp(LVECTOR s, LMATRIX m, LVECTOR t0, LVECTOR t, LVECTOR lview,
       t0[1] = tmp[1];
       t0[2] = tmp[2];
    }
-   if (lview[2] != 0)		/* perspective 3D */
+   if (lview[2] != 0)           /* perspective 3D */
    {
 
       LVECTOR tmpview;
       long denom;
 
       denom = lview[2] - tmp[2];
-      if (denom >= 0)		/* bail out if point is "behind" us */
+      if (denom >= 0)           /* bail out if point is "behind" us */
       {
-	   t[0] = bad_value;
-	   t[0] = t[0]<<bitshift;
-	   t[1] = t[0];
-	   t[2] = t[0];
-	   return(-1);
+           t[0] = bad_value;
+           t[0] = t[0]<<bitshift;
+           t[1] = t[0];
+           t[2] = t[0];
+           return(-1);
       }
 
       /* doing math in this order helps prevent overflow */
@@ -315,12 +315,12 @@ longvmultpersp(LVECTOR s, LMATRIX m, LVECTOR t0, LVECTOR t, LVECTOR lview,
       tmpview[2] = divide(lview[2],denom,bitshift);
 
       tmp[0] = multiply(tmp[0], tmpview[2], bitshift) -
-	       multiply(tmpview[0], tmp[2], bitshift);
+               multiply(tmpview[0], tmp[2], bitshift);
 
       tmp[1] = multiply(tmp[1], tmpview[2], bitshift) -
-	       multiply(tmpview[1], tmp[2], bitshift);
+               multiply(tmpview[1], tmp[2], bitshift);
 
-      /* z coordinate if needed 	  */
+      /* z coordinate if needed           */
       /* tmp[2] = divide(lview[2],denom);  */
    }
 
@@ -340,13 +340,13 @@ longpersp(LVECTOR lv, LVECTOR lview, int bitshift)
    long denom;
    overflow = 0;
    denom = lview[2] - lv[2];
-   if (denom >= 0)		/* bail out if point is "behind" us */
+   if (denom >= 0)              /* bail out if point is "behind" us */
    {
-	lv[0] = bad_value;
-	lv[0] = lv[0]<<bitshift;
-	lv[1] = lv[0];
-	lv[2] = lv[0];
-	return(-1);
+        lv[0] = bad_value;
+        lv[0] = lv[0]<<bitshift;
+        lv[1] = lv[0];
+        lv[2] = lv[0];
+        return(-1);
    }
 
    /* doing math in this order helps prevent overflow */
@@ -355,12 +355,12 @@ longpersp(LVECTOR lv, LVECTOR lview, int bitshift)
    tmpview[2] = divide(lview[2],denom,bitshift);
 
    lv[0] = multiply(lv[0], tmpview[2], bitshift) -
-	   multiply(tmpview[0], lv[2], bitshift);
+           multiply(tmpview[0], lv[2], bitshift);
 
    lv[1] = multiply(lv[1], tmpview[2], bitshift) -
-	   multiply(tmpview[1], lv[2], bitshift);
+           multiply(tmpview[1], lv[2], bitshift);
 
-   /* z coordinate if needed	       */
+   /* z coordinate if needed           */
    /* lv[2] = divide(lview[2],denom);  */
    return(overflow);
 }
@@ -376,7 +376,7 @@ int longvmult(LVECTOR s,LMATRIX m,LVECTOR t,int bitshift)
    {
       tmp[j] = 0;
       for(i=0;i<RMAX-1;i++)
-	 tmp[j] += multiply(s[i],m[i][j],bitshift);
+         tmp[j] += multiply(s[i],m[i][j],bitshift);
       /* vector is really four dimensional with last component always 1 */
       tmp[j] += m[3][j];
    }

@@ -47,7 +47,7 @@ fractals.obj : fractals.c fractint.h fractype.h mpmath.h helpdefs.h
 
 fractalp.obj : fractalp.c fractint.h fractype.h mpmath.h helpdefs.h
 
-fractalb.obj : fractalb.c fractint.h fractype.h bignum.h helpdefs.h
+fractalb.obj : fractalb.c fractint.h fractype.h big.h helpdefs.h
 
 calcfrac.obj : calcfrac.c fractint.h mpmath.h
 
@@ -186,28 +186,24 @@ lyapunov.obj : lyapunov.asm
 slideshw.obj : slideshw.c
 	$(Optsize)
 
-bignumc.obj : bignumc.c bignum.h
+biginit.obj : biginit.c big.h
 	$(Optnoalias)
 
-bignum.obj : bignum.c bignum.h
+bignum.obj : bignum.c big.h
 	$(Optnoalias)
 
-biginit.obj : biginit.c bignum.h biginit.h
+bigflt.obj : bigflt.c big.h
 	$(Optnoalias)
 
-bigflt.obj : bigflt.c bignum.h bigflt.h
-	$(Optnoalias)
-
-bigfltc.obj : bigfltc.c bignum.h bigflt.h
-	$(Optnoalias)
-
-bignuma.obj : bignuma.asm
-
-bigflta.obj : bigflta.asm
+bignuma.obj : bignuma.asm big.inc
 # for MASM
-	$(AS) /e bigflta.asm;
+        $(AS) /e bignuma.asm; >> f_errs.txt
 # for QuickAssembler
-#   $(AS) /FPi bigflta.asm
+#   $(AS) /FPi bignuma.asm >> f_errs.txt
+
+# only used for non ASM version
+#bignumc.obj : bignumc.c big.h
+#        $(Optnoalias)
 
 stereo.obj : stereo.c helpdefs.h 
 
@@ -233,16 +229,17 @@ fractint.exe : fractint.obj help.obj loadfile.obj encoder.obj gifview.obj \
      hgcfra.obj fpu087.obj fpu387.obj mpmath_c.obj mpmath_a.obj \
      lorenz.obj plot3d.obj jb.obj zoom.obj miscres.obj miscovl.obj \
      realdos.obj lsys.obj lsysa.obj editpal.obj tplus.obj tplus_a.obj \
-     lyapunov.obj fractint.hlp hcmplx.obj biginit.obj bignuma.obj bignum.obj bigflt.obj \
-     bigfltc.obj bigflta.obj fractalb.obj ant.obj frasetup.obj framain2.obj \
+     lyapunov.obj fractint.hlp hcmplx.obj \
+     biginit.obj bignum.obj bigflt.obj bignuma.obj \
+     fractalb.obj ant.obj frasetup.obj framain2.obj \
      lsysf.obj lsysaf.obj \
      $(DEFFILE) $(LINKFILE)
 	$(LINKER) /ST:9000 /SE:210 /PACKC /F /NOE @$(LINKFILE) > foo
 !ifdef C7
         @echo (Any overlay_thunks (L4059) warnings from the linker are harmless) >> foo
 !endif
-        more < f_errs.txt
-	type foo
+#        more < f_errs.txt
+#	type foo
         
 !ifndef DEBUG
 	hc /a

@@ -25,141 +25,146 @@
 ; This topic is online only.
 ~Format-
 {Startup Parameters}
-  @filename[/setname]	   Process commands from a file
-  [filename=]filename	   Start with this saved file (one saved by FRACTINT
-			   or a generic GIF file [treated as a plasma cloud])
-  batch=yes		   Batch mode run (display image, save-to-disk, exit)
-  autokey=play|record	   Playback or record keystrokes
-  autokeyname=filename	   File for autokey mode, default AUTO.KEY
-  fpu=387|iit|noiit	   Assume 387 or IIT fpu is present or absent
-  makedoc=filename	   Create Fractint documentation file
-  maxhistory=<nnn>	   Set image capacity of history feature. A higher
+  @filename[/setname]      Process commands from a file
+  [filename=]filename      Start with this saved file (one saved by FRACTINT
+                           or a generic GIF file [treated as a plasma cloud])
+  makepar=parfile/entry    Batch copy of GIF to PAR. Use after gif filename.
+  batch=yes                Batch mode run (display image, save-to-disk, exit)
+  autokey=play|record      Playback or record keystrokes
+  autokeyname=filename     File for autokey mode, default AUTO.KEY
+  fpu=387|iit|noiit        Assume 387 or IIT fpu is present or absent
+  makedoc=filename         Create Fractint documentation file
+  maxhistory=<nnn>         Set image capacity of history feature. A higher
                            number stores more images but uses more memory.
   tempdir=directory        Place temporary files here
   workdir=directory        Directory for miscellaneous written files
-  curdir=yes|no            When set to yes, Fractint checks current directory 
-                           before default directory when opening files. Use 
-                           this command when testing temporary .FRM, .L, etc. 
+  curdir=yes|no            When set to yes, Fractint checks current directory
+                           before default directory when opening files. Use
+                           this command when testing temporary .FRM, .L, etc.
                            files in the current directory.
+  makepar=parfile[/entry]  Invokes batch facility to to copy a GIF to
+                           PAR format with colors.
 ~FF
 {Calculation Mode Parameters}
-  passes=1|2|3|g|b|t	   Select Single-Pass, Dual-Pass, Triple-Pass
-			   Solid-Guessing, Boundary-Tracing, or the 
-			   Tesseral drawing algorithms
+  passes=1|2|3|g|b|t|g1..g6  Select Single-Pass, Dual-Pass, Triple-Pass
+                           Solid-Guessing, Solid-Guessing stop after pass n,
+                           Boundary-Tracing, or the Tesseral drawing algorithms
   fillcolor=normal|<nnn>   Sets a block fill color for use with Boundary
-      			   Tracing and Tesseral options		  
-  float=yes		   For most functions changes from integer math to fp
-  symmetry=xxxx 	   Force symmetry to None, Xaxis, Yaxis, XYaxis,
-			   Origin, or Pi symmetry.  Useful as a speedup. Only
+                           Tracing and Tesseral options
+  float=yes                For most functions changes from integer math to fp
+  symmetry=xxxx            Force symmetry to None, Xaxis, Yaxis, XYaxis,
+                           Origin, or Pi symmetry.  Useful as a speedup. Only
                            use this feature if the fractal actually *has* the
                            stated symmetry, otherwise may not work as expected.
-  bfdigits=<nnn>           Force nnn digits if arbitrary precision used (not 
-                           recommended - this is a developer feature.) 
+  bfdigits=<nnn>           Force nnn digits if arbitrary precision used (not
+                           recommended - this is a developer feature.)
 ~FF
 {Fractal Type Parameters}
-  type=fractaltype	   Perform this Fractal Type (Default = mandel)
-			   See {Fractal Types} for a full list
-  params=xxx[/xxx[/...	   Begin with these extra Parameter values
-			   (Examples:  params=4   params=-0.480/0.626)
-  function=fn1/.../fn4	   Allows specification of transcendental functions
-			   with types using variable functions. Values are
-			   sin, cos, tan, cotan, sinh, cosh, tanh, cotanh,
-			   exp, log, sqr, recip (1/z), ident (identity),
-			   conj, flip, zero, cosxx (cos with bug), asin, 
+  type=fractaltype         Perform this Fractal Type (Default = mandel)
+                           See {Fractal Types} for a full list
+  params=xxx[/xxx[/...     Begin with these extra Parameter values
+                           (Examples:  params=4   params=-0.480/0.626)
+  function=fn1/.../fn4     Allows specification of transcendental functions
+                           with types using variable functions. Values are
+                           sin, cos, tan, cotan, sinh, cosh, tanh, cotanh,
+                           exp, log, sqr, recip (1/z), ident (identity),
+                           conj, flip, zero, cosxx (cos with bug), asin,
                            asinh, acos, acosh, atan, atanh, sqrt, abs, cabs
-  formulaname=name	   Formula name for 'type=formula' fractals
-  lname=name		   Lsystem name for 'type=lsystem' fractals
-  ifs=name		   IFS name for 'type=ifs' fractals
+  formulaname=name         Formula name for 'type=formula' fractals
+  lname=name               Lsystem name for 'type=lsystem' fractals
+  ifs=name                 IFS name for 'type=ifs' fractals
   3dmode=monocular|left|right|red-blue  Sets the 3D mode used with Julibrot
-  julibrot3d=nn[/nn[/nn[/nn[/nn[/nn]]]]]")  Sets Julibrot 3D parameters zdots, 
+  julibrot3d=nn[/nn[/nn[/nn[/nn[/nn]]]]]")  Sets Julibrot 3D parameters zdots,
                            origin, depth, height, width, and distance
   julibroteyes=nn          Distance between the virtual eyes for Julibrot
-  julibrotfromto=nn/nn[/nn/nn] "From-to" parameters used for Julibrot 
-  miim=[depth|breadth|walk]/[left|right]/[xxx/yyy[/zzz]] Params for MIIM
-                           julias.  xxx/yyy = julia constant, zzz = max hits.
-                           Eg. miim=depth/left/-.74543/.11301/3
+  julibrotfromto=nn/nn[/nn/nn] "From-to" parameters used for Julibrot
+  miim=depth|breadth|walk[/left|right] Parameters for MIIM julias.
 ~FF
 {Image Calculation Parameters}
   corners=[xmin/xmax/ymin/ymax[/x3rd/y3rd]]
-			   Begin with these Coordinates
+                           Begin with these Coordinates
                            (Example: corners=-0.739/-0.736/0.288/0.291)
                            With no parameters causes <B> command to output
                            'corners=' (default) instead of center-mag.
   center-mag=[Xctr/Yctr/Mag[/Xmagfactor/Rotation/Skew]]
                            An alternative method of entering corners.
-                           (Example: corners=-0.7375/0.2895/300)
-			   With no parameters causes <B> command to output
-			   'center-mag=' instead of corners.
-  maxiter=nnn		   Maximum number of iterations (default = 150)
-  bailout=nnnn		   Use this as the iteration bailout value (instead
-			   of the default (4.0 for most fractal types)
-  bailoutest=mod|real|imag|or|and  Sets the test for bailing out (default=mod)
-  initorbit=nnn/nnn	   Sets the value used to initialize Mandelbrot orbits
-			   to the given complex number (real and imag parts)
-  orbitdelay=nn		   Slows up the display of orbits (by nn/10000 sec)
+                           (Example: center-mag=-0.7375/0.2895/300)
+                           With no parameters causes <B> command to output
+                           'center-mag=' instead of corners.
+  maxiter=nnn              Maximum number of iterations (default = 150)
+  bailout=nnnn             Use this as the iteration bailout value (instead
+                           of the default (4.0 for most fractal types)
+  bailoutest=mod|real|imag|or|and|manh|manr  Sets bailout test (default=mod)
+  initorbit=nnn/nnn        Sets the value used to initialize Mandelbrot orbits
+                           to the given complex number (real and imag parts)
+  orbitdelay=nn            Slows up the display of orbits (by nn/10000 sec)
   showorbit=yes|no         Causes during-generation <o> toggle start on.
-  initorbit=pixel	   Sets the value used to initialize Mandelbrot orbits
-			   to the complex number corresponding to the screen
-			   pixel. This is the default for most types.
+  initorbit=pixel          Sets the value used to initialize Mandelbrot orbits
+                           to the complex number corresponding to the screen
+                           pixel. This is the default for most types.
   periodicity=[no|show|nnn] Controls periodicity checking. 'no' turns checking
-			   off; entering a number nnn controls the tightness
-			   of checking (default 1, higher is more stringent)
-			   'show' or a neg value colors 'caught' points white.
-  rseed=nnnnn		   Random number seed, for reproducable Plasma Clouds
+                           off; entering a number nnn controls the tightness
+                           of checking (default 1, higher is more stringent)
+                           'show' or a neg value colors 'caught' points white.
+  rseed=nnnnn              Random number seed, for reproducable Plasma Clouds
   showdot=nn               Colors the current dot being calculated color nn.
   aspectdrift=nn           How much the aspect ratio can vary from normal due
-                           to zooming and still be assumed to be the normal
-                           aspect. (default is 0.01)
-
+                           to zooming. (default is 0.01)
 {Color Parameters}
   inside=nnn|maxiter|zmag|bof60|bof61|epscr|star|per
-			   Fractal interior color (inside=0 for black)
+                           Fractal interior color (inside=0 for black)
   outside=nnn|iter|real|imag|mult|summ|atan  Fractal exterior color options
-  map=filename		   Use 'filename' as the default color map (vga/targa)
+  map=filename             Use 'filename' as the default color map (vga/targa)
   colors=@filename|colorspec Sets current image color map from file or spec,
-			   vga or higher only
-  cyclerange=nnn/nnn	   Range of colors to cycle (default 1/255)
-  cyclelimit=nnn	   Color-cycler speed-limit (1 to 256, default = 55)
-  olddemmcolors=yes|no	   Use old coloring scheme with distance estimator
+                           vga or higher only
+  cyclerange=nnn/nnn       Range of colors to cycle (default 1/255)
+  cyclelimit=nnn           Color-cycler speed-limit (1 to 256, default = 55)
+  olddemmcolors=yes|no     Use old coloring scheme with distance estimator
   textcolors=aa/bb/cc/...  Set text screen colors
-  textcolors=mono	   Set text screen colors to simple black and white
-~FF
+  textcolors=mono          Set text screen colors to simple black and white
+  truecolor=yes            Writes escape iteration to Targa file.
+
 {Doodad Parameters}
-  logmap=yes|old|nn	   Yes maps logarithm of iteration to color. Old uses
-			   pre vsn 14 logic. >1 compresses, <-1 for quadratic.
-  ranges=nn/nn/nn/...	   Ranges of iteration values to map to colors
-  distest=nnn/nnn	   Distance Estimator Method
-  decomp=nn		   'Decomposition' toggle, value 2 to 256.
-  biomorph=nnn		   Biomorph Coloring
+  logmap=yes|old|nn        Yes maps logarithm of iteration to color. Old uses
+                           pre vsn 14 logic. >1 compresses, <-1 for quadratic.
+  logmode=fly|table        Fly forces on-the-fly calculation of logmap. Table
+                           forces the use of the logmap array.
+  ranges=nn/nn/nn/...      Ranges of iteration values to map to colors
+  distest=nnn/nnn          Distance Estimator Method
+  decomp=nn                'Decomposition' toggle, value 2 to 256.
+  biomorph=nnn             Biomorph Coloring
   potential=nn[/nn[/nn[/16bit]]]  Continuous Potential
-  invert=nn/nn/nn	   Turns on inversion - turns images 'inside out'
-  finattract=yes	   Look for finite attractor in julia types
-  exitnoask=yes		   bypasses the final "are you sure?" exit screen
-~FF
+  invert=nn/nn/nn          Turns on inversion - turns images 'inside out'
+  finattract=yes           Look for finite attractor in julia types
+  exitnoask=yes            bypasses the final "are you sure?" exit screen
+
 {Sound Parameters}
   sound=off|x|y|z          Nobody ever plays with fractals at work, do they?
                            x|y|z can be used to add sound to attractor
                            fractals, the orbits command, and reading GIFs.
   hertz=nnn                Base frequency for attractor sound effects
+  orbitsave=sound          Causes sound values of orbits of escape-time
+                           fractals and orbit fractals to be saved in a
+                           file suitable for post-processing to midi.
 
 {File Parameters}
-  savename=filename	   Save files using this name (instead of FRACT001)
-  overwrite=no|yes	   Don't over-write existing files
-  savetime=nnn		   Autosave image every nnn minutes of calculation
-  gif87a=yes		   Save GIF files in the older GIF87a format (with
-			   no FRACTINT extension blocks)
-  dither=yes		   Dither color GIFs read into a b/w display.
-  parmfile=filename	   File for <@> and <b> commands, default FRACTINT.PAR
-  formulafile=filename	   File for type=formula, default FRACTINT.FRM
-  lfile=filename	   File for type=lsystem, default FRACTINT.L
-  ifsfile=filename	   File for type=ifs, default FRACTINT.IFS
-  orbitsave=yes 	   Causes IFS and orbit fractals orbit points to be
-			   saved in the file ORBITS.RAW
+  savename=filename        Save files using this name (instead of FRACT001)
+  overwrite=no|yes         Don't over-write existing files
+  savetime=nnn             Autosave image every nnn minutes of calculation
+  gif87a=yes               Save GIF files in the older GIF87a format (with
+                           no FRACTINT extension blocks)
+  dither=yes               Dither color GIFs read into a b/w display.
+  parmfile=filename        File for <@> and <b> commands, default FRACTINT.PAR
+  formulafile=filename     File for type=formula, default FRACTINT.FRM
+  lfile=filename           File for type=lsystem, default FRACTINT.L
+  ifsfile=filename         File for type=ifs, default FRACTINT.IFS
+  orbitsave=yes            Causes IFS and orbit fractals orbit points to be
+                           saved in the file ORBITS.RAW
 ~FF
 
 {Video Parameters}
-  video=xxx		   Begin with this video mode (Example: Video=F2)
-  askvideo=no		   Skip the prompt for video mode when restoring files
+  video=xxx                Begin with this video mode (Example: Video=F2)
+  askvideo=no              Skip the prompt for video mode when restoring files
   adapter=hgc|cga|ega|egamono|mcga|vga
                            Assume this (standard) video adapter is present
   adapter=ATI|Everex|Trident|NCR|Video7|Genoa|Paradise|Chipstech|
@@ -169,76 +174,77 @@
   afi=yes                  Disables the register-compatible 8514/A logic
                            and forces the use of the 8514/A API (HDILOAD)
   textsafe=yes|no|bios|save  For use when images are not restored correctly on
-			   return from a text display
-  exitmode=nn		   Sets the bios-supported videomode to use upon exit
-			   (if not mode 3) - nn is the mode in hexadecimal
+                           return from a text display
+  exitmode=nn              Sets the bios-supported videomode to use upon exit
+                           (if not mode 3) - nn is the mode in hexadecimal
   viewwindows=xx[/xx[/yes|no[/nn[/nn]]]]
-			   Set the reduction factor, final media aspect ratio,
-			   crop starting coordinates (y/n), explicit x size,
-			   and explicit y size
+                           Set the reduction factor, final media aspect ratio,
+                           crop starting coordinates (y/n), explicit x size,
+                           and explicit y size
 ~FF
 {Printer Parameters}
   printer=type[/res[/lpt#[/-1]]]  Set the printer type, dots/inch, and port#
-			   types: IBM, EPSON, CO (Star Micronix),
-				  HP (LaserJet), PA (Paintjet),
-				  PS (PostScript portrait), PSL (landscape)
-			   port# 1-3 LPTn, 11-14 COMn, 21-22 direct parallel,
-				 31-32 direct serial
-  linefeed=crlf|lf|cr	   Control characters to emit at end of each line
-  title=yes		   Print a title with the output
-  printfile=filename	   Print to specified file
-  epsf=1|2|3|...	   Forces print to file; default filename fract001.eps,
-			   forces PostScript mode
-  translate=yes|nnn	   PostScript only; yes prints negative image;
-			   >0 reduces image colors; <0 color reduce+negative
+                           types: IBM, EPSON, CO (Star Micronix),
+                                  HP (LaserJet), PA (Paintjet),
+                                  PS (PostScript portrait), PSL (landscape)
+                           port# 1-3 LPTn, 11-14 COMn, 21-22 direct parallel,
+                                 31-32 direct serial
+  linefeed=crlf|lf|cr      Control characters to emit at end of each line
+  title=yes                Print a title with the output
+  printfile=filename       Print to specified file
+  epsf=1|2|3|...           Forces print to file; default filename fract001.eps,
+                           forces PostScript mode
+  translate=yes|nnn        PostScript only; yes prints negative image;
+                           >0 reduces image colors; <0 color reduce+negative
   halftone=frq/angl/styl   PostScript: defines halftone screen
-  halftone=r/g/b	   PaintJet: contrast adjustment
+  halftone=r/g/b           PaintJet: contrast adjustment
   comport=port/baud/opts   COM port initialization. Port=1,2,3,etc.
-			   baud=115,150,300,600,1200,2400,4800,9600
-			   options 7,8 | 1,2 | e,n,o (any order)
-			   Example: comport=1/9600/n71
+                           baud=115,150,300,600,1200,2400,4800,9600
+                           options 7,8 | 1,2 | e,n,o (any order)
+                           Example: comport=1/9600/n71
   colorps=yes|no           Enable or Disable the color postscript extensions
   rleps=yes|no             Enable or Disable the postscript rle encoding
 ~FF
 {3D Parameters}
-  3d=yes|overlay	   Resets 3D to defaults, starts 3D mode. If overlay
-			   specified, does not clear existing graphics screen
-  preview=yes		   Turns on 3D 'preview' default mode
-  showbox=yes		   Turns on 3D 'showbox' default mode
-  sphere=yes		   Turns on 3D sphere mode
-  coarse=nnn		   Sets Preview 'coarseness' default value
-  stereo=nnn		   Sets Stereo (R/B 3D) option:  0 = none,
-			   1 = alternate, 2 = superimpose, 3 = photo
-  ray=nnn		   selects raytrace output file format
-  brief=yes		   selects brief or verbose file for DKB output
+  3d=yes|overlay           Resets 3D to defaults, starts 3D mode. If overlay
+                           specified, does not clear existing graphics screen
+  preview=yes              Turns on 3D 'preview' default mode
+  showbox=yes              Turns on 3D 'showbox' default mode
+  sphere=yes               Turns on 3D sphere mode
+  coarse=nnn               Sets Preview 'coarseness' default value
+  stereo=nnn               Sets Stereo (R/B 3D) option:  0 = none,
+                           1 = alternate, 2 = superimpose, 3 = photo,
+                           4 = stereo pair
+  ray=nnn                  selects raytrace output file format
+  brief=yes                selects brief or verbose file for DKB output
   usegrayscale=yes         use grayscale as depth instead of color number
-  interocular=nnn	   Sets 3D Interocular distance default value
-  converge=nnn		   Sets 3D Convergence default value
-  crop=nnn/nnn/nnn/nnn	   Sets 3D red-left, red-right, blue-left,
-			   and blue-right cropping default valuess
-  bright=nnn/nnn	   Sets 3D red and blue brightness defaults,
+  interocular=nnn          Sets 3D Interocular distance default value
+  converge=nnn             Sets 3D Convergence default value
+  crop=nnn/nnn/nnn/nnn     Sets 3D red-left, red-right, blue-left,
+                           and blue-right cropping default valuess
+  bright=nnn/nnn           Sets 3D red and blue brightness defaults,
 
-  longitude=nn/nn	   Longitude minumim and maximum
-  latitude=nn/nn	   Latitude minimum and maximum
-  radius=nn		   Radius scale factor
+  longitude=nn/nn          Longitude minumim and maximum
+  latitude=nn/nn           Latitude minimum and maximum
+  radius=nn                Radius scale factor
   rotation=nn[/nn[/nn]]    Rotation abount x,y, and z axes
-  scalexyz=nn/nn/nn	   X, Y, and Z scale factors
-  roughness=nn		   Same as Z scale factor
-  waterline=nn		   Colors this number and below will be 'inside' color
-  filltype=nn		   3D filltype
-  perspective=nn	   Perspective viewer distance (100 is at the edge)
-  xyshift=nn/nn 	   Shift image in x & y directions (alters viewpoint)
-  lightsource=nn/nn/nn	   The coordinates of the light source vector
-  smoothing=nn		   Smooths rough images in light source mode
-  transparent=mm/nn	   Sets colors 'mm' to 'nn as transparent
-  xyadjust=nnn/nnn	   Sets 3D X and Y adjustment defaults,
-  randomize=nnn 	   smoothes 3d color transitions between elevations
-  fullcolor=yes 	   allows creation of full color .TGA image with
-			   light source fill types
-  ambient=nnn		   sets depth of shadows and contrast when using
-			   light source fill types
-  haze=nnn		   sets haze for distant objects if fullcolor=1
-  lightname=filename	   fullcolor output file name, default FRACT001.TGA
+  scalexyz=nn/nn/nn        X, Y, and Z scale factors
+  roughness=nn             Same as Z scale factor
+  waterline=nn             Colors this number and below will be 'inside' color
+  filltype=nn              3D filltype
+  perspective=nn           Perspective viewer distance (100 is at the edge)
+  xyshift=nn/nn            Shift image in x & y directions (alters viewpoint)
+  lightsource=nn/nn/nn     The coordinates of the light source vector
+  smoothing=nn             Smooths rough images in light source mode
+  transparent=mm/nn        Sets colors 'mm' to 'nn as transparent
+  xyadjust=nnn/nnn         Sets 3D X and Y adjustment defaults,
+  randomize=nnn            smoothes 3d color transitions between elevations
+  fullcolor=yes            allows creation of full color .TGA image with
+                           light source fill types
+  ambient=nnn              sets depth of shadows and contrast when using
+                           light source fill types
+  haze=nnn                 sets haze for distant objects if fullcolor=1
+  lightname=filename       fullcolor output file name, default FRACT001.TGA
   monitorwidth=nnn         monitor width in inches (for RDS only so far)
 ;
 ;
@@ -297,11 +303,11 @@ Each section begins with a label in brackets. Fractint looks for the label
 other label. If an SSTOOLS.INI file looks like this:
 
   [fractint]\
-  sound=off	 ; (for home use only)\
-  printer=hp	 ; my printer is a LaserJet\
-  inside=0	 ; using "traditional" black\
+  sound=off      ; (for home use only)\
+  printer=hp     ; my printer is a LaserJet\
+  inside=0       ; using "traditional" black\
   [startrek]\
-  warp=9.5	 ; Captain, I dinna think the engines can take it!\
+  warp=9.5       ; Captain, I dinna think the engines can take it!\
 
 Fractint will use only the second, third, and fourth lines of the file.
 (Why use a convention like that when Fractint is the only program you know
@@ -316,11 +322,11 @@ You can change parameters on-the-fly while running Fractint by using the
 <@> or <2> command and a parameter file. Parameter files contain named
 groups of parameters, looking something like this:
 
-  quickdraw \{	    ; a set of parameters named quickdraw\
+  quickdraw \{      ; a set of parameters named quickdraw\
      maxiter=150\
      float=no\
      }\
-  slowdraw \{	    ; another set of parameters\
+  slowdraw \{       ; another set of parameters\
      maxiter=2000\
      float=yes\
      }\
@@ -372,11 +378,11 @@ In parameter files and SSTOOLS.INI:\
     is appended to the prior line.
 
 Some terminology:\
-  KEYWORD=nnn		   enter a number in place of "nnn"\
-  KEYWORD=[filename]	   you supply filename\
+  KEYWORD=nnn              enter a number in place of "nnn"\
+  KEYWORD=[filename]       you supply filename\
   KEYWORD=yes|no|whatever  choose one of "yes", "no", or "whatever"\
   KEYWORD=1st[/2nd[/3rd]]  the slash-separated parameters "2nd" and
-			   "3rd" are optional
+                           "3rd" are optional
 ;
 ;
 ~Topic=Startup Parameters
@@ -396,7 +402,7 @@ This command allows to specify the directory where Fractint writes temporary
 files.
 
 WORKDIR=[directory]\
-This command sets the directory where miscellaneous Fractint files get 
+This command sets the directory where miscellaneous Fractint files get
 written, including MAKEBIG.BAT and debugging files.
 
 FILENAME=[name]\
@@ -405,17 +411,30 @@ from an earlier Fractint session or be a generic GIF file, and use that as
 the starting point, bypassing the initial information screens. The
 filetype is optional and defaults to .GIF. Non-Fractint GIF files are
 restored as fractal type "plasma".\
+
 On the DOS command line you may omit FILENAME= and just give the file name.
 
 CURDIR=yes\
-Fractint uses directories set by various commands, possibly in the 
-SSTOOLS.INI file. Uf you want to try out some files in the current directory,
+Fractint uses directories set by various commands, possibly in the
+SSTOOLS.INI file. If you want to try out some files in the current directory,
 such as a modified copy of FRACTINT.FRM, you won't Fractint to read the copy
-in your official FRM directory. Setting curdir=yes at the command line will 
-cause Fractint to look in the current directory for requested files first 
-before looking in the default directory set by the other commands. Warning: 
-<tab> screen may not reflect actual file opened in cases where the file was 
-opened in the DOS current directory. 
+in your official FRM directory. Setting curdir=yes at the command line will
+cause Fractint to look in the current directory for requested files first
+before looking in the default directory set by the other commands. Warning:
+<tab> screen may not reflect actual file opened in cases where the file was
+opened in the DOS current directory.
+
+MAKEPAR=parfile/entryname\
+This command invokes a batch facility to copy fractal and color information
+stored in GIF files to PAR format. The syntax is:\
+     fractint filename.gif makepar=parfile.par/entryname >> makepar.log\
+The entryname is optional and defaults to the name of the gif filename if
+absent. Other parameters can appear before the makepar= command, but
+anything after will ignored. If the parfile and entryname exist, the entry
+will replace the previous entry. If the entry doesn't exist, it will be
+added. If the parfile doesn't exist it will be created.
+Redirection of output to a log file is possible in the DOS version because
+all screen output is written to the standard output.
 
 BATCH=yes\
 See {Batch Mode}.
@@ -424,26 +443,28 @@ AUTOKEY=play|record\
 Specifying "play" runs Fractint in playback mode - keystrokes are read
 from the autokey file (see next parameter) and interpreted as if they're
 being entered from the keyboard.\
+
 Specifying "record" runs in recording mode - all keystrokes are recorded
 in the autokey file.\
+
 See also {Autokey Mode}.
 
 AUTOKEYNAME=[filename]\
 Specifies the file name to be used in autokey mode. The default file name
 is AUTO.KEY.
 
-FPU=387|IIT|NOIIT\
+FPU=387|iit|noiit\
 This parameter is useful if you have an unusual coprocessor chip. If you
 have a 80287 replacement chip with full 80387 functionality use "FPU=387"
 to inform Fractint to take advantage of those extra 387 instructions.
 If you have the IIT fpu, but don't have IIT's 'f4x4int.com' TSR loaded,
-use "FPU=IIT" to force Fractint to use that chip's matrix multiplication
+use "FPU=iit" to force Fractint to use that chip's matrix multiplication
 routine automatically to speed up 3-D transformations (if you have an IIT
 fpu and have that TSR loaded, Fractint will auto-detect the presence of
 the fpu and TSR and use its extra capabilities automatically).
 Since all IIT chips support 80387 instructions, enabling the IIT code also
 enables Fractint's use of all 387 instructions.
-Setting "FPU=NOIIT" disables Fractint's IIT Auto-detect capability.
+Setting "FPU=noiit" disables Fractint's IIT Auto-detect capability.
 Warning: multi-tasking operating systems such as Windows and DesQView
 don't automatically save the IIT chip extra registers, so running two
 programs at once that both use the IIT's matrix multiply feature but
@@ -463,23 +484,24 @@ use "Printing Fractint Documentation" from the main help index.
 
 MAXHISTORY=<nnn>\
 Fractint maintains a list of parameters of the past 10 images that you
-generated in the current Fractint session. You can revisit these images 
+generated in the current Fractint session. You can revisit these images
 using the <h> and <Ctrl-h> commands. The maxhistory command allows you
 to set the number of image parameter sets stored in memory. The tradeoff
 is between the convenience of storing more images and memory use. Each
-image in the circular history buffer takes up over 1200 bytes, so the 
+image in the circular history buffer takes up over 1200 bytes, so the
 default value of ten images uses up 12,000 bytes of memory. If your memory
 is very tight, and some memory-intensive Fractint operations are giving
 "out of memory" messages, you can reduce maxistory to 2 or even zero. Keep
-in mind that every time you color cycle or change from integer to float or 
-back, another image parameter set is saved, so the default ten images are 
-used up quickly. 
+in mind that every time you color cycle or change from integer to float or
+back, another image parameter set is saved, so the default ten images are
+used up quickly.
 ;
 ;
 ~Topic=Calculation Mode Parameters
-PASSES=1|2|3|guess|btm|tesseral\
-Selects single-pass, dual-pass, triple-pass, solid-Guessing mode, Boundary 
-Tracing, or the Tesseral algorithm.  See {Drawing Method}.
+PASSES=1|2|3|g|g1|g2|g3|g4|g5|g6|b|t\
+Selects single-pass, dual-pass, triple-pass, solid-Guessing mode,
+solid-Guessing stop after pass n, Boundary Tracing, or the Tesseral
+algorithm.  See {Drawing Method}.
 
 FILLCOLOR=normal|<nnn>\
 Sets a color to be used for block fill by Boundary Tracing and Tesseral
@@ -497,8 +519,8 @@ Also see {"Limitations of Integer Math (And How We Cope)"}.
 
 SYMMETRY=xxx\
 Forces symmetry to None, Xaxis, Yaxis, XYaxis, Origin, or Pi symmetry.
-Useful as a speedup for symmetrical fractals. This is not a kaleidoscope 
-feature for imposing symmetry where it doesn't exist. Use only when the 
+Useful as a speedup for symmetrical fractals. This is not a kaleidoscope
+feature for imposing symmetry where it doesn't exist. Use only when the
 fractal actual exhibits the symmetry, or else results may not be
 satisfactory.
 ;
@@ -518,11 +540,11 @@ screen for you to select a video mode, but then proceed straight to the
 Julia set for the stated x (real) and y (imaginary) coordinates.)
 
 FUNCTION=[fn1[/fn2[/fn3[/fn4]]]]\
-Allows setting variable functions found in some fractal type formulae.
-Possible values are sin, cos, tan, cotan, sinh, cosh, tanh, cotanh, exp,
-log, sqr, recip (i.e. 1/z), ident (i.e. identity), cosxx (cos with a pre 
-version 16 bug), asin, asinh, acos, acosh, atan, atanh, sqrt,\
-abs (abs(x)+i*abs(y)), cabs (sqrt(x*x + y*y)).
+Allows setting variable functions found in some fractal type formulae.\
+Possible values are sin, cos, tan, cotan, sinh, cosh, tanh, cotanh, exp,\
+log, sqr, recip (i.e. 1/z), ident (i.e. identity), cosxx (cos with a \
+pre version 16 bug), flip, zero, asin, asinh, acos, acosh, atan, atanh, \
+sqrt, abs (abs(x)+i*abs(y)), cabs (sqrt(x*x + y*y)).
 
 FORMULANAME=[formulaname]\
 Specifies the default formula name for type=formula fractals.  (I.e. the
@@ -561,7 +583,7 @@ specify four values (the usual case), this defines a rectangle: x-
 coordinates are mapped to the screen, left to right, from xmin to xmax, y-
 coordinates are mapped to the screen, bottom to top, from ymin to ymax.
 Six parameters can be used to describe any rotated or stretched
-parallelogram:	(xmin,ymax) are the coordinates used for the top-left
+parallelogram:  (xmin,ymax) are the coordinates used for the top-left
 corner of the screen, (xmax,ymin) for the bottom-right corner, and
 (x3rd,y3rd) for the bottom-left.
 Entering just "CORNERS=" tells Fractint to use this form
@@ -589,7 +611,7 @@ Over-rides the default bailout criterion for escape-time fractals. Can
 also be set from the parameters screen after selecting a fractal type.
 See description of bailout in {The Mandelbrot Set}.
 
-BAILOUTEST=mod|real|imag|or|and\
+BAILOUTEST=mod|real|imag|or|and|manh|manr\
 Specifies the {Bailout Test} used to determine when the fractal calculation
 has exceeded the bailout value.  The default is mod and not all fractal types
 can utilize the additional tests.
@@ -619,7 +641,7 @@ orbit point for about one millisecond. For best display of orbits,
 try passes=1 and a moderate resolution such as 320x200.  Note that
 the first time you press the 'o' key with the 'orbitdelay' function
 active, your computer will pause for a half-second or so to calibrate
-a high-resolution timer.        
+a high-resolution timer.
 
 SHOWORBIT=yes|no\
 Causes the during-generation orbits feature toggled by the <O> command to
@@ -670,7 +692,7 @@ pixels according to the period of their eventual orbit.
 See {Inside=bof60|bof61|zmag|period} for a brilliant explanation of what
 these do!
 
-Inside=epscross colors pixels green or yellow according to whether their 
+Inside=epscross colors pixels green or yellow according to whether their
 orbits swing close to the Y-axis or X-axis, respectively. Inside=starcross
 has a coloring scheme based on clusters of points in the orbits. Best with
 outside=<nnn>. For more information, see {Inside=epscross|startrail}.
@@ -713,8 +735,10 @@ Sets colors for the current image, like the <L> function in color cycling
 and palette editing modes. Unlike the MAP= parameter, colors set with
 COLORS= do not replace the default - when you next select a new fractal
 type, colors will revert to their defaults.\
+
 COLORS=@filename tells Fractint to use a color map file named "filename".
 See {Palette Maps}.\
+
 COLORS=colorspecification specifies the colors directly. The value of
 "colorspecification" is rather long (768 characters for 256 color modes),
 and its syntax is not documented here.  This form of the COLORS= command
@@ -743,15 +767,15 @@ hexadecimal value; 1st digit is background color (from 0 to 7), 2nd digit
 is foreground color (from 0 to F).\
 ~Format-
 Color values are:
-    0 black	8 gray
-    1 blue	9 light blue
-    2 green	A light green
-    3 cyan	B light cyan
-    4 red	C light red
-    5 magenta	D light magenta
-    6 brown	E yellow
-    7 white	F bright white
-~OnlineFF
+    0 black     8 gray
+    1 blue      9 light blue
+    2 green     A light green
+    3 cyan      B light cyan
+    4 red       C light red
+    5 magenta   D light magenta
+    6 brown     E yellow
+    7 white     F bright white
+
 31 colors can be specified, their meanings are as follows:
   heading:
     1  Fractint version info
@@ -773,7 +797,6 @@ Color values are:
    15  current choice in multiple choice list
    16  speed key prompt in multiple choice list
    17  speed key keyin in multiple choice list
-~OnlineFF
   general (tab key display, IFS parameters, "thinking" display):
    18  high intensity information
    19  medium intensity information
@@ -794,12 +817,19 @@ Color values are:
    31  contributing authors
 The default is
    textcolors=1F/1A/2E/70/28/71/31/78/70/17/1F/1E/2F/3F/5F/07/
-	      0D/71/70/78/0F/70/0E/0F/4F/20/17/20/28/0F/07
+              0D/71/70/78/0F/70/0E/0F/4F/20/17/20/28/0F/07
 (In a real command file, all values must be on one line.)
 ~Format+
+
 OLDDEMMCOLORS=yes|no\
 Sets the coloring scheme used with the distance estimator method to the
 pre-version 16 scheme.
+
+TRUECOLOR=yes\
+You can save the iteration escape value in a file called ITERATES.TGA.
+This will allow experimentation with trucolor algorithms. A C language
+source file that reads the iterates file is provided. Someday we'll have
+REAL truecolor support ...
 ;
 ;
 ~Topic=Color Specification
@@ -841,6 +871,10 @@ is broken into more ranges to stop "drift" when loading and storing the PAR.
 LOGMAP=yes|old|n\
 Selects a compressed relationship between escape-time iterations and
 palette colors.  See {"Logarithmic Palettes and Color Ranges"} for details.
+
+LOGMODE=fly/table\
+Forces the use of the on-the-fly routine or the logarithm table for the
+calculation of log palettes.  Not normally needed.
 
 RANGES=nn/nn/nn/...\
 Specifies ranges of escape-time iteration counts to be mapped to each
@@ -889,8 +923,8 @@ screen.  Added at the request of Ward Christensen.  It's his funeral <grin>.
 ~Topic=File Parameters
 
 In Fractint you can use various filename variables to specify files, set
-default directories, or both. For example, in the SAVENAME description below, 
-[name] can be a filename, a directory name, or a fully qualified pathname 
+default directories, or both. For example, in the SAVENAME description below,
+[name] can be a filename, a directory name, or a fully qualified pathname
 plus filename. You can specify default directories using these variables
 in your SSTOOLS.INI file.
 
@@ -908,15 +942,16 @@ SAVETIME=nnn\
 Tells Fractint to automatically do a save every nnn minutes while a
 calculation is in progress.  This is mainly useful with long batches - see
 {Batch Mode}.
+
 ~ONLINEFF
-GIF87a=YES\
+GIF87a=yes\
 Backward-compatibility switch to force creation of GIF files in the GIF87a
 format. As of version 14, Fractint defaults to the new GIF89a format which
 permits storage of fractal information within the format. GIF87a=YES is
 only needed if you wish to view Fractint images with a GIF decoder that
 cannot accept the newer format.  See {GIF Save File Format}.
 
-DITHER=YES\
+DITHER=yes\
 Dither a color file into two colors for display on a b/w display.  This give
 a poor-quality display of gray levels.  Note that if you have a 2-color
 display, you can create a 256-color gif with disk video and then read it
@@ -928,7 +963,7 @@ commands.  If not specified, the default is FRACTINT.PAR.
 
 FORMULAFILE=[formulafilename]\
 Specifies the formula file for type=formula fractals (default is
-FRACTINT.FRM).	Handy if you want to generate one of these fractal types
+FRACTINT.FRM).  Handy if you want to generate one of these fractal types
 in batch mode.
 
 LFILE=[lsystemfile]\
@@ -953,7 +988,7 @@ fractals or IFS fractals to be saved in a raw format. This file can be read
 by the Acrospin program which can rotate and scale the image rapidly in
 response to cursor-key commands. The filename ORBITS.RAW is fixed and will
 be overwritten each time a new fractal is generated with this option.\
-(see {Barnsley IFS Fractals} {Orbit Fractals} {=@ACROSPIN Acrospin});
+(see {Barnsley IFS Fractals} {Orbit Fractals} {=@ACROSPIN Acrospin}).
 ;
 ~Topic=Video Parameters
 
@@ -993,7 +1028,7 @@ AFI=yes|8514|no\
 Normally, when you attempt to use an 8514/A-specific video mode, Fractint
 first attempts to detect the presence of an 8514/A register-compatible
 adapter.  If it fails to find one, it then attempts to detect the presence
-of an 8514/A-compatible API (IE, IBM's HDILOAD or its equivalent).  
+of an 8514/A-compatible API (IE, IBM's HDILOAD or its equivalent).
 Fractint then uses either its register-compatible or its API-compatible
 video logic based on the results of those tests.  If you have an
 "8514/A-compatible" video adapter that passes Fractint's
@@ -1042,11 +1077,11 @@ Textsafe options:\
       o Cpu and video adapter speed.\
       o Whether enough expanded or extended memory is available.\
       o Video mode of image being remembered. A few special modes are
-	*very* slow compared to the rest. The slow ones are: 2 and 4 color
-	modes with resolution higher than 640x480; custom modes for ATI
-	EGA Wonder, Paradise EGA-480, STB, Compaq portable 386, AT&T 6300,
-	and roll-your-own video modes implemented with customized
-	"yourvid.c" code.
+        *very* slow compared to the rest. The slow ones are: 2 and 4 color
+        modes with resolution higher than 640x480; custom modes for ATI
+        EGA Wonder, Paradise EGA-480, STB, Compaq portable 386, AT&T 6300,
+        and roll-your-own video modes implemented with customized
+        "yourvid.c" code.
 If you want to tune Fractint to use different "textsafe" options for
 different video modes, see {"Customized Video Modes\, FRACTINT.CFG"}.
 (E.g. you might
@@ -1065,7 +1100,7 @@ installed.
 
 NONINTERLACED=yes|no\
 For TARGA+ adapters. Setting this to 'yes' will configure the adapter to a
-non-interlaced mode whenever possible.	It should only be used with a
+non-interlaced mode whenever possible.  It should only be used with a
 multisynch monitor. The default is no, i.e. interlaced.
 
 MAXCOLORRES=8|16|24\
@@ -1118,8 +1153,13 @@ sound features interesting or useful. The orbitdelay command also affects
 the sound of decoding images.
 
 HERTZ=nnn\
-Adjusts the sound produced by the "sound=x/y/z" option.  Legal values are
-20 through 15000.
+Adjusts the sound produced by the "sound=x/y/z" option.  Limits on legal
+values have been removed in version 19.3. You are on your own!
+
+ORBITSAVE=sound\
+This option causes the hertz value played through the PC speaker with
+sound=x|y|z option to be written to a file "sound.txt" in the current
+directory. Bill Jemison has made some intriguing music with this option.
 ;
 ;
 ~Topic=Printer Parameters
@@ -1196,9 +1236,9 @@ settransfer and setscreen - BUT includes code that should make the code
 still work without affecting the rest of the non-EPS document. 3 is a
 free-for-all.
 
-COLORPS=YES|NO - Enable or disable the color extensions.
+COLORPS=yes|no - Enable or disable the color extensions.
 
-RLEPS=YES|NO\
+RLEPS=yes|no\
 Enable or disable run length encoding of the PostScript file.  Run length
 encoding will make the PostScript file much smaller, but it may take longer
 to print.  The run length encoding code is based on pnmtops, which is
@@ -1231,6 +1271,7 @@ screens. A negative number in any of these places will cause it to use
 the previous (or default) value for that parameter. NOTE: Especially when
 using color, the built-in screens in the printer's ROM may be the best
 choice for printing.
+
 ~OnlineFF
 The default values are as follows: halftone=45/45/1/45/75/1/45/15/1/45/0/1
 and these will be used if Fractint's halftone is chosen over the printer's
@@ -1302,7 +1343,7 @@ When 180 dots per inch is selected (in PRINTER= command), high resolution
 8 color printing is done.  When 90 dpi is selected, low resolution
 printing using the full 330 dithered color palette is done.  In both
 cases, Fractint starts by finding the nearest color supported by the
-PaintJet for each color in your image.	The translation is then
+PaintJet for each color in your image.  The translation is then
 displayed (unless the current display mode is disk video).  This display
 *should* be a fairly good match to what will be printed
 - it won't be perfect most of the time but should give some idea
@@ -1334,7 +1375,7 @@ adjusted, you can change the resulting color mix subtly (or drastically!)\
 Each gamma value entered has one implied decimal digit.\
 The default is "halftone=21/19/16", for red 2.1, green 1.9, and blue 1.6.
 (A note from Pieter Branderhorst: I wrote this stuff to come out reasonably
-on my monitor/printer.	I'm a bit suspicious of the guns on my monitor;
+on my monitor/printer.  I'm a bit suspicious of the guns on my monitor;
 if the colors seem ridiculously wrong on your system you might start by
 trying halftone=17/17/17.)
 ;
@@ -1376,45 +1417,45 @@ editor to modify the resulting parameter file.
 3D=Yes\
 3D=Overlay\
 Resets all 3d parameters to default values. If FILENAME= is given, forces
-a restore to be performed in 3D mode (handy when used with 'batch=yes' for 
-batch-mode 3D images). If specified, 3D=Yes should come before any other 
+a restore to be performed in 3D mode (handy when used with 'batch=yes' for
+batch-mode 3D images). If specified, 3D=Yes should come before any other
 3d parameters on the command line or in a parameter file entry. The form
 3D=Overlay is identical except that the previous graphics screen is not
-cleared, as with the <#> (<shift-3> on some keyboards) overlay command. 
+cleared, as with the <#> (<shift-3> on some keyboards) overlay command.
 Useful for building parameter files that use the 3D overlay feature.\
 
 The options below override the 3D defaults:
 ~Format-
-PREVIEW=yes		   Turns on 3D 'preview' default mode
-SHOWBOX=yes		   Turns on 3D 'showbox' default mode
-COARSE=nn		   Sets Preview 'coarseness' default value
-SPHERE=yes		   Turns on spherical projection mode
-STEREO=n		   Selects the type of stereo image creation
-RAY=nnn 		   selects raytrace output file format
-BRIEF=yes		   selects brief or verbose file for DKB output
+PREVIEW=yes                Turns on 3D 'preview' default mode
+SHOWBOX=yes                Turns on 3D 'showbox' default mode
+COARSE=nn                  Sets Preview 'coarseness' default value
+SPHERE=yes                 Turns on spherical projection mode
+STEREO=n                   Selects the type of stereo image creation
+RAY=nnn                    selects raytrace output file format
+BRIEF=yes                  selects brief or verbose file for DKB output
 USEGRAYSCALE=yes           use grayscale as depth instead of color number
 
-INTEROCULAR=nn		   Sets the interocular distance for stereo
-CONVERGE=nn		   Determines the overall image separation
-CROP=nn/nn/nn/nn	   Trims the edges off stereo pairs
-BRIGHT=nn/nn		   Compensates funny glasses filter parameters
-LONGITUDE=nn/nn 	   Longitude minimum and maximum
-LATITUDE=nn/nn		   Latitude minimum and maximum
-RADIUS=nn		   Radius scale factor
-ROTATION=nn[/nn[/nn]]	   Rotation about x,y, and z axes
-SCALEZYZ=nn/nn/nn	   X,y,and z scale factors
-ROUGHNESS=nn		   Same as z scale factor
-WATERLINE=nn		   Colors nn and below will be "inside" color
-FILLTYPE=nn		   3D filltype
-PERSPECTIVE=nn		   Perspective distance
-XYSHIFT=nn/nn		   Shift image in x and y directions with
-			    perspective
-LIGHTSOURCE=nn/nn/nn	   Coordinates for light-source vector
-SMOOTHING=nn		   Smooths images in light-source fill modes
-TRANSPARENT=min/max	   Defines a range of colors to be treated as
-			    "transparent" when <#>Overlaying 3D images.
-XYADJUST=nn/nn		   This shifts the image in the x/y dir without
-			    perspective
+INTEROCULAR=nn             Sets the interocular distance for stereo
+CONVERGE=nn                Determines the overall image separation
+CROP=nn/nn/nn/nn           Trims the edges off stereo pairs
+BRIGHT=nn/nn               Compensates funny glasses filter parameters
+LONGITUDE=nn/nn            Longitude minimum and maximum
+LATITUDE=nn/nn             Latitude minimum and maximum
+RADIUS=nn                  Radius scale factor
+ROTATION=nn[/nn[/nn]]      Rotation about x,y, and z axes
+SCALEZYZ=nn/nn/nn          X,y,and z scale factors
+ROUGHNESS=nn               Same as z scale factor
+WATERLINE=nn               Colors nn and below will be "inside" color
+FILLTYPE=nn                3D filltype
+PERSPECTIVE=nn             Perspective distance
+XYSHIFT=nn/nn              Shift image in x and y directions with
+                            perspective
+LIGHTSOURCE=nn/nn/nn       Coordinates for light-source vector
+SMOOTHING=nn               Smooths images in light-source fill modes
+TRANSPARENT=min/max        Defines a range of colors to be treated as
+                            "transparent" when <#>Overlaying 3D images.
+XYADJUST=nn/nn             This shifts the image in the x/y dir without
+                            perspective
 ~Format+
 
 Below are new commands as of version 14 that support Marc Reinig's terrain
@@ -1464,7 +1505,7 @@ a batch run with the parameters required for a particular image you might:
   o Find an interesting area.  Note the parameters from the <Tab> display.
     Then use an editor to write a batch file.
   o Find an interesting area.  Set all the options you'll want in the
-    batch run.	Use the <B> command to store the parameters in a file.
+    batch run.  Use the <B> command to store the parameters in a file.
     Then use an editor to add the additional required batch mode
     parameters (such as VIDEO=) to the generated parameter file entry.
     Then run the batch using "fractint @myname.par/myentry" (if you told
@@ -1488,7 +1529,7 @@ you had hit <S> to save the image, then exits to DOS.
 "FILENAME=" can be used with "BATCH=yes" to resume calculation of an
 incomplete image.  For instance, you might interactively find an image you
 like; then select some slow options (a high resolution disk video mode,
-distance estimator method, high maxiter, or whatever);	start the
+distance estimator method, high maxiter, or whatever);  start the
 calculation;  then interrupt immediately with a <S>ave.  Rename the save
 file (fract001.gif if it is the first in the session and you didn't name
 it with the <X> options or "savename=") to xxx.gif. Later you can run
@@ -1539,9 +1580,9 @@ the old key combo may now call an ultraviolet holographic mode.
 ~Doc-
 
 Comments about some particular video adapters:\
-    { EGA }	  { Tweaked VGA }   { Super-VGA }\
-    { 8514/A }	  { XGA }\
-    { Targa }	  { Targa+ }\
+    { EGA }       { Tweaked VGA }   { Super-VGA }\
+    { 8514/A }    { XGA }\
+    { Targa }     { Targa+ }\
 
 Also see {Customized Video Modes\, FRACTINT.CFG}.
 ~Doc+
@@ -1602,7 +1643,7 @@ Since version 12.0, we've used both John Bridges' SuperVGA Autodetecting
 logic *and* VESA adapter detection, so that many brand-specific SuperVGA
 modes have been combined into single video mode selection entries.
 There is now exactly one entry for SuperVGA 640x480x256 mode, for instance.
- 
+
 If Fractint's automatic SuperVGA/VESA detection logic guesses wrong,
 and you know which SuperVGA chipset your video adapter uses, you can use
 the "adapter=" command-line option to force Fractint to assume the presence
@@ -1719,15 +1760,15 @@ or changing in your config.sys file, such as reducing a very high BUFFERS
 value.
 
 The zoom box is disabled during disk-video modes (you couldn't see where
-it is anyway).	So is the orbit display feature.
+it is anyway).  So is the orbit display feature.
 
 {=@ColorCycling Color Cycling} can be used during disk-video modes,
 but only to load or save a color palette.
 
-When using real disk for your disk-video, Fractint previously would not 
+When using real disk for your disk-video, Fractint previously would not
 generate some "attractor" types (e.g. Lorenz) nor "IFS" images.  These stress
-disk drives with intensive reads and writes, but with the caching algorithm 
-performance may be acceptable. Currently Fractint gives you a warning message 
+disk drives with intensive reads and writes, but with the caching algorithm
+performance may be acceptable. Currently Fractint gives you a warning message
 but lets you proceed. You can end the calculation with <Esc> if you think your
 hard disk is getting too strenuous a workout.
 
@@ -1859,7 +1900,7 @@ that we used to tell the program to custom-program the VGA adapter, and
 are NOT undocumented BIOS calls. Maybe they should be, but they aren't.
 
 If you have a fancy adapter and a new video mode that works on it, and it
-is not currently supported, PLEASE GET THAT INFORMATION TO US!	We will
+is not currently supported, PLEASE GET THAT INFORMATION TO US!  We will
 add the video mode to the list on our next release, and give you credit
 for it. Which brings up another point: If you can confirm that a
 particular video adapter/mode works (or that it doesn't), and the program

@@ -345,27 +345,27 @@ it to a pancake, you'll find you can't do so in integer math mode.
 ~Topic=Arbitrary Precision and Deep Zooming
 
 The zoom limit of Fractint is approximately 10^15 (10 to the fifteenth
-power). This limit is due to the precision possible with the computer 
-representation of numbers as 64 bit double precision data. To give you an 
-idea of just how big a magnification 10^15 is, consider this. At the scale 
-of your computer screen while displaying a tiny part of the Mandelbrot set at 
-the deepest possible zoom, the entire Mandelbrot set would be many millions 
+power). This limit is due to the precision possible with the computer
+representation of numbers as 64 bit double precision data. To give you an
+idea of just how big a magnification 10^15 is, consider this. At the scale
+of your computer screen while displaying a tiny part of the Mandelbrot set at
+the deepest possible zoom, the entire Mandelbrot set would be many millions
 of miles wide, as big as the orbit of Jupiter.
- 
+
 Big as this zoom magnification is, your PC can do better using something
 called arbitrary precision math. Instead of using 64 bit double precision to
 represent numbers, your computer software allocates as much memory as needed
 to create a data type supporting as many decimals of precision as you want.
- 
+
 Incorporation of this feature in Fractint was inspired by Jay Hill and his
 DEEPZOOM program which uses the shareware MFLOAT programming library.
 Several of the Stone Soup programmers noticed Jay's posts in the Internet
 sci.fractals newsgroup and began to investigate adding arbitrary precision
 to Fractint. High school math and physics teacher Wes Loewer wrote an
-arbitrary precision library in both 80x86 assembler and C, and the Stone Soup 
-team incorporated Wes's library into Fractint. Initially, support was added 
+arbitrary precision library in both 80x86 assembler and C, and the Stone Soup
+team incorporated Wes's library into Fractint. Initially, support was added
 for fractal types mandel, julia, manzpower, and julzpower.
- 
+
 Normally, when you reach Fractint's zoom limit, Fractint simply
 refuses to let you zoom any more. When using the fractal types that support
 arbitrary precision, you will not reach this limit, but can keep on
@@ -379,42 +379,42 @@ because the zoom depth is greater. The good news, if you want to call it
 that, is that your math coprocessor is not needed; coprocessorless machines
 can produce deep zooms with the same glacial slowness as machines with
 coprocessors!
- 
+
 Maybe the real point of arbitrary precision math is to prolong the "olden"
 days when men were men, women were women, and real fractal programmers spent
 weeks generating fractals. One of your Stone Soup authors has a large
 monitor that blinks a bit when changing video modes--PCs have gotten so fast
 that Fractint finishes the default 320x200 Mandelbrot before the monitor can
-even complete its blinking transition to graphics mode! Computers are getting 
-faster every day, and soon a new generation of fractal lovers might forget 
+even complete its blinking transition to graphics mode! Computers are getting
+faster every day, and soon a new generation of fractal lovers might forget
 that fractal generation is *supposed* to be slow, just as it was in Grandpa's
 day when they only had Pentium chips. The solution to this educational
-dilemma is Fractint's arbitrary precision feature. Even the newest sexium and 
-septium machines are going to have to chug for days or weeks at the extreme 
+dilemma is Fractint's arbitrary precision feature. Even the newest sexium and
+septium machines are going to have to chug for days or weeks at the extreme
 zoom depths now possible ...
- 
+
 So how far can you zoom? How does 10^1600 sound--roughly 1600 decimal
 digits of precision. To put *this* magnification in perspective, the "tiny"
 ratio of 10^61 is the ratio of the entire visible universe to the smallest
-quantum effects. With 1600 digits to work with, you can expand an 
-electron-sized image up to the size of the visible universe, not once but 
-more than twenty times. So you can examine screen-sized portions of a 
-Mandelbrot set so large all but a tiny part of it would be vastly farther away 
-than the billion or so light year limit of our best telescopes. 
+quantum effects. With 1600 digits to work with, you can expand an
+electron-sized image up to the size of the visible universe, not once but
+more than twenty times. So you can examine screen-sized portions of a
+Mandelbrot set so large all but a tiny part of it would be vastly farther away
+than the billion or so light year limit of our best telescopes.
 
-Lest anyone suppose that we Stone Soupers suffer from an inflated pride over 
-having thus spanned the Universe, current inflationary cosmological theories 
-estimate the size of the universe to be unimaginably larger than the 
+Lest anyone suppose that we Stone Soupers suffer from an inflated pride over
+having thus spanned the Universe, current inflationary cosmological theories
+estimate the size of the universe to be unimaginably larger than the
 "tiny" part we can see.
 
 Note: many of Fractint's options do not work with arbitrary precision. To
 experiment with arbitrary precision at the speedier ordinary magnifications,
-start Fractint with the debug=3200 command-line option. With the exception 
-of mandel and manzpower perturbations, values that would normally be entered 
-in the Parameters and Coordinates screens need to be entered using the 
-command-line interface or .par files.  Other known things that do not yet 
-work with arbitrary precision are: biomorph, decomp, distance estimator, 
-inversion, Julia-Mandel switch, history, orbit-in-window, and the browse 
+start Fractint with the debug=3200 command-line option. With the exception
+of mandel and manzpower perturbations, values that would normally be entered
+in the Parameters and Coordinates screens need to be entered using the
+command-line interface or .par files.  Other known things that do not yet
+work with arbitrary precision are: biomorph, decomp, distance estimator,
+inversion, Julia-Mandel switch, history, orbit-in-window, and the browse
 feature.
 ;
 ;
@@ -694,7 +694,7 @@ instead of by the speed of convergence.
 For example, consider the Julia set for -0.1 + 0.7i, which is the three-lobed
 "rabbit" set.  The Finite Attractor is an orbit of length three; call these
 values a, b, and c.  Then, the Julia set iteration can converge to one of
-three sequences: a,b,c,a,b,c,..., or b,c,a,b,c,..., or c,a,b,c,a,b,...  
+three sequences: a,b,c,a,b,c,..., or b,c,a,b,c,..., or c,a,b,c,a,b,...
 The Finite Attractor phase option colors the interior of the Julia set with
 three colors, depending on which of the three sequences the orbit converges
 to.  Internally, the code determines one point of the orbit, say "a", and
@@ -711,10 +711,10 @@ TRIG IDENTITIES
 
 ~Online+
 The following trig identities are invaluable for coding fractals that use
-complex-valued transcendental functions of a complex variable in terms of 
+complex-valued transcendental functions of a complex variable in terms of
 real-valued functions of a real variable, which are usually found in
-compiler math libraries. In what follows, we sometimes use "*" for 
-multiplication, but leave it out when clarity is not lost. We use "^" for 
+compiler math libraries. In what follows, we sometimes use "*" for
+multiplication, but leave it out when clarity is not lost. We use "^" for
 exponentiation; x^y is x to the y power.
 ~Format-
 
@@ -722,12 +722,12 @@ exponentiation; x^y is x to the y power.
    (u+iv) - (x+iy) = (u-x) + i(v-y)
    (u+iv) * (x+iy) = (ux - vy) + i(vx + uy)
    (u+iv) / (x+iy) = ((ux + vy) + i(vx - uy)) / (x^2 + y^2)
-                             
+
    e^(x+iy)   = (e^x) (cos(y) + i sin(y))
 
    log(x+iy) = (1/2)log(x*x + y*y) + i(atan(y/x) + 2kPi)
       for k = 0, -1, 1, -2, 2, ...
-       (Fractint generally uses only the principle value, k=0. The log 
+       (Fractint generally uses only the principle value, k=0. The log
         function refers to log base e, or ln.)
 
    z^w = e^(w*log(z))
@@ -777,16 +777,16 @@ exponentiation; x^y is x to the y power.
    cabs(x+iy) = sqrt(x^2 + y^2)
 
 ~Format+
-Fractint's definitions of abs(x+iy) and |x+iy| below are non-standard.  
-Math texts define both absolute value and modulus of a complex number to 
-be the same thing.  They are both equal to cabs(x+iy) as defined above. 
+Fractint's definitions of abs(x+iy) and |x+iy| below are non-standard.
+Math texts define both absolute value and modulus of a complex number to
+be the same thing.  They are both equal to cabs(x+iy) as defined above.
 ~Format-
 
-   |x+iy| = x^2 + y^2        
+   |x+iy| = x^2 + y^2
    abs(x+iy) = sqrt(x^2) + i sqrt(y^2)
 ;
 ;
-;  
+;
 ~Topic=Quaternion and Hypercomplex Algebra
 
 Quaternions are four dimensional generalizations of complex numbers.
@@ -796,59 +796,59 @@ equal to y*x.
 
 Quaternion algebra is most compactly described by specifying the rules
 for multiplying the basis vectors 1, i, j, and k. Quaternions form a
-superset of the complex numbers, and the basis vectors 1 and i are the 
+superset of the complex numbers, and the basis vectors 1 and i are the
 familiar basis vectors for the complex algebra. Any quaternion q can be
 represented as a linear combination q = x + yi + zj + wk of the basis
 vectors just as any complex number can be written in the form z = a + bi.
 ~Format-
 
 Multiplication rules for quaternion basis vectors:
-ij =  k jk =  i ki = j 
-ji = -k kj = -i ik = -j 
+ij =  k jk =  i ki = j
+ji = -k kj = -i ik = -j
 ii = jj = kk = -1
-ijk = -1 
+ijk = -1
 
 Note that ij = k but ji = -k, showing the failure of the commutative law.
 The rules for multiplying any two quaternions follow from the behavior
-of the basis vectors just described. However, for your convenience, the 
-following formula works out the details. 
+of the basis vectors just described. However, for your convenience, the
+following formula works out the details.
 
-Let q1 = x1 + y1i + z1j + w1k and q2 = x2 + y2i + z2j + w2k. 
+Let q1 = x1 + y1i + z1j + w1k and q2 = x2 + y2i + z2j + w2k.
 Then q1q2 = 1(x1x2 - y1y2 - z1z2 - w1w2) +
             i(y1x2 + x1y2 + w1z2 - z1w2) +
             j(z1x2 - w1y2 + x1z2 + y1w2) +
             k(w1x2 + z1y2 - y1z2 + x1w2)
 
 ~Format+
-Quaternions are not the only possible four dimensional supersets of the 
-complex numbers. William Hamilton, the discoverer of quaternions in the 
-1830's, considered the alternative called the hypercomplex number system. 
-Unlike quaternions, the hypercomplex numbers satisfy the commutative law of 
-multiplication. The law which fails is the field property that states that 
+Quaternions are not the only possible four dimensional supersets of the
+complex numbers. William Hamilton, the discoverer of quaternions in the
+1830's, considered the alternative called the hypercomplex number system.
+Unlike quaternions, the hypercomplex numbers satisfy the commutative law of
+multiplication. The law which fails is the field property that states that
 all non-zero elements of a field have a multiplicative inverse. For a non-zero
 hypercomplex number h, the multiplicative inverse 1/h does not always exist.
 
 As with quaternions, we will define multiplication in terms of the basis
-vectors 1, i, j, and k, but with subtly different rules. 
+vectors 1, i, j, and k, but with subtly different rules.
 ~Format-
- 
+
 Multiplication rules for hypercomplex basis vectors:
-ij = k  jk = -i ki = -j 
-ji = k  kj = -i ik = -j 
-ii = jj = -kk = -1      
-ijk = 1 
+ij = k  jk = -i ki = -j
+ji = k  kj = -i ik = -j
+ii = jj = -kk = -1
+ijk = 1
 
 Note that now ij = k and ji = k, and similarly for other products of pairs
 of basis vectors, so the commutative law holds.
 
 Hypercomplex multiplication formula:
-Let h1 = x1 + y1i + z1j + w1k and h2 = x2 + y2i + z2j + w2k. 
-Then  h1h2 =  1(x1x2 - y1y2 - z1z2 + w1w2) + 
+Let h1 = x1 + y1i + z1j + w1k and h2 = x2 + y2i + z2j + w2k.
+Then  h1h2 =  1(x1x2 - y1y2 - z1z2 + w1w2) +
               i(y1x2 + x1y2 - w1z2 - z1w2) +
               j(z1x2 - w1y2 + x1z2 - y1w2) +
-              k(w1x2 + z1y2 + y1z2 + x1w2) 
- 
-As an added bonus, we'll give you the formula for the reciprocal. 
+              k(w1x2 + z1y2 + y1z2 + x1w2)
+
+As an added bonus, we'll give you the formula for the reciprocal.
 
 Let det = [((x-w)^2+(y+z)^2)((x+w)^2+(y-z)^2)]
 Then 1/h =   1[ x(x^2+y^2+z^2+w^2)-2w(xw-yz)]/det +
@@ -857,42 +857,43 @@ Then 1/h =   1[ x(x^2+y^2+z^2+w^2)-2w(xw-yz)]/det +
              k[ w(x^2+y^2+z^2+w^2)-2x(xw-yz)]/det
 
 ~Format+
-A look at this formula shows the difficulty with hypercomplex numbers. 
-In order to calculate 1/h, you have to divide by the quantity 
-det = [((x-w)^2+(y+z)^2)((x+w)^2+(y-z)^2)]. So when this quantity is zero, 
+A look at this formula shows the difficulty with hypercomplex numbers.
+In order to calculate 1/h, you have to divide by the quantity
+det = [((x-w)^2+(y+z)^2)((x+w)^2+(y-z)^2)]. So when this quantity is zero,
 the multiplicative inverse will not exist.
 
-Hypercomplex numbers numbers have an elegant generalization of any unary 
+Hypercomplex numbers numbers have an elegant generalization of any unary
 complex valued function defined on the complex numbers. First, note that
-hypercomplex numbers can be represented as a pair of complex numbers in the 
-following way. 
+hypercomplex numbers can be represented as a pair of complex numbers in the
+following way.
 ~Format-
-Let h = x + yi + zj + wk. 
-    a = (x-w) + i(y+z) 
-    b = (x+w) + i(y-z) 
+Let h = x + yi + zj + wk.
+    a = (x-w) + i(y+z)
+    b = (x+w) + i(y-z)
 ~Format+
-The numbers a and b are complex numbers. We can represent h as the pair of 
-complex numbers (a,b). Conversely, if we have a hypercomplex number given 
-to us in the form (a,b), we can solve for x, y, z, and w. The solution to 
+The numbers a and b are complex numbers. We can represent h as the pair of
+complex numbers (a,b). Conversely, if we have a hypercomplex number given
+to us in the form (a,b), we can solve for x, y, z, and w. The solution to
 ~Format-
-   c = (x-w) + i(y+z) 
-   d = (x+w) + i(y-z) 
-is 
-   x = (real(c) + real(d))/2 
-   y = (imag(c) + imag(d))/2 
-   z = (imag(c) - imag(d))/2 
-   x = (real(d) - real(c))/2 
+   c = (x-w) + i(y+z)
+   d = (x+w) + i(y-z)
+is
+   x = (real(c) + real(d))/2
+   y = (imag(c) + imag(d))/2
+   z = (imag(c) - imag(d))/2
+   w = (real(d) - real(c))/2
 ~Format+
-We can now, for example, define sin(h) as (sin(a),sin(b)). We know how to 
-compute sin(a) and sin(b) (see trig identities above).
+We can now, for example, compute sin(h). First compute the two complex numbers
+a and b as above, then set c = sin(a) and d = sin(b) where sin() is the
+complex version of the sin function. Now use the equations above to solve for
+x, y, z, and w in terms of c and d. The hypercomplex number (x,y,z,w) thus
+obtained is sin(h).
 
-Let c = sin(a) and d = sin(b). Now use the equations above to solve for 
-x, y, z, and w in terms of c and d. The beauty of this is that it really 
-doesn't make any difference what function we use. Instead of sin, we could 
-have used cos, sinh, ln, or z^2. Using this technique, Fractint can create 
-3-D fractals using the formula h' = fn(h) + c, where "fn" is any of the 
-built-in functions. Where fn is sqr(), this is the famous mandelbrot formula,
-generalized to four dimensions.
+The beauty of this is that it really doesn't make any difference what
+function we use. Instead of sin, we could have used cos, sinh, ln, or z^2.
+Using this technique, Fractint can create 3-D fractals using the formula
+h' = fn(h) + c, where "fn" is any of the built-in functions. Where fn is
+sqr(), this is the famous mandelbrot formula, generalized to four dimensions.
 
 For more information, see _Fractal Creations, Second Edition_ by Tim Wegner
 and Bert Tyler, Waite Group Press, 1993.
@@ -930,8 +931,8 @@ to .GIF.
 
 There is one significant advantage to the new GIF89a format compared to
 the old GIF87a-based .FRA format for Fractint purposes:  the new .GIF
-files may be uploaded to the CompuServe graphics forums fractal information 
-intact.  Therefore anyone downloading a Fractint image from CompuServe will 
+files may be uploaded to the CompuServe graphics forums fractal information
+intact.  Therefore anyone downloading a Fractint image from CompuServe will
 also be downloading all the information needed to regenerate the image.
 
 Fractint can still read .FRA files generated by
@@ -1007,11 +1008,11 @@ two self-extracting archive files - FRAINT.EXE (executable & documentation)
 and FRASRC.EXE (source code).
 
 The latest version can always be found in one of CompuServe's GO GRAPHICS
-forums. Alas, the GO GRAPHICS Group is growing so fast that we get moved 
-around from periodically, and rumor has it that yet another move is imminent. 
-The current location of Fractint is the "Fractal Sources" library of the GO 
-GRAPHDEV forum. The forum staff will leave pointers to our new home if we are 
-moved again. 
+forums. Alas, the GO GRAPHICS Group is growing so fast that we get moved
+around from periodically, and rumor has it that yet another move is imminent.
+To remedy this, the GO GRAPHICS staff have provided the alias GO FRACTAL,
+which currently points to GO GRAPHDEV. You should always be able to find us
+using GO FRACTAL. Fractint is located in the "Fractal Sources" library 4.
 
 If you're not a CompuServe subscriber, but
 wish to get more information about CompuServe and its graphics forums,
@@ -1020,39 +1021,44 @@ number 229.
 
 If you don't have access to CompuServe, many other sites tend to carry
 these files shortly after their initial release (although sometimes
-using different naming conventions).  For instance...
+using different naming conventions).  Look for frainnn.zip (executable
+package) and frasrnnn.zip (source), where nnn is the release number. Major
+releases with two digit numbers have names such as fraintnn.zip and
+frasrcnn.zip.
 
-If you speak Internet and FTP, SIMTEL20 and its various mirror sites
-tend to carry new versions of Fractint shortly after they are released.
-look in the /SimTel/msdos/graphics directory for files named FRA*.*.  Then
-again, if you don't speak Internet and FTP...
+On the Internet, try the Noel Giffin's Spanky Fractal Database. Using a
+Web browser, go to \
+
+http://spanky.triumf.ca/pub/fractals/programs/ibmpc/frainnn.zip
+
+where nnn is the release number.
+
+Via FTP, login to spanky.triumf.ca as ANONYMOUS, and change directories
+to [pub.fractals.programs.ibmpc], then download frainnn.zip. (The directory
+syntax is in VAX format.)
+
+Another site to check out is ftp.cdrom.com.
 
 Your favorite local BBS probably carries these files as well (although
 perhaps not the latest versions) using naming conventions like FRA*.ZIP.
-One BBS that *does* carry the latest version is the "Ideal Studies BBS"
-(508)757-1806, 1200/2400/9600HST.  Peter Longo is the SYSOP and a true
-fractal fanatic.  There is a very short registration, and thereafter the
-entire board is open to callers on the first call.  Then again, if you
-don't even have a modem...
 
-Many Shareware/Freeware library services will ship you diskettes containing
-the latest versions of Fractint for a nominal fee that basically covers
-their cost of packaging and a small profit that we don't mind them making.
-One in particular is the Public (Software) Library, PO Box 35705,
-Houston, TX 77235-5705, USA.  Their phone number is 800-242-4775 (outside
-the US, dial 713-524-6394).  Ask for item #9112 for five 5.25" disks, #9113
-for three 3.5" disks.  Cost is $6.99 plus $4 S&H in the U.S./Canada, $11
-S&H overseas.
+Then again, if you don't even have a modem...
+
+You can also get a copy of the latest fractint distribution package, source,
+and some fractint-related utilities and files, for $10 from Dietrich
+Wegner, 4714 Rockwood, Houston, TX 77004, USA.
 
 In Europe, the latest versions are available from another Fractint enthusiast,
 Jon Horner - Editor of FRAC'Cetera, a disk-based fractal/chaos resource.
-Disk prices for UK/Europe are: 5.25" HD BP4.00/4.50  : 3.5" HD BP (British 
+Disk prices for UK/Europe are: 5.25" HD BP4.00/4.50  : 3.5" HD BP (British
 Pounds) 4.00/4.50.  Prices include p&p (airmail to Europe).  Contact:
 Jon Horner, FRAC'Cetera, Le Mont Ardaine, Rue des Ardaines, St. Peters,
 Guernsey GY7 9EU, CI, UK.  Phone (44) 01481 63689.  CIS 100112,1700
 
 The X Windows port of Fractint maintained by Ken Shirriff is available
-via FTP from sprite.berkeley.edu. 
+via FTP from ftp://ftp.cs.berkeley.edu/ucb/sprite/xf*. You can also find
+the latest copy at spanky.triumf.ca. The port of Fractint to Xfractint
+usual follows a new Fractint version by several months.
 ;
 ;
 ~Topic=Contacting the Authors
@@ -1061,18 +1067,18 @@ via FTP from sprite.berkeley.edu.
 CONTACTING THE AUTHORS
 ~Format+,Online+
 Communication between the authors for development of the next version of
-Fractint takes place in a CompuServe (CIS) GO GRAPHICS GROUP (GGG) forum. 
-This forum changes from time to time as as the GGG grows. You can always
-find it using the CompuServe GO GRAPHICS command. Currently we are located
-in GRAPHDEV (Graphics Developers) forum, Section 4 (Fractal Sources).
+Fractint takes place in a CompuServe (CIS) GO GRAPHICS GROUP (GGG) forum.
+Our forum changes from time to time as as the GGG grows. You
+can always find us using the CompuServe GO FRACTAL command. Currently we are
+located in GRAPHDEV (Graphics Developers) forum, Section 4 (Fractal Sources).
 
-Most of the authors have never met except on CompuServe. Access to the 
-GRAPHDEV forum is open to any and all interested in computer generated 
-fractals. New members are always welcome! Stop on by if you have any 
+Most of the authors have never met except on CompuServe. Access to the
+GRAPHDEV forum is open to any and all interested in computer generated
+fractals. New members are always welcome! Stop on by if you have any
 questions or just want to take a peek at what's getting tossed into the soup.
 This is by far the best way to have your questions answered or participate
-in discussion. Also, you'll find many GIF image files generated by fellow 
-Fractint fans and many fractal programs as well in the GRAPHDEV forum's data 
+in discussion. Also, you'll find many GIF image files generated by fellow
+Fractint fans and many fractal programs as well in the GRAPHDEV forum's data
 library 5.
 
 If you're not a CompuServe subscriber, but wish to get more information
@@ -1085,23 +1091,23 @@ they know the user ID (i.e., Bert Tyler's ID is 73477.433@compuserve.com).
 
 Just remember that CIS charges by the minute, so it costs us a little bit
 to read a message -- don't kill us with kindness. And don't send all your
-mail to Bert -- spread it around a little! Postal addresses are listed below 
-so that you have a way to send bug reports 
-and ideas to the Stone Soup team. 
+mail to Bert -- spread it around a little! Postal addresses are listed below
+so that you have a way to send bug reports
+and ideas to the Stone Soup team.
 
-Please understand that we receive a lot of 
+Please understand that we receive a lot of
 mail, and because of the demands of volunteer work on Fractint as well as
 our professional responsibilities, we are generally unable to answer it all.
 Several of us have reached the point where we can't answer any conventional
-mail. We *do* read and enjoy all the mail we receive, however. If you need a 
-reply, the best thing to do is use email, which we are generally able to 
+mail. We *do* read and enjoy all the mail we receive, however. If you need a
+reply, the best thing to do is use email, which we are generally able to
 answer, or better yet, leave a message in CompuServe's GRAPHDEV.
 
 (This address list is getting
-seriously out of date. We have updated information from those folks who have 
+seriously out of date. We have updated information from those folks who have
 contacted us. The next release of Fractint will contain the addresses of
 *only* those people who have explicitly told us that their address is
-correct and they want it listed. Please contact one of the main authors with 
+correct and they want it listed. Please contact one of the main authors with
 this information.)
 
 ~FF
@@ -1128,7 +1134,7 @@ Wesley Loewer           loewer@tenet.edu on INTERNET
 The Woodlands, TX  77381
 (713) 292-3449
 
-Contributing authors' addresses (in alphabetic order). 
+Contributing authors' addresses (in alphabetic order).
 
 Joseph A Albrecht
 9250 Old Cedar Ave #215
@@ -1162,21 +1168,21 @@ Michael D. Burkey       burkey@sun9.math.utk.edu on Internet
 6600 Crossgate Rd.
 Knoxville, TN 37912
 
-Robin Bussell
+Robin Bussell           [100604,643] on CIS
 13 Bayswater Rd
 Horfield
 Bristol
 Avon, England
 (044)-0272-514451
 
-Prof Jm Collard-Richard jmc@math.ethz.ch 
+Prof Jm Collard-Richard jmc@math.ethz.ch
 
 Monte Davis             [71450,3542] on CIS
 223 Vose Avenue
 South Orange, NJ 07079
 (201) 378-3327
 
-Paul de Leeuw           
+Paul de Leeuw
 50 Henry Street
 Five Dock
 New South Wales
@@ -1185,14 +1191,20 @@ Australia
 +61-2-396-2246 (Work)
 +61-2-713-6064 (Home)
 
+Sylvie Gallet           [101324,3444] on CIS
+Residence des Erables
+2 allee des Bouvreuils
+93700 DRANCY FRANCE
+
 David Guenther          [70531,3525] on CIS
 50 Rockview Drive
 Irvine, CA 92715
 
-Michael L. Kaufman      kaufman@eecs.nwu.edu on INTERNET
-2247 Ridge Ave, #2K     (also accessible via EXEC-PC bbs)
-Evanston, IL, 60201
-(708) 864-7916
+Michael L. Kaufman      kaufman@mcs.com
+2100 N. Lincoln Park West
+Chicago, IL 60614
+312-868-0276
+
 Joe McLain              [75066,1257] on CIS
 McLain Imaging
 2417 Venier
@@ -1208,11 +1220,12 @@ Roy Murphy              [76376,721] on CIS
 9050 Ewing Ave.
 Evanston, IL 60203
 
+~OnlineFF
 Ethan Nagel             [71062,3677] on CIS
 4209 San Pedro NE #308
 Albuquerque, NM 87109
 (505) 884-7442
-~OnlineFF
+
 Mark Peterson           [73642,1775] on CIS
 The Yankee Programmer
 405-C Queen St., Suite #181
@@ -1333,14 +1346,14 @@ had a hand in many aspects of the code.  However, each author has certain
 areas of greater contribution and creativity.  Since there is not room in
 the credits screen for the contributions of the main authors, we list these
 here to facilitate those who would like to communicate with us on
-particular subjects. 
- 
+particular subjects.
+
 Main Authors of Version 19.
 
-BERT TYLER is the original author of Fractint.  He wrote the "blindingly 
-fast" 386-specific 32 bit integer math code and the original video mode 
-logic. Bert made Stone Soup possible, and provides a sense of direction when 
-we need it. His forte is writing fast 80x86 assembler, his knowledge of a 
+BERT TYLER is the original author of Fractint.  He wrote the "blindingly
+fast" 386-specific 32 bit integer math code and the original video mode
+logic. Bert made Stone Soup possible, and provides a sense of direction when
+we need it. His forte is writing fast 80x86 assembler, his knowledge of a
 variety of video hardware, and his skill at hacking up the code we send him!
 
 Bert has a BA in mathematics from Cornell University.  He has been in
@@ -1356,12 +1369,12 @@ claims to support the MS-Kermit environment at NIH. Fractint is Bert's
 first effort at building a graphics program.
 
 TIM WEGNER contributed the original implementation of palette animation,
-and is responsible for most of the 3D mechanisms.  He provided 
+and is responsible for most of the 3D mechanisms.  He provided
 the main outlines of the "StandardFractal" engine and data structures, and is
 accused by his cohorts of being "obsessed with options". One of Tim's main
-interests is the use of four dimensional algebras to produce fractals. 
+interests is the use of four dimensional algebras to produce fractals.
 Tim served as team coordinator for version 19, and integrated Wes Loewer's
-arbitrary precision library into Fractint.  
+arbitrary precision library into Fractint.
 
 Tim has BA and MA degrees in mathematics from Carleton College and the
 University of California Berkeley.  He worked for 7 years overseas as a
@@ -1369,14 +1382,14 @@ volunteer, doing things like working with Egyptian villagers building
 water systems. Since returning to the US in 1982, he has written shuttle
 navigation software, a software support environment prototype, and
 supported strategic information planning, all at NASA's Johnson Space
-Center. Tim has started his own business, and now writes and programs full
-time.
+Center. After a two-year stint at full-time writing, he's back at NASA
+developing shuttle navigation software.
 
 JONATHAN OSUCH started throwing pebbles into the soup around version 15.0
 with a method for simulating an if-then-else structure using the formula
 parser.  He has contributed the fn||fn fractal types, the built-in bailout
 tests, the increase in both the maximum iteration count and bailout value,
-and bug fixes too numerous to count. Jonathan worked closely with Robin 
+and bug fixes too numerous to count. Jonathan worked closely with Robin
 Bussell to implement Robin's browser mechanism in Fractint.
 
 Jonathan has a B.S. in Physics from the University of Dubuque and a B.S. in
@@ -1409,10 +1422,10 @@ program.
 
 Several of Fractint's programmers have written books about fractals,
 Fractint, and Winfract (the Windows version of Fractint).
-The book about Fractint is Fractal Creations Second Edition (1994 Waite 
-Group Press, ISBN # 1-878739-34-4).  The book about Winfract is The Waite 
+The book about Fractint is Fractal Creations Second Edition (1994 Waite
+Group Press, ISBN # 1-878739-34-4).  The book about Winfract is The Waite
 Group's Fractals for Windows (1992 Waite Group Press, ISBN # 1-878739-25-5).
-
+These books are now very hard to find, so if you see one, better get it!
 ~Format-
 Fractal Creations Second Edition includes:
  o A guided tour of Fractint.
@@ -1422,23 +1435,18 @@ Fractal Creations Second Edition includes:
    for all the Fractals generated by Fractint/Winfract.
  o Secrets on how the programs work internally.
  o Spectacular color plate section.
- o A CD containing Fractint and Xfract source and executable, and over a 
+ o A CD containing Fractint and Xfract source and executable, and over a
    thousand spectacular fractal images.
  o A complete copy of the source code with a chapter explaining how the
    program works.
 ~Format+
-
-If you enjoy Fractint, you're sure to enjoy Fractal Creations. The book
-includes Fractint and is an excellent companion to the program.  If you
-use the Windows environment, be sure to pick up a copy of Fractals for
-Windows as well.
 ;
 ;
 ~OnlineFF
 
-A great fractals newsletter is "Amygdala" published by Rollo Silver. 
+A great fractals newsletter is "Amygdala" published by Rollo Silver.
 You'll find equal parts fractal algorithms, humor, reviews, and ideas.
-Write to: 
+Write to:
    Amygdala\
    Box 219\
    San Cristobal, NM 87564\
@@ -1447,7 +1455,7 @@ Write to:
    Phone: 505-586-0197\
 
 Another great fractals newsletter (this one based in the UK) is
-"FRAC'Cetera", a disk-based fractal/chaos resource, for PCs and 
+"FRAC'Cetera", a disk-based fractal/chaos resource, for PCs and
 compatibles, distributed on 3.5" HD disk, published by Jon Horner.
 Contact:
 
@@ -1474,13 +1482,32 @@ and the "Fractography" CD by sending $30.00US + $5.00 S&H (in US/Canada) to\
    485 Front Street N, Suite A\
    Issaquah, WA 98027-2900\
 
-Michael Peters (author of PARTOBAT) and Randall Scott have written a fractal 
+Michael Peters (author of PARTOBAT) and Randall Scott have written a fractal
 program called HOP based on the Martin orbit fractals. This program is much
 narrower than Fractint in the kind of thing that it does, but has many more
-animation effects and makes a great screen saver. Michael sent us the 
+animation effects and makes a great screen saver. Michael sent us the
 algorithms for the chip, quadruptwo, and threeply fractal types to give us
 a taste. The file is called HOPZIP.EXE in LIB 4 of CompuServe's GRAPHDEV
 forum.
+
+George Martin has written the penultimate formula file organizing program,
+distributed as ORGFRM.ZIP along with a comprehensive collection of
+formulas. Thousands of parser formulas have been written by
+Fractint users. A compilation of this formula output is contained in the
+file ORGFRM.ZIP, which is available at the CompuServe site, and which
+constitutes an encyclopedia of formulas written for Fractint. The compilation
+included more than 4,500 formulas, arranged alphabetically by name, and with
+the original source file shown in each formula by comment. The package includes
+a utility program, orgform.exe, which copies the formulas of ".frm" files into the
+compilation, skipping those formulas which are already included in
+the compilation. Formula writers are urged to consult this compilation in
+order to avoid giving a new formula an existing formula name. George can
+be reached at [76440,1143], or 76440,1143@compuserve.com.
+
+Noel Giffin (noel@triumf.ca), maintains a terrific web page for Fractint and
+fractals in general at spanky.trumf.ca. Highly recommended. His pages on
+arbitrary precision gleaned from sci.fractals and corresponence are required
+reading.
 ;
 ;
 ;
@@ -1491,7 +1518,7 @@ BARNSLEY, Michael: "Fractals Everywhere," Academic Press, 1988.
 DAVENPORT, Clyde: "A Hypercomplex Calculus with Applications to Relativity",
    ISBN 0-9623837-0-8. This self-published expansion of Mr. Davenport's
    Master's thesis makes the case for using hypercomplex numbers rather than
-   quaternions. This book provided the background for Fractint's 
+   quaternions. This book provided the background for Fractint's
    implementation of hypercomplex fractals.
 
 DEWDNEY, A. K., "Computer Recreations" columns in "Scientific American" --
@@ -1504,6 +1531,7 @@ FEDER, Jens: "Fractals," Plenum, 1988.\
 GLEICK, James: "Chaos: Making a New Science," Viking Press, 1987.\
    The best non-technical account of the revolution in our understanding
    of dynamical systems and its connections with fractal geometry.
+~OnlineFF
 
 MANDELBROT, Benoit: "The Fractal Geometry of Nature," W. H. Freeman & Co.,
    1982.\
@@ -1511,7 +1539,6 @@ MANDELBROT, Benoit: "The Fractal Geometry of Nature," W. H. Freeman & Co.,
    sometimes confusing stew of formal and informal mathematics, the
    prehistory of fractal geometry, and everything else. Best taken in
    small doses.
-~OnlineFF
 
 MANDELBROT, Benoit: "Fractals: Form, Chance, and Dimension," W. H. Freeman
    & Co., 1977.\
@@ -1534,12 +1561,12 @@ PICKOVER, Clifford: "Computers, Pattern, Chaos, and Beauty," St. Martin's
 SCHROEDER, Manfred: "Fractals, Chaos, Power Laws," W. H. Freeman
    & Co., 1991.\
 
-WEGNER, Timothy: "Image Lab, Second Edition", Waite Group Press, to be 
-   released in 1995. Learn how to create fractal animations, fractal
-   RDS stereo images, and how to use Fractint with other image creation 
+WEGNER, Timothy: "Image Lab, Second Edition", Waite Group Press, 1995.\
+   Learn how to create fractal animations, fractal
+   RDS stereo images, and how to use Fractint with other image creation
    and processing tools such as Piclab, POV-Ray and Polyray ray tracers.
 
-WEGNER, Timothy & TYLER, Bert: "Fractal Creations, Second Edition" Waite 
+WEGNER, Timothy & TYLER, Bert: "Fractal Creations, Second Edition" Waite
    Group Press, 1993\
    This is the definitive Fractint book. Spectacular color plate section,
    totally new and expanded fractal type descriptions, annotated PAR files,
@@ -1549,7 +1576,6 @@ WEGNER, Timothy, TYLER, Bert, PETERSON, Mark, and Branderhorst, Pieter:
    "Fractals for Windows," Waite Group Press, 1992.\
    This book is to Winfract (the Windows version of Fractint) what
    "Fractal Creations" is to Fractint.
-. 
 ;
 ;
 ~Topic=Other Programs
@@ -1612,8 +1638,8 @@ Versions 18.1 and 18.2 are bug-fix releases for version 18.0.  Changes from
 
  The <b> command now causes filenames only to be written in PAR files.
 
- Fractint will now search directories in the PATH for files not found in the 
- requested the requested directory or the current directory. If you place 
+ Fractint will now search directories in the PATH for files not found in the
+ requested the requested directory or the current directory. If you place
  .MAP, .FRM, etc. in directories in your PATH, then Fractint will find them.
 
  Fixed bug that caused fractals using PI symmetry to fail at high resolution.
@@ -1740,18 +1766,18 @@ New options/features:
  New Control-X, Control-Y, and Control-Z options flip a fractal image
  along the X-axis, Y-axis, and Origin, respectively.
 
- New area calculation mode in TAB screen from Ken Shirriff 
+ New area calculation mode in TAB screen from Ken Shirriff
  (for accuracy use inside=0).
- 
+
  The TAB screen now indicates when the Integer Math algorithms are in use.
 
  The palette must now be explicitly changed, it will not reset to the default
  unexpectedly when doing things like switching video modes.
- 
+
  The Julibrot type has been generalized.
  Julibrot fractals can now be generated from PAR files.
 
- Added <b> command support for viewwindows. 
+ Added <b> command support for viewwindows.
 
  Added room for two additional PAR comments in the <B> command
 
@@ -1819,7 +1845,7 @@ New options/features:
  (with new FRACTINT.DEF and FRACTINT.LNK files for MSC7 users).  Several
  modules have been re-organized to take advantage of this new overlay
  capability if compiled under MSC7.
- 
+
  Fractint now looks first any embedded help inside FRACTINT.EXE, and then
  for an external FRACTINT.HLP file before giving up. Previous releases
  required that the help text be embedded inside FRACTINT.EXE.
@@ -1836,7 +1862,7 @@ Bug fixes:
  Symmetry value for EXP function in lambdafn and lambda(fn||fn) fixed.
 
  Fixed bug where math errors prevented save in batch mode.
- 
+
  The <3> and <r> commands no longer destroy image -- user can back out
  with ESC and image is still there.
 
@@ -1889,7 +1915,7 @@ Version 17.1, 3/92
 
 Version 17.0, 2/92
 
-- New fractal types (but of course!): 
+- New fractal types (but of course!):
 
 Lyapunov Fractals from Roy Murphy (see {Lyapunov Fractals} for details)
 
@@ -1972,7 +1998,7 @@ Fixed a color-cycling bug that would at times restore the wrong colors
 to your image if you exited out of color-cycling, displayed a 'help'
 screen, and then returned to the image.
 
-Fixed the XGA video logic so that its 256-color modes use the same 
+Fixed the XGA video logic so that its 256-color modes use the same
 default 256 colors as the VGA adapter's 320x200x256 mode.
 
 Fixed the 3D bug that caused bright spots on surfaces
@@ -2760,7 +2786,7 @@ TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
 
 
  SPACEBAR toggles scrolling off/on
-   Copyright (C) 1990-95 The Stone Soup Group.  Fractint may be freely copied
+   Copyright (C) 1990-96 The Stone Soup Group.  Fractint may be freely copied
    and distributed but may not be sold.  See help for more information.
 ;
 ;
@@ -2778,9 +2804,9 @@ TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
  Francois Blais   [70700,446] Lyapunov Fractals, LYAPUNOV.MAP
  Dennis Bragg     [75300,2456] DXF Raytracing output option
  Pieter Branderhorst Past main author, solid guessing, menus
- Juan J. Buhler   jbuhler@gidef.edu.ar Diffusion options, inverse Julia type 
+ Juan J. Buhler   jbuhler@gidef.edu.ar Diffusion options, inverse Julia type
  Mike Burkey      376x564x256, 400x564x256, and 832x612x256 VGA video modes
- Robin Bussell    Palette-editor "freestyle" option, "browser" feature
+ Robin Bussell    [100604,643] Palette-editor "freestyle" option, "browser"
  John Bridges     [75300,2137] superVGA support, 360x480x256 mode
  Fulvio Cappelli  [100025,1507] ants options and speedup
  Brian Corbino    [71611,702] Tandy 1000 640x200x16 video mode
@@ -2791,13 +2817,15 @@ TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
  Dan Farmer       [74431,1075] orbits enhancements
  Richard Finegold [76701,153] 8/16/../256-Way Decomposition option
  Frank Fussenegger Mandelbrot speedups
+ Sylvie Gallet    [101324,3444] Formula wizard and beta tester
  Mike Gelvin      [73337,520] Mandelbrot speedups
  Luciano Genero   ants options and speedup
  Lawrence Gozum   [73437,2372] Tseng 640x400x256 Video Mode
  David Guenther   [70531,3525] Boundary Tracing algorithm
  Norman Hills     [71621,1352] Ranges option
  Richard Hughes   [70461,3272] "inside=", "outside=" coloring options
- Mike Kaufman     [kaufman@eecs.nwu.edu] mouse support, other features
+ Bill Jemison     [70400,2537] orbitsave=sound option
+ Mike Kaufman     [kaufman@mcs.com] mouse support, other features
  Adrian Mariano   [adrian@u.washington.edu] Diffusion & L-Systems
  Charles Marslett [75300,1636] VESA video and IIT math chip support
  Joe McLain       [75066,1257] TARGA Support, color-map files

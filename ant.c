@@ -5,15 +5,16 @@
  * rules.
  *
  * Revision history:
- * 20 Mar 95 LG/FC First release of table driven version 
+ * 20 Mar 95 LG/FC First release of table driven version
  * 31 Mar 95 LG/FC Fixed a bug that writes one pixel off the screen
- * 31 Mar 95 LG/FC Changed ant type 1 to produce the same pattern as the 
- *                   original implementation (they were mirrored on the 
+ * 31 Mar 95 LG/FC Changed ant type 1 to produce the same pattern as the
+ *                   original implementation (they were mirrored on the
  *                   x axis)
- * 04 Apr 95 TW    Added wrap option and further modified the code to match 
+ * 04 Apr 95 TW    Added wrap option and further modified the code to match
  *                   the original algorithm. It now matches exactly.
- * 10 Apr 95 TW    Suffix array does not contain enough memory. Crashes at 
+ * 10 Apr 95 TW    Suffix array does not contain enough memory. Crashes at
  *                   over 1024x768. Changed to extraseg.
+ * 12 Apr 95 TW    Added maxants range check.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -364,7 +365,7 @@ ant(void)
    long maxpts, wait;
    char rule[MAX_ANTS];
    char far *extra;
-   
+
    extra = MK_FP(extraseg,0);
 
    for (i = 0; i < DIRS; i++)
@@ -422,8 +423,7 @@ ant(void)
    }
    else
       rule_len = 0;
-   maxants = (int) param[2];
-   
+
    /* set random seed for reproducibility */
    if ((!rflag) && param[5] == 1)
       --rseed;
@@ -433,8 +433,11 @@ ant(void)
    srand(rseed);
    if (!rflag) ++rseed;
 
-   if (maxants < 1)             /* if max_ants == 0 max_ants random */
+   maxants = (int) param[2];
+   if (maxants < 1)             /* if maxants == 0 maxants random */
       maxants = 2 + RANDOM(MAX_ANTS - 2);
+   else if (maxants > MAX_ANTS)
+      param[2] = maxants = MAX_ANTS;
    type = (int) param[3] - 1;
    if (type < 0 || type > 1)
       type = RANDOM(2);         /* if type == 0 choose a random type */
