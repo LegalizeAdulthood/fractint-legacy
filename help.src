@@ -17,7 +17,7 @@
    { Introduction }			    { Distribution of Fractint }
    { Conditions on Use }		    { Contacting the Authors }
    { Getting Started }			    { The Stone Soup Story }
-   { New Features in Version 17.10 }	    { A Word About the Authors }
+   { New Features in Version 17.2 }	    { A Word About the Authors }
 					  { A Plug for "Fractal Creations" }
    { Display Mode Commands }
    { Color Cycling Commands }		    { Using Fractint With a Mouse }
@@ -37,7 +37,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New Features in Version 17.10", FF}
+{     , 0, "New Features in Version 17.2", FF}
 
 {     , 0, "Introduction", "Conditions on Use", FF}
 
@@ -239,15 +239,30 @@ documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in Version 17.10
+~Topic=New Features in Version 17.2
+
+The 17.2 release contains fixes to the 17.10 release in the following areas:
+
+ - Fixed a bug which caused Fractint to hang when a Continuous Potential\
+   Bailout value was set (using the 'Y') screen and then the 'Z' screen\
+   was activated.\
+ - fixed a bug which caused "batch=yes" runs to abort whenever any\
+   key was pressed.\
+ - bug-fixes in the Stereo3D/Targa logic from Marc Reinig.\
+ - Fractint now works correctly again on FPU-less 8088s when\
+   zoomed deeply into the Mandelbrot/Julia sets\
+ - The current image is no longer marked as "not resumable" on a\
+   Shell-To-Dos ("D") command.\
+ - fixed a bug which prevented the "help" functions from working\
+   properly during fractal-type selection for some fractal types.\
 
 The 17.10 release contains fixes to the 17.0 release in the following areas:
 
- - fixed a bug which caused PCs with no FPU to lock up when they attempted
-   to use some fractal types.
- - fixed a color-cycling bug which caused the palette to single-step 
-   when you pressed ESCAPE to exit color-cycling.
- - fixed the action of the '<' and '>' keys during color-cycling.
+ - fixed a bug which caused PCs with no FPU to lock up when they attempted\
+   to use some fractal types.\
+ - fixed a color-cycling bug which caused the palette to single-step \
+   when you pressed ESCAPE to exit color-cycling.\
+ - fixed the action of the '<' and '>' keys during color-cycling.\
 
 The 17.0 release contained the following enhancements:
 

@@ -236,11 +236,12 @@ nokey:
 	mov     cx,maxit                ; using cx as loop counter
 	cmp     fpu,387                 ; jump to fpu specific code
 	je      start_387               ; 387, slight efficiency tweeking
-	cmp     fpu,87
-	je      to_start_87             ; too long to be a short jump
-	jmp     start_287               ; 287/emulation (original version)
-to_start_87:
-	jmp     start_87                ; 87, compatible with 8087 codes
+	cmp     fpu,287                 ;
+	je      to_start_287            ; 287 (original version)
+	jmp     start_87                ; else must be 87/emulation
+to_start_287:
+	jmp     start_287               ; needs a long jump here
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; _387 code is just like _287 code except that it uses an FADD instead
@@ -425,9 +426,7 @@ special_outside_387:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .286
 .287
-; let emulation fall through to the 287 code here
-; as it seems to work slightly faster with this code
-start_287:      ; 287 and emulation
+start_287:      ; 287
 	cmp     fractype,JULIAFP        ; julia or mandelbrot set?
 	je      short dojulia_287       ; julia set - go there
 
@@ -485,13 +484,13 @@ no_save_new_xy_287:
 	cmp     inside,-100                     ; epsilon cross ?
 	jne     end_epsilon_cross_287
 	call    near ptr epsilon_cross          ; y 1 x Cx Cy b
-	jcxz    pop_stack_6_287                 ; if cx=0, pop stack
+	jcxz    pop_stack_287                   ; if cx=0, pop stack
 end_epsilon_cross_287:
 
 	cmp     cx,oldcolor                     ; if cx >= oldcolor
 	jae     end_periodicity_check_287       ; don't check periodicity
 	call    near ptr periodicity_check_287_387 ; y 1 x Cx Cy b
-	jcxz    pop_stack_6_287                 ; if cx=0, pop stack
+	jcxz    pop_stack_287                   ; if cx=0, pop stack
 end_periodicity_check_287:
 
 	cmp     show_orbit,0            ; is show_orbit clear
@@ -545,30 +544,8 @@ no_potflag_287:
 
 no_zmag_287:
 
-pop_stack_7_287:
-; The idea here is just to clear the floating point stack.  There was a
-; problem using FNINIT with the emulation library.  It didn't seem to
-; properly clear the emulated stack, resulting in "stack overflow"
-; messages.  Therefore, if emulation is being used, then FSTP's are used
-; instead.
-
-	cmp     fpu,0                   ; are we using emulation?
-	jne     no_emulation            ; if not, then jump
-	fstp    st
-; you could just jump over this next check, but its faster to just check again
-pop_stack_6_287:
-	cmp     fpu,0                   ; are we using emulation?
-	jne     no_emulation            ; if not, then jump
-	fstp    st
-	fstp    st
-	fstp    st
-	fstp    st
-	fstp    st
-	fstp    st
-	jmp     short end_pop_stack_287
-no_emulation:                           ; if no emulation, then
-	fninit                          ;   use the faster FNINIT
-end_pop_stack_287:
+pop_stack_287:
+	fninit
 
 	mov     color,ax
 
@@ -606,14 +583,14 @@ zero_color_fix_287:
 	sub     kbdcount,ax             ; adjust the keyboard count
 
 	cmp     outside,-1              ; iter ? (most common case)
-	je      pop_stack_7_287
+	je      pop_stack_287
 	cmp     outside,-2		; outside <= -2 ?
 	jle     special_outside_287     ; yes, go do special outside options
 	mov     ax,outside              ; use outside color
-	jmp     short pop_stack_7_287
+	jmp     short pop_stack_287
 special_outside_287:
 	call    near ptr special_outside
-	jmp     short pop_stack_7_287
+	jmp     short pop_stack_287
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -627,6 +604,8 @@ special_outside_287:
 .8086
 .8087
 start_87:
+; let emulation fall through to the 87 code here
+; as it seems not emulate correctly on an 8088/86 otherwise
 	cmp     fractype,JULIAFP        ; julia or mandelbrot set?
 	je      short dojulia_87        ; julia set - go there
 
@@ -684,13 +663,15 @@ no_save_new_xy_87:
 	cmp     inside,-100                     ; epsilon cross ?
 	jne     end_epsilon_cross_87
 	call    near ptr epsilon_cross          ; y 1 x Cx Cy b
-	jcxz    pop_stack_87                    ; if cx=0, pop stack
+	test    cx,cx                           ; if cx=0, pop stack
+	jnz     end_epsilon_cross_87            ; replaces jcxz
+	jmp     pop_stack_6_87                  ; with a long jump
 end_epsilon_cross_87:
 
 	cmp     cx,oldcolor                     ; if cx >= oldcolor
 	jae     no_periodicity_check_87         ; don't check periodicity
 	call    near ptr periodicity_check_87   ; y 1 x Cx Cy b
-	jcxz    pop_stack_87                    ; if cx=0, pop stack
+	jcxz    pop_stack_6_87                  ; if cx=0, pop stack
 no_periodicity_check_87:
 
 	cmp     show_orbit,0            ; is show_orbit clear
@@ -747,8 +728,30 @@ no_potflag_87:
 
 no_zmag_87:
 
-pop_stack_87:
-	fninit
+pop_stack_7_87:
+; The idea here is just to clear the floating point stack.  There was a
+; problem using FNINIT with the emulation library.  It didn't seem to
+; properly clear the emulated stack, resulting in "stack overflow"
+; messages.  Therefore, if emulation is being used, then FSTP's are used
+; instead.
+
+	cmp     fpu,0                   ; are we using emulation?
+	jne     no_emulation            ; if not, then jump
+	fstp    st
+; you could just jump over this next check, but its faster to just check again
+pop_stack_6_87:
+	cmp     fpu,0                   ; are we using emulation?
+	jne     no_emulation            ; if not, then jump
+	fstp    st
+	fstp    st
+	fstp    st
+	fstp    st
+	fstp    st
+	fstp    st
+	jmp     short end_pop_stack_87
+no_emulation:                           ; if no emulation, then
+	fninit                          ;   use the faster FNINIT
+end_pop_stack_87:
 
 	mov     color,ax
 
@@ -786,14 +789,14 @@ zero_color_fix_87:
 	sub     kbdcount,ax             ; adjust the keyboard count
 
 	cmp     outside,-1              ; iter ? (most common case)
-	je      pop_stack_87
+	je      pop_stack_7_87
 	cmp     outside,-2		; outside <= -2 ?
 	jle     special_outside_87      ; yes, go do special outside options
 	mov     ax,outside              ; use outside color
-	jmp     short pop_stack_87
+	jmp     short pop_stack_7_87
 special_outside_87:
 	call    near ptr special_outside
-	jmp     short pop_stack_87
+	jmp     short pop_stack_7_87
 
 calcmandfpasm  ENDP
 
@@ -1012,7 +1015,19 @@ so_end_load_x:
 	fst     orbit_imag              ; y ...
 	mov     ax,-1                   ; color for plot orbit
 	push    ax                      ;       ...
-	fwait
+; since the number fpu registers that plot_orbit() preserves is compiler
+; dependant, it's best to fstp the entire stack into 10 byte memories
+; and fld them back after plot_orbit() returns.
+	fstp    tmp_ten_byte_1          ; store the stack in 80 bit form
+	fstp    tmp_ten_byte_2
+	fstp    tmp_ten_byte_3
+	fstp    tmp_ten_byte_4
+	fstp    tmp_ten_byte_5
+	cmp     fpu,287                 ; with 287/87/emul the stack is 6 high
+	jg      no_store_6              ; with 387 it is only 5 high
+	fstp    tmp_ten_byte_6
+no_store_6:
+	fwait                           ; just to be safe
 	push    word ptr orbit_imag+6   ; co-ordinates for plot orbit
 	push    word ptr orbit_imag+4   ;       ...
 	push    word ptr orbit_imag+2   ;       ...
@@ -1021,23 +1036,9 @@ so_end_load_x:
 	push    word ptr orbit_real+4   ;       ...
 	push    word ptr orbit_real+2   ;       ...
 	push    word ptr orbit_real     ;       ...
+	call    far ptr plot_orbit      ; display the orbit
+	add     sp,9*2                  ; clear out the parameters
 
-; This next step could be C compiler dependant as plot_orbit must preserve
-; the top 6 levels of the fpu stack, which might be a lot to ask.
-; If it doesn't work, then just fstp the stack into ten byte
-; temporary variables and fld it back after returning.
-; It works as is with MS QuickC/QuickAssembler 2.51 without popping
-; the stack, so apparantly it's ok. whew!  -Wes
-        fstp    tmp_ten_byte_1          ; store the stack in 80 bit form
-        fstp    tmp_ten_byte_2
-        fstp    tmp_ten_byte_3
-        fstp    tmp_ten_byte_4
-        fstp    tmp_ten_byte_5
-        cmp     fpu,287                 ; with 287/87/emul the stack is 6 high
-        jg      no_store_6              ; with 387+ it is only 5 high
-        fstp    tmp_ten_byte_6
-no_store_6:
-        call    far ptr plot_orbit      ; display the orbit
         cmp     fpu,287
         jg      no_load_6
         fld     tmp_ten_byte_6          ; load them back in reverse order
@@ -1047,7 +1048,7 @@ no_load_6:
 	fld	tmp_ten_byte_3
 	fld	tmp_ten_byte_2
 	fld	tmp_ten_byte_1
-	add     sp,9*2                  ; clear out the parameters
+	fwait                           ; just to be safe
 	ret
 show_orbit_xy   ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1059,7 +1060,7 @@ special_outside PROC NEAR
 ; "FSUB round_down_half" causes the values to be rounded down.
 
 	cmp     outside,-2
-	jne     not_real_287
+	jne     not_real
 	fld     newx
 	fsub    round_down_half
 	fistp   tmp_word
@@ -1067,9 +1068,9 @@ special_outside PROC NEAR
 	fwait
 	add     ax,tmp_word
 	jmp     short check_color
-not_real_287:
+not_real:
 	cmp     outside,-3
-	jne     not_imag_287
+	jne     not_imag
 	fld     newy
 	fsub    round_down_half
 	fistp   tmp_word
@@ -1077,9 +1078,9 @@ not_real_287:
 	fwait
 	add     ax,tmp_word
 	jmp     short check_color
-not_imag_287:
+not_imag:
 	cmp     outside,-4
-	jne     not_mult_287
+	jne     not_mult
 	fld     newy
 	ftst                    ; check to see if newy == 0
 	fstsw   tmp_word
@@ -1099,9 +1100,9 @@ non_zero_y:
 	fwait
 	mov     ax,tmp_word
 	jmp     short check_color
-not_mult_287:
+not_mult:
 	cmp     outside,-5      ; currently always equal, but put here
-	jne     not_sum_287     ; for future outside types
+	jne     not_sum         ; for future outside types
 	fld     newx
 	fadd    newy            ; newx+newy
 	fsub    round_down_half
@@ -1109,7 +1110,7 @@ not_mult_287:
 	fwait
 	add     ax,tmp_word
 
-not_sum_287:
+not_sum:
 check_color:
 	cmp     ax,maxit                ; use UNSIGNED comparison
 	jbe     special_outside_ret     ; color < 0 || color > maxit

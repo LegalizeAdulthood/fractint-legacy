@@ -792,32 +792,32 @@ struct fractalspecificstuff far fractalspecific[] =
    ManOWarFractal,julia_per_pixel, JulialongSetup,StandardFractal,STDBAILOUT,
 
    "*fn(z)+fn(pix)", realz0,imagz0,recoeftrg2,imcoeftrg2,0,0,1,0,
-   -1, HF_FNPLUSFNPIX, TRIG2,
+   HT_SCOTSKIN, HF_FNPLUSFNPIX, TRIG2,
    -2.5,  1.5, -1.5, 1.5, 0, NOFRACTAL, NOFRACTAL, FNPLUSFNPIXLONG, NOSYM,
    Richard8fpFractal,otherrichard8fp_per_pixel, MandelfpSetup,StandardFractal,LTRIGBAILOUT,
 
    "fn(z)+fn(pix)",  realz0,imagz0,recoeftrg2,imcoeftrg2,0,0,1,0,
-   -1, HF_FNPLUSFNPIX, TRIG2,
+   HT_SCOTSKIN, HF_FNPLUSFNPIX, TRIG2,
    -2.5,  1.5, -1.5, 1.5, 1, NOFRACTAL, NOFRACTAL, FNPLUSFNPIXFP, NOSYM,
    Richard8Fractal,long_richard8_per_pixel, MandellongSetup,StandardFractal,LTRIGBAILOUT,
 
    "*marksmandelpwr", realz0, imagz0,"","",0,0,0,0,
-   -1, HF_MARKSMANDPWR, TRIG1+WINFRAC,
+   HT_MARKS, HF_MARKSMANDPWR, TRIG1+WINFRAC,
    -2.5,  1.5, -1.5, 1.5, 0, NOFRACTAL, NOFRACTAL, MARKSMANDELPWR, XAXIS_NOPARM,
    MarksMandelPwrfpFractal,marks_mandelpwrfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
    "marksmandelpwr",  realz0, imagz0,"","",0,0,0,0,
-   -1, HF_MARKSMANDPWR, TRIG1+WINFRAC,
+   HT_MARKS, HF_MARKSMANDPWR, TRIG1+WINFRAC,
    -2.5,  1.5, -1.5,  1.5, 1, NOFRACTAL,	 NOFRACTAL, MARKSMANDELPWRFP,  XAXIS_NOPARM,
    MarksMandelPwrFractal,marks_mandelpwr_per_pixel, MandelSetup,StandardFractal,STDBAILOUT,
 
    "*tim's_error",    realz0, imagz0,"","",0,0,0,0,
-   -1, HF_TIMSERR, WINFRAC+TRIG1,
+   HT_MARKS, HF_TIMSERR, WINFRAC+TRIG1,
    -2.5,  3.0, -2.0,  2.0, 0, NOFRACTAL,	 NOFRACTAL, TIMSERROR,	XAXIS_NOPARM,
    TimsErrorfpFractal,marks_mandelpwrfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
    "tim's_error",    realz0, imagz0,"","",0,0,0,0,
-   -1, HF_TIMSERR, WINFRAC+TRIG1,
+   HT_MARKS, HF_TIMSERR, WINFRAC+TRIG1,
    -2.5,  3.0, -2.0,  2.0, 1, NOFRACTAL,	 NOFRACTAL, TIMSERRORFP,  XAXIS_NOPARM,
    TimsErrorFractal,marks_mandelpwr_per_pixel, MandelSetup,StandardFractal,STDBAILOUT,
 
@@ -857,7 +857,7 @@ struct fractalspecificstuff far fractalspecific[] =
    martin2dfloatorbit, NULL,	     orbit3dfloatsetup, orbit2dfloat,	 NOBAILOUT,
 
   "lyapunov", "Order (integer)", "Population Seed", "Filter Cycles", "", 0, 0.5, 0, 0,
-   -1, -1, NOGUESS+NOTRACE+WINFRAC,
+   HT_LYAPUNOV, HT_LYAPUNOV, NOGUESS+NOTRACE+WINFRAC,
    2.0, 4.0, 2.5, 4.0, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL, NOSYM,
    BifurcLambda, NULL, lya_setup, lyapunov, NOBAILOUT,
 

@@ -342,6 +342,10 @@ unsigned char bitsperpixel, x;
 int entrynum;
 struct fractal_info save_info;
 
+if(initbatch)			/* flush any impending keystrokes */
+   while(keypressed())
+      getakey();
+
 setup_save_info(&save_info);
 
 bitsperpixel = 0;			/* calculate bits / pixel */

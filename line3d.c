@@ -41,7 +41,8 @@ static int  H_R(),R_H();
 static int  startdisk1(char *File_Name2, FILE *Source, int overlay);
 static int  set_pixel_buff();
 static void line3d_cleanup();
-static int _fastcall targa_color(int x,int y,int color);
+int _fastcall targa_color(int x,int y,int color);
+extern int glassestype, whichimage;
 void (_fastcall *standardplot)(int,int,int);
 int targa_validate(char *File_Name);
 
@@ -267,8 +268,6 @@ int line3d(unsigned char pixels[], unsigned linelen)
 		float	deltatheta;		/* increment of latitude */
 		outln_cleanup = line3d_cleanup;
 
-		/* plot_setup();*/
-
 		calctime = evenoddrow = 0;
 		/* mark as in-progress, and enable <tab> timer display */
 		calc_status = 1;
@@ -295,11 +294,13 @@ int line3d(unsigned char pixels[], unsigned linelen)
 		upr_lwr[3] = ydots >> 8;
 		line_length1 = 3 * xdots;		/*  line length @ 3 bytes per pixel  */
 		error = 0;
-		T_Safe = 0; /* Not safe yet to mess with the source image */
 
-		if (Targa_Out)
+		if (whichimage < 2)
+			T_Safe = 0; /* Not safe yet to mess with the source image */
+
+		if (Targa_Out && !((glassestype==1 || glassestype==2) && whichimage==2))
 		{
-			if (Targa_Overlay)	
+			if (Targa_Overlay)
 			{		
 				/* Make sure target file is a supportable Targa File */	
 				if(targa_validate (light_name))		
@@ -621,7 +622,7 @@ int line3d(unsigned char pixels[], unsigned linelen)
 		}
 
 		/* set fill plot function */
-		if(FILLTYPE != 3 && debugflag != 2762)
+		if(FILLTYPE != 3)
 			fillplot = interpcolor;
 		else
 		{
@@ -873,11 +874,6 @@ int line3d(unsigned char pixels[], unsigned linelen)
 			/* cur.y = ydots/2 + scly*r*costheta*cosphi - yup ;					*/
 			/******************************************************************/
 
-/* mrr 	
-			Why not do the calc fudged or not to avoid having to unfudge it
-			later on?
-*/
-
 				if(rscale < 0.0)
 					r = R + Rfactor*(double)f_cur.color*costheta;
 				else if(rscale > 0.0)
@@ -1039,16 +1035,6 @@ int line3d(unsigned char pixels[], unsigned linelen)
 
 			if (RAY)
 			{
-/* 
-
-if (RAY) use float routines. Output shapes prior to perspective, 
-then put in perspective, and plot as FILLTYPE -1, also plotting the 
-diagonal. 
-
-*/
-
-
-
 				if (col && currow &&
 					old.x > bad_check &&
 					old.x < (xdots - bad_check) &&
@@ -1268,11 +1254,6 @@ diagonal.
 									crossavg[2] = cross[2];
 									crossnotinit = 0;
 								}
-/* Saves ~200 bytes but costs ~ 4% speed
-								for (i=0;i<3;i++)
-									crossavg[i] = cross[i] = tmpcross[i] = 
-										(crossavg[i]*LIGHTAVG+cross[i]) / (LIGHTAVG+1);
-*/
 								tmpcross[0] = (crossavg[0]*LIGHTAVG+cross[0]) /
 								   (LIGHTAVG+1);
 								tmpcross[1] = (crossavg[1]*LIGHTAVG+cross[1]) /
@@ -1719,7 +1700,8 @@ static void _fastcall clipcolor(int x,int y,int color)
 		standardplot(x,y,color);
 
 		if (Targa_Out)
-			targa_color(x, y, color);
+			if (!(glassestype==1 || glassestype==2)) /* standardplot modifies color in these types */
+				targa_color(x, y, color);
 	}
 }
 
@@ -1740,7 +1722,8 @@ static void _fastcall T_clipcolor(int x,int y,int color)
 		standardplot(x,y,color); /* I guess we can plot then  */
 
 		if (Targa_Out)
-			targa_color(x, y, color);
+			if (!(glassestype==1 || glassestype==2)) /* standardplot modifies color in these types */
+				targa_color(x, y, color);
 	}
 }
 
@@ -1782,17 +1765,18 @@ static void _fastcall interpcolor(int x,int y,int color)
 		transparent[0] > Real_Color))
 	{
 		if (Targa_Out)
-			D = targa_color(x,y,color);
+			if (!(glassestype==1 || glassestype==2)) /* standardplot modifies color in these types */
+				D = targa_color(x, y, color);
 
 		if (FILLTYPE >= 5)
 			if (Real_V && Targa_Out)
 				color = D;
-			else
-                        {
-                            color =  (1 + (unsigned)color * IAmbient)/256;
-                            if (color == 0)
-                                color = 1;
-                        }
+			else 
+         {               
+             color =  (1 + (unsigned)color * IAmbient)/256;               
+             if (color == 0)               
+                 color = 1;               
+         }               
 		standardplot(x,y,color);
 	}
 }
@@ -1803,25 +1787,30 @@ static void _fastcall interpcolor(int x,int y,int color)
 	In non light source modes, both color and Real_Color contain the
 	actual pixel color. In light source modes, color contains the
 	light value, and Real_Color contains the origninal color
+
+	This routine takes a pixel modifies it for lightshading if appropriate
+	and plots it in a Targa file. Used in plot3d.c
+
+	
 */
 
-static int _fastcall targa_color(int x,int y,int color)
+int _fastcall targa_color(int x,int y,int color)
 {
 	unsigned long H, S, V;
 	unsigned char RGB[3];
 
-	if (FILLTYPE == 2)  
+	if (FILLTYPE == 2 || glassestype==1 || glassestype==2)  
 		Real_Color = color; /* So Targa gets interpolated color */
 
 	RGB[0]  =  dacbox [Real_Color] [0] << 2; /* Move color space to */
-	RGB[1]  =  dacbox [Real_Color] [1] << 2; /* 256 color primaries */
+	RGB[1]  =  dacbox [Real_Color] [1] << 2; /* 256-color primaries */
 	RGB[2]  =  dacbox [Real_Color] [2] << 2; /* from 64 colors */
 
 	/* Now lets convert it to HSV */
 	R_H(RGB[0], RGB[1], RGB[2], &H, &S, &V);
 
 	/* Modify original S and V components */
-	if (FILLTYPE > 4) /* Adjust for Ambient */
+	if (FILLTYPE > 4 && !(glassestype==1 || glassestype==2)) /* Adjust for Ambient */
 		V = (V * (65535 - (unsigned)(color * IAmbient))) / 65535;
 
 	if (haze)
@@ -2571,7 +2560,6 @@ static void line3d_cleanup()
 	}
 	if (Targa_Out)
 	{	/*  Finish up targa files */
-
 		T_header_24 = 18; /* Reset Targa header size */
 		enddisk();
 		if (!debugflag && T_Safe && !error && Targa_Overlay)

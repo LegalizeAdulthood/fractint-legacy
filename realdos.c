@@ -47,7 +47,7 @@ void vidmode_keyname(int k,char *buf);
 
 static int menu_checkkey(int curkey,int choice);
 
-int release=1710; /* this has 2 implied decimals; increment it every synch */
+int release=1720; /* this has 2 implied decimals; increment it every synch */
 
 /* fullscreen_choice options */
 #define CHOICERETURNKEY 1
@@ -280,7 +280,7 @@ void helptitle()
    return;
 #endif
 /* uncomment next for production executable: */
-/*   return; */
+/* return;  */
    if (debugflag == 3002) return;
 /* putstring(0,2,C_TITLE_DEV,"Development Version"); */
 /* replace above by next after creating production release, for release source */

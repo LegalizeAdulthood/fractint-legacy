@@ -863,7 +863,7 @@ Australia
 Rob Beyer		[71021,2074] on CIS
 23 Briarwood Lane
 Laguna Hills, CA, 92656
-(714) 831-7665
+(714) 957-0227
 (7-12pm PST & weekends)
 
 John W. Bridges 	(Author GRASP/Pictor, Imagetools, PICEM, VGAKIT)
@@ -2007,6 +2007,7 @@ TETRATE PARAMS=nnn	TETRATE BAILOUT=nnn+3
  Kevin Allen	  Finite attractor and bifurcation engine
  Steve Bennett	  restore-from-disk logic
  Rob Beyer	  [71021,2074] Barnsley IFS, Lorenz fractals
+ Francois Blais	  [70700,446] Lyapunov Fractals, LYAPUNOV.MAP
  Mike Burkey	  376x564x256, 400x564x256, and 832x612x256 VGA video modes
  John Bridges	  [75300,2137] superVGA support, 360x480x256 mode
  Brian Corbino	  [71611,702] Tandy 1000 640x200x16 video mode

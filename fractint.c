@@ -971,7 +971,7 @@ image.  Sorry - it's the best we could do."};
 		  }
 	       shell_to_dos();
 	       unstackscreen();
-	       calc_status = 0;
+	       /* calc_status = 0;  clobbers the "resume" capability */
 	       break;
 	    case 'c':                   /* switch to color cycling      */
 	    case '+':                   /* rotate palette               */

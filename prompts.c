@@ -266,6 +266,7 @@ int fullscreen_prompt(	/* full-screen prompting routine */
    int promptrow,promptcol,valuecol;
    int curchoice;
    int done, i, j;
+   int anyinput;
    int savelookatmouse;
    int curtype, curlen;
    char buf[81];
@@ -274,6 +275,8 @@ static char far instr2a[]  = {"Type in replacement value for selected field"};
 static char far instr2b[]  = {"Use \x1B or \x1A to change value of selected field"};
 static char far instr3a[] = {"Press ENTER when finished (or ESCAPE to back out)"};
 static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or F1 for help"};
+static char far instr0a[] = {"No changeable parameters; press ENTER to exit"};
+static char far instr0b[] = {"No changeable parameters; press ENTER to exit or F1 for help"};
 
    ENTER_OVLY(OVLY_PROMPTS);
 
@@ -345,7 +348,7 @@ static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or 
       ++extrarow;
 
    /* work out horizontal positioning */
-   maxfldwidth = maxpromptwidth = maxcomment = 0;
+   maxfldwidth = maxpromptwidth = maxcomment = anyinput = 0;
    for (i = 0; i < numprompts; i++) {
       if (values[i].type == 'y') {
 	 static char *noyes[2] = {"no","yes"};
@@ -359,6 +362,7 @@ static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or 
 	 if (j > maxcomment)	 maxcomment = j;
 	 }
       else {
+         anyinput = 1;
 	 if (j > maxpromptwidth) maxpromptwidth = j;
 	 j = prompt_valuestring(buf,&values[i]);
 	 if (j > maxfldwidth)	 maxfldwidth = j;
@@ -424,6 +428,34 @@ static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or 
       putstring(promptrow+i, promptcol, C_PROMPT_LO, prompts[i]);
       prompt_valuestring(buf,&values[i]);
       putstring(promptrow+i, valuecol, C_PROMPT_LO, buf);
+      }
+
+   if (!anyinput) {
+      putstringcenter(instrrow,0,80,C_PROMPT_BKGRD,
+        (helpmode > 0) ? instr0b : instr0a);
+      movecursor(25,80);
+      while (1) {
+        while (!keypressed()) { }
+        done = getakey();
+        switch(done) {
+           case ESC:
+              done = -1;
+           case ENTER:
+           case ENTER_2:
+              goto fullscreen_exit;
+           case F2:
+           case F3:
+           case F4:
+           case F5:
+           case F6:
+           case F7:
+           case F8:
+           case F9:
+           case F10:
+              if (promptfkeys & (1<<(done+1-F1)) )
+                 goto fullscreen_exit;
+           }
+        }
       }
 
    /* display footing */
@@ -518,6 +550,7 @@ static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or 
 	 }
       }
 
+fullscreen_exit:
    movecursor(25,80);
    lookatmouse = savelookatmouse;
    EXIT_OVLY;
