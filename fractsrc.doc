@@ -25,6 +25,11 @@ on some nifty features added to version 5.1 (like the '.model medium,c'
 option) and will not assemble under older versions of MASM without a LOT
 of work.
 
+MSC 6.0 users:  Due to limitations with (and a bug in) MSC 6.0, the following
+files *must* be compiled with the '/qc' option:  FRACTALS.C (without the
+'/qc' option, MSC chokes with a heap overflow on pass 2) and PARSER.C 
+(without the '/qc' option, MSC 6.0 creates a bad OBJ file!!)
+
 
 Quick-C:
 ========
@@ -37,21 +42,19 @@ Quick-C rather than "regular" C, edit FRACTINT.MAK, comment out the fifth
 line (the one that goes " cl /AM ...") and un-comment out the second line
 (the one that goes " qcl /AM ..."). 
 
-Turbo-C and TASM
-================
 
-FRACTINT is SUPPOSED to be compatible with both of these products, although
-this one is a constant struggle.  Bert runs FRACTINT through his copy of
-Turbo C/TASM just before public releases and *attempts* to test all of
-the doodads we've added since the previous release.  Still, there is always
-the possibility that we managed to sneak a last-minute update by everybody
-("but, we hardly changed anything at all!") that destroys this compatibility.
-We have included two sample files (TC.MAK, TC.LNK) that compile and link
-FRACTINT using the Turbo products on Bert's machine using the command
-"make -ftc".
+Turbo-C, Turbo-C++ and TASM
+===========================
 
-Note that FRACTINT is simply too large for the interactive Turbo-C
-environment.  Sorry, but you're gonna have to use the command line option.
+Sorry, Turbo-C fans, but as of version 14.0, FRACTINT requires TC++.
+The lack of initialized FAR arrays and structures just did the older Turbo-C
+product in.  The *good* news is that several of the FRACTINT authors now
+use Turbo-C++, so the odds of released FRACTINT distributions that do
+not sompile with Turbo products are lower than they used to be.
+
+We have replaced the old TC.MAK and TC.LNK files with a FRACTINT.PRJ
+replacement that Mark Peterson uses to compile and link FRACTINT using
+the Turbo products on his machine.
 
 
 Where the Goodies are
@@ -61,6 +64,10 @@ It has come to our attention that people who have no interest in fractals
 at all have been wandering through the FRACTINT source code just to get at
 some of the neat tricks buried therein.  Here are a few hints as to where
 to look:
+
+DEBUGFLA.DOC    - (semi-)documented list of the programmer's debugging
+                  flags that have been buried in Fractint for years,
+                  but never documented.
 
 FRACTINT.C	- The main routine.  Nothing special here.
 FRACTINT.H	- General Include file.  Nothing special here, either.

@@ -60,6 +60,7 @@ DGROUP	      group   _DATA,_DATA2
 	extrn	intpotential:far	; this routine is in 'calcfrac.c'
 
 	extrn	lx0:dword, ly0:dword	; arrays of (dword) increment values
+	extrn	lx1:dword, ly1:dword	; arrays of (dword) increment values
 
 _DATA2		segment DWORD PUBLIC 'DATA'
 
@@ -70,9 +71,10 @@ FUDGEFACTOR2	equ	24		; potential algoithm variant
 
 	extrn	fractype:word		; == 0 if Mandelbrot set, else Julia
 	extrn	numpasses:word		; == 0 if single-pass, 1 if 2-pass
+	extrn	passnum:word		; == 1 if 1st pass of 2, 2 if final pass
 	extrn	inside:word		; "inside" color, normally 1 (blue)
 	extrn	creal:dword, cimag:dword ; Julia Set Constant
-	extrn	delx:dword, dely:dword	; actual increment values
+	extrn	delmin:dword		; min increment - precision required
 	extrn	xdots:word, ydots:word	; number of dots across and down
 	extrn	maxit:word, colors:word ; maximum iterations, colors
 	extrn	bitshift:word		; number of bits to shift
@@ -83,7 +85,15 @@ FUDGEFACTOR2	equ	24		; potential algoithm variant
 
 	extrn	ixstart:word, ixstop:word ; start, stop here
 	extrn	iystart:word, iystop:word ; start, stop here
-	extrn	guessing:word		  ; == 1 if solid-guessing
+	extrn	yybegin:word		  ; start pass 1 of 2 here
+	extrn	xxstart:word, xxstop:word ; window (!= ix... if symmetry)
+	extrn	yystart:word, yystop:word ; window (!= iy... if symmetry)
+	extrn	row:word, col:word	  ; current pixel to calc
+
+	extrn	calcmode:word		; 0 if 1 or 2 pass,
+					; 1 if ssg/btm initialization call,
+					; 2 if ssg/btm 1pixel, reset periodicity
+					; 3 if ssg/btm 1pixel, no reset
 
 	extrn	cpu:word		; cpu type: 86, 186, 286, or 386
 
@@ -98,11 +108,6 @@ FUDGEFACTOR2	equ	24		; potential algoithm variant
 
 ; ************************ Internal variables *****************************
 
-passnum 	db	0		; pass number: 1 (blitz) or 0
-
-		align	2
-ix		dw	0		; x-axis: 0 to (xdots-1)
-iy		dw	0		; y-axis: 0 to (ydots-1)
 		align	4
 x		dd	0		; temp value: x
 y		dd	0		; temp value: y
@@ -110,7 +115,6 @@ a		dd	0		; temp value: a
 b		dd	0		; temp value: b
 xx		dd	0		; temp value: x-squared
 yy		dd	0		; temp value: y-squared
-xy		dd	0		; temp value: x-times-y
 xxmyy		dd	0		; temp value: x-squared minus y-squared
 sign		db	0		; sign calue: used by 16-bit multiplies
 period		db	0		; periodicity, if in the lake
@@ -125,7 +129,6 @@ savedand	dw	0		; AND value for periodicity checks
 savedincr	dw	0		; flag for incrementing AND value
 		align	4
 savedmask	dd	0		; saved values mask
-savedmax	dd	0		; saved max(delx, dely)
 savedx		dd	0		; saved values of X and Y iterations
 savedy		dd	0		;  (for periodicity checks)
 
@@ -133,11 +136,11 @@ _DATA2		ends
 
 .CODE
 
-; ***************** Function calcmand() **********************************
+; ***************** Function calcmandasm() **********************************
 
-	public	calcmand
+	public	calcmandasm
 
-calcmand proc
+calcmandasm proc
 
 	push	di
 	push	si
@@ -145,38 +148,38 @@ calcmand proc
 	mov	ax,0a000h		; EGA, VGA, MCGA starts here
 	mov	es,ax			; save it here during this routine
 
-	mov	ax,numpasses		; detect 1 or 2-pass mode
-	mov	passnum,al		; initialize pass counter
-	cmp	guessing,2		; are we guessing, not stage 1?
-	jge	short gotmask		; yup, skip mask calc
+	mov	kbdflag,0		; initialize keyboard int flag: nope
 
-	mov	ax,word ptr delx	; compute the periodicity check value
-	mov	dx,word ptr delx+2	; first find largest of delx, dely
-	or	ax,word ptr dely	; (only care about the first bit,
-	or	dx,word ptr dely+2	;  so this klooge works)
-	mov	word ptr savedmax,ax	; save this for later
-	mov	word ptr savedmax+2,dx	;  ...
+	cmp	calcmode,2		; 1pixel call?
+	jge	short dopixel		; yup, skip initialization, got row/col
+
+	mov	ax,word ptr delmin	; compute the periodicity check value
+	mov	dx,word ptr delmin+2	; load smallest of delx, dely
 	mov	word ptr savedmask,0	; starting value for savedmask
 	mov	word ptr savedmask+2,0c000h	;  ...
 maskloop:
 	sar	word ptr savedmask+2,1	; shift savedmask right one bit
 	rcr	word ptr savedmask,1	;  ...
-	shl	ax,1			; now shift delx.y left one bit
+	shl	ax,1			; now shift delmin left one bit
 	rcl	dx,1			;  ...
 	jnc	maskloop		; loop if no one bits hit yet
 
 	mov	kbdcount,100		; init keyboard ctr high for solidguess
-gotmask:
-	mov	kbdflag,0		; initialize keyboard int flag: nope
 
-passloop:
-	mov	ax,iystart		; initialize outer loop
-	mov	iy,ax			;  ...
+	cmp	calcmode,1		; do initialization only?
+	jne	passstart
+	jmp	wedone
+
+passstart:
+	mov	ax,yybegin		; initialize outer loop
+	mov	row,ax			;  ...
 
 yloop:					; for (y = iystart; y <= iystop; y++)
 	mov	ax,ixstart		; initialize inner loop
-	mov	ix,ax			;  ...
-	cmp	guessing,3		; guessing first pass, not 1st dot?
+	mov	col,ax			;  ...
+
+dopixel:
+	cmp	calcmode,3		; 1pixel, no periodicity reset?
 	je	short xloop		; inherit oldcolor from prior invocation
 	mov	oldcolor,0		; set (dummy) flag: old color was high
 	cmp	maxit,250		; over 250 iterations max?
@@ -187,27 +190,37 @@ yloop:					; for (y = iystart; y <= iystop; y++)
 
 xloop:					; for (x = ixstart; x <= ixstop; x++)
 	push	es			; save this for a tad
-	mov	bx,ix			; pull lx0 value out of the array
-	shl	bx,1			; convert to double-word pointer
-	shl	bx,1			;  ...
-	add	bx,word ptr lx0 	;  ..
-	mov	ax,word ptr lx0+2	; get the segment
-	mov	es,ax			;  ...
+	mov	cx,col			; pull lx0 value out of the array
+	shl	cx,1			; convert to double-word pointer
+	shl	cx,1			;  ...
+	les	bx,lx0
+	add	bx,cx
 	mov	ax,word ptr es:0[bx]	;  here it is!
 	mov	dx,word ptr es:2[bx]	;  ...
 	mov	word ptr a,ax		; save it for later
 	mov	word ptr a+2,dx 	;  ...
-
-	mov	bx,iy			; pull ly0 value out of the array
-	shl	bx,1			; convert to double-word pointer
-	shl	bx,1			;  ...
-	add	bx,word ptr ly0 	;  ..
-	mov	ax,word ptr ly0+2	; get the segment
-	mov	es,ax			;  ...
+	les	bx,ly1			; delta y per x
+	add	bx,cx
 	mov	ax,word ptr es:0[bx]	;  here it is!
 	mov	dx,word ptr es:2[bx]	;  ...
 	mov	word ptr b,ax		; save it for later
 	mov	word ptr b+2,dx 	;  ...
+
+	mov	cx,row			; pull ly0 value out of the array
+	shl	cx,1			; convert to double-word pointer
+	shl	cx,1			;  ...
+	les	bx,ly0
+	add	bx,cx
+	mov	ax,word ptr es:0[bx]	;  here it is!
+	mov	dx,word ptr es:2[bx]	;  ...
+	add	word ptr b,ax		; save it for later
+	adc	word ptr b+2,dx 	;  ...
+	les	bx,lx1			; delta x per y
+	add	bx,cx
+	mov	ax,word ptr es:0[bx]	;  here it is!
+	mov	dx,word ptr es:2[bx]	;  ...
+	add	word ptr a,ax		; save it for later
+	adc	word ptr a+2,dx 	;  ...
 	pop	es			; restore the segment
 
 	mov	ax,word ptr creal	; initialize x == creal
@@ -283,11 +296,11 @@ doeither:				; common Mandelbrot, Julia set code
 
 	cmp	numpasses,0		; multiple-pass mode?
 	jz	short singlepass	;  nope.  proceed.
-	cmp	passnum,0		; second pass?
+	cmp	passnum,2		; second pass?
 	jne	short singlepass	;  nope.  proceed
-	test	iy,1			; odd dot?
+	test	row,1			; odd dot?
 	jnz	short singlepass	;  yup.  proceed.
-	test	ix,1			; odd dot?
+	test	col,1			; odd dot?
 	jnz	short singlepass	;  yup.  proceed.
 	jmp	loopchecks		;  nope. skip it.
 singlepass:
@@ -307,7 +320,7 @@ singlepass:
 	mov	kbdcount,5000		; else, stuff an appropriate count val
 	cmp	cpu,386 		; ("appropriate" to the CPU)
 	je	short quickkbd		;  ...
-	cmp	word ptr savedmax+2,1	; is 16-bit math good enough?
+	cmp	word ptr delmin+2,1	; is 16-bit math good enough?
 	ja	quickkbd		;  yes. test less often
 	mov	kbdcount,500		;  no.	test more often
 quickkbd:
@@ -333,7 +346,7 @@ nokey:
 	jne	no16bitcode		;  yup.  slow down.
 	cmp	cpu,386 		; are we on a 386?
 	je	short code386bit	;  YAY!! 386-class speed!
-	cmp	word ptr savedmax+2,1	; OK, we're desperate.  16 bits OK?
+	cmp	word ptr delmin+2,1	; OK, we're desperate.  16 bits OK?
 	ja	yes16bitcode		;  YAY!  16-bit speed!
 no16bitcode:
 	call	near ptr code32bit	; BOO!! nap time.  Full 32 bit math
@@ -345,7 +358,7 @@ yes16bitcode:
 .386					; 386-specific code starts here
 
 code386bit:
-	cmp	word ptr savedmax+2,3	; is 16-bit math good enough?
+	cmp	word ptr delmin+2,3	; is 16-bit math good enough?
 	jbe	code386_32		; nope, go do 32 bit stuff
 IFDEF ??version
 	jmp	code386_32		; TASM screws up IMUL EBX,EBX!!
@@ -612,131 +625,87 @@ coloradjust3:				;
 	pop	si			; restore the registers
 	pop	es			;  ...
 coloradjust4:				;
-	and	ax,andcolor		; select the color
+	cmp	ax,colors		; fast skip, and avoid inside/outside=0
+	jl	coloradjust6		;  no need to adjust
+	cmp	colors,16		; >= 16 colors?
+	jge	coloradjust5		;  branch if so
+	and	ax,andcolor		; just mask the color
+	jmp	short coloradjust6	; go store it
+coloradjust5:                  		; >=16 colors, skip using color zero
+	sub	dx,dx 			; setup for divide
+	dec	ax    			; color - 1
+	div 	andcolor  		; divide by colors-1
+	mov 	ax,dx 			; color-1 modulus colors-1
+	inc  	ax   			; add back what we took off at start
+coloradjust6:
 	mov	color,al		; color result
 
-	mov	cx,ix			; set up the registers
-	mov	dx,iy			; for the write routine
-	mov	al,color		; color to use
-	call	asmdotwrite		; invoke the appropriate write-a-dot
+	mov	cx,col			; set up the registers
+	mov	dx,row			; for the write routine
+	call	near ptr displaydot	; display the dot, do symmetry if any
 
-	cmp	symmetry,0		; does symmetry apply?
-	jne	short passcheck 	; nope.  proceed.
+	cmp	calcmode,0		; called for just 1 pixel?
+	je	passcheck0		;  nope, go check 1 vs 2 pass stuff
+	mov	al,color		; setup return of color
+	xor	ah,ah			;  ...
+	mov	kbdflag,ax		;  ...
+	jmp	wedone			; finished
 
-	mov	cx,ix			; set up the registers
-	mov	dx,ydots		; for the write routine
-	sub	dx,iy			;  (symmetrical version)
-	dec	dx			;  ...
-	cmp	fractype,0		; Mandelbrot set?
-	je	sym01			;  yup.  Skip Julia symmetry
-	neg	cx			; convert ix
-	add	cx,xdots		;  to (xdots-1-ix)
-	dec	cx			;  ...
-sym01:	mov	al,color		; color to use
-	call	asmdotwrite		; invoke the appropriate write-a-dot
-
-passcheck:
-	cmp	passnum,0		; final pass?
-	jne	passcheck1		;  nope. write more dots.
-	jmp	loopchecks		; yup.	proceed.
+passcheck0:
+	cmp	passnum,2		; final pass?
+	je	loopchecks		;  yup, no extra dots to write
 passcheck1:
-	mov	cx,ix			; set up the registers
-	mov	dx,iy			; for the write routine
+	mov	cx,col			; set up the registers
+	test	cx,1			; doing odd col at start of pass 1?
+	jnz	passcheck2		;  yup, skip the dot to the right
+	cmp	cx,ixstop		; at the right edge?
+	jge	passcheck2		;  yup, skip the dot to the right
+	mov	dx,row			; for the write routine
 	inc	cx			; (but for the next x-dot)
-	mov	al,color		; color to use
-	call	asmdotwrite		; write the dot again
-	mov	cx,ix			; set up the registers
-	mov	dx,iy			; for the write routine
+	call	near ptr displaydot	; display the dot, do symmetry if any
+passcheck2:
+	mov	cx,col			; set up the registers
+	mov	dx,row			; for the write routine
+	test	dx,1			; doing odd row at start of pass 1?
+	jnz	passcheck3		;  yup, skip the row below
+	cmp	dx,iystop		; at the bottom?
+	jge	passcheck3		;  yup, skip the row below
 	inc	dx			; (but for the next y-dot)
-	mov	al,color		; color to use
-	call	asmdotwrite		; write the dot again
-	mov	cx,ix			; set up the registers
-	mov	dx,iy			; for the write routine
+	call	near ptr displaydot	; display the dot, do symmetry if any
+	mov	cx,col			; set up the registers
+	test	cx,1			; doing odd col at start of pass 1?
+	jnz	loopchecks		;  yup, skip the dot to the right
+	cmp	cx,ixstop		; at the right edge?
+	jge	loopchecks		;  yup, skip the dot to the right
+	mov	dx,row			; for the write routine
 	inc	cx			; (but for the next x-dot)
 	inc	dx			; (and the next y-dot)
-	mov	al,color		; color to use
-	call	asmdotwrite		; write the dot again
-	inc	ix			; note extra dots have been written
-
-	cmp	symmetry,0		; does symmetry apply?
-	jne	short loopchecks	; nope.  proceed.
-
-	mov	cx,ix			; set up the registers
-	mov	dx,ydots		; for the write routine
-	sub	dx,iy			;  (symmetrical version)
-	dec	dx			;  ...
-	cmp	fractype,0		; Mandelbrot set?
-	je	sym02			;  yup.  Skip Julia symmetry
-	neg	cx			; convert ix
-	add	cx,xdots		;  to (xdots-1-ix)
-	dec	cx			;  ...
-sym02:	mov	al,color		; color to use
-	call	asmdotwrite		; write the dot again
-	mov	cx,ix			; set up the registers
-	mov	dx,ydots		; for the write routine
-	sub	dx,iy			;  (symmetrical version)
-	dec	dx			;  ...
-	dec	cx			; (but for the previous x-dot)
-	dec	dx			; (but for the previous y-dot)
-	cmp	fractype,0		; Mandelbrot set?
-	je	sym03			;  yup.  Skip Julia symmetry
-	neg	cx			; convert ix
-	add	cx,xdots		;  to (xdots-1-ix)
-	dec	cx			;  ...
-sym03:	mov	al,color		; color to use
-	call	asmdotwrite		; write the dot again
-	mov	cx,ix			; set up the registers
-	mov	dx,ydots		; for the write routine
-	sub	dx,iy			;  (symmetrical version)
-	dec	dx			;  ...
-	dec	dx			; (and the previous y-dot)
-	cmp	fractype,0		; Mandelbrot set?
-	je	sym04			;  yup.  Skip Julia symmetry
-	neg	cx			; convert ix
-	add	cx,xdots		;  to (xdots-1-ix)
-	dec	cx			;  ...
-sym04:	mov	al,color		; color to use
-	call	asmdotwrite		; write the dot again
+	call	near ptr displaydot	; display the dot, do symmetry if any
+passcheck3:
+	test	col,1			; doing odd col at start of pass 1?
+	jnz	loopchecks		;  yup, incr col just once
+	inc	col			; note extra dots have been written
 
 loopchecks:
-	inc	ix			; check for end of xloop
-	mov	ax,ix			;  ...
+	inc	col			; check for end of xloop
+	mov	ax,col			;  ...
 	cmp	ax,ixstop		;  ...
 	ja	loopcheck1		; we done.
 	jmp	xloop			; more to go
 loopcheck1:
 
-	cmp	passnum,0		; last pass?
+	cmp	passnum,2		; last pass?
 	je	short	lastpass	;  yup.  proceed.
-	inc	iy			; adjust y-value
+	test	row,1			; doing odd row at start of pass 1?
+	jnz	short	lastpass
+	inc	row			; adjust y-value
 lastpass:
 
-	inc	iy			; check for end of yloop
-	mov	ax,iy			;  ...
+	inc	row			; check for end of yloop
+	mov	ax,row			;  ...
 	cmp	ax,iystop		;  ...
-	ja	loopcheck2		; we done.
-	cmp	symmetry,0		; does symmetry apply?
-	je	symcheck2		;  yup.  go check.
+	ja	wedone			; we done.
 	jmp	yloop			;  nope.  more to go
-
-symcheck2:				; symmetry applies
-	mov	ax,ydots		; gather the total dot count
-	shr	ax,1			; are we done with the top half?
-	cmp	iy,ax			;  ...
-	jae	loopcheck2		; yup.	we done.
-	jmp	yloop			; nope.  more to go
-
-loopcheck2:
-
-	dec	passnum 		; decrement the pass counter
-	js	loopcheck3		; we done.
-	jmp	passloop		; more to go
-loopcheck3:
-	cmp	guessing,0
-	je	short wedone
-	mov	al,color
-	xor	ah,ah
-	mov	kbdflag,ax
 
 wedone: 				; restore everything and return.
 	call	asmvideocleanup 	; perform any video cleanup required
@@ -746,7 +715,43 @@ wedone: 				; restore everything and return.
 	mov	ax,kbdflag		; return the keyboard-interrupt flag
 	ret				; and return.
 
-calcmand endp
+calcmandasm endp
+
+
+; ******************** Function displaydot ******************************
+;
+;	Display dot, checking for out of bounds and doing symmetry.
+;	Call with cx=col, dx=row.
+;
+displaydot	proc	near
+
+	push	cx			; save these for symmetry plot
+	push	dx			;  ...
+	mov	al,color		; color to use
+	call	asmdotwrite		; invoke the appropriate write-a-dot
+	pop	dx			; restore row/col
+	pop	cx			;  ...
+	cmp	symmetry,0		; does symmetry apply?
+	jne	dspret			;  nope.  done.
+	sub	dx,yystart		; yystop-(row-yystart)
+	neg	dx			;  ...
+	add	dx,yystop		;  ...
+	cmp	dx,iystop		; if not > iystop
+	jle	dspret			;  this row is the axis, skip it
+	cmp	dx,ydots		; out of bounds?
+	jge	dspret			;  yup, skip it
+	cmp	fractype,0		; Mandelbrot set?
+	je	dspsym			;  yup.  Skip Julia symmetry
+	sub	cx,xxstart		; convert to xxstop-(col-xxstart)
+	neg	cx			;  ...
+	add	cx,xxstop		;  ...
+	cmp	cx,xdots		; out of bounds? (subtle possibility)
+	jge	dspret			;  yup, skip it
+dspsym: mov	al,color		; color to use
+	call	asmdotwrite		; invoke the appropriate write-a-dot
+dspret: ret
+
+displaydot	endp
 
 
 ; ******************** Function code16bit() *****************************

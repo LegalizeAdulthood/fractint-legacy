@@ -1,10 +1,11 @@
 /* 
    This file includes miscellaneous plot functions and logic
-   for funny red/blue glasses 3D. By Tim Wegner, but I'm not
-   sure I should publicize the fact!  
+   for funny red/blue glasses 3D. By Tim Wegner and Marc Reinig.
 */ 
+
 #include <stdio.h>
 #include "fractint.h"
+#include "fractype.h"
 
 /* Use these palette indices for red/blue - same on ega/vga */
 #define BLUE 	    1
@@ -12,10 +13,7 @@
 #define MAGENTA	    3
 
 int whichimage;
-
-/* MRR */
 extern int fractype;
-
 extern int mapset;
 extern int xadjust;
 extern int yadjust;
@@ -24,6 +22,13 @@ extern int yyadjust;
 extern int xshift;
 extern int yshift; 
 extern char MAP_name[];
+extern int init3d[];
+extern int xdots;
+extern int ydots;
+extern int colors;
+extern unsigned char dacbox[256][3];
+extern void (*standardplot)();
+
 int xxadjust1;
 int yyadjust1;
 int eyeseparation = 0;
@@ -43,23 +48,16 @@ int blue_crop_right = 4;
 int red_bright      = 80;
 int blue_bright      = 100;
 
-extern int init3d[];
-extern int xdots;
-extern int ydots;
-extern int colors;
-extern unsigned char dacbox[256][3];
-extern void (*standardplot)();
-
 /* use this for continuous colors later */
 void plot3dsuperimpose16b(int x,int y,int color)
 {
    int tmp;
    if (color != 0)             /* Keeps index 0 still 0 */
    {
-       color = colors - color; /*  Reverses color order */
-       color = color / 4;  
-       if(color == 0)
-          color = 1;
+      color = colors - color; /*  Reverses color order */
+      color = color / 4;  
+      if(color == 0)
+         color = 1;
    }
    color = 3;
    tmp = getcolor(x,y);
@@ -85,7 +83,7 @@ void plot3dsuperimpose16(int x,int y,int color)
    int tmp;
 
    tmp = getcolor(x,y);
-   
+
    if(whichimage == 1) /* RED */
    {
       color = RED;
@@ -106,45 +104,42 @@ void plot3dsuperimpose16(int x,int y,int color)
    }
 }
 
-/* MRR - changed function */
 void plot3dsuperimpose256(x,y,color)
 {
    int tmp;
    if (color != 0)             /* Keeps index 0 still 0 */
    {
-       /* my mind is fried - lower indices = darker colors is EASIER! */
-       color = colors - color; /*  Reverses color order */
-       color = 1 + color / 18; /*  Looks weird but maps colors 1-255 to 15
-                                   relatively even ranges */
+      color = colors - color; /*  Reverses color order */
+      color = 1 + color / 18; /*  Maps colors 1-255 to 15 even ranges */
    }
    tmp = getcolor(x,y);
    /* map to 16 colors */
    if(whichimage == 1) /* RED */
    {
       if(red_local_left < x && x < red_local_right)
+      /* Overwrite prev Red don't mess w/blue */
          putcolor(x,y,color|(tmp&240));
-             /* Overwrite prev Red don't mess w/blue */
    }
    else if(whichimage == 2) /* BLUE */
    {
       if(blue_local_left < x && x < blue_local_right)
       {
+         /* Overwrite previous blue, don't mess with existing red */
          color = color <<4;
          putcolor(x,y,color|(tmp&15));
-            /* Overwrite previous blue, don't mess with existing red */
       }
    }
 }
-/* MRR - added function */
+
 void plotIFS3dsuperimpose256(x,y,color)
 {
    int tmp;
    if (color != 0)             /* Keeps index 0 still 0 */
    {
-       /* my mind is fried - lower indices = darker colors is EASIER! */
-       color = colors - color; /*  Reverses color order */
-       color = 1 + color / 18; /*  Looks weird but maps colors 1-255 to 15
-                                   relatively even ranges */
+      /* my mind is fried - lower indices = darker colors is EASIER! */
+      color = colors - color; /*  Reverses color order */
+      color = 1 + color / 18; /*  Looks weird but maps colors 1-255 to 15
+                                         relatively even ranges */
    }
    tmp = getcolor(x,y);
    /* map to 16 colors */
@@ -187,7 +182,6 @@ plot_setup()
    double d_red_bright, d_blue_bright;
    int i;
 
-
    /* set funny glasses plot function */
    switch(glassestype)
    {
@@ -196,13 +190,10 @@ plot_setup()
       break;  
    case 2:
       if(colors == 256)
-
-/* MRR - select different plot function if IFS3d */
-         if (fractype != 27)
-             standardplot = plot3dsuperimpose256;
+         if (fractype != IFS3D)
+            standardplot = plot3dsuperimpose256;
          else
-             standardplot = plotIFS3dsuperimpose256;
-
+            standardplot = plotIFS3dsuperimpose256;
       else
          standardplot = plot3dsuperimpose16;
       break;
@@ -320,4 +311,3 @@ plot_setup()
       spindac(0,1); /* load it, but don't spin */
    }
 }
-

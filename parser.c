@@ -27,16 +27,7 @@ void far *farmemalloc(long bytestoalloc);
 void farmemfree(void far *farptr);
 
 MATH_TYPE MathType = D_MATH;
-
-struct lcplx {
-   long x, y;
-};
-
-union Arg {
-   struct complex d;
-   struct MPC m;
-   struct lcplx l;
-};
+/* moved struct lcomplex and union ARg to mpmath.h -6-20-90 TIW */
 
 struct ConstArg {
    char *s;
@@ -45,8 +36,8 @@ struct ConstArg {
 };
 
 struct PEND_OP {
-	void (far *f)(void);
-	int p;
+   void (far *f)(void);
+   int p;
 };
 struct PEND_OP far *o;
 
@@ -58,22 +49,41 @@ void (far * far *f)(void) = (void(far * far *)(void))0;
 static unsigned n, ErrPtr, posp, vsp, NextOp, LastOp, InitN;
 static int paren, SyntaxErr, ExpectingArg;
 static struct ConstArg far *v;
-static int InitLodPtr, InitStoPtr, InitOpPtr, LastInitOp, NumVar, Delta16;
-static double fg, fgLimit;
+static int InitLodPtr, InitStoPtr, InitOpPtr, LastInitOp, NumVar; 
+static int Delta16;
+static double fgLimit;
+static double fg;
+static int ShiftBack;     /* TIW 06-18-90 */
 
 extern int bitshift;
+extern int bitshiftless1;
 extern long multiply(long x, long y, int bitshift);
 extern long divide(long x, long y, int bitshift);
-extern int symmetry;       /* symmetry flag for calcmand()  */
+extern int symmetry;          /* symmetry flag for calcmand()  */
 extern double param[];
 
 extern int debugflag;         /* BDT for debugging */
-extern   int   oktoprint;     /* BDT 0 if printf() won't work */
+extern int oktoprint;         /* BDT 0 if printf() won't work */
 extern int row, col, overflow, cpu, fpu;
 extern struct complex old, new;
 extern double far *dx0, far *dy0;
 extern long far *lx0, far *ly0;     /* BDT moved these to FAR */
-extern struct lcplx lold, lnew;
+
+#ifndef TESTING_MATH
+   extern double far *dx1, far *dy1;
+   extern long far *lx1, far *ly1;
+   #define dShiftx dx1[row]
+   #define dShifty dy1[col]
+   #define lShiftx lx1[row]
+   #define lShifty ly1[col]
+#else
+   #define dShiftx 0.0
+   #define dShifty 0.0
+   #define lShiftx 0L
+   #define lShifty 0L
+#endif
+
+extern struct lcomplex lold, lnew;
 extern char FormName[];
 
 #define LastSqr v[4].a
@@ -94,10 +104,10 @@ void dStkAbs(void) {
 }
 
 void mStkAbs(void) {
-	if(Arg1->m.x.Exp < 0)
-		Arg1->m.x.Exp = -Arg1->m.x.Exp;
-	if(Arg1->m.y.Exp < 0)
-		Arg1->m.y.Exp = -Arg1->m.y.Exp;
+   if(Arg1->m.x.Exp < 0)
+      Arg1->m.x.Exp = -Arg1->m.x.Exp;
+   if(Arg1->m.y.Exp < 0)
+      Arg1->m.y.Exp = -Arg1->m.y.Exp;
 }
 
 void lStkAbs(void) {
@@ -137,21 +147,21 @@ void (*StkSqr)(void) = dStkSqr;
 void dStkAdd(void) {
    Arg2->d.x += Arg1->d.x;
    Arg2->d.y += Arg1->d.y;
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void mStkAdd(void) {
    Arg2->m = MPCadd(Arg2->m, Arg1->m);
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void lStkAdd(void) {
    Arg2->l.x += Arg1->l.x;
    Arg2->l.y += Arg1->l.y;
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void (*StkAdd)(void) = dStkAdd;
@@ -159,21 +169,21 @@ void (*StkAdd)(void) = dStkAdd;
 void dStkSub(void) {
    Arg2->d.x -= Arg1->d.x;
    Arg2->d.y -= Arg1->d.y;
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void mStkSub(void) {
    Arg2->m = MPCsub(Arg2->m, Arg1->m);
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void lStkSub(void) {
    Arg2->l.x -= Arg1->l.x;
    Arg2->l.y -= Arg1->l.y;
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void (*StkSub)(void) = dStkSub;
@@ -239,14 +249,14 @@ void (*StkNeg)(void) = dStkNeg;
 
 void dStkMul(void) {
    FPUcplxmul(&Arg2->d, &Arg1->d, &Arg2->d);
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void mStkMul(void) {
    Arg2->m = MPCmul(Arg2->m, Arg1->m);
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void lStkMul(void) {
@@ -258,37 +268,38 @@ void lStkMul(void) {
        multiply(Arg2->l.x, Arg1->l.y, bitshift);
    Arg2->l.x = x;
    Arg2->l.y = y;
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void (*StkMul)(void) = dStkMul;
 
 void dStkDiv(void) {
    FPUcplxdiv(&Arg2->d, &Arg1->d, &Arg2->d);
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void mStkDiv(void) {
    Arg2->m = MPCdiv(Arg2->m, Arg1->m);
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void lStkDiv(void) {
-   long x, y, mod;
+   long x, y, mod, x2, y2;
 
-	mod = multiply(Arg1->l.x, Arg1->l.x, bitshift) +
-			multiply(Arg1->l.y, Arg1->l.y, bitshift);
+   mod = multiply(Arg1->l.x, Arg1->l.x, bitshift) +
+         multiply(Arg1->l.y, Arg1->l.y, bitshift);
    x = divide(Arg1->l.x, mod, bitshift);
    y = -divide(Arg1->l.y, mod, bitshift);
-	x = multiply(Arg2->l.x, x, bitshift) - multiply(Arg2->l.y, y, bitshift);
-	y = multiply(Arg2->l.y, x, bitshift) + multiply(Arg2->l.x, y, bitshift);
-	Arg2->l.x = x;
-	Arg2->l.y = y;
-   Arg1 --;
-   Arg2 --;
+   /* pb 900617 changed next 4 lines to use x2,y2 instead of x,y */
+   x2 = multiply(Arg2->l.x, x, bitshift) - multiply(Arg2->l.y, y, bitshift);
+   y2 = multiply(Arg2->l.y, x, bitshift) + multiply(Arg2->l.x, y, bitshift);
+   Arg2->l.x = x2;
+   Arg2->l.y = y2;
+   Arg1--;
+   Arg2--;
 }
 
 void (*StkDiv)(void) = dStkDiv;
@@ -298,8 +309,8 @@ void StkSto(void) {
 }
 
 void StkLod(void) {
-   Arg1 += 1;
-   Arg2 += 1;
+   Arg1++;
+   Arg2++;
    *Arg1 = *Load[LodPtr++];
 }
 
@@ -315,9 +326,9 @@ void mStkMod(void) {
 
 void lStkMod(void) {
    Arg1->l.x = multiply(Arg2->l.x, Arg1->l.x, bitshift) +
-					  multiply(Arg2->l.y, Arg1->l.y, bitshift);
-	if(Arg1->l.x < 0)
-		overflow = 1;
+                 multiply(Arg2->l.y, Arg1->l.y, bitshift);
+   if(Arg1->l.x < 0)
+      overflow = 1;
    Arg1->l.y = 0L;
 }
 
@@ -326,7 +337,8 @@ void (*StkMod)(void) = dStkMod;
 void StkClr(void) {
    s[0] = *Arg1;
    Arg1 = &s[0];
-   Arg2 = Arg1 - 1;
+   Arg2 = Arg1;
+   Arg2--;
 }
 
 void dStkSin(void) {
@@ -345,15 +357,15 @@ void mStkSin(void) {
 }
 
 void lStkSin(void) {
-	int f;
-	long x, y, sinx, cosx, sinhy, coshy;
+   int f;
+   long x, y, sinx, cosx, sinhy, coshy;
 
-	x = Arg1->l.x >> Delta16;
-	y = Arg1->l.y >> Delta16;
+   x = Arg1->l.x >> Delta16;
+   y = Arg1->l.y >> Delta16;
    SinCos086(x, &sinx, &cosx);
- 	SinhCosh086(y, &sinhy, &coshy);
-  	Arg1->l.x = multiply(sinx, coshy, Delta16);
-  	Arg1->l.y = multiply(cosx, sinhy, Delta16);
+   SinhCosh086(y, &sinhy, &coshy);
+   Arg1->l.x = multiply(sinx, coshy, ShiftBack); /* TIW 06-18-90 */
+   Arg1->l.y = multiply(cosx, sinhy, ShiftBack); /* TIW 06-18-90 */
 }
 
 void (*StkSin)(void) = dStkSin;
@@ -374,15 +386,15 @@ void mStkSinh(void) {
 }
 
 void lStkSinh(void) {
-	int f;
-	long x, y, sinhx, coshx, siny, cosy;
+   int f;
+   long x, y, sinhx, coshx, siny, cosy;
 
-	x = Arg1->l.x >> Delta16;
-	y = Arg1->l.y >> Delta16;
+   x = Arg1->l.x >> Delta16;
+   y = Arg1->l.y >> Delta16;
    SinCos086(y, &siny, &cosy);
- 	SinhCosh086(x, &sinhx, &coshx);
-  	Arg1->l.x = multiply(cosy, sinhx, Delta16);
-  	Arg1->l.y = multiply(siny, coshx, Delta16);
+   SinhCosh086(x, &sinhx, &coshx);
+   Arg1->l.x = multiply(cosy, sinhx, ShiftBack); /* TIW 06-18-90 */
+   Arg1->l.y = multiply(siny, coshx, ShiftBack); /* TIW 06-18-90 */
 }
 
 void (*StkSinh)(void) = dStkSinh;
@@ -403,15 +415,15 @@ void mStkCos(void) {
 }
 
 void lStkCos(void) {
-	int f;
-	long x, y, sinx, cosx, sinhy, coshy;
+   int f;
+   long x, y, sinx, cosx, sinhy, coshy;
 
-	x = Arg1->l.x >> Delta16;
-	y = Arg1->l.y >> Delta16;
+   x = Arg1->l.x >> Delta16;
+   y = Arg1->l.y >> Delta16;
    SinCos086(x, &sinx, &cosx);
- 	SinhCosh086(y, &sinhy, &coshy);
-  	Arg1->l.x = multiply(cosx, coshy, Delta16);
-  	Arg1->l.y = multiply(sinx, sinhy, Delta16);
+   SinhCosh086(y, &sinhy, &coshy);
+   Arg1->l.x = multiply(cosx, coshy, ShiftBack); /* TIW 06-18-90 */
+   Arg1->l.y = multiply(sinx, sinhy, ShiftBack); /* TIW 06-18-90 */
 }
 
 void (*StkCos)(void) = dStkCos;
@@ -432,15 +444,15 @@ void mStkCosh(void) {
 }
 
 void lStkCosh(void) {
-	int f;
-	long x, y, sinhx, coshx, siny, cosy;
+   int f;
+   long x, y, sinhx, coshx, siny, cosy;
 
-	x = Arg1->l.x >> Delta16;
-	y = Arg1->l.y >> Delta16;
+   x = Arg1->l.x >> Delta16;
+   y = Arg1->l.y >> Delta16;
    SinCos086(y, &siny, &cosy);
- 	SinhCosh086(x, &sinhx, &coshx);
-  	Arg1->l.x = multiply(cosy, coshx, Delta16);
-  	Arg1->l.y = multiply(siny, sinhx, Delta16);
+   SinhCosh086(x, &sinhx, &coshx);
+   Arg1->l.x = multiply(cosy, coshx, ShiftBack); /* TIW 06-18-90 */
+   Arg1->l.y = multiply(siny, sinhx, ShiftBack); /* TIW 06-18-90 */
 }
 
 void (*StkCosh)(void) = dStkCosh;
@@ -448,22 +460,22 @@ void (*StkCosh)(void) = dStkCosh;
 void dStkLT(void) {
    Arg2->d.x = (double)(Arg2->d.x < Arg1->d.x);
    Arg2->d.y = 0.0;
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void mStkLT(void) {
    Arg2->m.x = fg2MP((long)(MPcmp(Arg2->m.x, Arg1->m.x) == -1), 0);
    Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void lStkLT(void) {
    Arg2->l.x = Arg2->l.x < Arg1->l.x;
    Arg2->l.y = 0l;
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void (*StkLT)(void) = dStkLT;
@@ -471,8 +483,8 @@ void (*StkLT)(void) = dStkLT;
 void dStkLTE(void) {
    Arg2->d.x = (double)(Arg2->d.x <= Arg1->d.x);
    Arg2->d.y = 0.0;
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void mStkLTE(void) {
@@ -481,15 +493,15 @@ void mStkLTE(void) {
    comp = MPcmp(Arg2->m.x, Arg1->m.x);
    Arg2->m.x = fg2MP((long)(comp == -1 || comp == 0), 0);
    Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void lStkLTE(void) {
    Arg2->l.x = Arg2->l.x <= Arg1->l.x;
    Arg2->l.y = 0l;
-   Arg1 --;
-   Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void (*StkLTE)(void) = dStkLTE;
@@ -527,7 +539,7 @@ void FPUcplxexp(struct complex *x, struct complex *z) {
       FPUcplxexp387(x, z);
    else {
       e2x = exp(x->x);
-		FPUsincos(&x->y, &siny, &cosy);
+      FPUsincos(&x->y, &siny, &cosy);
       z->x = e2x * cosy;
       z->y = e2x * siny;
    }
@@ -560,9 +572,9 @@ void lStkExp(void) {
 void (*StkExp)(void) = dStkExp;
 
 void dStkPwr(void) {
-	Arg2->d = ComplexPower(Arg2->d, Arg1->d);
-   Arg1 --;
-   Arg2 --;
+   Arg2->d = ComplexPower(Arg2->d, Arg1->d);
+   Arg1--;
+   Arg2--;
 }
 
 void mStkPwr(void) {
@@ -572,8 +584,8 @@ void mStkPwr(void) {
    y = MPC2cmplx(Arg1->m);
    x = ComplexPower(x, y);
    Arg2->m = cmplx2MPC(x);
-	Arg1 --;
-	Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void lStkPwr(void) {
@@ -590,8 +602,8 @@ void lStkPwr(void) {
    }
    else
       overflow = 1;
-	Arg1 --;
-	Arg2 --;
+   Arg1--;
+   Arg2--;
 }
 
 void (*StkPwr)(void) = dStkPwr;
@@ -613,7 +625,7 @@ struct ConstArg far *isconst(char *Str, int Len) {
    v[vsp].s = Str;
    v[vsp].len = Len;
    v[vsp].a.d.x = v[vsp].a.d.y = 0.0;
-	if(isdigit(Str[0]) || Str[0] == '.') {
+   if(isdigit(Str[0]) || Str[0] == '.') {
       if(o[posp-1].f == StkNeg) {
          posp--;
          Str = Str - 1;
@@ -667,6 +679,9 @@ struct FNCT_LIST FnctList[] = {
    "imag", &StkImag,
 };
 
+void NotAFnct(void) { }
+void FnctNotFound(void) { }
+
 void (far *isfunct(char *Str, int Len))(void) {
    unsigned n;
 
@@ -678,9 +693,9 @@ void (far *isfunct(char *Str, int Len))(void) {
                return(*FnctList[n].ptr);
          }
       }
-      return((void far **)-1);
+      return(FnctNotFound);
    }
-   return((void far *)0);
+   return(NotAFnct);
 }
 
 void RecSortPrec(void) {
@@ -691,11 +706,11 @@ void RecSortPrec(void) {
    f[OpPtr++] = o[ThisOp].f;
 }
 
-static char *Constants[] = { 
-   "pixel", 
-   "p1", 
-   "p2", 
-   "z", 
+static char *Constants[] = {
+   "pixel",
+   "p1",
+   "p2",
+   "z",
    "LastSqr",
 };
 
@@ -721,19 +736,19 @@ struct SYMETRY {
 int ParseStr(char *Str) {
    char memstr[80];
    struct ConstArg far *c;
-	int CondFlag = 0, ModFlag = 999, Len, Equals = 0, Mod[20], mdstk = 0;
-	struct ERROR { int n, s; } far *e;
+   int CondFlag = 0, ModFlag = 999, Len, Equals = 0, Mod[20], mdstk = 0;
+   struct ERROR { int n, s; } far *e;
    strcpy(memstr,"Insufficient memory to run fractal type 'formula'\n");
 
    e = (struct ERROR far *)farmemalloc(sizeof(struct ERROR) * 100L);
    o = (struct PEND_OP far *)farmemalloc(sizeof(struct PEND_OP) * 100L);
    a = (union Arg far *)farmemalloc(sizeof(union Arg) * 100L);
-	Store = (union Arg far * far *)farmemalloc(sizeof(union Arg far *) * 100L);
-	Load = (union Arg far * far *)farmemalloc(sizeof(union Arg far *) * 100L);
+   Store = (union Arg far * far *)farmemalloc(sizeof(union Arg far *) * 100L);
+   Load = (union Arg far * far *)farmemalloc(sizeof(union Arg far *) * 100L);
    v = (struct ConstArg far *)farmemalloc(sizeof(struct ConstArg) * 100L);
    if(!e || !o || !a || !Store || !Load || !v) {
       if(oktoprint)
-			fprintf(stderr, memstr);
+         fprintf(stderr, memstr);
       return(1);
    }
    switch(MathType) {
@@ -770,7 +785,7 @@ int ParseStr(char *Str) {
          StkLTE = mStkLTE;
          StkMod = mStkMod;
          StkSqr = mStkSqr;
-         StkCos = mStkCos; 
+         StkCos = mStkCos;
          StkCosh = mStkCosh;
          StkLog = mStkLog;
          StkExp = mStkExp;
@@ -781,8 +796,9 @@ int ParseStr(char *Str) {
          StkImag = mStkImag;
          StkConj = mStkConj;
          break;
-		case L_MATH:
-			Delta16 = bitshift - 16;
+      case L_MATH:
+         Delta16 = bitshift - 16;
+         ShiftBack = 32 - bitshift; /* TW 06-18-90 */
          StkAdd = lStkAdd;
          StkSub = lStkSub;
          StkNeg = lStkNeg;
@@ -858,15 +874,15 @@ int ParseStr(char *Str) {
             if(ModFlag == paren-1) {
                if(ExpectingArg)
                   SyntaxErr = 0;
-					paren--;
-					ModFlag = Mod[--mdstk];
+               paren--;
+               ModFlag = Mod[--mdstk];
             }
             else {
                if(!ExpectingArg)
-						SyntaxErr = 1;
-					Mod[mdstk++] = ModFlag;
-					o[posp].f = StkMod;
-					o[posp++].p = 2 - (paren + Equals)*15;
+                  SyntaxErr = 1;
+               Mod[mdstk++] = ModFlag;
+               o[posp].f = StkMod;
+               o[posp++].p = 2 - (paren + Equals)*15;
                ModFlag = paren++;
             }
             break;
@@ -966,12 +982,14 @@ int ParseStr(char *Str) {
             if(isalnum(Str[n]) || Str[n] == '.') {
                while(isalnum(Str[n+1]) || Str[n+1] == '.')
                   n++;
-               if(!ExpectingArg)
+               if(!ExpectingArg) {
                   SyntaxErr = 1;
+               }
                ExpectingArg = 0;
                Len = (n+1)-InitN;
-               if(o[posp].f = isfunct(&Str[InitN], Len)) {
-                  if(o[posp].f == (void(far*)(void))-1) {
+               o[posp].f = isfunct(&Str[InitN], Len);
+               if(o[posp].f != NotAFnct) {
+                  if(o[posp].f == FnctNotFound) {
                      e[ErrPtr].n = InitN;
                      e[ErrPtr++].s = 5;
                   }
@@ -1025,8 +1043,8 @@ int ParseStr(char *Str) {
       LastOp = posp;
       NumVar = vsp;
       if(f)
-	   	farmemfree(f);
-	   f = (void(far * far *)(void))farmemalloc(sizeof(void(far * far *)(void)) 
+         farmemfree(f);
+      f = (void(far * far *)(void))farmemalloc(sizeof(void(far * far *)(void))
             * (long)posp);
       if(!f) {
          if(oktoprint)
@@ -1046,7 +1064,7 @@ int ParseStr(char *Str) {
       posp = 0;
    farmemfree(o);
    farmemfree(e);
-	farmemfree(a);
+   farmemfree(a);
    farmemfree(Store);
    farmemfree(Load);
    farmemfree(v);
@@ -1061,7 +1079,8 @@ int Formula(void) {
    OpPtr = InitOpPtr;
 
    Arg1 = &s[0];
-   Arg2 = Arg1 - 1;
+   Arg2 = Arg1;
+   Arg2--;
    while(OpPtr < LastOp)
       f[OpPtr++]();
 
@@ -1087,19 +1106,20 @@ int form_per_pixel(void) {
    if (FormName[0] == 0) return(1);
    overflow = LodPtr = StoPtr = OpPtr = 0;
    Arg1 = &s[0];
-   Arg2 = Arg1 - 1;
+   Arg2 = Arg1;
+   Arg2--;
    switch(MathType) {
       case D_MATH:
-         old.x = new.x = v[0].a.d.x = dx0[col];
-         old.y = new.y = v[0].a.d.y = dy0[row];
+         old.x = new.x = v[0].a.d.x = dx0[col]+dShiftx;
+         old.y = new.y = v[0].a.d.y = dy0[row]+dShifty;
          break;
       case M_MATH:
-         v[0].a.m.x = d2MP(old.x = new.x = dx0[col]);
-         v[0].a.m.y = d2MP(old.y = new.y = dy0[row]);
+         v[0].a.m.x = d2MP(old.x = new.x = dx0[col]+dShiftx);
+         v[0].a.m.y = d2MP(old.y = new.y = dy0[row]+dShifty);
          break;
       case L_MATH:
-         lold.x = lnew.x = v[0].a.l.x = lx0[col];
-         lold.y = lnew.y = v[0].a.l.y = ly0[row];
+         lold.x = lnew.x = v[0].a.l.x = lx0[col]+lShiftx;
+         lold.y = lnew.y = v[0].a.l.y = ly0[row]+lShifty;
          break;
    }
 
@@ -1133,13 +1153,13 @@ char *FindFormula(char *Str) {
 
    symmetry = 0;
    if(File = fopen(fullfilename, "rt")) { /* BDT use variable files */
-		while(fscanf(File, "%200[^ \n\t({]", StrBuff) != EOF) {
-         if(!stricmp(StrBuff, Str) || !Str[0]) { 
-				while((c = getc(File)) != EOF) {
+      while(fscanf(File, "%200[^ \n\t({]", StrBuff) != EOF) {
+         if(!stricmp(StrBuff, Str) || !Str[0]) {
+            while((c = getc(File)) != EOF) {
                if(c == '(') {
-						fscanf(File, "%200[^)]", StrBuff);
+                  fscanf(File, "%200[^)]", StrBuff);
                   for(n = 0; SymStr[n].s[0]; n++) {
-							if(!stricmp(SymStr[n].s, StrBuff)) {
+                     if(!stricmp(SymStr[n].s, StrBuff)) {
                         symmetry = SymStr[n].n;
                         break;
                      }
@@ -1167,17 +1187,17 @@ char *FindFormula(char *Str) {
             else {
                fclose(File);        /* BDT close the file */
                return((char*)0);
-				}
-			}
-			fscanf(File, "%200[ \n\t({]", StrBuff);
-			if(StrBuff[strcspn(StrBuff, "({")]) {
+            }
+         }
+         fscanf(File, "%200[ \n\t({]", StrBuff);
+         if(StrBuff[strcspn(StrBuff, "({")]) {
 skipcomments:
-				fscanf(File, "%200[^}]", StrBuff);
-				if (getc(File)!= '}') goto skipcomments;
-			}
-		}
+            fscanf(File, "%200[^}]", StrBuff);
+            if (getc(File)!= '}') goto skipcomments;
+         }
+      }
    }
-   else if (oktoprint) 
+   else if (oktoprint)
       fprintf(stderr, "Unable to open %s\n", FormFileName);
    return((char*)0);
 }
@@ -1187,7 +1207,7 @@ int RunForm(char *Name) {
    if(FormStr = FindFormula(Name))
       return(ParseStr(FormStr));
    else {
-      if (oktoprint) 
+      if (oktoprint)
          fprintf(stderr, "Formula \"%s\" not found\n", Name);
       return(1);
    }
@@ -1207,6 +1227,22 @@ int fpFormulaSetup(void) {
 int intFormulaSetup(void) {
    MathType = L_MATH;
    fg = (double)(1L << bitshift);
-	fgLimit = (double)0x7fffffffL / fg;
+   fgLimit = (double)0x7fffffffL / fg;
+   ShiftBack = 32 - bitshift;
    return(!RunForm(FormName));
+}
+
+
+/* TIW added 06-20-90 so functions can be called from fractals.c */
+void init_misc() 
+{
+   static struct ConstArg far vv[5];
+   static union Arg argfirst,argsecond;
+   v = vv;  /* this is needed by lStkSqr and dStkSqr */
+   Arg1 = &argfirst; Arg2 = &argsecond; /* needed by all the ?Stk* functions */
+   fg = (double)(1L << bitshift);
+   fgLimit = (double)0x7fffffffL / fg;
+   ShiftBack = 32 - bitshift;
+   Delta16 = bitshift - 16;
+   bitshiftless1 = bitshift-1;
 }

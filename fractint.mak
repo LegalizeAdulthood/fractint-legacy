@@ -1,8 +1,8 @@
-.c.obj:	
+.c.obj:
 #	qcl /AM /W1 /FPi /c /Olt $*.c
 #	cl /AM /W1 /FPi /qc /c /Zi $*.c
-#	cl /AM /W1 /FPi /qc /c $*.c
 	cl /AM /W1 /FPi /c /Oait $*.c
+#	cl /AM /W1 /FPi /qc /c $*.c
 
 .asm.obj:
 #	masm /ML /Zi $*;
@@ -11,7 +11,7 @@
 
 lorenz.obj : lorenz.c fractint.h fractype.h
 
-plot3d.obj : plot3d.c
+plot3d.obj : plot3d.c fractint.h fractype.h
 
 3d.obj : 3d.c fractint.h
 
@@ -31,7 +31,7 @@ decoder.obj : decoder.c fractint.h
 
 diskvid.obj : diskvid.c fractint.h
 
-encoder.obj : encoder.c fractint.h
+encoder.obj : encoder.c fractint.h fractype.h
 
 farmsg.obj : farmsg.asm
 
@@ -85,6 +85,8 @@ mpmath_a.obj : mpmath_a.asm
 
 jb.obj : jb.c fractint.h
 
+zoom.obj : zoom.c fractint.h
+
 fractint.exe : fractint.obj help.obj config.obj encoder.obj gifview.obj \
      general.obj calcmand.obj fractals.obj calcfrac.obj testpt.obj \
      decoder.obj rotate.obj yourvid.obj prompts.obj parser.obj \
@@ -92,6 +94,7 @@ fractint.exe : fractint.obj help.obj config.obj encoder.obj gifview.obj \
      targa.obj loadmap.obj tgasubs.obj printer.obj \
      video.obj tgaview.obj f16.obj fr8514a.obj \
      hgcfra.obj fpu087.obj fpu387.obj mpmath_c.obj  mpmath_a.obj \
-     lorenz.obj plot3d.obj jb.obj
+     lorenz.obj plot3d.obj jb.obj zoom.obj
 #	link /ST:4096 /CO /NOE @fractint.lnk
 	link /ST:4096 /NOE @fractint.lnk
+        lzexe fractint

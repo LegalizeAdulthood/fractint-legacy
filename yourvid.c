@@ -34,6 +34,18 @@ these routines accordingly.  The four routines are:
  int readvideo(int x, int y)  return the color number of pixel x,y
                  using the same coordinate logic as 'writevideo()'
 
+ int readvideopalette() read the contents of the adapter's video
+                 palette into the 'unsigned char dacbox[256][3]' array
+                 (up to 256 R/G/B triplets, each with values from 0 to 63).
+                 Set dacbox[0][0] = 255 if there is no such palette.
+                 Return a -1 if you want the normal internal EGA/VGA 
+                 routines to handle this function.
+
+ int writevideopalette() write the contents of the adapter's video
+                 palette from the 'unsigned char dacbox[256][3]' array
+                 (up to 256 R/G/B triplets, each with values from 0 to 63).
+                 Return a -1 if you want the normal internal EGA/VGA 
+                 routines to handle this function.
 
 Finally, note that, although these example routines are written in "C",
 they could just as easily (or maybe more easily!) have been written
@@ -47,6 +59,10 @@ extern	int	dotmode;		/* video access method (= 19)      */
 extern	int	oktoprint;		/* set to 0 if printf() won't work */
 extern	int	xdots, ydots;		/* total # of dots on the screen   */
 extern	int	colors;			/* maximum colors available        */
+
+/* the video-palette array (named after the VGA adapter's video-DAC) */
+
+extern unsigned char dacbox[256][3];
 
 /* for demo purposes, these routines use VGA mode 13h - 320x200x256 */
 
@@ -105,5 +121,19 @@ regs.x.dx = y;
 int86(0x10,&regs,&regs);
 
 return((unsigned int)regs.h.al);	/* return pixel color */
+
+}
+
+int readvideopalette()
+{
+
+return (-1);                            /* let the internal routines do it */
+
+}
+
+int writevideopalette()
+{
+
+return (-1);                            /* let the internal routines do it */
 
 }

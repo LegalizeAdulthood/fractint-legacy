@@ -12,37 +12,36 @@
 #include "fractint.h"
 #include "fractype.h"
 #include "targa_lc.h"
-int file_type = -1;     /* 0=GIF, 1=Tim's pot (may become Targa) TW 7/20/89 */
-
-/* looks for fractal_info within MAX_LOOK bytes of end of file */
-#define MAX_LOOK 612            /* equals max bytes garbage at end of file */
+int file_type = -1;	/* 0=GIF, 1=Tim's pot (may become Targa) TW 7/20/89 */
 
 int filetype;
+extern char far *resume_info;	/* pointer to resume info if allocated */
+extern int  resume_len; 	/* length of resume info */
+extern char FormName[40];	/* formula name */
+
 find_fractal_info(gif_file,info)
 char *gif_file;
 struct fractal_info *info;
 {
-   long where;
-   int ct;
    FILE *fp;
-   unsigned char gifstart[18]; 
+   unsigned char gifstart[18];
    int rows, cols, colors;
    char temp1[81];
+   int scan_extend, block_type, block_len;
+   char far *resume_load;
 
-   ct = 0;
- 
    strcpy(temp1,gif_file);
    if (strchr(temp1,'.') == NULL) {
       strcat(temp1,DEFAULTFRACTALTYPE);
       if ((fp = fopen(temp1,"rb")) != NULL) {
-         fclose(fp);
-         }
+	 fclose(fp);
+	 }
       else {
-         strcpy(temp1,gif_file);
-         strcat(temp1,ALTERNATEFRACTALTYPE);
-         }
+	 strcpy(temp1,gif_file);
+	 strcat(temp1,ALTERNATEFRACTALTYPE);
+	 }
       }
-  
+
    if((fp = fopen(temp1,"rb"))==NULL)
    {
       *gif_file = 0; /* failed ... zap filename */
@@ -53,8 +52,8 @@ struct fractal_info *info;
       filetype = 0; /* GIF */
    else  if (strncmp(gifstart,"TIW16BIT",8)==0)
       filetype = 1; /* TIW file type - change to Targa */
-   else if(fread(info,sizeof(struct fractal_info),1,fp)==1 && 
-                 strncmp(info->info_id,"Fractal",8)==0)
+   else if(fread(info,sizeof(struct fractal_info),1,fp)==1 &&
+		 strncmp(info->info_id,"Fractal",8)==0)
       filetype = 2; /* Targa 16 */
    else
    {
@@ -80,13 +79,13 @@ struct fractal_info *info;
       colors = info->colors;
       if(rows != info->ydots || cols != info->xdots)
       {
-         *gif_file = 0; /* failed ... zap filename */
-         fclose(fp);
-         return(-1);
+	 *gif_file = 0; /* failed ... zap filename */
+	 fclose(fp);
+	 return(-1);
       }else
       {
-         fclose(fp);
-         return(0);
+	 fclose(fp);
+	 return(0);
       }
       break;
    default:
@@ -96,22 +95,104 @@ struct fractal_info *info;
       break;
    }
 
-
-
-   fseek(fp,-1L*(long)sizeof(FRACTAL_INFO),SEEK_END);
-   do  /* keep trying to find word INFO_ID */
+   if (resume_info != NULL) /* free the prior area if there is one */
    {
-       /* should work on the first try, but you never know */
-       fread(info,1,sizeof(FRACTAL_INFO),fp);
-
-       /* creep up from the bottom  - the '-101' is for old .FRA files */
-       fseek(fp,-1L*(long)(sizeof(FRACTAL_INFO)-101+ct),SEEK_END);
+      farmemfree(resume_info);
+      resume_info = NULL;
    }
-   while(ct++ < MAX_LOOK && strcmp(INFO_ID,info->info_id));
 
-   if(ct < MAX_LOOK)
+   /* Format of .fra (*not* part of the GIF standard) extension blocks is:
+	  1 byte    '!', extension block identifier
+	  1 byte    extension block number, arbitary? we always plug 255
+	  1 byte    length of id, 11 with fractint
+	  n bytes   alpha id, "fractintnnn" with fractint, nnn is secondary id
+	  1 word    length of block info in bytes
+		    (note that before fractint vsn 14, this was just a byte)
+	  x bytes   block info
+	  1 byte    0, block terminator
+	  1 byte    ';', GIF terminator
+      To scan extension blocks, we first look in file at length of save_info
+      (the main extension block) from end of file, looking for a literal known
+      to be at start of our block info.  Then we scan forward a bit, in case
+      the file is from an earlier fractint vsn with shorter save_info.
+      If save_info is found and is from vsn>=14, it includes the total length
+      of all extension blocks; we then scan them all first to last to load
+      any optional ones which are present.
+      Defined extension blocks:
+	fractint001	header, always present
+	fractint002	resume info for interrupted resumable image
+	fractint003	additional formula type info
+   */
+
+   fseek(fp,(long)(-2-sizeof(FRACTAL_INFO)),SEEK_END);
+   fread(info,1,sizeof(FRACTAL_INFO),fp);
+   if (strcmp(INFO_ID,info->info_id))
+   {  /* didn't work 1st try, maybe an older vsn, maybe junk at eof, scan: */
+      int offset,i;
+      char tmpbuf[110];
+      offset = 80; /* don't even check last 80 bytes of file for id */
+      while (offset < sizeof(FRACTAL_INFO)+512) /* allow 512 garbage at eof */
+      {
+	 offset += 100; /* go back 100 bytes at a time */
+	 fseek(fp,(long)(0-offset),SEEK_END);
+	 fread(tmpbuf,1,110,fp); /* read 10 extra for string compare */
+	 for (i = 0; i < 100; ++i)
+	    if (!strcmp(INFO_ID,&tmpbuf[i])) /* found header? */
+	    {
+	       fseek(fp,(long)(i-offset),SEEK_END);
+	       fread(info,1,sizeof(FRACTAL_INFO),fp);
+	       offset = 10000; /* force exit from outer loop */
+	       break;
+	    }
+      }
+   }
+
+   if (!strcmp(INFO_ID,info->info_id)) /* we found and read info */
    {
-      /* zero means we won */
+      if (info->version >= 4) /* load any additional extension blocks */
+      {
+	 fseek(fp,1L-info->tot_extend_len,SEEK_CUR);
+	 scan_extend = 1;
+	 while (scan_extend)
+	 {
+	    if (fgetc(fp) != '!' /* if not what we expect just give up */
+	      || fread(temp1,1,13,fp) != 13
+	      || strncmp(&temp1[2],"fractint",8))
+	       break;
+	    temp1[13] = 0;
+	    block_type = atoi(&temp1[10]); /* e.g. "fractint002" */
+	    block_len = (unsigned char)fgetc(fp);
+	    switch (block_type)
+	    {
+	       case 1: /* back to "fractint001", we're all done */
+		  scan_extend = 0;
+		  break;
+	       case 2: /* resume info */
+		  if ((resume_info = farmemalloc((long)block_len)) == NULL)
+		  {
+		     info->calc_status = 3; /* not resumable after all */
+		     fseek(fp,(long)block_len,SEEK_CUR);
+		  }
+		  else
+		  {
+		     resume_load = resume_info;
+		     resume_len = block_len;
+		     while (--block_len >= 0) /* gross but it works */
+			*(resume_load++) = fgetc(fp);
+		  }
+		  break;
+	       case 3: /* formula info */
+		  fread(FormName,40,1,fp);
+		  /* perhaps in future add more here, check block_len for
+		     backward compatibility */
+		  break;
+	       default:
+		  fseek(fp,(long)block_len,SEEK_CUR); /* skip unrecognized block */
+	    }
+	    if (fgetc(fp) != 0) /* skip block trailer */
+	       break;
+	 }
+      }
       fclose(fp);
       return(0);
    }
@@ -123,6 +204,8 @@ struct fractal_info *info;
    info->xmax = 1;
    info->ymin = -1;
    info->ymax = 1;
+   info->x3rd = -1;
+   info->y3rd = -1;
    info->creal = 0;
    info->cimag = 0;
    info->videomodeax=255;
@@ -151,17 +234,17 @@ strcpy(tempstring,searchpath("fractint.cfg"));
 _searchenv("fractint.cfg","PATH",tempstring);
 #endif
 if (tempstring[0] == 0)
-	return(-1);				/* can't find the file	*/
-if (strcmp(&tempstring[2],"\\\\fractint.cfg") == 0)	/* stupid answer! */
+	return(-1);				/* can't find the file  */
+if (strcmp(&tempstring[2],"\\\\fractint.cfg") == 0)     /* stupid answer! */
 	strcpy(&tempstring[2],"\\fractint.cfg");
 if ((cfgfile = fopen(tempstring,"r")) == NULL)
-	return(-1);				/* ?? can't open file	*/
+	return(-1);				/* ?? can't open file   */
 
 count = 0;					/* build a new videomode file */
 while (feof(cfgfile) == 0 && count < MAXVIDEOMODES) {	/* scan through strings */
 	if (!fgets(tempstring, 100, cfgfile)) break;
 	tempstring[strlen(tempstring)-1] = 0;
-	if (tempstring[0] <= 32) continue;	/* comment line		*/
+	if (tempstring[0] <= 32) continue;	/* comment line 	*/
 	j = 9;
 	for (i = 0; i <= j; i++) commas[i] = 0;
 	for (i = strlen(tempstring); i >= 0 && j >= 0; i--)  /* check for commas */
@@ -174,10 +257,10 @@ while (feof(cfgfile) == 0 && count < MAXVIDEOMODES) {	/* scan through strings */
 	sscanf(&tempstring[commas[2]],"%x",&cx);
 	sscanf(&tempstring[commas[3]],"%x",&dx);
 	dotmode     = atoi(&tempstring[commas[4]]);
-	xdots       = atoi(&tempstring[commas[5]]);
-	ydots       = atoi(&tempstring[commas[6]]);
-	colors      = atoi(&tempstring[commas[7]]);
-	if (    i >= 0 || j != 0 ||
+	xdots	    = atoi(&tempstring[commas[5]]);
+	ydots	    = atoi(&tempstring[commas[6]]);
+	colors	    = atoi(&tempstring[commas[7]]);
+	if (	i >= 0 || j != 0 ||
 		dotmode < 0 || dotmode > 30 ||
 		xdots < 160 || xdots > 2048 ||
 		ydots < 160 || ydots > 2048 ||
@@ -236,7 +319,7 @@ if (tempstring[0] != 0) {
 	}
 
 if ((cfgfile = fopen("fractint.cfg","w")) == NULL)
-	exit(-1);				/* ?? can't open file	*/
+	exit(-1);				/* ?? can't open file   */
 fprintf(cfgfile,"   Full FRACTINT.CFG File, built by a 'fractint batch=config' command\n\n");
 fprintf(cfgfile," name of adapter/mode    | AX | BX | CX | DX |mode|  x |  y |clrs| comments\n");
 fprintf(cfgfile," =============================================================================\n\n");
@@ -272,15 +355,15 @@ struct fractal_info *v1;
    /* try EXACT match with a configured mode */
 	for(i=0;i<maxvideomode;i++) {
 	   fromvideotable(i);
-   	    if(v1->videomodeax == videoentry.videomodeax &&
-      	   v1->videomodebx == videoentry.videomodebx &&
-           v1->videomodecx == videoentry.videomodecx &&
-           v1->videomodedx == videoentry.videomodedx &&
-           v1->dotmode     == videoentry.dotmode     &&
-           v1->xdots       == videoentry.xdots       &&
-           v1->ydots       == videoentry.ydots       &&
-           v1->colors      == videoentry.colors      ) 
-          	break;
+	    if(v1->videomodeax == videoentry.videomodeax &&
+	   v1->videomodebx == videoentry.videomodebx &&
+	   v1->videomodecx == videoentry.videomodecx &&
+	   v1->videomodedx == videoentry.videomodedx &&
+	   v1->dotmode	   == videoentry.dotmode     &&
+	   v1->xdots	   == videoentry.xdots	     &&
+	   v1->ydots	   == videoentry.ydots	     &&
+	   v1->colors	   == videoentry.colors      )
+		break;
 	}
     if(i<maxvideomode) /* gotit! */
        return(i);
@@ -288,10 +371,10 @@ struct fractal_info *v1;
    /* try to match xdots, ydots, and colors to a configured mode */
 	for(i=0;i<maxvideomode;i++) {
 	   fromvideotable(i);
-   	    if(v1->xdots       == videoentry.xdots       &&
-           v1->ydots       == videoentry.ydots       &&
-           v1->colors      == videoentry.colors      )
-          	break;
+	    if(v1->xdots       == videoentry.xdots	 &&
+	   v1->ydots	   == videoentry.ydots	     &&
+	   v1->colors	   == videoentry.colors      )
+		break;
 	}
     if(i<maxvideomode) /* gotit! */
        return(i);
@@ -299,13 +382,13 @@ struct fractal_info *v1;
     /* ABSOLUTELY the LAST gasp! ANY mode with right xdot and ydot??? */
 	for(i=0;i<maxvideomode;i++) {
 	   fromvideotable(i);
-   	    if(v1->xdots       == videoentry.xdots       &&
-           v1->ydots       == videoentry.ydots       )
-          	break;
+	    if(v1->xdots       == videoentry.xdots	 &&
+	   v1->ydots	   == videoentry.ydots	     )
+		break;
 	}
     if(i<maxvideomode) /* gotit! */
        return(i);
-    
+
     /* give up! */
-       return(maxvideomode);   
+       return(maxvideomode);
 }

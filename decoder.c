@@ -16,17 +16,17 @@
  * It is, however, somewhat noticably faster in most cases.
  *
  == This routine was modified for use in FRACTINT in two ways.
- == 
+ ==
  == 1) The original #includes were folded into the routine strictly to hold
  ==    down the number of files we were dealing with.
  ==
  == 2) The 'stack', 'suffix', 'prefix', and 'buf' arrays were changed from
  ==    static and 'malloc()'ed to external only so that the assembler
  ==    program could use the same array space for several independent
- ==    chunks of code.  Also, 'stack' was renamed to 'dstack' for TASM
+ ==    chunks of code.	Also, 'stack' was renamed to 'dstack' for TASM
  ==    compatibility.
- == 
- == 3) The 'out_line()' external function has been changed to reference 
+ ==
+ == 3) The 'out_line()' external function has been changed to reference
  ==    '*outln()' for flexibility (in particular, 3D transformations)
  ==
  == 4) A call to 'keypressed()' has been added after the 'outln()' calls
@@ -102,21 +102,21 @@ IMPORT INT bad_code_count;
 #define MAX_CODES   4095
 
 /* Static variables */
-LOCAL WORD curr_size;                     /* The current code size */
-LOCAL WORD clear;                         /* Value for a clear code */
-LOCAL WORD ending;                        /* Value for a ending code */
-LOCAL WORD newcodes;                      /* First available code */
-LOCAL WORD top_slot;                      /* Highest code for current size */
-LOCAL WORD slot;                          /* Last read code */
+LOCAL WORD curr_size;			  /* The current code size */
+LOCAL WORD clear;			  /* Value for a clear code */
+LOCAL WORD ending;			  /* Value for a ending code */
+LOCAL WORD newcodes;			  /* First available code */
+LOCAL WORD top_slot;			  /* Highest code for current size */
+LOCAL WORD slot;			  /* Last read code */
 
 /* The following static variables are used
  * for seperating out codes
  */
-LOCAL WORD navail_bytes = 0;              /* # bytes left in block */
-LOCAL WORD nbits_left = 0;                /* # bits left in current byte */
-LOCAL UTINY b1;                           /* Current byte */
-LOCAL UTINY byte_buff[257];               /* Current block */
-LOCAL UTINY *pbytes;                      /* Pointer to next byte in block */
+LOCAL WORD navail_bytes = 0;		  /* # bytes left in block */
+LOCAL WORD nbits_left = 0;		  /* # bits left in current byte */
+LOCAL UTINY b1; 			  /* Current byte */
+LOCAL UTINY byte_buff[257];		  /* Current block, reuse shared mem */
+LOCAL UTINY *pbytes;			  /* Pointer to next byte in block */
 
 LOCAL LONG code_mask[13] = {
      0,
@@ -155,23 +155,23 @@ LOCAL WORD get_next_code()
    if (nbits_left == 0)
       {
       if (navail_bytes <= 0)
-         {
+	 {
 
-         /* Out of bytes in current block, so read next block
-          */
-         pbytes = byte_buff;
-         if ((navail_bytes = get_byte()) < 0)
-            return(navail_bytes);
-         else if (navail_bytes)
-            {
-            for (i = 0; i < navail_bytes; ++i)
-               {
-               if ((x = get_byte()) < 0)
-                  return(x);
-               byte_buff[i] = x;
-               }
-            }
-         }
+	 /* Out of bytes in current block, so read next block
+	  */
+	 pbytes = byte_buff;
+	 if ((navail_bytes = get_byte()) < 0)
+	    return(navail_bytes);
+	 else if (navail_bytes)
+	    {
+	    for (i = 0; i < navail_bytes; ++i)
+	       {
+	       if ((x = get_byte()) < 0)
+		  return(x);
+	       byte_buff[i] = x;
+	       }
+	    }
+	 }
       b1 = *pbytes++;
       nbits_left = 8;
       --navail_bytes;
@@ -181,23 +181,23 @@ LOCAL WORD get_next_code()
    while (curr_size > nbits_left)
       {
       if (navail_bytes <= 0)
-         {
+	 {
 
-         /* Out of bytes in current block, so read next block
-          */
-         pbytes = byte_buff;
-         if ((navail_bytes = get_byte()) < 0)
-            return(navail_bytes);
-         else if (navail_bytes)
-            {
-            for (i = 0; i < navail_bytes; ++i)
-               {
-               if ((x = get_byte()) < 0)
-                  return(x);
-               byte_buff[i] = x;
-               }
-            }
-         }
+	 /* Out of bytes in current block, so read next block
+	  */
+	 pbytes = byte_buff;
+	 if ((navail_bytes = get_byte()) < 0)
+	    return(navail_bytes);
+	 else if (navail_bytes)
+	    {
+	    for (i = 0; i < navail_bytes; ++i)
+	       {
+	       if ((x = get_byte()) < 0)
+		  return(x);
+	       byte_buff[i] = x;
+	       }
+	    }
+	 }
       b1 = *pbytes++;
       ret |= b1 << nbits_left;
       nbits_left += 8;
@@ -224,20 +224,20 @@ The arrays are actually declared in the assembler source.
 						Bert Tyler
 */
 
-extern UTINY dstack[MAX_CODES + 1];           /* Stack for storing pixels */
-extern UTINY suffix[MAX_CODES + 1];           /* Suffix table */
-extern UWORD prefix[MAX_CODES + 1];           /* Prefix linked list */
-extern UTINY decoderline[2];                  /* decoded line goes here */
+extern UTINY dstack[MAX_CODES + 1];	      /* Stack for storing pixels */
+extern UTINY suffix[MAX_CODES + 1];	      /* Suffix table */
+extern UWORD prefix[MAX_CODES + 1];	      /* Prefix linked list */
+extern UTINY decoderline[2];		      /* decoded line goes here */
 
 /* WORD decoder(linewidth)
- *    WORD linewidth;               * Pixels per line of image *
+ *    WORD linewidth;		    * Pixels per line of image *
  *
  * - This function decodes an LZW image, according to the method used
  * in the GIF spec.  Every *linewidth* "characters" (ie. pixels) decoded
  * will generate a call to out_line(), which is a user specific function
  * to display a line of pixels.  The function gets its codes from
  * get_next_code() which is responsible for reading blocks of data and
- * seperating them into the proper size codes.  Finally, get_byte() is
+ * seperating them into the proper size codes.	Finally, get_byte() is
  * the global routine to read the next byte from the GIF file.
  *
  * It is generally a good idea to have linewidth correspond to the actual
@@ -291,130 +291,130 @@ WORD decoder(linewidth)
       /* If we had a file error, return without completing the decode
        */
       if (c < 0)
-         return(0);
+	 return(0);
 
       /* If the code is a clear code, reinitialize all necessary items.
        */
       if (c == clear)
-         {
-         curr_size = size + 1;
-         slot = newcodes;
-         top_slot = 1 << curr_size;
+	 {
+	 curr_size = size + 1;
+	 slot = newcodes;
+	 top_slot = 1 << curr_size;
 
-         /* Continue reading codes until we get a non-clear code
-          * (Another unlikely, but possible case...)
-          */
-         while ((c = get_next_code()) == clear)
-            ;
+	 /* Continue reading codes until we get a non-clear code
+	  * (Another unlikely, but possible case...)
+	  */
+	 while ((c = get_next_code()) == clear)
+	    ;
 
-         /* If we get an ending code immediately after a clear code
-          * (Yet another unlikely case), then break out of the loop.
-          */
-         if (c == ending)
-            break;
+	 /* If we get an ending code immediately after a clear code
+	  * (Yet another unlikely case), then break out of the loop.
+	  */
+	 if (c == ending)
+	    break;
 
-         /* Finally, if the code is beyond the range of already set codes,
-          * (This one had better NOT happen...  I have no idea what will
-          * result from this, but I doubt it will look good...) then set it
-          * to color zero.
-          */
-         if (c >= slot)
-            c = 0;
+	 /* Finally, if the code is beyond the range of already set codes,
+	  * (This one had better NOT happen...	I have no idea what will
+	  * result from this, but I doubt it will look good...) then set it
+	  * to color zero.
+	  */
+	 if (c >= slot)
+	    c = 0;
 
-         oc = fc = c;
+	 oc = fc = c;
 
-         /* And let us not forget to put the char into the buffer... And
-          * if, on the off chance, we were exactly one pixel from the end
-          * of the line, we have to send the buffer to the out_line()
-          * routine...
-          */
-         *bufptr++ = c;
-         if (--bufcnt == 0)
-            {
-            if ((ret = (*outln)(buf, linewidth)) < 0)
-               return(ret);
-            if (keypressed()) {
+	 /* And let us not forget to put the char into the buffer... And
+	  * if, on the off chance, we were exactly one pixel from the end
+	  * of the line, we have to send the buffer to the out_line()
+	  * routine...
+	  */
+	 *bufptr++ = c;
+	 if (--bufcnt == 0)
+	    {
+	    if ((ret = (*outln)(buf, linewidth)) < 0)
+	       return(ret);
+	    if (keypressed()) {
 		buzzer(1);
 		return(-1);
 		}
-            bufptr = buf;
-            bufcnt = linewidth;
-            }
-         }
+	    bufptr = buf;
+	    bufcnt = linewidth;
+	    }
+	 }
       else
-         {
+	 {
 
-         /* In this case, it's not a clear code or an ending code, so
-          * it must be a code code...  So we can now decode the code into
-          * a stack of character codes. (Clear as mud, right?)
-          */
-         code = c;
+	 /* In this case, it's not a clear code or an ending code, so
+	  * it must be a code code...  So we can now decode the code into
+	  * a stack of character codes. (Clear as mud, right?)
+	  */
+	 code = c;
 
-         /* Here we go again with one of those off chances...  If, on the
-          * off chance, the code we got is beyond the range of those already
-          * set up (Another thing which had better NOT happen...) we trick
-          * the decoder into thinking it actually got the last code read.
-          * (Hmmn... I'm not sure why this works...  But it does...)
-          */
-         if (code >= slot)
-            {
-            if (code > slot)
-               ++bad_code_count;
-            code = oc;
-            *sp++ = fc;
-            }
+	 /* Here we go again with one of those off chances...  If, on the
+	  * off chance, the code we got is beyond the range of those already
+	  * set up (Another thing which had better NOT happen...) we trick
+	  * the decoder into thinking it actually got the last code read.
+	  * (Hmmn... I'm not sure why this works...  But it does...)
+	  */
+	 if (code >= slot)
+	    {
+	    if (code > slot)
+	       ++bad_code_count;
+	    code = oc;
+	    *sp++ = fc;
+	    }
 
-         /* Here we scan back along the linked list of prefixes, pushing
-          * helpless characters (ie. suffixes) onto the stack as we do so.
-          */
-         while (code >= newcodes)
-            {
-            *sp++ = suffix[code];
-            code = prefix[code];
-            }
+	 /* Here we scan back along the linked list of prefixes, pushing
+	  * helpless characters (ie. suffixes) onto the stack as we do so.
+	  */
+	 while (code >= newcodes)
+	    {
+	    *sp++ = suffix[code];
+	    code = prefix[code];
+	    }
 
-         /* Push the last character on the stack, and set up the new
-          * prefix and suffix, and if the required slot number is greater
-          * than that allowed by the current bit size, increase the bit
-          * size.  (NOTE - If we are all full, we *don't* save the new
-          * suffix and prefix...  I'm not certain if this is correct...
-          * it might be more proper to overwrite the last code...
-          */
-         *sp++ = code;
-         if (slot < top_slot)
-            {
-            suffix[slot] = fc = code;
-            prefix[slot++] = oc;
-            oc = c;
-            }
-         if (slot >= top_slot)
-            if (curr_size < 12)
-               {
-               top_slot <<= 1;
-               ++curr_size;
-               }
+	 /* Push the last character on the stack, and set up the new
+	  * prefix and suffix, and if the required slot number is greater
+	  * than that allowed by the current bit size, increase the bit
+	  * size.  (NOTE - If we are all full, we *don't* save the new
+	  * suffix and prefix...  I'm not certain if this is correct...
+	  * it might be more proper to overwrite the last code...
+	  */
+	 *sp++ = code;
+	 if (slot < top_slot)
+	    {
+	    suffix[slot] = fc = code;
+	    prefix[slot++] = oc;
+	    oc = c;
+	    }
+	 if (slot >= top_slot)
+	    if (curr_size < 12)
+	       {
+	       top_slot <<= 1;
+	       ++curr_size;
+	       }
 
-         /* Now that we've pushed the decoded string (in reverse order)
-          * onto the stack, lets pop it off and put it into our decode
-          * buffer...  And when the decode buffer is full, write another
-          * line...
-          */
-         while (sp > dstack)
-            {
-            *bufptr++ = *(--sp);
-            if (--bufcnt == 0)
-               {
-               if ((ret = (*outln)(buf, linewidth)) < 0)
-                  return(ret);
-               if (keypressed()) {
-                  buzzer(1);
-                  return(-1);
+	 /* Now that we've pushed the decoded string (in reverse order)
+	  * onto the stack, lets pop it off and put it into our decode
+	  * buffer...  And when the decode buffer is full, write another
+	  * line...
+	  */
+	 while (sp > dstack)
+	    {
+	    *bufptr++ = *(--sp);
+	    if (--bufcnt == 0)
+	       {
+	       if ((ret = (*outln)(buf, linewidth)) < 0)
+		  return(ret);
+	       if (keypressed()) {
+		  buzzer(1);
+		  return(-1);
 		}
-               bufptr = buf;
-               bufcnt = linewidth;
-               }
-            }
-         }
+	       bufptr = buf;
+	       bufcnt = linewidth;
+	       }
+	    }
+	 }
       }
    ret = 0;
    if (bufcnt != linewidth)

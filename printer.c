@@ -4,7 +4,7 @@
  *      "True-to-the-spirit" of FRACTINT, this code makes few checks that you
  *      have specified a valid resolution for the printer (just in case yours
  *      has more dots/line than the Standard HP and IBM/EPSON,
- *      (eg, Wide Carridge, etc.))
+ *      (eg, Wide Carriage, etc.))
  *
  *      This code supports printers attached to a LPTx (1-3) parallel port.
  *      It also now supports serial printers AFTER THEY ARE CONFIGURED AND
@@ -32,17 +32,20 @@
  *
  * Tabs at 8.
  */
+/*** HP PaintJet support added  16-Jun-1990  19:43:18 ***/
  
 #include <bios.h>
 #include <dos.h>
+#include	<stdio.h> 	/*** for vsprintf prototype ***/
 #include <stdarg.h>
 #include "fractint.h"
  
 /********      PROTOTYPES     ********/
  
 int Printer_printf(int LPTn,char *fmt,...);
-int Printer(int a,int b,int c);
- 
+int printer(int a,int b,int c);
+int keypressed ( void );
+
 /********  EXTRN GLOBAL VARS  ********/
  
 extern int xdots,ydots,                /* size of screen                 */
@@ -50,10 +53,12 @@ extern int xdots,ydots,                /* size of screen                 */
  
 /********       GLOBALS       ********/
  
-int Printer_Resolution,      /* 75,100,150,300 for HP; 60,120,240 for IBM*/
+int Printer_Resolution,      /* 75,100,150,300 for HP; 60,120,240 for IBM;
+                                90 or 180 for the PaintJet */
     LPTNumber,                 /* ==1,2,3 LPTx; or 11,12,13,14 for COM1-4*/
-    Printer_Type;                      /* ==1 HP,  ==2 IBM/EPSON         */
- 
+    Printer_Type;                      /* ==1 HP,  ==2 IBM/EPSON, 3 Epson colour,
+                                          ==4 HP PaintJet  */
+
  
 #ifdef __TURBOC__
     #define         _bios_printer(a,b,c)    biosprint((a),(c),(b))
@@ -86,6 +91,7 @@ void Print_Screen()
                                       /*                Toshiba PageLaser*/
                                        /*            2.  IBM Graphics    */
                                        /*            3.  Color Printer   */
+                                       /*            4.  HP PaintJet     */
                                      /************************************/
  
                                      /********   SETUP VARIABLES  ********/
@@ -105,19 +111,25 @@ void Print_Screen()
     if (((LPTn<10)&&(LPTn>2))||
         (LPTn<0)||(LPTn>13)) LPTn=0;   /* default of LPT1 (==0)          */
     ptrid=Printer_Type;
-    if ((ptrid<1)||(ptrid>3)) ptrid=2; /* default of IBM/EPSON           */
+    if ((ptrid<1)||(ptrid>4)) ptrid=2; /* default of IBM/EPSON           */
     res=Printer_Resolution;
     switch (ptrid) {
+        default:
+            break;
         case 1: if (res<75) res=75;
             if ( (res<= 75)&&(ydots> 600)) res=100;
             if ( (res<=100)&&(ydots> 800)) res=150;
             if (((res<=150)&&(ydots>1200))||(res>300)) res=300;
             break;
         case 2:
-        case 3:
+	case 3:
             if (res<60) res=60;
             if ((res<=60)&&(ydots>480)) res=120;
             if (((res<=120)&&(ydots>960))||(res>240)) res=240;
+            break;
+        case 4: /****** PaintJet  *****/
+		if ( res < 150 ) res = 90;	/* an arbitrary boundary */
+		if ( res >= 150 ) res = 180;
             break;
             }
  
@@ -127,16 +139,24 @@ void Print_Screen()
     if (xdots>1024) BuffSiz=192;
  
                                        /*****   Initialize printer  **** */
-    printer(1,LPTn,0);
+		printer(1,LPTn,0);
  
                                 /******  INITIALIZE GRAPHICS MODES  ******/
     switch (ptrid) {
+        default:
+            break;
         case 1:
             Printer_printf(LPTn,"\x1B*t%iR\x1B*r0A",res);/* HP           */
             break;
         case 2:
-        case 3:
+	case 3:
             Printer_printf(LPTn,"\x1B\x33\x18");/* IBM                   */
+            break;
+	case 4: /****** PaintJet *****/
+	/* set resolution, 4 colour planes for 90dpi or 3 for 180dpi,
+		 start raster graphics	 */
+		Printer_printf(LPTn,"\x1B*t%dR\x1B*r%dU\x1B*r0A",
+			res,res==90?4:3);
             break;
             }
  
@@ -144,6 +164,8 @@ void Print_Screen()
  
                                        /*****  Get And Print Screen **** */
     switch (ptrid) {
+        default:
+            break;
         case 1: {                      /* HP LaserJet (et al)            */
                 imax=(ydots/8)-1;
                 for (x=0;((x<xdots)&&(!keypressed()));x+=BuffSiz) {
@@ -200,7 +222,7 @@ void Print_Screen()
                 if (!keypressed()) printer(0,LPTn,12);
                 break;
                 }
-        case 3: {                      /* IBM Graphics/Epson Color       */
+	case 3: {											/* IBM Graphics/Epson Color 			*/
                 high=ydots/256;
                 low=ydots%256;
                 for (x=0;((x<xdots)&&(!keypressed()));x+=8)
@@ -236,6 +258,26 @@ void Print_Screen()
                 printer(1,LPTn,0);  /* reset */
                 break;
                 }
+        case 4:                       /* HP PaintJet       */
+           for (y=0;((y<ydots)&&(!keypressed()));y++) {
+		 for (k=0; k<(res==90?4:3); k++) { /* planes */
+                   Printer_printf(LPTn,"\x1B*b%dV",xdots/8);
+                   for (x=0;x<xdots;x+=8) {
+                       buff[0]=0;
+                       for (i=0;i<8;i++) {
+                           buff[0]<<=1;
+			 if ( getcolor(x+i,y)&(1<<k) )
+                               buff[0]++;
+                       }
+                       printer(0,LPTn,buff[0]);
+                   }
+               }
+               Printer_printf(LPTn,"\x1B*b0W"); /* end colour planes   */
+           }
+	 Printer_printf(LPTn,"\x1B*r0B");  /* end raster graphics */
+           printer(0,LPTn,12);
+	 printer(1,LPTn,0);  /* reset */
+	 break;
             }
 }
  
@@ -260,12 +302,12 @@ return (printer(2,LPTn,0));
 }
  
 /* This function standardizes both _bios_printer and _bios_serialcom
- * in one function.  It takes it's arguments and re-aranges them and calls
- * the appropriate bios call.  It the return result !=0, there is a problem
- * with the printer.
+ * in one function.  It takes its arguments and rearranges them and calls
+ * the appropriate bios call.  If it then returns result !=0, there is a
+ * problem with the printer.
  */
 int printer(int a,int b,int c)
 {
-    if (b<9) return (((_bios_printer(a,b,c))+0x0010)&0x0010);
+		if (b<9) return (((_bios_printer(a,b,c))+0x0010)&0x0010);
     return ((_bios_serialcom(((a!=0)?3:1),(b-10),c))&0x9E00);
 }

@@ -4,6 +4,7 @@
 
 #include "fractint.h"
 #include <stdio.h>
+#include <time.h>
 
 	/* the actual message text is defined in FARMSG.ASM */
 extern char far helpmessagetitle[];
@@ -23,13 +24,20 @@ extern char far helpmessagevideo[];
 
 extern	void	helpmessage(unsigned char far *);
 
-extern int adapter;
+extern	int	adapter;
 
-extern int	lookatmouse;	/* used to activate non-button mouse movement */
+extern	int	lookatmouse;	/* used to activate non-button mouse movement */
+
+extern	long	timer_start;
+
+extern	char far *findfont(int);
+extern	int	oktoprint;		/* 0 if printf() won't work */
+extern	int	xdots, ydots;		/* # of dots on the screen  */
+extern	int	dotmode;		/* so we can detect disk-video */
 
 helptitle()
 {
-home();					/* home the cursor		*/
+home(); 				/* home the cursor		*/
 setclear();				/* clear the screen		*/
 helpmessage(helpmessagetitle);
 
@@ -40,6 +48,8 @@ help()
 int mode, key;
 int oldlookatmouse;
 
+timer_start -= clock(); 		/* "time out" during help */
+
 oldlookatmouse = lookatmouse;
 lookatmouse = 0;			/* de-activate full mouse checking */
 
@@ -49,11 +59,12 @@ if (mode == HELPAUTHORS) {
 	int toprow, botrow, i, j, delaymax;
 	char oldchar;
 	int authors[100];		/* this should be enough for awhile */
-	
-	toprow = 10;
+
+        toprow = 12;
+	toprow = 8;
 	botrow = 21;
 	j = 0;
-	authors[j] = 0;			/* find the start of each credit-line */
+	authors[j] = 0; 		/* find the start of each credit-line */
 	for (i = 0; helpmessagecredits[i] != 0; i++)
 		if (helpmessagecredits[i] == 10)
 			authors[++j] = i+1;
@@ -162,21 +173,23 @@ while (mode != HELPEXIT) {
 			break;
 		}
 	if (key != 27
-		&& key != 1059 				/* F1 */
+		&& key != 1059				/* F1 */
 		&& key != 'h' && key != 'H'
 		&& key != '?' && key != '/') {
 		setforgraphics();
 		lookatmouse = oldlookatmouse;		/* restore the mouse-checking */
+		timer_start += clock(); 		/* end of "time out" */
 		return(key);
 		}
 	if (key == 27)
 		mode = HELPEXIT;
-	else 
+	else
 		mode = HELPMENU;
 	}
 
 setforgraphics();
 lookatmouse = oldlookatmouse;		/* restore the mouse-checking */
+timer_start += clock(); 		/* end of "time out" */
 return(0);
 }
 
@@ -191,7 +204,7 @@ if (helppages[1] == NULL) {
 	helpmessage(helpmessageendtext);
 	return(getakey());
 	}
-	
+
 key = 13;
 page = 1;
 
@@ -256,5 +269,94 @@ while (key == 13 || key == 1013) {
 	key = getakey();
 	}
 return(key);
+}
+
+/* texttempmsg(msg) displays a text message of up to 40 characters, waits
+      for a key press, restores the prior display, and returns (without
+      eating the key).
+      It works in almost any video mode - does nothing in some very odd cases
+      (HCGA hi-res with old bios), or when there isn't 10k of temp mem free. */
+int texttempmsg(char *msgparm)
+{
+   unsigned char msg[41],buffer[640];
+   char far *savearea;
+   char far *fartmp;
+   char far *fontptr;
+   unsigned char *bufptr;
+   int i,j,k,xsave,ysave,xrepeat,yrepeat,fontchar,charnum;
+   strncpy(msg,msgparm,40);
+   msg[40] = 0; /* ensure max message len of 40 chars */
+   if (dotmode == 11) /* disk video, screen in text mode, easy */
+   {
+      movecursor(0,0);
+      printf(msg);
+      while (!keypressed()) { } /* wait for a keystroke but don't eat it */
+      movecursor(0,0);
+      memset(msg,' ',40);
+      printf(msg); /* erase the message */
+      return(0);
+   }
+   if ((fontptr = findfont(0)) == NULL) /* old bios, no font table? */
+   {
+      if (oktoprint == 0	       /* can't printf */
+	|| xdots > 640 || ydots > 200) /* not willing to trust char cell size */
+	 return(-1); /* sorry, message not displayed */
+      ysave = 8;
+      xsave = xdots;
+   }
+   else
+   {
+      xrepeat = (xdots >= 640) ? 2 : 1;
+      yrepeat = (ydots >= 300) ? 2 : 1;
+      xsave = strlen(msg) * xrepeat * 8;
+      ysave = yrepeat * 8;
+   }
+   if ((savearea = farmemalloc((long)xsave * ysave)) == NULL) /* worst case 10k */
+      return(-1); /* sorry, message not displayed */
+   fartmp = savearea;
+   for (i = 0; i < ysave; ++i)
+   {
+      get_line(i,0,xsave-1,buffer);
+      for (j = 0; j < xsave; ++j) /* copy it out to far memory */
+	 *(fartmp++) = buffer[j];
+   }
+   if (fontptr == NULL) /* bios must do it for us */
+   {
+      home();
+      printf(msg);
+   }
+   else /* generate the characters */
+      for (i = 0; i < 8; ++i)
+      {
+	 memset(buffer,0,640);
+	 bufptr = buffer;
+	 charnum = -1;
+	 while (msg[++charnum] != 0)
+	 {
+	    fontchar = *(fontptr + msg[charnum]*8 + i);
+	    for (j = 0; j < 8; ++j)
+	    {
+	       for (k = 0; k < xrepeat; ++k)
+	       {
+		  if ((fontchar & 0x80) != 0)
+		     *bufptr = 7; /* color 7 (mod andcolors), usually grey */
+		  ++bufptr;
+	       }
+	       fontchar <<= 1;
+	    }
+	 }
+	 for (j = 0; j < yrepeat; ++j)
+	    put_line(i*yrepeat+j,0,xsave-1,buffer);
+      }
+   while (!keypressed()) { } /* wait for a keystroke but don't eat it */
+   fartmp = savearea;
+   for (i = 0; i < ysave; ++i)
+   {
+      for (j = 0; j < xsave; ++j) /* copy back from far memory */
+	 buffer[j] = *(fartmp++);
+      put_line(i,0,xsave-1,buffer);
+   }
+   farmemfree(savearea);
+   return(0);
 }
 

@@ -1,7 +1,8 @@
 #include "fractint.h"
+#include "mpmath.h"
 
 extern void (*plot)(int, int, int);
-int fullscreen_prompt(int startrow, int numprompts, char *prompts[],
+int fullscreen_prompt(int startrow, int numprompts, char * far *prompts,
    double values[]);
 void setfortext(void);
 void setforgraphics(void);
@@ -28,15 +29,15 @@ struct lcomplex jbc;
 #define NUM_VAR 17
 
 static double fg, fg16;
-static long 
+static long
 	zdots = 128L,
 	shell = 30L,
 	origin = (long)(8.0 * (1L << 16)),
-   height = (long)(7.0 * (1L << 16)), 
-	width = (long)(10.0 * (1L << 16)), 
-   dist = (long)(24.0 * (1L << 16)), 
-   eyes = (long)(0.0 * (1L << 16)), 
-   depth = (long)(8.0 * (1L << 16)), 
+   height = (long)(7.0 * (1L << 16)),
+	width = (long)(10.0 * (1L << 16)),
+   dist = (long)(24.0 * (1L << 16)),
+   eyes = (long)(0.0 * (1L << 16)),
+   depth = (long)(8.0 * (1L << 16)),
    brratio = (long)(0.0 * (1L << 16));
 
 int JulibrotSetup(void) {
@@ -94,10 +95,10 @@ int JulibrotSetup(void) {
    if((r = fullscreen_prompt(4, NUM_VAR, v, d)) >= 0) {
       jxmin = (long)((xxmax = d[0]) * fg);
       jxmax = (long)((xxmin = d[1]) * fg);
-      xoffset = (jxmax + jxmin) / 2;       /* Calculate average */
+      xoffset = (jxmax + jxmin) / 2;	   /* Calculate average */
       jymin = (long)((yymax = d[2]) * fg);
       jymax = (long)((yymin = d[3]) * fg);
-      yoffset = (jymax + jymin) / 2;       /* Calculate average */
+      yoffset = (jymax + jymin) / 2;	   /* Calculate average */
       mxmin = (long)((param[0] = d[4]) * fg);
       mxmax = (long)((param[1] = d[5]) * fg);
       mymin = (long)((param[2] = d[6]) * fg);
@@ -135,7 +136,7 @@ int JulibrotSetup(void) {
       SetColorPaletteName(StereoFile);
    if(!loadPalette)
       return(0);
-   spindac(0,1);                 /* load it, but don't spin */
+   spindac(0,1);		 /* load it, but don't spin */
 
    return(r == 1);
 }
@@ -178,29 +179,29 @@ int zline(long x, long y) {
       jbc.x = mx;
       jbc.y = my;
       if(check_key())
-         return(-1);
+	 return(-1);
       ltempsqrx = multiply(lold.x, lold.x, bitshift);
       ltempsqry = multiply(lold.y, lold.y, bitshift);
       for(n = 0; n < shell; n++) {
-         if(fractalspecific[fractype].orbitcalc())
-            break;
+	 if(fractalspecific[fractype].orbitcalc())
+	    break;
       }
       if(n == shell) {
-         if(brratio) {
-            color = (int)(128l * zpixel / zdots);
-            if((row + col) & 1)
-               (*plot)(col, row, 127 - color);
-            else {
-   				color = (int)(multiply((long)color << 16, brratio, 16) >> 16);
-               (*plot)(col, row, 127 + bbase - color);
-            }
-         }
-         else {
-            color = (int)(254l * zpixel / zdots);
-            (*plot)(col, row, color + 1);
-         }
-         plotted = 1;
-         break;
+	 if(brratio) {
+	    color = (int)(128l * zpixel / zdots);
+	    if((row + col) & 1)
+	       (*plot)(col, row, 127 - color);
+	    else {
+				color = (int)(multiply((long)color << 16, brratio, 16) >> 16);
+	       (*plot)(col, row, 127 + bbase - color);
+	    }
+	 }
+	 else {
+	    color = (int)(254l * zpixel / zdots);
+	    (*plot)(col, row, color + 1);
+	 }
+	 plotted = 1;
+	 break;
       }
       mx += dmx;
       my += dmy;
@@ -218,14 +219,14 @@ int Std4dFractal(void) {
 		plotted = 0;
 		x = -(width >> 1);
 		for(xdot = 0; xdot < xdots; xdot++, x += inch_per_xdot) {
-         col = xdot;
-         row = ydot;
-         if(zline(x, y) < 0)
-            return(-1);
-         col = xdots - col - 1;
-         row = ydots - row - 1;
-         if(zline(-x, -y) < 0)
-            return(-1);
+	 col = xdot;
+	 row = ydot;
+	 if(zline(x, y) < 0)
+	    return(-1);
+	 col = xdots - col - 1;
+	 row = ydots - row - 1;
+	 if(zline(-x, -y) < 0)
+	    return(-1);
       }
       if(!plotted) break;
    }

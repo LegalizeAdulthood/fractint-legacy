@@ -10,9 +10,9 @@
 ;   MP = Mark Peterson
 ;
 ; Note: newton.asm was totally rewritten by Lee Crocker for FRACTINT 10.0
-;    for integration with the newly structured fractal engine in calcmand.c 
-;    and fractals.c. The current routine consists of the inner orbit 
-;    calculation, with the supporting code removed. Early versions of 
+;    for integration with the newly structured fractal engine in calcmand.c
+;    and fractals.c. The current routine consists of the inner orbit
+;    calculation, with the supporting code removed. Early versions of
 ;    newton.asm contained a complete newton fractal function.
 ;
 ; Assembled by Microsoft Macro Assembler 5.1, for use with Microsoft C 5.1.
@@ -36,6 +36,7 @@ public	invertz2
 	extrn	row:word, col:word
 
 	extrn	dx0:dword, dy0:dword
+	extrn	dx1:dword, dy1:dword
 
 	extrn	old:qword, new:qword, d1overd:qword, roverd:qword
 	extrn	threshold:qword, floatmin:qword, floatmax:qword
@@ -166,15 +167,20 @@ dloop:
 
 ; TW commented out next few lines and add dx,ax to eliminate newtbasin
 ; color shades per Phil Wilson's request 12/03/89
-;	mov	ax, color
-;	and	ax, 1
-;	shl	ax, 1
-;	shl	ax, 1
-;	shl	ax, 1
 
+; TW put it back in in response to another use as an option! 7/7/90
 	mov	dx, cx
-;	and	dx, 7
-;	add	dx, ax
+	cmp	basin,2			; basin==2 is flag for stripes
+	jne	nostripes
+	mov	ax, color
+	and	ax, 1
+	shl	ax, 1
+	shl	ax, 1
+	shl	ax, 1
+
+	and	dx, 7
+	add	dx, ax
+nostripes:
 	inc	dx			; tempcolor = 1+(i&7)+((color&1)<<3)
 	jmp	short nfb		; break
 nl2:
@@ -255,45 +261,47 @@ NewtonFractal2 endp
 public	invertz2
 invertz2 proc	uses si, zval:word	; TW 11/03/89 changed zval to near
 
-	push	ds
-
 	fld	f_xcenter
 	fld	f_ycenter
 
-	mov	ax, col
-	shl	ax, 1
-	shl	ax, 1
-	shl	ax, 1
+	mov	bx, col
+	shl	bx, 1
+	shl	bx, 1
+	shl	bx, 1
 
+	mov	cx, row
+	shl	cx, 1
+	shl	cx, 1
+	shl	cx, 1
+
+	mov	ax, ds
 	lds	si, dx0
-	add	si, ax
+	add	si, bx
 	fld	qword ptr [si]
+	mov	ds, ax
+	lds	si, dx1
+	add	si, cx
+	fld	qword ptr [si]
+	fadd
 	fsub	st, st(2)
 
-	pop	ds	; MP 11/03/89 restore near segement 
-	push	ds
-
-	mov	ax, row
-	shl	ax, 1
-	shl	ax, 1
-	shl	ax, 1
-
-;	pop	ds    	; TW segment already restored above
-;	push	ds
-
+	mov	ds, ax
 	lds	si, dy0
-	add	si, ax
+	add	si, cx
 	fld	qword ptr [si]
+	mov	ds, ax
+	lds	si, dy1
+	add	si, bx
+	fld	qword ptr [si]
+	fadd
 	fsub	st, st(2)
 
+	mov	ds, ax
 	fld	st(1)
 	fmul	st, st
 	fld	st(1)
 	fmul	st, st
 	fadd
-
-	pop	ds
-	push	ds
 
 	fcom	floatmin
 	fstsw	statw
@@ -319,8 +327,6 @@ icom:
 	mov	si, zval	; TW
 	fstp	qword ptr [si+8]
 	fstp	qword ptr [si]
-
-	pop	ds
 
 	ret
 invertz2 endp

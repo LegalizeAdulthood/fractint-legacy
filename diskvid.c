@@ -1,329 +1,603 @@
 /*
-	"Disk-Video" (and RAM-Video and Expanded-Memory Video) routines
+   "Disk-Video" (and RAM-Video and Expanded-Memory Video) routines
+
+   Reworked with fast caching July '90 by Pieter Branderhorst.
+   (I'm proud of this cache handler, had to get my name on it!)
+   Caution when modifying any code in here:  bugs are possible which
+   slow the cache substantially but don't cause incorrect results.
+   Do timing tests for a variety of situations after any change.
+
 */
 
 #include <stdio.h>
 #include <dos.h>
 #include "fractint.h"
 
-extern	int ramvideo;			/* 0 = skip RAM-Video */
-
-extern	unsigned char diskline[2049];
 extern	int xdots, ydots, colors;
-extern	int diskisactive, diskvideo;
-extern	int diskprintfs;		/* 0 = supress diskprintfs */
+extern	int dotmode;	   /* video access method, 11 if really disk video */
+extern	int diskvideo;	   /* nonzero if really really to disk */
+extern	int diskisactive;  /* set by fractint to disable re-init */
+extern	int debugflag;
 
-static unsigned int pixelsperbyte, pixelshift, pixeloffset;
-static unsigned int pixeloffsetmask;
-static unsigned int pixelbitshift[8], pixelmask[8], notpixelmask[8];
+static int timetodisplay;
+static FILE *fp = NULL;
+static int disktarga;
 
-static int bytesperline, oldy, timetodisplay, linehaschanged, diskisgood;
-static FILE *fp;
+#define BLOCKLEN 64	/* must be a power of 2, must match next */
+#define BLOCKSHIFT 6	/* must match above */
+#define CACHEMIN 4	/* minimum cache size in Kbytes */
+#define CACHEMAX 24	/* maximum cache size in Kbytes */
+#define HASHSIZE 256	/* power of 2, near CACHEMAX/(BLOCKLEN+8) */
 
-static unsigned char huge *memoryvideo;
-static unsigned char far  *expmemoryvideo;
-static long memorypointer;
-static int exppages, oldexppage;
-static unsigned int emmhandle;
+static struct cache {	/* structure of each cache entry */
+   long offset; 		   /* pixel offset in image */
+   unsigned char pixel[BLOCKLEN];  /* one pixel per byte (this *is* faster) */
+   unsigned int hashlink;	   /* ptr to next cache entry with same hash */
+   unsigned int dirty : 1;	   /* changed since read? */
+   unsigned int lru : 1;	   /* recently used? */
+   } far *cache_end, far *cache_lru, far *cur_cache;
 
-startdisk()
+static struct cache far *cache_start = NULL;
+static long high_offset;	   /* highwater mark of writes */
+static long seek_offset;	   /* what we'll get next if we don't seek */
+static long cur_offset; 	   /* offset of last block referenced */
+static int cur_row;
+static long cur_row_base;
+static unsigned int far *hash_ptr = NULL;
+static int pixelshift;
+static int headerlength;
+static unsigned int rowsize = 0;   /* doubles as a disk video not ok flag */
+
+static char far *charbuf = NULL;   /* currently used only with XMM */
+
+/* For expanded memory: */
+static unsigned char far *expmemoryvideo;
+static int oldexppage,expoffset;
+static unsigned int emmhandle = 0;
+
+/* For extended memory: */
+static unsigned int xmmhandle = 0;
+static long extoffset;
+static unsigned char far *extbufptr, far *endreadbuf, far *endwritebuf;
+struct XMM_Move
+  {
+    unsigned long   Length;
+    unsigned int    SourceHandle;
+    unsigned long   SourceOffset;
+    unsigned int    DestHandle;
+    unsigned long   DestOffset;
+  };
+#define XMMREADLEN 64	/* amount transferred from extended mem at once */
+#define XMMWRITELEN 256 /* max amount transferred to extended mem at once,
+			   must be a factor of 1024 and >= XMMREADLEN */
+
+int startdisk();
+void enddisk();
+int readdisk(unsigned int,unsigned int);
+void writedisk(unsigned int,unsigned int,unsigned int);
+int targa_startdisk(FILE *, int);
+void targa_readdisk (unsigned int, unsigned int,
+		     unsigned char *, unsigned char *, unsigned char *);
+void targa_writedisk(unsigned int, unsigned int,
+		     unsigned char, unsigned char, unsigned char);
+
+int common_startdisk();
+static void findload_cache(long);
+struct cache far *find_cache(long);
+static void write_cache_lru();
+void (*put_char)(unsigned char),disk_putc(unsigned char),
+     exp_putc(unsigned char),  ext_putc(unsigned char);
+unsigned char (*get_char)(),disk_getc(),exp_getc(),ext_getc();
+void (*doseek)(),disk_seek(),exp_seek(),ext_seek();
+
+int startdisk()
 {
-unsigned int i;
-long longi;
-
-if (!diskisactive) return(0);
-
-pixelsperbyte = 8;			/* calculate pixel/bits stuff */
-pixelshift    = 3;
-for (i = 0; i < pixelsperbyte; i++) {
-	pixelbitshift[i] = i;
-	pixelmask[i] = 1 << pixelbitshift[i];
-	}
-if (colors >  2) {
-	pixelsperbyte = 4;
-	pixelshift    = 2;
-	for (i = 0; i < pixelsperbyte; i++) {
-		pixelbitshift[i] = 2*i;
-		pixelmask[i] = 3 << pixelbitshift[i];
-		}
-	}
-if (colors >  4) {
-	pixelsperbyte = 2;
-	pixelshift    = 1;
-	for (i = 0; i < pixelsperbyte; i++) {
-		pixelbitshift[i] = 4*i;
-		pixelmask[i] = 15 << pixelbitshift[i];
-		}
-	}
-if (colors > 16) {
-	pixelsperbyte = 1;
-	pixelshift    = 0;
-	pixelbitshift[0] = 0;
-	pixelmask[0]  = 0xff;
-	}
-for (i = 0; i < pixelsperbyte; i++)
-	notpixelmask[i] = 255 - pixelmask[i] ;
-pixeloffsetmask = pixelsperbyte-1;
-
-if (diskprintfs) {
-   printf("Clearing the 'screen'...\n\n");
-   printf("\n\n'Disk-Video' (using the disk as your 'screen') has been activated.\n\n");
-   printf("   Your 'screen' resolution is %d x %d x %d colors\n",
-	xdots, ydots, colors);
+   if (!diskisactive)
+      return(0);
+   rowsize = xdots;
+   headerlength = disktarga = 0;
+   return (common_startdisk());
    }
 
-diskisgood = 0;			/* first claim disk file is no good */
-emmhandle = 0;			/* and claim no expanded memory */
-
-memorypointer = xdots;  memorypointer *= ydots;	/* try RAM first */
-memorypointer >>= pixelshift;		/* adjust for pixels / byte */
-if (ramvideo)				/* only do this if RAM-video is enabled */
-	if ((memoryvideo = (unsigned char huge *)farmemalloc(memorypointer)) != NULL) {
-		if (diskprintfs) 
-			printf("\n(Using your Memory)\n");
-		for (longi = 0; longi < memorypointer; longi++)	/* clear the RAM */
-			memoryvideo[longi] = 0;
-		diskvideo = 0;			/* using regular RAM */
-		diskisgood = 1;			/* but the video IS good */
-		oldy = -1;			/* there is no current line */
-		return(0);			/* and bail out */
-		}
-
-memorypointer = xdots; memorypointer *= ydots;		/* try exp memory */
-memorypointer >>= pixelshift;		/* adjust for pixels / byte */
-exppages = (memorypointer + 16383) >> 14;
-if ((expmemoryvideo = emmquery()) != NULL && 
-	(emmhandle = emmallocate(exppages)) != 0) {
-	if (diskprintfs) 
-		printf("\n(Using your Expanded Memory)\n");
-	for (oldexppage = 0; oldexppage < exppages; oldexppage++)
-		emmclearpage(oldexppage, emmhandle);/* clear the "video" */
-	diskvideo = 0;			/* using Expanded RAM */
-	diskisgood = 1;			/* the video IS good */
-	oldy = -1;			/* there is no current line */
-	return(0);			/* and bail out */
-	}
-
-if (diskprintfs) 
-	printf("\n(Using your Disk Drive)\n");
-
-if ((fp = fopen("FRACTINT.DSK","w+b")) == NULL) { /* else try the disk */
-	buzzer(2);
-	if (diskprintfs) 
-		printf("\n((OOPS - Couldn't create FRACTINT.DSK))");
-	diskprintfs = 1;		/* re-enable status msgs */
-	return(-1);
-	}
-
-bytesperline = (xdots >> pixelshift);		/* length of a "line" */
-if (xdots & pixelmask[0] != 0) bytesperline++;	/* check for odd bits */
-for (i = 0; i < bytesperline; i++)	/* clear the line to black */
-	diskline[i] = 0;
-for (i = 0; i < ydots; i++)	/* "clear the screen" (write to the disk) */
-	if (fwrite(diskline,1,bytesperline,fp) < bytesperline) {
-		buzzer(2);
-	if (diskprintfs) 
-			printf("\n((OOPS - ran out of disk space))\n");
-		fclose(fp);
-		remove("FRACTINT.DSK");
-		diskprintfs = 1;	/* re-enable status msgs */
-		return(-1);
-		}
-
-diskvideo = 2;			/* using your disk drive */
-diskisgood = 1;			/* now note that the file is intact */
-oldy = -1;			/* there is no current line */
-linehaschanged = 0;		/* current line has not changed */
-timetodisplay = -1;		/* time-to-display-status counter */
-
-return(0);
-
-}
-
-enddisk()
+int targa_startdisk(FILE *targafp,int overhead)
 {
-unsigned int i;
-
-diskprintfs = 1;			/* re-enable status msgs */
-
-if (memoryvideo != NULL) {		/* RAM video? */
-	farmemfree((void far*)memoryvideo);/* then free it */
-	memoryvideo = NULL;		/* signal same */
-	return(0);			/* we done */
-	}
-
-if (emmhandle != 0) {			/* Expanded memory video? */
-	emmdeallocate(emmhandle);	/* clear the memory */
-	emmhandle = 0;			/* signal same */
-	return(0);			/* we done */
-	}
-
-if (linehaschanged) diskwriteline();	/* flush the line if need be */
-fclose(fp);
-remove("FRACTINT.DSK");
-
+   int i;
+   if (dotmode == 11) { /* ditch the original disk file, make just the targa */
+      enddisk();      /* close the 'screen' */
+      setnullvideo(); /* set readdot and writedot routines to do nothing */
+      }
+   rowsize = xdots * 3;      /* 3 bytes per pixel for targa */
+   headerlength = overhead;
+   fp = targafp;
+   disktarga = 1;
+   i = common_startdisk();
+   high_offset = 100000000L; /* targa not necessarily init'd to zeros */
+   return (i);
 }
 
-readdisk(x,y)
-int x, y;
+int common_startdisk()
 {
-long start;
-unsigned int page, offset;
+   int i,j,success;
+   long memorysize;
+   unsigned int far *fwd_link;
+   struct cache far *ptr1;
+   long longtmp;
+   unsigned int cache_size;
+   int exppages;
+   struct XMM_Move MoveStruct;
+   unsigned char far *tempfar;
 
-if (x < 0 || x >= xdots || y < 0 || y >= ydots) return(0);
+   if (dotmode == 11) { /* otherwise, real screen also in use, don't hit it */
+      home();
+      printf("Clearing the 'screen'...\n\n");
+      printf("\n\n'Disk-Video' has been activated.\n\n");
+      printf("Your 'screen' resolution is %d x %d", xdots, ydots);
+      if (disktarga)
+	 printf(", 24 bit targa   \n");
+      else
+	 printf(" x %d colors   \n",colors);
+      }
+   cur_offset = seek_offset = high_offset = -1;
+   cur_row    = -1;
+   if (disktarga)
+      pixelshift = 0;
+   else {
+      pixelshift = 3;
+      i = 2;
+      while (i < colors) {
+	 i *= i;
+	 --pixelshift;
+	 }
+      }
+   timetodisplay = 1000;  /* time-to-display-status counter */
 
-if (memoryvideo != NULL) {		/* RAM video? */
-	if (++timetodisplay == 1000) {	/* time to display status? */
-		if (diskprintfs) {
-			home();		/* show a progress report */
-			printf("Reading Line %4d...     ",y);
-			}
-		timetodisplay = -1;
-		}
-	start = y;  start = (start * xdots) + x;	/* then read it! */
-	pixeloffset = start & pixeloffsetmask;	/* get pixel offset */
-        start >>= pixelshift;		/* adjust for pixels / byte */
-	return(diskgetcolor(memoryvideo[start]));	/* and return */
-	}
+   /* allocate cache: try for the max, but don't take more than 1/2
+      of what's available, demand a certain minimum or nogo at all */
+   longtmp = (long)CACHEMAX << 11;
+   while ((tempfar = farmemalloc(longtmp)) == NULL && longtmp > (CACHEMIN << 11))
+      longtmp -= 2048;
+   if (tempfar != NULL)
+      farmemfree(tempfar);
+   longtmp >>= 1; /* take 1/2 of what we got above */
+   cache_size = (unsigned short)longtmp >> 10;
+   cache_start = (struct cache far *)farmemalloc(longtmp);
+   cache_end = (cache_lru = cache_start) + (cache_size<<10)/sizeof(*cache_start);
+   hash_ptr  = (int far *)farmemalloc((long)(HASHSIZE<<1));
+   if (cache_start == NULL || hash_ptr == NULL) {
+      buzzer(2);
+      printf("\n*** insufficient free memory for buffers ***\n\n");
+      rowsize = 0;
+      return(-1);
+      }
+   if (dotmode == 11)
+      printf("Cache size: %dK\n\n",cache_size);
 
-if (emmhandle != 0) {				/* expanded memory video? */
-	if (++timetodisplay == 1000) {	/* time to display status? */
-		if (diskprintfs) {
-			home();		/* show a progress report */
-			printf("Reading Line %4d...     ",y);
-			}
-		timetodisplay = -1;
-		}
-	start = y; start = (start * xdots) + x;	/* figure out where it is */
-	pixeloffset = start & pixeloffsetmask;	/* get pixel offset */
-        start >>= pixelshift;		/* adjust for pixels / byte */
-	page = start >> 14;  offset = start & 0x3fff;
-	if (page != oldexppage) {		/* time to get a new page? */
-		oldexppage = page;
-		emmgetpage(page,emmhandle);
-		}
-	return(diskgetcolor(expmemoryvideo[offset]));	/* and return */
-	}
+   /* preset cache to all invalid entries so we don't need free list logic */
+   for (i = 0; i < HASHSIZE; ++i)
+      hash_ptr[i] = 0xffff; /* 0xffff marks the end of a hash chain */
+   longtmp = 100000000L;
+   for (ptr1 = cache_start; ptr1 < cache_end; ++ptr1) {
+      ptr1->dirty = ptr1->lru = 0;
+      fwd_link = hash_ptr
+	 + (((unsigned short)(longtmp+=BLOCKLEN) >> BLOCKSHIFT) & (HASHSIZE-1));
+      ptr1->offset = longtmp;
+      ptr1->hashlink = *fwd_link;
+      *fwd_link = (char far *)ptr1 - (char far *)cache_start;
+      }
 
-if (! diskisgood) return(0);		/* bail out if the open failed */
+   memorysize = (long)(ydots) * rowsize;
+   if ((i = (short)memorysize & (BLOCKLEN-1)) != 0)
+      memorysize += BLOCKLEN - i;
+   memorysize >>= pixelshift;
 
-if (oldy != y) {			/* need to get a new line? */
-	if (linehaschanged) 		/* write the old line out, if need be */
-		diskwriteline();
-	start = bytesperline;  start *= y;	/* locate start-of-line */
-	fseek(fp,start,SEEK_SET);	/* seek to start of line */
-	fread(diskline,1,bytesperline,fp);	/* read the line */
-	oldy = y;			/* reset oldy */
-	if (diskprintfs) {
-		home();				/* show a progress report */
-		printf("Reading Line %4d...     ",y);
-		}
-	}
+   if (debugflag != 420 && debugflag != 422 /* 422=xmm test, 420=disk test */
+     && disktarga == 0) {
+      /* Try Expanded Memory */
+      exppages = (memorysize + 16383) >> 14;
+      if ((expmemoryvideo = emmquery()) != NULL
+	&& (emmhandle = emmallocate(exppages)) != 0) {
+	 if (dotmode == 11)
+	    printf("(Using your Expanded Memory)\n");
+	 for (oldexppage = 0; oldexppage < exppages; oldexppage++)
+	    emmclearpage(oldexppage, emmhandle); /* clear the "video" */
+	 put_char = exp_putc;
+	 get_char = exp_getc;
+	 doseek  = exp_seek;
+	 return(0);
+	 }
+      }
 
-pixeloffset = x & pixeloffsetmask;	/* get pixel offset */
-start = x >> pixelshift;		/* adjust for pixels / byte */
+   if (debugflag != 420 && disktarga == 0) {
+      /* Try Extended Memory */
+      if ((charbuf = farmemalloc((long)XMMWRITELEN)) != NULL
+	&& xmmquery() !=0
+	&& (xmmhandle = xmmallocate(longtmp = (memorysize+1023) >> 10)) != 0) {
+	 if (dotmode == 11)
+	    printf("(Using your Extended Memory)\n");
+	 for (i = 0; i < XMMWRITELEN; i++)
+	    charbuf[i] = 0;
+	 MoveStruct.SourceHandle = 0;	 /* Source is in conventional memory */
+	 MoveStruct.SourceOffset = (unsigned long)charbuf;
+	 MoveStruct.DestHandle	 = xmmhandle;
+	 MoveStruct.Length	 = XMMWRITELEN;
+	 MoveStruct.DestOffset	 = 0;
+	 longtmp *= (1024/XMMWRITELEN);
+	 while (--longtmp >= 0) {
+	    if ((success = xmmmoveextended(&MoveStruct)) == 0) break;
+	    MoveStruct.DestOffset += XMMWRITELEN;
+	    }
+	 if (success) {
+	    put_char = ext_putc;
+	    get_char = ext_getc;
+	    doseek  = ext_seek;
+	    extbufptr = endreadbuf = charbuf;
+	    endwritebuf = charbuf + XMMWRITELEN;
+	    return(0);			 /* and bail out */
+	    }
+	 if (dotmode == 11)
+	    printf("OOPS - Unable to use extended Memory\n");
+	 xmmdeallocate(xmmhandle);	 /* Clear the memory */
+	 xmmhandle = 0; 		 /* Signal same */
+	 }
+      }
 
-return(diskgetcolor(diskline[start]));	/* return with the "pixel" "color" */
+   if (dotmode == 11)
+      printf("(Using your Disk Drive)     \n");
+   if (disktarga == 0) {
+      if ((fp = fopen("FRACTINT.DSK","w+b")) == NULL) {
+	 buzzer(2);
+	 if (dotmode == 11)
+	    printf("*** Couldn't create FRACTINT.DSK ***");
+	 rowsize = 0;
+	 return(-1);
+	 }
+      while (--memorysize >= 0) /* "clear the screen" (write to the disk) */
+	 putc(0,fp);
+      if (ferror(fp)) {
+	 buzzer(2);
+	 if (dotmode == 11)
+	    printf("*** insufficient free disk space ***\n");
+	 fclose(fp);
+	 remove("FRACTINT.DSK");
+	 fp = NULL;
+	 rowsize = 0;
+	 return(-1);
+	 }
+      }
+   put_char = disk_putc;
+   get_char = disk_getc;
+   doseek  = disk_seek;
+   return(0);
 }
 
-writedisk(x,y,color)
-int x, y, color;
+void enddisk()
 {
-long start;
-unsigned int page, offset;
-
-if (x < 0 || x >= xdots || y < 0 || y >= ydots) return(0);
-
-if (memoryvideo != NULL) {		/* RAM video? */
-	if (++timetodisplay == 1000) {	/* time to display status? */
-		if (diskprintfs) {
-			home();		/* show a progress report */
-			printf("Writing Line %4d...     ",y);
-			}
-		timetodisplay = -1;
-		}
-	start = y;  start = (start * xdots) + x;	/* then write it! */
-	pixeloffset = start & pixeloffsetmask;	/* get pixel offset */
-        start >>= pixelshift;		/* adjust for pixels / byte */
-	memoryvideo[start] = diskputcolor(memoryvideo[start], color);
-	return(0);			/* and bail out */
-	}
-
-if (emmhandle != 0) {				/* expanded memory video? */
-	if (++timetodisplay == 1000) {	/* time to display status? */
-		if (diskprintfs) {
-			home();		/* show a progress report */
-			printf("Writing Line %4d...     ",y);
-			}
-		timetodisplay = -1;
-		}
-	start = y; start = (start * xdots) + x;	/* figure out where it is */
-	pixeloffset = start & pixeloffsetmask;	/* get pixel offset */
-        start >>= pixelshift;		/* adjust for pixels / byte */
-	page = start >> 14;  offset = start & 0x3fff;
-	if (page != oldexppage) {		/* time to get a new page? */
-		oldexppage = page;
-		emmgetpage(page, emmhandle);
-		}
-	expmemoryvideo[offset] = diskputcolor(expmemoryvideo[offset], color);
-	return(0);				/* and return */
-	}
-
-if (! diskisgood) return(0);		/* bail out if the open failed */
-
-if (oldy != y) {			/* need to get a new line? */
-	if (linehaschanged) 		/* write the old line out, if need be */
-		diskwriteline();
-	start = xdots;  start *= y;	/* locate start-of-line */
-	fseek(fp,start,SEEK_SET);	/* seek to start of line */
-	fread(diskline,1,bytesperline,fp);	/* read the line */
-	oldy = y;			/* reset oldy */
-	if (diskprintfs) {
-		home();			/* show a progress report */
-		printf("Writing Line %4d...     ",y);
-		}
-	}
-
-pixeloffset = x & pixeloffsetmask;	/* get pixel offset */
-start = x >> pixelshift;		/* adjust for pixels / byte */
-
-diskline[start] = diskputcolor(diskline[start], color);	/* "display" the "pixel" */
-
-linehaschanged = 1;			/* note that the line has changed */
-return(0);
-
+   if (fp != NULL) {
+      if (disktarga) /* flush the cache */
+	 for (cache_lru = cache_start; cache_lru < cache_end; ++cache_lru)
+	    if (cache_lru->dirty)
+	       write_cache_lru();
+      fclose(fp);
+      if (disktarga == 0)
+	 remove("FRACTINT.DSK");
+      }
+   if (charbuf != NULL)
+      farmemfree((void far *)charbuf);
+   if (hash_ptr != NULL)
+      farmemfree((void far *)hash_ptr);
+   if (cache_start != NULL)
+      farmemfree((void far *)cache_start);
+   if (emmhandle != 0)	 /* Expanded memory video? */
+      emmdeallocate(emmhandle);
+   if (xmmhandle != 0)	 /* Extended memory video? */
+      xmmdeallocate(xmmhandle);
+   rowsize = emmhandle = xmmhandle = 0;
+   hash_ptr    = NULL;
+   cache_start = NULL;
+   charbuf     = NULL;
+   fp	       = NULL;
 }
 
-diskwriteline()
+int readdisk(unsigned int col, unsigned int row)
 {
-long start;
+   int col_subscr;
+   long offset;
+   if (col >= rowsize || row >= (unsigned)ydots) /* if init bad, rowsize is 0 */
+      return(0);
+   if (--timetodisplay < 0) {  /* time to display status? */
+      if (dotmode == 11) {
+	 home();	 /* show a progress report */
+	 printf("Reading Line %4d...     ",row);
+	 }
+      timetodisplay = 1000;
+      }
+   if (row != cur_row) /* try to avoid ghastly code generated for multiply */
+      cur_row_base = (long)(cur_row = row) * rowsize;
+   offset = cur_row_base + col;
+   col_subscr = (short)offset & (BLOCKLEN-1); /* offset within cache entry */
+   if (cur_offset + col_subscr != offset)     /* same entry as last ref? */
+      findload_cache(offset - col_subscr);
+   return (cur_cache->pixel[col_subscr]);
+   }
 
-if (! linehaschanged) 			/* double-check: bail out if no need */
-	return(0);
-
-start = bytesperline;  start *= oldy;	/* locate start-of-line */
-fseek(fp,start,SEEK_SET);		/* seek to start of line */
-fwrite(diskline,1,bytesperline,fp);		/* write the line */
-
-linehaschanged = 0;			/* indicate line has not changed */
-return(0);
-
-}
-
-/* disk-based versions of 'getcolor/putcolor' - includes bit-shifting */
-
-diskgetcolor(unsigned char byte)
+void targa_readdisk(unsigned int col, unsigned int row,
+		    unsigned char *red, unsigned char *green, unsigned char *blue)
 {
-if (colors > 16) return(byte);
-
-return((byte & pixelmask[pixeloffset]) >> pixelbitshift[pixeloffset]);
+   col *= 3;
+   *blue  = readdisk(col,row);
+   *green = readdisk(++col,row);
+   *red   = readdisk(col+1,row);
 }
 
-diskputcolor(unsigned char byte, unsigned int color)
+void writedisk(unsigned int col, unsigned int row, unsigned int color)
 {
-if (colors > 16) return(color);
+   int col_subscr;
+   long offset;
+   if (col >= rowsize || row >= (unsigned)ydots)
+      return;
+   if (--timetodisplay < 0) {  /* time to display status? */
+      if (dotmode == 11) {
+	 home();	 /* show a progress report */
+	 printf("Writing Line %4d...     ",row);
+	 }
+      timetodisplay = 1000;
+      }
+   if (row != cur_row) /* try to avoid ghastly code generated for multiply */
+      cur_row_base = (long)(cur_row = row) * rowsize;
+   offset = cur_row_base + col;
+   col_subscr = (short)offset & (BLOCKLEN-1);
+   if (cur_offset + col_subscr != offset)
+      findload_cache(offset - col_subscr);
+   if (cur_cache->pixel[col_subscr] != (color & 0xff)) {
+      cur_cache->pixel[col_subscr] = color;
+      cur_cache->dirty = 1;
+      }
+   }
 
-return((byte & notpixelmask[pixeloffset]) |
-	((color & pixelmask[0]) << pixelbitshift[pixeloffset]));
+void targa_writedisk(unsigned int col, unsigned int row,
+		    unsigned char red, unsigned char green, unsigned char blue)
+{
+   writedisk(col*=3,row,blue);
+   writedisk(++col, row,green);
+   writedisk(col+1, row,red);
 }
+
+static void findload_cache(long offset) /* used by read/write */
+{
+   unsigned int tbloffset;
+   int i,j;
+   unsigned int far *fwd_link;
+   unsigned char far *pixelptr;
+   unsigned char tmpchar;
+   cur_offset = offset; /* note this for next reference */
+   /* check if required entry is in cache - lookup by hash */
+   tbloffset = hash_ptr[ ((unsigned short)offset >> BLOCKSHIFT) & (HASHSIZE-1) ];
+   while (tbloffset != 0xffff) { /* follow the hash chain */
+      (char far *)cur_cache = (char far *)cache_start + tbloffset;
+      if (cur_cache->offset == offset) { /* great, it is in the cache */
+	 cur_cache->lru = 1;
+	 return;
+	 }
+      tbloffset = cur_cache->hashlink;
+      }
+   /* must load the cache entry from backing store */
+   while (1) { /* look around for something not recently used */
+      if (++cache_lru >= cache_end)
+	 cache_lru = cache_start;
+      if (cache_lru->lru == 0)
+	 break;
+      cache_lru->lru = 0;
+      }
+   if (cache_lru->dirty) /* must write this block before reusing it */
+      write_cache_lru();
+   /* remove block at cache_lru from its hash chain */
+   fwd_link = hash_ptr
+	    + (((unsigned short)cache_lru->offset >> BLOCKSHIFT) & (HASHSIZE-1));
+   tbloffset = (char far *)cache_lru - (char far *)cache_start;
+   while (*fwd_link != tbloffset)
+      fwd_link = &((struct cache far *)((char far *)cache_start+*fwd_link))->hashlink;
+   *fwd_link = cache_lru->hashlink;
+   /* load block */
+   cache_lru->dirty  = 0;
+   cache_lru->lru    = 1;
+   cache_lru->offset = offset;
+   pixelptr = &cache_lru->pixel[0];
+   if (offset > high_offset) { /* never been this high before, just clear it */
+      high_offset = offset;
+      for (i = 0; i < BLOCKLEN; ++i)
+	 *(pixelptr++) = 0;
+      }
+   else {
+      if (offset != seek_offset)
+	 (*doseek)(offset >> pixelshift);
+      seek_offset = offset + BLOCKLEN;
+      switch (pixelshift) {
+	 case 0:
+	    for (i = 0; i < BLOCKLEN; ++i)
+	       *(pixelptr++) = (*get_char)();
+	    break;
+	 case 1:
+	    for (i = 0; i < BLOCKLEN/2; ++i) {
+	       tmpchar = (*get_char)();
+	       *(pixelptr++) = tmpchar >> 4;
+	       *(pixelptr++) = tmpchar & 15;
+	       }
+	    break;
+	 case 2:
+	    for (i = 0; i < BLOCKLEN/4; ++i) {
+	       tmpchar = (*get_char)();
+	       for (j = 6; j >= 0; j -= 2)
+		  *(pixelptr++) = (tmpchar >> j) & 3;
+	       }
+	    break;
+	 case 3:
+	    for (i = 0; i < BLOCKLEN/8; ++i) {
+	       tmpchar = (*get_char)();
+	       for (j = 7; j >= 0; --j)
+		  *(pixelptr++) = (tmpchar >> j) & 1;
+	       }
+	    break;
+	 }
+      }
+   /* add new block to its hash chain */
+   fwd_link = hash_ptr + (((unsigned short)offset >> BLOCKSHIFT) & (HASHSIZE-1));
+   cache_lru->hashlink = *fwd_link;
+   *fwd_link = (char far *)cache_lru - (char far *)cache_start;
+   cur_cache = cache_lru;
+   }
+
+struct cache far *find_cache(long offset) /* lookup for write_cache_lru */
+{
+   int tbloffset;
+   struct cache far *ptr1;
+   tbloffset = hash_ptr[ ((unsigned short)offset >> BLOCKSHIFT) & (HASHSIZE-1) ];
+   while (tbloffset != 0xffff) {
+      (char far *)ptr1 = (char far *)cache_start + tbloffset;
+      if (ptr1->offset == offset)
+	 return (ptr1);
+      tbloffset = ptr1->hashlink;
+      }
+   return (NULL);
+}
+
+static void write_cache_lru()
+{
+   int i,j;
+   unsigned char far *pixelptr;
+   long offset;
+   unsigned char tmpchar;
+   struct cache far *ptr1, far *ptr2;
+   /* scan back to also write any preceding dirty blocks */
+   ptr1 = cache_lru;
+   while ((ptr2 = find_cache(ptr1->offset - BLOCKLEN)) != NULL && ptr2->dirty)
+      ptr1 = ptr2;
+   (*doseek)(ptr1->offset >> pixelshift);
+   seek_offset = -1; /* force a seek before next read */
+   /* write all consecutive dirty blocks (often whole cache in 1pass modes) */
+   while (ptr1 != NULL && ptr1->dirty) {
+      pixelptr = &ptr1->pixel[0];
+      switch (pixelshift) {
+	 case 0:
+	    for (i = 0; i < BLOCKLEN; ++i)
+	       (*put_char)(*(pixelptr++));
+	    break;
+	 case 1:
+	    for (i = 0; i < BLOCKLEN/2; ++i) {
+	       tmpchar = *(pixelptr++) << 4;
+	       tmpchar += *(pixelptr++);
+	       (*put_char)(tmpchar);
+	       }
+	    break;
+	 case 2:
+	    for (i = 0; i < BLOCKLEN/4; ++i) {
+	       for (j = 6; j >= 0; j -= 2)
+		  tmpchar = (tmpchar << 2) + *(pixelptr++);
+	       (*put_char)(tmpchar);
+	       }
+	    break;
+	 case 3:
+	    for (i = 0; i < BLOCKLEN/8; ++i) {
+	       (*put_char)( ((((((*pixelptr << 1 | *(pixelptr+1)) << 1
+			  | *(pixelptr+2)) << 1 | *(pixelptr+3)) << 1
+			  | *(pixelptr+4)) << 1 | *(pixelptr+5)) << 1
+			  | *(pixelptr+6)) << 1 | *(pixelptr+7));
+	       pixelptr += 8;
+	       }
+	    break;
+	 }
+      ptr1->dirty = 0;
+      ptr1 = find_cache(ptr1->offset + BLOCKLEN);
+      }
+}
+
+/* Seek, get_char, put_char routines follow for expanded, extended, disk.
+   Note that the calling logic always separates get_char and put_char
+   sequences with a seek between them.	A get_char is never followed by
+   a put_char nor v.v. without a seek between them.
+   */
+
+void disk_seek(long offset)	/* real disk seek */
+{
+   fseek(fp,offset+headerlength,SEEK_SET);
+   }
+
+unsigned char disk_getc()	/* real disk get_char */
+{
+   return(getc(fp));
+   }
+
+void disk_putc(unsigned char c) /* real disk put_char */
+{
+   putc(c,fp);
+   }
+
+void exp_seek(long offset)	/* expanded mem seek */
+{
+   int page;
+   expoffset = (short)offset & 0x3fff;
+   page = offset >> 14;
+   if (page != oldexppage) { /* time to get a new page? */
+      oldexppage = page;
+      emmgetpage(page,emmhandle);
+      }
+   }
+
+unsigned char exp_getc()	/* expanded mem get_char */
+{
+   if (expoffset > 0x3fff) /* wrapped into a new page? */
+      exp_seek((long)(oldexppage+1) << 14);
+   return(expmemoryvideo[expoffset++]);
+   }
+
+void exp_putc(unsigned char c)	/* expanded mem put_char */
+{
+   if (expoffset > 0x3fff) /* wrapped into a new page? */
+      exp_seek((long)(oldexppage+1) << 14);
+   expmemoryvideo[expoffset++] = c;
+   }
+
+void ext_writebuf()		/* subrtn for extended mem seek/put_char */
+{
+   struct XMM_Move MoveStruct;
+   MoveStruct.Length = extbufptr - charbuf;
+   MoveStruct.SourceHandle = 0; /* Source is conventional memory */
+   MoveStruct.SourceOffset = (unsigned long)charbuf;
+   MoveStruct.DestHandle = xmmhandle;
+   MoveStruct.DestOffset = extoffset;
+   xmmmoveextended(&MoveStruct);
+   }
+
+void ext_seek(long offset)	/* extended mem seek */
+{
+   if (extbufptr > endreadbuf) /* only true if there was a put_char sequence */
+      ext_writebuf();
+   extoffset = offset;
+   extbufptr = endreadbuf = charbuf;
+   }
+
+unsigned char ext_getc()	/* extended mem get_char */
+{
+   struct XMM_Move MoveStruct;
+   if (extbufptr >= endreadbuf) { /* drained the last read buffer we fetched? */
+      MoveStruct.Length = XMMREADLEN;
+      MoveStruct.SourceHandle = xmmhandle; /* Source is extended memory */
+      MoveStruct.SourceOffset = extoffset;
+      MoveStruct.DestHandle = 0;
+      MoveStruct.DestOffset = (unsigned long)charbuf;
+      xmmmoveextended(&MoveStruct);
+      extoffset += XMMREADLEN;
+      endreadbuf = XMMREADLEN + (extbufptr = charbuf);
+      }
+   return (*(extbufptr++));
+   }
+
+void ext_putc(unsigned char c)	/* extended mem get_char */
+{
+   if (extbufptr >= endwritebuf) { /* filled the local write buffer? */
+      ext_writebuf();
+      extoffset += XMMWRITELEN;
+      extbufptr = charbuf;
+      }
+   *(extbufptr++) = c;
+   }
 

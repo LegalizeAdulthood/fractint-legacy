@@ -10,7 +10,7 @@
 
 extern char temp1[];
 
-extern	int	colors;				/* maximum colors available */
+extern	int	colors; 			/* maximum colors available */
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
 extern int	daclearn, daccount;	/* used by the color-cyclers */
@@ -18,6 +18,7 @@ extern int	reallyega;		/* == 0 if it's really an EGA */
 
 static int paused;				/* rotate-is-paused flag */
 
+extern int key_count(int);
 
 static unsigned char Red[3]    = {63, 0, 0};	/* for shifted-Fkeys */
 static unsigned char Green[3]  = { 0,63, 0};
@@ -40,14 +41,14 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 
 FILE *dacfile;
 
-if (dacbox[0][0] == 255 || 		/* ??? no DAC to rotate!	*/
+if (dacbox[0][0] == 255 ||		/* ??? no DAC to rotate!	*/
 	colors < 16) {			/* strange things happen in 2x modes */
 		buzzer(2);
 		return(0);
 		}
 
-oldhelpmode = helpmode;			/* save the old help mode */
-helpmode = HELPCYCLING;			/* new help mode */
+oldhelpmode = helpmode; 		/* save the old help mode */
+helpmode = HELPCYCLING; 		/* new help mode */
 
 paused = 0;				/* not paused			*/
 length = 0;				/* no random coloring		*/
@@ -75,10 +76,10 @@ if (direction < 0) {
 more = 1;
 while (more) {
 	while(!keypressed())	{	/* rotate until a key gets hit	*/
-		if (fkey > 0) {		/* randomizing is on		*/
+		if (fkey > 0) { 	/* randomizing is on		*/
 			for (istep = 0; istep < step; istep++) {
 				jstep = next + (istep * direction);
-				if (jstep <=      0) jstep += maxreg-1;
+				if (jstep <=	  0) jstep += maxreg-1;
 				if (jstep >= maxreg) jstep -= maxreg-1;
 				if (++incr > fstep) {	/* time to randomize	*/
 					incr = 1;
@@ -87,9 +88,9 @@ while (more) {
 					fromred   = dacbox[last][0];
 					fromgreen = dacbox[last][1];
 					fromblue  = dacbox[last][2];
-					tored     = rand() >> 9;
+					tored	  = rand() >> 9;
 					togreen   = rand() >> 9;
-					toblue    = rand() >> 9;
+					toblue	  = rand() >> 9;
 					}
 				dacbox[jstep][0] = fromred   + (((tored   - fromred  )*incr)/fstep);
 				dacbox[jstep][1] = fromgreen + (((togreen - fromgreen)*incr)/fstep);
@@ -104,7 +105,7 @@ while (more) {
 		(kbdchar != ' ' && kbdchar != 'c' && kbdchar != 'C' ))
 			paused = 0;	/* clear paused condition	*/
 	switch (kbdchar) {
-		case '+':		/* '+' means rotate forward	*/
+		case '+':               /* '+' means rotate forward     */
 		case 1077:		/* RightArrow = rotate fwd	*/
 			fkey = 0;
 			direction = 1;
@@ -112,7 +113,7 @@ while (more) {
 			next = 1;
 			incr = 999;
 			break;
-		case '-':		/* '-' means rotate backward	*/
+		case '-':               /* '-' means rotate backward    */
 		case 1075:		/* LeftArrow = rotate bkwd	*/
 			fkey = 0;
 			direction = -1;
@@ -137,10 +138,10 @@ while (more) {
 		case '7':
 		case '8':
 		case '9':
-			step = kbdchar - '0';	/* change step-size */
+			step = kbdchar - '0';   /* change step-size */
 			break;
 		case 1059:		/* F1 - F10:			*/
-		case 1060:		/* select a shading factor 	*/
+		case 1060:		/* select a shading factor	*/
 		case 1061:
 		case 1062:
 		case 1063:
@@ -164,22 +165,22 @@ while (more) {
 			oldstep = step;
 			step = 256;
 			break;
-		case 'r':		/* color changes */
+		case 'r':               /* color changes */
 			if (changecolor    == -1) changecolor = 0;
 			if (changedirection == 0) changedirection = -1;
-		case 'g':		/* color changes */
+		case 'g':               /* color changes */
 			if (changecolor    == -1) changecolor = 1;
 			if (changedirection == 0) changedirection = -1;
-		case 'b':		/* color changes */
+		case 'b':               /* color changes */
 			if (changecolor    == -1) changecolor = 2;
 			if (changedirection == 0) changedirection = -1;
-		case 'R':		/* color changes */
+		case 'R':               /* color changes */
 			if (changecolor    == -1) changecolor = 0;
 			if (changedirection == 0) changedirection = 1;
-		case 'G':		/* color changes */
+		case 'G':               /* color changes */
 			if (changecolor    == -1) changecolor = 1;
 			if (changedirection == 0) changedirection = 1;
-		case 'B':		/* color changes */
+		case 'B':               /* color changes */
 			if (changecolor    == -1) changecolor = 2;
 			if (changedirection == 0) changedirection = 1;
 			if (reallyega) break;	/* no sense on real EGAs */
@@ -192,13 +193,13 @@ while (more) {
 				}
 			changecolor    = -1;	/* clear flags for next time */
 			changedirection = 0;
-			paused          = 0;	/* clear any pause */
-		case ' ':		/* use the spacebar as a "pause" toggle */
-		case 'c':		/* for completeness' sake, the 'c' too */
+			paused		= 0;	/* clear any pause */
+		case ' ':               /* use the spacebar as a "pause" toggle */
+		case 'c':               /* for completeness' sake, the 'c' too */
 		case 'C':
 			pauserotate();	/* pause */
 			break;
-		case 'd':		/* load colors from "default.map" */
+		case 'd':               /* load colors from "default.map" */
 		case 'D':
 			findpath("default.map",temp1);
 			dacfile = fopen(temp1,"r");
@@ -211,7 +212,7 @@ while (more) {
 			fkey = 0;	/* disable random generation */
 			pauserotate();	/* update palette and pause */
 			break;
-		case 'a':		/* load colors from "altern.map" */
+		case 'a':               /* load colors from "altern.map" */
 		case 'A':
 			findpath("altern.map",temp1);
 			dacfile = fopen(temp1,"r");
@@ -224,7 +225,7 @@ while (more) {
 			fkey = 0;	/* disable random generation */
 			pauserotate();	/* update palette and pause */
 			break;
-		case 'm':		/* load colors from a specified map */
+		case 'm':               /* load colors from a specified map */
 		case 'M':
 			{
 			char temp2[80];
@@ -246,7 +247,7 @@ while (more) {
 			fkey = 0;	/* disable random generation */
 			pauserotate();	/* update palette and pause */
 			break;
-		case 's':		/* save the palette */
+		case 's':               /* save the palette */
 		case 'S':
 			setfortext();
 			printf("\n\n Please enter your .MAP file name ==> ");
@@ -260,7 +261,7 @@ while (more) {
 				break;
 				}
 			fprintf(dacfile,"  0   0   0\n");
-			for (i = 1; i < 256; i++) 
+			for (i = 1; i < 256; i++)
 				fprintf(dacfile, "%3d %3d %3d\n",
 				dacbox[i][0] << 2,
 				dacbox[i][1] << 2,
@@ -269,7 +270,7 @@ while (more) {
 			fkey = 0;	/* disable random generation */
 			pauserotate();	/* update palette and pause */
 			break;
-		case 'x':		/* switch to x-hair */
+		case 'x':               /* switch to x-hair */
 		case 'X':
 			if (reallyega) break;	/* no sense on real EGAs */
 			{
@@ -358,7 +359,7 @@ while (more) {
 		}
 	}
 
-helpmode = oldhelpmode;			/* return to previous help mode */
+helpmode = oldhelpmode; 		/* return to previous help mode */
 }
 
 pauserotate()				/* pause-the-rotate routine */
@@ -391,17 +392,17 @@ unsigned char start[3], finish[3];
    int i, j;
    for(i=1;i<=255;i++)			/* fill the palette	*/
       for (j = 0; j < 3; j++)
-         dacbox[i][j] = (i*start[j] + (256-i)*finish[j])/255;
+	 dacbox[i][j] = (i*start[j] + (256-i)*finish[j])/255;
 }
 
 set_palette2(start, finish)
 unsigned char start[3], finish[3];
 {
    int i, j;
-   for(i=1;i<=128;i++) 
+   for(i=1;i<=128;i++)
       for (j = 0; j < 3; j++) {
-         dacbox[i][j]     = (i*finish[j] + (128-i)*start[j] )/128;
-         dacbox[i+127][j] = (i*start[j]  + (128-i)*finish[j])/128;
+	 dacbox[i][j]	  = (i*finish[j] + (128-i)*start[j] )/128;
+	 dacbox[i+127][j] = (i*start[j]  + (128-i)*finish[j])/128;
       }
 }
 
@@ -409,11 +410,11 @@ set_palette3(start, middle, finish)
 unsigned char start[3], middle[3], finish[3];
 {
    int i, j;
-   for(i=1;i<=85;i++) 
+   for(i=1;i<=85;i++)
       for (j = 0; j < 3; j++) {
-         dacbox[i][j]     = (i*middle[j] + (86-i)*start[j] )/85;
-         dacbox[i+85][j]  = (i*finish[j] + (86-i)*middle[j])/85;
-         dacbox[i+170][j] = (i*start[j]  + (86-i)*finish[j])/85;
+	 dacbox[i][j]	  = (i*middle[j] + (86-i)*start[j] )/85;
+	 dacbox[i+85][j]  = (i*finish[j] + (86-i)*middle[j])/85;
+	 dacbox[i+170][j] = (i*start[j]  + (86-i)*finish[j])/85;
       }
 }
 
@@ -431,20 +432,20 @@ palettes()				/* adjust-the-palette routine	*/
 {
 int  kbdchar, more;
 int i, j, k, changecolor, changedirection;
-int oldhelpmode;
+int oldhelpmode, oldlookatmouse;
 int olddaccount;
 
-if (dacbox[0][0] == 255 || 		/* ??? no DAC to rotate! */
+if (dacbox[0][0] == 255 ||		/* ??? no DAC to rotate! */
 	reallyega ||			/* true VGAs only, please */
 	colors < 16) {			/* strange things happen in 2x modes */
 		buzzer(2);
 		return(0);
 		}
 
-oldhelpmode = helpmode;			/* save the old help mode */
+oldhelpmode = helpmode; 		/* save the old help mode */
 helpmode = HELPXHAIR;			/* new help mode */
 
-olddaccount = daccount;			/* update the DAC ASAP */
+olddaccount = daccount; 		/* update the DAC ASAP */
 daccount = 256;
 
 crosshair_row = xdots / 2;		/* start the cursor in the */
@@ -453,14 +454,15 @@ crosshair_active = 0;			/* no crosshair active */
 crosshair_cursor = 0;			/* black crosshair cursor */
 cross_hair(1);				/* draw the crosshair */
 
-lookatmouse = 1;			/* activate the full mouse-checking */
+oldlookatmouse = lookatmouse;		/* save the old mouse mode */
+lookatmouse = 3;			/* graphics mouse and buttons stuff */
 
 more = 1;
 while (more) {
 	while(!keypressed());		/* wait until a key gets hit	*/
 	kbdchar = getakey();
 	switch (kbdchar) {
-		case '+':		/* '+' 	*/
+		case '+':               /* '+'  */
 			if (++crosshair_newcolor == 256)
 				crosshair_newcolor = 1;
 			for (k = 0; k < 3; k++)
@@ -472,7 +474,7 @@ while (more) {
 						crosshair_oldcolor[k];
 			spindac(0,1);
 			break;
-		case '-':		/* '-' 	*/
+		case '-':               /* '-'  */
 			if (--crosshair_newcolor == 0)
 				crosshair_newcolor = 255;
 			for (k = 0; k < 3; k++)
@@ -484,64 +486,42 @@ while (more) {
 						crosshair_oldcolor[k];
 			spindac(0,1);
 			break;
-		case 1116:		/* Ctrl-RightArrow 	*/
-			crosshair_row += 4;
-		case 1077:		/* RightArrow 	*/
-			crosshair_row++;
-			if (crosshair_row >= xdots)
-				crosshair_row = xdots-1;
-			cross_hair(1);
-			break;
+		case 1077:		/* RightArrow	*/
+		case 1075:		/* LeftArrow	*/
+		case 1072:		/* UpArrow	*/
+		case 1080:		/* DownArrow	*/
+		case 1116:		/* Ctrl-RightArrow	*/
 		case 1115:		/* Ctrl-LeftArrow */
-			crosshair_row -= 4;
-		case 1075:		/* LeftArrow 	*/
-			crosshair_row--;
-			if (crosshair_row < 0)
-				crosshair_row = 0;
-			cross_hair(1);
-			break;
 		case 1141:		/* Ctrl-UpArrow 	*/
-			crosshair_col -= 4;
-		case 1072:		/* UpArrow 	*/
-			crosshair_col--;
-			if (crosshair_col < 0)
-				crosshair_col = 0;
-			cross_hair(1);
+		case 1145:		/* Ctrl-DownArrow	*/
+			move_cross_hair(kbdchar);
 			break;
-		case 1145:		/* Ctrl-DownArrow 	*/
-			crosshair_col += 4;
-		case 1080:		/* DownArrow 	*/
-			crosshair_col++;
-			if (crosshair_col >= ydots)
-				crosshair_col = ydots-1;
-			cross_hair(1);
-			break;
-		case 1073:		/* page up */
-			if (++crosshair_cursor >= colors)
+		case 1146:		/* ctl-ins */
+			if ((crosshair_cursor+=key_count(1146)) >= colors)
 				crosshair_cursor = 0;
 			cross_hair(1);
 			break;
-		case 1081:		/* page down */
-			if (--crosshair_cursor < 0)
+		case 1147:		/* ctl-del */
+			if ((crosshair_cursor-=key_count(1147)) < 0)
 				crosshair_cursor = colors-1;
 			cross_hair(1);
 			break;
-		case 'r':		/* color changes */
+		case 'r':               /* color changes */
 			if (changecolor    == -1) changecolor = 0;
 			if (changedirection == 0) changedirection = -1;
-		case 'g':		/* color changes */
+		case 'g':               /* color changes */
 			if (changecolor    == -1) changecolor = 1;
 			if (changedirection == 0) changedirection = -1;
-		case 'b':		/* color changes */
+		case 'b':               /* color changes */
 			if (changecolor    == -1) changecolor = 2;
 			if (changedirection == 0) changedirection = -1;
-		case 'R':		/* color changes */
+		case 'R':               /* color changes */
 			if (changecolor    == -1) changecolor = 0;
 			if (changedirection == 0) changedirection = 1;
-		case 'G':		/* color changes */
+		case 'G':               /* color changes */
 			if (changecolor    == -1) changecolor = 1;
 			if (changedirection == 0) changedirection = 1;
-		case 'B':		/* color changes */
+		case 'B':               /* color changes */
 			if (changecolor    == -1) changecolor = 2;
 			if (changedirection == 0) changedirection = 1;
 
@@ -556,8 +536,18 @@ while (more) {
 			changecolor    = -1;	/* clear flags for next time */
 			changedirection = 0;
 			break;
-		case 13:			/* Enter keys */
-		case 1013:
+		case 13:			/* do-nothing keys/mouse */
+		case 1013:			/* enter */
+		case 10:
+		case 1010:			/* ctl-enter */
+		case 1119:			/* ctl-home */
+		case 1117:			/* ctl-end */
+		case 1132:			/* ctl-pgup */
+		case 1118:			/* ctl-pgdn */
+		case 1073:			/* pgup */
+		case 1081:			/* pgdn */
+		case 1142:			/* ctl-kpad- */
+		case 1144:			/* ctl-kpad+ */
 			break;
 		default:
 			more = 0;
@@ -565,16 +555,16 @@ while (more) {
 		}
 	}
 cross_hair(0);				/* remove the cross-hairs */
-daccount = olddaccount;			/* replace the DAC count */
-lookatmouse = 0;			/* deactivate mouse checking */
-helpmode = oldhelpmode;			/* return to previous help mode */
+daccount = olddaccount; 		/* replace the DAC count */
+lookatmouse = oldlookatmouse;		/* return to previous mouse mode */
+helpmode = oldhelpmode; 		/* return to previous help mode */
 }
 
 cross_hair(onoff)
 {
 int i, j;
 
-if (crosshair_active) {			/* remove old cross-hair? */
+if (crosshair_active) { 		/* remove old cross-hair? */
 	for (i = 0; i < 10; i++) {
 		j = old_crosshair_row - 6 + i;
 		if (i >= 5) j += 3;
@@ -617,3 +607,53 @@ if (onoff) {			/* display new old cross-hair? */
 		}
 	}
 }
+
+/* do all pending movement at once for smooth mouse diagonal moves */
+move_cross_hair(int keynum)
+{
+int vertical, horizontal, getmore;
+vertical = horizontal = 0;
+getmore = 1;
+while (getmore) {
+	switch (keynum) {
+		case 1116:		/* Ctrl-RightArrow	*/
+			horizontal += 4;
+		case 1077:		/* RightArrow	*/
+			horizontal++;
+			break;
+		case 1115:		/* Ctrl-LeftArrow */
+			horizontal -= 4;
+		case 1075:		/* LeftArrow	*/
+			horizontal--;
+			break;
+		case 1141:		/* Ctrl-UpArrow 	*/
+			vertical -= 4;
+		case 1072:		/* UpArrow	*/
+			vertical--;
+			break;
+		case 1145:		/* Ctrl-DownArrow	*/
+			vertical += 4;
+		case 1080:		/* DownArrow	*/
+			vertical++;
+			break;
+		default:
+			getmore = 0;
+	}
+	if (getmore) {
+		if (getmore == 2)		/* eat last key used */
+			getakey();
+		getmore = 2;
+		keynum = keypressed();		/* next pending key */
+	}
+}
+if ((crosshair_row += horizontal) >= xdots)
+	crosshair_row = xdots-1;
+if (crosshair_row < 0)
+	crosshair_row = 0;
+if ((crosshair_col += vertical) >= ydots)
+	crosshair_col = ydots-1;
+if (crosshair_col < 0)
+	crosshair_col = 0;
+cross_hair(1);
+}
+

@@ -5,7 +5,7 @@ IFDEF ??version
 	QUIRKS
 ENDIF
 
-	.MODEL  medium,c
+	.MODEL	medium,c
 
 	.8086
 
@@ -70,7 +70,7 @@ oops		db	13,10
 
 .CODE
 
-	public	
+	public
 
 
 callafi proc	near
@@ -181,7 +181,7 @@ setupopen:
 
 	mov	ax, amode + 10		;get the screen width
 	cmp	ax, xdots
-	jae	xdotsok		   	;check for fit
+	jae	xdotsok 		;check for fit
 	mov	xdots, ax
 xdotsok:
 	sub	ax, xdots		;save centering factor
@@ -214,7 +214,7 @@ open8514	endp
 reopen8514	proc	far
 
 	mov	si, offset hopendata	;open the adapter
-	mov	byte ptr [si + 2], 0C0h		;zero the image but leave pallette
+	mov	byte ptr [si + 2], 0C0h 	;zero the image but leave pallette
 	mov	ax, HSYNC		;initialize state
 	call	do85open
 	ret
@@ -227,7 +227,7 @@ close8514	proc	far
 	mov	si, offset hclosedata		;turn off 8514a
 	mov	ax, HCLOSE
 	call	callafi
-	
+
 ;	mov	si, offset svpaldata		;restore the pallette
 ;	mov	ax, HRPAL
 ;	call	callafi
@@ -344,46 +344,46 @@ fr85rbox	proc	far uses si
 
 fr85rbox	endp
 
-fr85zoom	proc	far uses si
-
-	add	ax, xadj		; ending col
-	add	bx, yadj		; ending row
-	add	cx, xadj		; starting col
-	add	dx, yadj		; starting row
-	sub	ax, cx			; how many columns?
-	inc	ax			;  this many
-	sub	bx, dx			; how many rows?
-	inc	bx			;  this many
-	mov	bbw + 4, ax		; width
-	mov	bbw + 6, bx		; height
-	mov	bbw + 8, cx		; source col
-	mov	bbw + 10, dx		; source row
-	add	ax, bx			; how many dots??
-	dec	ax			;  this many
-	mov	chn + 2, si		;point to data
-	mov	chn + 6, ax
-
-	mov	si, offset smx		; define the mix
-	mov	smx+2, 0016h		; screen XOR new
-	mov	ax, HSMX		; set the mix
-	call	callafi			; do it
-
-	mov	si, offset bbw		; set the blit
-	mov	ax, HBBW		; blit mem to vid mem
-	call	callafi			; do it
-
-	mov	si, offset chn		; set the move
-	mov	ax, HBBCHN		; chaining
-	call	callafi			; do it
-
-	mov	si, offset smx		; define the mix
-	mov	smx+2, 0002h		; overlay
-	mov	ax, HSMX		; set the mix
-	call	callafi			; do it
-
-	ret
-
-fr85zoom	endp
+;fr85zoom	 proc	 far uses si
+;
+;	add	ax, xadj		; ending col
+;	add	bx, yadj		; ending row
+;	add	cx, xadj		; starting col
+;	add	dx, yadj		; starting row
+;	sub	ax, cx			; how many columns?
+;	inc	ax			;  this many
+;	sub	bx, dx			; how many rows?
+;	inc	bx			;  this many
+;	mov	bbw + 4, ax		; width
+;	mov	bbw + 6, bx		; height
+;	mov	bbw + 8, cx		; source col
+;	mov	bbw + 10, dx		; source row
+;	add	ax, bx			; how many dots??
+;	dec	ax			;  this many
+;	mov	chn + 2, si		;point to data
+;	mov	chn + 6, ax
+;
+;	mov	si, offset smx		; define the mix
+;	mov	smx+2, 0016h		; screen XOR new
+;	mov	ax, HSMX		; set the mix
+;	call	callafi 		; do it
+;
+;	mov	si, offset bbw		; set the blit
+;	mov	ax, HBBW		; blit mem to vid mem
+;	call	callafi 		; do it
+;
+;	mov	si, offset chn		; set the move
+;	mov	ax, HBBCHN		; chaining
+;	call	callafi 		; do it
+;
+;	mov	si, offset smx		; define the mix
+;	mov	smx+2, 0002h		; overlay
+;	mov	ax, HSMX		; set the mix
+;	call	callafi 		; do it
+;
+;	ret
+;
+;fr85zoom	 endp
 
 w8514pal	proc	far
 
@@ -397,12 +397,12 @@ w8514pal	proc	far
 	mov	daccount, cx
 
 countok:				;now build 8514 pallette
-	mov	ax, 256			;from the data in dacbox
+	mov	ax, 256 		;from the data in dacbox
 	mov	pal + 4, 0
 	mov	di, offset paldata
 	cld
 cpallp:
-	push	ax		     	;do daccount at a time
+	push	ax			;do daccount at a time
 	mov	dx, di
 	cmp	ax, cx
 	jae	dopass
@@ -440,7 +440,7 @@ cpallp2:
 
 	pop	dx
 	mov	pal + 8, dx
-	
+
 	mov	si, offset pal		;load this piece
 	mov	ax, HLDPAL
 	call	callafi

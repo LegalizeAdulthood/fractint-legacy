@@ -1,7 +1,7 @@
 ;	Generic assembler routines that have very little at all
 ;	to do with fractals.
 ;
-;	(NOTE:  The video routines have been moved over to VIDEO.ASM)
+;	(NOTE:	The video routines have been moved over to VIDEO.ASM)
 ;
 ; ---- Overall Support
 ;
@@ -48,6 +48,13 @@
 ;	emmgetpage()
 ;	emmclearpage()
 ;
+; ---- Extended Memory Support
+;
+;	xmmquery()
+;	xmmallocate()
+;	xmmdeallocate()
+;	xmmmoveextended()
+;
 ; ---- CPU, FPU Detectors
 ;
 ;	cputype()
@@ -61,15 +68,15 @@ IFDEF ??version
 	QUIRKS
 ENDIF
 
-	.MODEL  medium,c
+	.MODEL	medium,c
 
 	.8086
 
-        ; these must NOT be in any segment!!
-        ; this get's rid of TURBO-C fixup errors
+	; these must NOT be in any segment!!
+	; this get's rid of TURBO-C fixup errors
 
-        extrn   help:far		; help code (in help.c)
-	extrn	tab_display:far		; TAB display (in fractint.c)
+	extrn	help:far		; help code (in help.c)
+	extrn	tab_display:far 	; TAB display (in fractint.c)
 	extrn	adapter_detect:far	; video adapter detector (in video.asm)
 
 .DATA
@@ -79,14 +86,17 @@ ENDIF
 	extrn	soundflag:word		; if 0, supress sounds
 	extrn	debugflag:word		; for debugging purposes only
 	extrn	helpmode:word		; help mode (AUTHORS is special)
+	extrn	xdots:word		; horizontal pixels
+	extrn	timedsave:word		; triggers autosave
 
 
 ; ************************ Public variables *****************************
 
-public		lx0, ly0		; used by lots of routines
 public		cpu			; used by 'calcmand'
 public		fpu			; will be used by somebody someday
 public		lookatmouse		; used by 'calcfrac'
+public		saveticks		; set by fractint
+public		savebase		; set by fractint
 public		_dataseg_xx		; used by TARGA, other Turbo Code
 
 public		extraseg		; extra 64K segment, if any
@@ -96,37 +106,53 @@ public		overflow		; Mul, Div overflow flag: 0 means none
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
 
-public		prefix, suffix, dstack, decoderline	; Used by the Decoder
+public		prefix, suffix, dstack, decoderline ; for the Decoder
 public		strlocn, teststring, block	; used by the Encoder
 public		boxx, boxy, boxvalues		; zoom-box arrays
 public		olddacbox			; temporary DAC saves
-public		diskline			; Used by the Diskvid rtns
 public		rlebuf				; Used ty the TARGA En/Decoder
-public		paldata, stbuff			; 8514A arrays, (FR8514A.ASM)
+public		paldata, stbuff 		; 8514A arrays, (FR8514A.ASM)
 
 ; ************************* "Shared" array areas **************************
 
-block		dw	0		; 266 byte Encoder array
-suffix		dw	2048 dup(0)	; 4K Decoder array (ALSO CALCFRAC.C)
-teststring	dw	0		; 100 byte Encoder array
-dstack		dw	2048 dup(0)	; 4K Decoder array (ALSO CALCFRAC.C)
+; Short forms used in subsequent comments:
+;   name........duration of use......................modules....................
+;   encoder	"s"aving an image                    encoder.c
+;   decoder	"r"estoring an image                 decoder.c, gifview.c
+;   zoom	zoom box is visible		     zoom.c, video.asm
+;   vidswitch	temp during video mode setting	     video.asm
+;   vidreset	temp during video reset 	     prompts.c, fractint.c, rotate.c, cmdfiles.c
+;   8514a	8514a is in use (graphics only?)     fr8514a.asm
+;   tgaview	restore of tga image		     tgaview.c
+;   solidguess	image gen with "g", not to disk      calcfrac.c
+;   btm 	image gen with "b", not to disk      calcfrac.c
+;   contpot	image gen, cont.potential, to .tga   calcfrac.c
+; Note that decoder using an 8514a is worst case, uses all arrays at once.
+; Keep db lengths even so that word alignment is preserved for speed.
 
-olddacbox	db	0		; (256*3) temporary dacbox values
-strlocn		dw	0		; 10K Encoder array
-prefix		dw	0		; 8K Decoder array
-boxx		dw	2048 dup(0)	; (previous) box data points - x axis
-boxy		dw	2048 dup(0)	; (previous) box data points - y axis
-decoderline	db	2048 dup(0)	; 4K Decoder array
-boxvalues	db	2048 dup(0)	; 2K of (previous) box color values
+block		label	byte		; encoder(266)
+suffix		dw	2048 dup(0)	; decoder(4k), vidswitch(256)
 
-diskline	db	0		; 2K Diskvideo array
-rlebuf		db	0		; 256 char TARGA encoder array
-paldata		db	1024 dup (0)	; 8514A palette (used in FR8514A.ASM)
-stbuff		db	415 dup (0)	; 8514A state   (used in FR8514A.ASM)
-		db	609 dup(0)	; (fluff this area out to 2K)
+teststring	label	byte		; encoder(100)
+dstack		dw	2048 dup(0)	; decoder(4k), solidguess(4k), btm(2k)
+					;   zoom(2k)
+
+
+strlocn 	label	word		; encoder(10k)
+prefix		label	word		; decoder(8k), solidguess(6k)
+olddacbox	label	byte		; vidreset(768)
+boxx		dw	2048 dup(0)	; zoom(4k), contpot(4k), tgaview(4k)
+boxy		dw	2048 dup(0)	; zoom(4k)
+boxvalues	label	byte		; zoom(2k)
+decoderline	db	2050 dup(0)	; decoder(2049), btm(2k)
+
+rlebuf		label	byte		; f16.c(258) .tga save/restore/contpot?
+paldata 	db	1024 dup(0)	; 8514a(1k)
+stbuff		db	415 dup(0)	; 8514a(415)
 
 ; ************************ Internal variables *****************************
 
+		align	2
 cpu		dw	0		; cpu type: 86, 186, 286, or 386
 fpu		dw	0		; fpu type: 0, 87, 287, 387
 _dataseg_xx	dw	0		; our "near" data segment
@@ -134,50 +160,41 @@ _dataseg_xx	dw	0		; our "near" data segment
 overflow	dw	0		; overflow flag
 
 kbd_type	db	0		; type of keyboard
+		align	2
 keybuffer	dw	0		; real small keyboard buffer
 
 delayloop	dw	32		; delay loop value
 delaycount	dw	0		; number of delay "loops" per ms.
 
-lx0			dw	offset	lxarray
-			dw	seg	lxarray
-ly0			dw	offset	lyarray
-			dw	seg	lyarray
-
-;	"buzzer()" codes:  strings of two-word pairs 
-;		(frequency in cycles/sec, delay in milliseconds)
-;		frequency == 0 means no sound
-;		delay     == 0 means end-of-tune
-
-buzzer0		dw	1047,100	; "normal" completion
-		dw	1109,100
-		dw	1175,100
-		dw	0,0
-buzzer1		dw	2093,100	; "interrupted" completion
-		dw	1976,100
-		dw	1857,100
-		dw	0,0
-buzzer2		dw	40,500		; "error" condition (razzberry)
-		dw	0,0
-
 extraseg	dw	0		; extra 64K segment (allocated by init)
 
 ; ********************** Mouse Support Variables **************************
 
+lookatmouse	dw	0		; see notes at mouseread routine
+prevlamouse	dw	0		; previous lookatmouse value
+mousetime	dw	0		; time of last mouseread call
+mlbtimer	dw	0		; time of left button 1st click
+mrbtimer	dw	0		; time of right button 1st click
+mhtimer 	dw	0		; time of last horiz move
+mvtimer 	dw	0		; time of last vert  move
+mhmickeys	dw	0		; pending horiz movement
+mvmickeys	dw	0		; pending vert	movement
+mbstatus	db	0		; status of mouse buttons
 mouse		db	0		; == -1 if/when a mouse is found.
-mousekey	db	0		; status of mouse keys (up, down)
-mousemickeys	dw	0		; running mickey counter
-lookatmouse	dw	0		; if 0, ignore non-button mouse mvment
+mbclicks	db	0		; had 1 click so far? &1 mlb, &2 mrb
+
+		align	2
+; timed save variables, handled by readmouse:
+savechktime	dw	0		; time of last autosave check
+savebase	dw	2 dup(0)	; base clock ticks
+saveticks	dw	2 dup(0)	; save after this many ticks
 
 
 .CODE
-	ALIGN	4
-lxarray	dd	2048 dup(0)		; array of 2K X co-ordinates
-lyarray	dd	2048 dup(0)		; array of 2K Y co-ordinates
 
 ; *************** Function toextra(tooffset,fromaddr, fromcount) *********
 
-toextra	proc	uses es di si, tooffset:word, fromaddr:word, fromcount:word
+toextra proc	uses es di si, tooffset:word, fromaddr:word, fromcount:word
 	cmp	extraseg,0		; IS there extra memory?
 	je	tobad			;  nope.  too bad.
 	cld				; move forward
@@ -189,7 +206,7 @@ toextra	proc	uses es di si, tooffset:word, fromaddr:word, fromcount:word
 	rep	movsb			; do it.
 tobad:
 	ret				; we done.
-toextra	endp
+toextra endp
 
 
 ; *************** Function fromextra(fromoffset, toaddr, tocount) *********
@@ -198,7 +215,7 @@ fromextra proc	uses es di si, fromoffset:word, toaddr:word, tocount:word
 	push	ds			; save DS for a tad
 	pop	es			; restore it to ES
 	cmp	extraseg,0		; IS there extra memory?
-	je	frombad			;  nope.  too bad.
+	je	frombad 		;  nope.  too bad.
 	cld				; move forward
 	mov	si,fromoffset		; load from here
 	mov	di,toaddr		; load to here
@@ -208,7 +225,7 @@ fromextra proc	uses es di si, fromoffset:word, toaddr:word, tocount:word
 	rep	movsb			; do it.
 frombad:
 	push	es			; save ES again.
-	pop	ds			; restore DS 
+	pop	ds			; restore DS
 	ret				; we done.
 fromextra endp
 
@@ -259,9 +276,9 @@ sign	db	0			; sign flag goes here
 
 .CODE
 
-multiply	proc	uses di si es, x:dword, y:dword, n:word
+multiply	proc	x:dword, y:dword, n:word
 
-	cmp	cpu,386			; go-fast time?
+	cmp	cpu,386 		; go-fast time?
 	jne	slowmultiply		; no.  yawn...
 
 .386					; 386-specific code starts here
@@ -269,26 +286,34 @@ multiply	proc	uses di si es, x:dword, y:dword, n:word
 	mov	eax,x			; load X into EAX
 	imul	y			; do the multiply
 	mov	cx,n			; set up the shift
-	cmp	cx,32			; ugly klooge:  check for 32-bit shift
+	cmp	cx,32			; ugly klooge:	check for 32-bit shift
 	jb	short fastm1		;  < 32 bits:  no problem
-	mov	eax,edx			;  >= 32 bits:  manual shift
+	mov	eax,edx 		;  >= 32 bits:	manual shift
 	mov	edx,0			;  ...
 	sub	cx,32			;  ...
 fastm1: shrd	eax,edx,cl		; shift down 'n' bits
 	js	fastm3
 	sar	edx,cl
-	jne	overm1
+	jne	overmf
 	shld	edx,eax,16
-	jmp	multiplyreturn
+	ret
 fastm3: sar	edx,cl
 	inc	edx
-	jne	overm1
+	jne	overmf
 	shld	edx,eax,16
-	jmp	multiplyreturn
+	ret
+overmf:
+	mov	ax,0ffffh		; overflow value
+	mov	dx,07fffh		; overflow value
+	mov	overflow,1		; flag overflow
+	ret
 
 .8086					; 386-specific code ends here
 
 slowmultiply:				; (sigh)  time to do it the hard way...
+	push	di
+	push	si
+	push	es
 
 	mov	ax,0
 	mov	temp+4,ax		; first, zero out the (temporary)
@@ -309,7 +334,7 @@ slowmultiply:				; (sigh)  time to do it the hard way...
 	stc				;   ...
 	adc	bx,ax			;   ...
 	adc	si,ax			;   ...
-mults1:	cmp	di,0			; is DI:CX negative?
+mults1: cmp	di,0			; is DI:CX negative?
 	jge	mults2			;  nope
 	not	sign			;  yup.  flip signs
 	not	cx			;   ...
@@ -321,7 +346,7 @@ mults2:
 
 	mov	ax,bx			; perform BX x CX
 	mul	cx			;  ...
-	mov	temp,ax			;  results in lowest 32 bits
+	mov	temp,ax 		;  results in lowest 32 bits
 	mov	temp+2,dx		;  ...
 
 	mov	ax,bx			; perform BX x DI
@@ -329,7 +354,7 @@ mults2:
 	add	temp+2,ax		;  results in middle 32 bits
 	adc	temp+4,dx		;  ...
 	jnc	mults3			;  carry bit set?
-	inc	word ptr temp+6		;  yup.  overflow
+	inc	word ptr temp+6 	;  yup.  overflow
 mults3:
 
 	mov	ax,si			; perform SI * CX
@@ -337,7 +362,7 @@ mults3:
 	add	temp+2,ax		;  results in middle 32 bits
 	adc	temp+4,dx		;  ...
 	jnc	mults4			;  carry bit set?
-	inc	word ptr temp+6		;  yup.  overflow
+	inc	word ptr temp+6 	;  yup.  overflow
 mults4:
 
 	mov	ax,si			; perform SI * DI
@@ -354,7 +379,7 @@ mults4:
 	mov	si,temp+7		;  ...
 	mov	bx,0			;  ...
 	jmp	short multc4		; branch to common code
-multc1:	cmp	cx,16			; shifting by two bytes or more?
+multc1: cmp	cx,16			; shifting by two bytes or more?
 	jl	multc2			;  nope.  check for something else
 	sub	cx,16			; quick-shift 16 bits
 	mov	ax,temp+2		; load up the registers
@@ -362,7 +387,7 @@ multc1:	cmp	cx,16			; shifting by two bytes or more?
 	mov	si,temp+6		;  ...
 	mov	bx,0			;  ...
 	jmp	short multc4		; branch to common code
-multc2:	cmp	cx,8			; shifting by one byte or more?
+multc2: cmp	cx,8			; shifting by one byte or more?
 	jl	multc3			;  nope.  check for something else
 	sub	cx,8			; quick-shift 8 bits
 	mov	ax,temp+1		; load up the registers
@@ -370,11 +395,11 @@ multc2:	cmp	cx,8			; shifting by one byte or more?
 	mov	si,temp+5		;  ...
 	mov	bx,temp+7		;  ...
 	jmp	short multc4		; branch to common code
-multc3:	mov	ax,temp			; load up the regs
+multc3: mov	ax,temp 		; load up the regs
 	mov	dx,temp+2		;  ...
 	mov	si,temp+4		;  ...
 	mov	bx,temp+6		;  ...
-multc4:	cmp	cx,0			; done shifting?
+multc4: cmp	cx,0			; done shifting?
 	je	multc5			;  yup.  bail out
 
 multloop:
@@ -385,11 +410,11 @@ multloop:
 	loop	multloop		; try the next bit, if any
 multc5:
 	cmp	si,0			; overflow time?
-	jne	overm1			; yup.  Bail out.
+	jne	overm1			; yup.	Bail out.
 	cmp	bx,0			; overflow time?
-	jne	overm1			; yup.  Bail out.
+	jne	overm1			; yup.	Bail out.
 	cmp	dx,0			; overflow time?
-	jl	overm1			; yup.  Bail out.
+	jl	overm1			; yup.	Bail out.
 
 	cmp	sign,0			; should we negate the result?
 	je	mults5			;  nope.
@@ -407,7 +432,10 @@ overm1:
 	mov	dx,07fffh		; overflow value
 	mov	overflow,1		; flag overflow
 
-multiplyreturn:				; that's all, folks!
+multiplyreturn: 			; that's all, folks!
+	pop	es
+	pop	si
+	pop	di
 	ret
 multiply	endp
 
@@ -430,7 +458,7 @@ multiply	endp
 
 divide		proc	uses di si es, x:dword, y:dword, n:word
 
-	cmp	cpu,386			; go-fast time?
+	cmp	cpu,386 		; go-fast time?
 	jne	slowdivide		; no.  yawn...
 
 .386					; 386-specific code starts here
@@ -453,13 +481,13 @@ divides2:
 	mov	eax,0			; clear out the low-order bits
 	mov	cx,32			; set up the shift
 	sub	cx,n			; (for large shift counts - faster)
-fastd1:	cmp	cx,0			; done shifting?
+fastd1: cmp	cx,0			; done shifting?
 	je	fastd2			; yup.
 	shr	edx,1			; shift one bit
 	rcr	eax,1			;  ...
 	loop	fastd1			; and try again
 fastd2:
-	cmp	edx,ebx			; umm, will the divide blow out?
+	cmp	edx,ebx 		; umm, will the divide blow out?
 	jae	overd1			;  yup.  better skip it.
 	div	ebx			; do the divide
 	cmp	eax,0			; did the sign flip?
@@ -524,7 +552,7 @@ dividex1:
 	rcr	ax,1			;  ...
 	rcr	cx,1			;  ...
 	rcr	bx,1			;  ...
-	dec	byte ptr temp+4		; decrement the shift counter
+	dec	byte ptr temp+4 	; decrement the shift counter
 	jmp	short dividex1		;  and try again
 dividex2:
 
@@ -541,7 +569,7 @@ dividex2:
 	adc	si,0			;   ...
 divides5:
 
-	mov	byte ptr temp+4,33	; main loop counter 
+	mov	byte ptr temp+4,33	; main loop counter
 	mov	temp,0			; results in temp
 	mov	word ptr temp+2,0	;  ...
 
@@ -565,10 +593,10 @@ dividel3:
 	rcl	cx,1			;  ...
 	rcl	ax,1			;  ...
 	rcl	dx,1			;  ...
-	dec	byte ptr temp+4		; time to quit?
+	dec	byte ptr temp+4 	; time to quit?
 	jnz	dividel1		;  nope.  try again.
 
-	mov	ax,temp			; copy the result to DX:AX
+	mov	ax,temp 		; copy the result to DX:AX
 	mov	dx,word ptr temp+2	;  ...
 	cmp	sign,0			; should we negate the result?
 	je	divides6		;  nope.
@@ -617,29 +645,27 @@ keypressed1:
 	mov	ah,kbd_type			; get the keyboard type
 	or	ah,1				; check if a key is ready
 	int	16h				; has a key been hit?
- 	jnz	keypressed2			; yes.  handle it
- 	call	msemvd				; key pressed on the mouse?
- 	jc	keypressed2			; yes.  handle it.
-	cmp	lookatmouse,0			; look for mouse movement?
-	je	keypressed99			; nope.  return: no action.
- 	call	chkmse				; was the mouse moved
- 	jnc	keypressed99			; nope.  return: no action.
+	jnz	keypressed2			; yes.	handle it
+	call	mouseread			; mouse activity or save time?
+	jnc	keypressed99			; nope.  return: no action.
+	mov	keybuffer,ax			; yes.	handle it.
+	jmp	short keypressed3
 keypressed2:
-	call	far ptr getakey			; get the keypress code
+	call	far ptr getakey 		; get the keypress code
 	mov	keybuffer,ax			; and save the result.
 keypressed3:
 	mov	ax,keybuffer			; return the keypress code.
 	cmp	helpmode,1			; is this HELPAUTHORS mode?
 	je	keypressed99			;  yup.  forget help.
-	cmp	ax,1059				; help called?
+	cmp	ax,1059 			; help called?
 	je	keypressed4			;  ...
-;	cmp	ax,'h'				; help called?
+;	cmp	ax,'h'                          ; help called?
 ;	je	keypressed4			;  ...
-;	cmp	ax,'H'				; help called?
+;	cmp	ax,'H'                          ; help called?
 ;	je	keypressed4			;  ...
-	cmp	ax,'?'				; help called?
+	cmp	ax,'?'                          ; help called?
 	je	keypressed4			;  ...
-	cmp	ax,'/'				; help called?
+	cmp	ax,'/'                          ; help called?
 	je	keypressed4			;  ...
 	jmp	keypressed5			; no help asked for.
 keypressed4:
@@ -660,7 +686,7 @@ keypressed99:
 	ret
 keypressed	endp
 
-getakey	proc
+getakey proc	uses di si es
 ; TARGA 31 May 89 j mclain
 ; when using '.model size,c' with TASM,
 ;   TASM 'gifts' us with automatic insertions of:
@@ -679,28 +705,22 @@ getakey0:
 	mov	keybuffer,0			; if it was, clear it
 	cmp	ax,0				; is a keypress outstanding?
 	jne	getakey4			;  if so, we're done!
- 	call	msemvd				; key pressed on the mouse?
- 	jc	getakey5			; yes.  handle it.
-	cmp	lookatmouse,0			; look for mouse movement?
-	je	getakey6			; nope.  return: no action.
-getakey5:
- 	call	chkmse				; see if the mouse was used
- 	jc	short getakey4			; ax holds the phoney key
-getakey6:
+	call	mouseread			; mouse activity or savetime?
+	jc	getakey4			; yup, ax holds the phoney key
 	mov	ah,kbd_type			; get the keyboard type
 	or	ah,1				; check if a key is ready
 	int	16h				; now check a key
 	jz	getakey0			; so check the mouse again
 	mov	ah,kbd_type			; get the keyboard type
 	int	16h				; now get a key
-	cmp	al,0e0h				; check: Enhanced Keyboard key?
+	cmp	al,0e0h 			; check: Enhanced Keyboard key?
 	jne	short getakey1			; nope.  proceed
 	cmp	ah,0				; part 2 of Enhanced Key check
 	je	short getakey1			; failed.  normal key.
 	mov	al,0				; Turn enhanced key "normal"
 	jmp	short getakey2			; jump to common code
-getakey1:			
-	cmp	ah,0e0h				; check again:  Enhanced Key?
+getakey1:
+	cmp	ah,0e0h 			; check again:	Enhanced Key?
 	jne	short getakey2			;  nope.  proceed.
 	mov	ah,al				; Turn Enhanced key "normal"
 	mov	al,0				;  ...
@@ -709,13 +729,13 @@ getakey2:
 	jne	short getakey3			;  nope.  proceed.
 	mov	al,ah				; klooge into ASCII Key
 	mov	ah,0				; clobber the scan code
-	add	ax,1000				;  + 1000
+	add	ax,1000 			;  + 1000
 	jmp	short getakey4			; go to common return
 getakey3:
 	mov	ah,0				; clobber the scan code
 getakey4:
 	ret
-getakey	endp
+getakey endp
 
 ; ****************** Function buzzer(int buzzertype) *******************
 ;
@@ -724,6 +744,21 @@ getakey	endp
 ;	0 = normal completion of task
 ;	1 = interrupted task
 ;	2 = error contition
+
+;	"buzzer()" codes:  strings of two-word pairs
+;		(frequency in cycles/sec, delay in milliseconds)
+;		frequency == 0 means no sound
+;		delay	  == 0 means end-of-tune
+buzzer0 	dw	1047,100	; "normal" completion
+		dw	1109,100
+		dw	1175,100
+		dw	0,0
+buzzer1 	dw	2093,100	; "interrupted" completion
+		dw	1976,100
+		dw	1857,100
+		dw	0,0
+buzzer2 	dw	40,500		; "error" condition (razzberry)
+		dw	0,0
 
 ; ***********************************************************************
 
@@ -738,8 +773,8 @@ buzzer	proc	uses si, buzzertype:word
 	je	buzzerdoit		; do it
 	mov	si,offset buzzer2	; error condition frequency
 buzzerdoit:
-	mov	ax,0[si]		; get the (next) frequency
-	mov	bx,2[si]		; get the (next) delay
+	mov	ax,cs:0[si]		; get the (next) frequency
+	mov	bx,cs:2[si]		; get the (next) delay
 	add	si,4			; get ready for the next tone
 	cmp	bx,0			; are we done?
 	je	buzzerreturn		;  yup.
@@ -770,7 +805,7 @@ delayamill2:				;
 	ret				; we done
 delayamillisecond	endp
 
-delay	proc	uses es, delaytime:word	; delay loop (arg in milliseconds)
+delay	proc	uses es, delaytime:word ; delay loop (arg in milliseconds)
 	mov	ax,delaytime		; get the number of milliseconds
 	cmp	ax,0			; any delay time at all?
 	je	delayreturn		;  nope.
@@ -789,7 +824,7 @@ delay	endp
 ; ************************************************************************
 
 tone	proc	uses es, tonefrequency:word, tonedelay:word
-	mov	al,0b6h			; latch to channel 2
+	mov	al,0b6h 		; latch to channel 2
 	out	43h,al			;  ...
 	cmp	tonefrequency,12h	; was there a frequency?
 	jbe	tonebypass		;  nope.  delay only
@@ -823,21 +858,21 @@ tone	endp
 ; *****************************************************************
 
 snd	proc	hertz:word		;Sound the speaker
-        cmp     hertz, 20
-        jle     hertzbad
-        cmp     hertz, 5000
-        jge     hertzbad
-	mov 	ax,0  			;Convert hertz
-	mov 	dx, 12h			;for use by routine
+	cmp	hertz, 20
+	jle	hertzbad
+	cmp	hertz, 5000
+	jge	hertzbad
+	mov	ax,0			;Convert hertz
+	mov	dx, 12h 		;for use by routine
 	div	hertz
 	mov	bx, ax
 	mov	al,10110110b		;Put magic number
-	out	43h, al			;into timer2
-	mov 	ax, bx			;Pitch into AX
-	out	42h, al			;LSB into timer2
-	mov 	al, ah			;MSB to AL then
-	out	42h, al			;to timer2
-	in	al, 61h			;read I/O port B into AL
+	out	43h, al 		;into timer2
+	mov	ax, bx			;Pitch into AX
+	out	42h, al 		;LSB into timer2
+	mov	al, ah			;MSB to AL then
+	out	42h, al 		;to timer2
+	in	al, 61h 		;read I/O port B into AL
 	or	al,3			;turn on bits 0 and 1
 	out	61h,al			;to turn on speaker
 hertzbad:
@@ -845,19 +880,12 @@ hertzbad:
 snd		endp
 
 nosnd		proc				;Turn off speaker
-	in 	al, 61h			;Read I/O port B into AL
+	in	al, 61h 		;Read I/O port B into AL
 	and	al, 11111100b		;mask lower two bits
-	out	61h, al			;to turn off speaker
+	out	61h, al 		;to turn off speaker
 	ret
 nosnd	endp
 
-
-; ********************* Mouse Support Code ******************************
-;
-; 		Contributed by Mike Kaufman
-;	(and then hacked up beyond all recall by me (sorry) - Bert)
-;
-; ***********************************************************************
 
 ; ****************** Function initasmvars() *****************************
 
@@ -902,7 +930,7 @@ delaytestloop:
 	mov	delaycount,ax		; save the results here
 	pop	es			; restore ES again
 
-				       ; first see if a mouse is installed 
+				       ; first see if a mouse is installed
 
 	push	es			; (no, first check to ensure that
 	mov	ax,0			; int 33h doesn't point to 0:0)
@@ -910,14 +938,14 @@ delaytestloop:
 	mov	ax,es:0cch		; ...
 	pop	es			; ...
 	cmp	ax,0			; does int 33h have a non-zero value?
-	je	noint33			;  nope.  then there's no mouse.
+	je	noint33 		;  nope.  then there's no mouse.
 
-         xor	ax,ax                  ; function for mouse check
-         int	33h                    ; call mouse driver
+	 xor	ax,ax		       ; function for mouse check
+	 int	33h		       ; call mouse driver
 noint33:
 	 mov	mouse,al	       ; al holds info about mouse
-	
-	 			       ; now get the information about the kbd
+
+				       ; now get the information about the kbd
 	 push	es		       ; save ES for a tad
 	 mov	ax,40h		       ; reload ES with BIOS data seg
 	 mov	es,ax		       ;  ...
@@ -926,7 +954,7 @@ noint33:
 	 and	ah,10h		       ; isolate the Enhanced KBD bit
 	 mov	kbd_type,ah	       ; and save it
 
-	call	far ptr cputype		; what kind of CPU do we have here?
+	call	far ptr cputype 	; what kind of CPU do we have here?
 	cmp	ax,0			; protected mode of some sort?
 	jge	positive		;  nope.  proceed.
 	neg	ax			;  yup.  flip the sign.
@@ -934,153 +962,359 @@ positive:
 	mov	cpu,ax			; save the cpu type.
 itsa386:
 	cmp	debugflag,8088		; say, should we pretend it's an 8088?
-	jne	nodebug			;  nope.
-	mov	cpu,86			; yup.  use 16-bit emulation.
+	jne	nodebug 		;  nope.
+	mov	cpu,86			; yup.	use 16-bit emulation.
 nodebug:
 	call far ptr fputype		; what kind of an FPU do we have?
 	mov	fpu,ax			;  save the results
 
 initreturn:
-	 ret                           ; return to caller
+	 ret			       ; return to caller
 initasmvars endp
 
 
-; This function checks if a mouse button has been pushed or if the mouse moved
-chkmse	proc	near
-	cmp	mouse,-1	       ; is mouse installed
-	jz	short chkit	       ; yes, so do stuff
-	clc			       ; clear the carry flag
-	ret			       ; and return
-	 
-chkit:  push	bx                     ; save registers
-	push	dx
-	push	cx
-	push	bp
-mousecheck:
-	mov	ax,3                    ; function for mouse status
-	int	33h                     ; call mouse driver
-	and	bx,7                    ; we only care about these bits
-	mov	mousekey,bl		; save the results
-	cmp	bx,0		        ; any buttons pressed?
-	jz	short notpressed        ; no so check for mouse movement
-	cmp	bx,1			; left-hand button (only) down?
-	je	short mouseleft		;  yup.  deal with it.
-	cmp	bx,2			; right-hand button (only) down?
-	je	short mouseright	;  yup.  deal with it.
+; New (Apr '90) mouse code by Pieter Branderhorst follows.
+; The variable lookatmouse controls it all.  Callers of keypressed and
+; getakey should set lookatmouse to:
+;      0  ignore the mouse entirely
+;     <0  only test for left button click; if it occurs return fake key
+;	    number 0-lookatmouse
+;      1  return enter key for left button, arrow keys for mouse movement,
+;	    mouse sensitivity is suitable for graphics cursor
+;      2  same as 1 but sensitivity is suitable for text cursor
+;      3  specials for zoombox, left/right double-clicks generate fake
+;	    keys, mouse movement generates a variety of fake keys
+;	    depending on state of buttons
+; Mouse movement is accumulated & saved across calls.  Eg if mouse has been
+; moved up-right quickly, the next few calls to getakey might return:
+;      right,right,up,right,up
+; Minor jiggling of the mouse generates no keystroke, and is forgotten (not
+; accumulated with additional movement) if no additional movement in the
+; same direction occurs within a short interval.
+; Movements on angles near horiz/vert are treated as horiz/vert; the nearness
+; tolerated varies depending on mode.
+; Any movement not picked up by calling routine within a short time of mouse
+; stopping is forgotten.  (This does not apply to button pushes in modes<3.)
+; Mouseread would be more accurate if interrupt-driven, but with the usage
+; in fractint (tight getakey loops while mouse active) there's no need.
 
-mousemiddle:				; multiple or middle button down
-	mov	mousekey,4		; force it to be middle-button down
-	mov	ax,13			; pretend the ENTER key was hit
-	jmp	short pressed		; and return.
-	
-mouseleft:
-	mov	ax,0bh		        ; distance moved function
-	int	33h		        ; see how far the mouse has moved
-	mov	ax, 1073		; indicate page up
-	add	mousemickeys,dx		; compute a running movement sum
-	cmp	mousemickeys,-10	; which way'd we go?
-	jle	short pressed		;  Up.  Proceed.
-	mov	ax, 1081		; indicate page down
-	cmp	mousemickeys,10		; which way'd we go?
-	jge	short pressed		;  Up.  Proceed.
-	jmp	mousecheck		; else check again.
-	
-pressed:
-	mov	mousemickeys,0		; clear out the mickey counter
-	stc				; indicate something happened
-	jmp	short exitpress 	; and exit
-	 
-; The purpose of this bit of code is to eliminate the effect of small mouse
-; movements.  What I mean is that, the direction to move is the direction that
-; the mouse has moved the most
+; translate table for mouse movement -> fake keys
+mousefkey dw   1077,1075,1080,1072  ; right,left,down,up     just movement
+	dw	  0,   0,1081,1073  ;		 ,pgdn,pgup  + left button
+	dw    1144,1142,1147,1146  ; kpad+,kpad-,cdel,cins  + rt   button
+	dw    1117,1119,1118,1132  ; ctl-end,home,pgdn,pgup + mid/multi
 
-mouseright:
+DclickTime    equ 9   ; ticks within which 2nd click must occur
+JitterTime    equ 6   ; idle ticks before turfing unreported mickeys
+TextHSens     equ 160 ; horizontal sensitivity in text mode
+TextVSens     equ 50  ; vertical sensitivity in text mode
+GraphSens     equ 5   ; sensitivity in graphics mode; gets lower @ higher res
+ZoomSens      equ 20  ; sensitivity for zoom box sizing/rotation
+TextVHLimit   equ 6   ; treat angles < 1:6  as straight
+GraphVHLimit  equ 14  ; treat angles < 1:14 as straight
+ZoomVHLimit   equ 1   ; treat angles < 1:1  as straight
+JitterMickeys equ 3   ; mickeys to ignore before noticing motion
 
-notpressed:			       ; no button pressed, but maybe the 
-				       ; mouse was moved so check that out
-	mov	ax,0bh		       ; distance moved function
-	int	33h		       ; see how far the mouse has moved
-	mov	ax,dx		       ; now see who moved farther
-	mov	bx,cx		       ; move to ax,bx so we can play
-	cmp	ax,0		       ; find the abs(ax)
-	jge	short chk_bx	       ; already postive
-	not	ax		       ; ax is negative, so negate
-chk_bx: cmp	bx,0		       ; find  the abs(bx)
-	jge	short chk_grt	       ; already postive
-	not	bx		       ; bx is negative, so negate
-chk_grt:
-	cmp	ax,bx		       ; see which one is greater
-	jl	short nocol	       ; bx is greater so check the rows
-	
-	cmp	dx,0		       ; did the col change
-	jz	short nthng	       ; no then nothing changed (ie cx=dx=0)
-	jg	short ardown	       ; mouse moved down
-	mov	ax,1072		       ; indicate an up arrow
-	cmp	mousekey,0	       ; were any mouse keys hit?
-	jne	pressed		       ;  yup.  proceed.
-	mov	ax,1141		       ; indicate a control-arrow
-	jmp	short pressed
-ardown:
-	mov	ax,1080		       ; indicate a down arrow
-	cmp	mousekey,0	       ; were any mouse keys hit?
-	jne	pressed		       ;  yup.  proceed.
-	mov	ax,1145		       ; indicate a control-arrow
-	jmp	short pressed
-nocol:	cmp	cx,0		       ; did the row change up or down
-	jg	short arright	       ; mouse moved to the right
-	mov	ax,1075		       ; indicate a left arrow
-	cmp	mousekey,0	       ; were any mouse keys hit?
-	jne	pressed		       ;  yup.  proceed.
-	mov	ax,1115		       ; indicate a control-arrow
-	jmp	short pressed
-arright:
-	mov	ax,1077		       ;indicate a right arrow
-	cmp	mousekey,0	       ; were any mouse keys hit?
-	jne	pressed		       ;  yup.  proceed.
-	mov	ax,1116		       ; indicate a control-arrow
-	jmp	short pressed
-nthng:  clc                            ; indicate that nothing changed
-exitpress:
-	pop	bp		       ; restore registers
-	pop	cx
-	pop	dx
-	pop	bx		       ; restore value 
-	ret			       ; return to caller
-chkmse	endp
+mouseread proc near
+	local	moveaxis:word
+
+	; check if it is time to do an autosave
+	cmp	saveticks,0	; autosave timer running?
+	je	mouse0		;  nope
+	sub	ax,ax		; reset ES to BIOS data area
+	mov	es,ax		;  see notes at mouse1 in similar code
+tickread:
+	mov	ax,es:046ch	; obtain the current timer value
+	cmp	ax,savechktime	; a new clock tick since last check?
+	je	mouse0		;  nope, save a dozen opcodes or so
+	mov	dx,es:046eh	; high word of ticker
+	cmp	ax,es:046ch	; did a tick get counted just as we looked?
+	jne	tickread	; yep, reread both words to be safe
+	mov	savechktime,ax
+	sub	ax,savebase	; calculate ticks since timer started
+	sbb	dx,savebase+2
+	jns	tickcompare
+	add	ax,0b0h 	; wrapped past midnight, add a day
+	adc	dx,018h
+tickcompare:
+	cmp	dx,saveticks+2	; check if past autosave time
+	jb	mouse0
+	ja	tickdosave
+	cmp	ax,saveticks
+	jb	mouse0
+tickdosave:
+	mov	timedsave,1	; tell mainline what's up
+	mov	ax,9999 	; a dummy key value, never gets used
+	jmp	mouseret
+
+mouse0: ; now the mouse stuff
+	cmp	mouse,-1
+	jne	mouseidle	; no mouse, that was easy
+	mov	ax,lookatmouse
+	cmp	ax,prevlamouse
+	je	mouse1
+
+	; lookatmouse changed, reset everything
+	mov	prevlamouse,ax
+	mov	mbclicks,0
+	mov	mbstatus,0
+	mov	mhmickeys,0
+	mov	mvmickeys,0
+	; note: don't use int 33 func 0 nor 21 to reset, they're SLOW
+	mov	ax,06h		; reset button counts by reading them
+	mov	bx,0
+	int	33h
+	mov	ax,06h
+	mov	bx,1
+	int	33h
+	mov	ax,05h
+	mov	bx,0
+	int	33h
+	mov	ax,0Bh		; reset motion counters by reading
+	int	33h
+	mov	ax,lookatmouse
+
+mouse1: or	ax,ax
+	jz	mouseidle	; check nothing when lookatmouse=0
+	; following code directly accesses bios tick counter; it would be
+	; better not to rely on addr (use int 1A instead) but old PCs don't
+	; have the required int, the addr is constant in bios to date, and
+	; fractint startup already counts on it, so:
+	mov	ax,0		; reset ES to BIOS data area
+	mov	es,ax		;  ...
+	mov	dx,es:46ch	; obtain the current timer value
+	cmp	dx,mousetime
+	; if timer same as last call, skip int 33s:  reduces expense and gives
+	; caller a chance to read all pending stuff and paint something
+	jne	mnewtick
+	cmp	lookatmouse,0	; interested in anything other than left button?
+	jl	mouseidle	; nope, done
+	jmp	mouse5
+
+mouseidle:
+	clc			; tell caller no mouse activity this time
+	ret
+
+mnewtick: ; new tick, read buttons and motion
+	mov	mousetime,dx	; note current timer
+	cmp	lookatmouse,3
+	je	mouse2		; skip button press if mode 3
+
+	; check press of left button
+	mov	ax,05h		; get button press info
+	mov	bx,0		; for left button
+	int	33h
+	or	bx,bx
+	jnz	mleftb
+	cmp	lookatmouse,0
+	jl	mouseidle	; exit if nothing but left button matters
+	jmp	mouse3		; not mode 3 so skip past button release stuff
+mleftb: mov	ax,13
+	cmp	lookatmouse,0
+	jg	mouser		; return fake key enter
+	mov	ax,lookatmouse	; return fake key 0-lookatmouse
+	neg	ax
+mouser: jmp	mouseret
+
+mouse2: ; mode 3, check for double clicks
+	mov	ax,06h		; get button release info
+	mov	bx,0		; left button
+	int	33h
+	mov	dx,mousetime
+	cmp	bx,1		; left button released?
+	jl	msnolb		; go check timer if not
+	jg	mslbgo		; double click
+	test	mbclicks,1	; had a 1st click already?
+	jnz	mslbgo		; yup, double click
+	mov	mlbtimer,dx	; note time of 1st click
+	or	mbclicks,1
+	jmp	short mousrb
+mslbgo: and	mbclicks,0ffh-1
+	mov	ax,13		; fake key enter
+	jmp	mouseret
+msnolb: sub	dx,mlbtimer	; clear 1st click if its been too long
+	cmp	dx,DclickTime
+	jb	mousrb
+	and	mbclicks,0ffh-1 ; forget 1st click if any
+	; next all the same code for right button
+mousrb: mov	ax,06h		; get button release info
+	mov	bx,1		; right button
+	int	33h
+	; now much the same as for left
+	mov	dx,mousetime
+	cmp	bx,1
+	jl	msnorb
+	jg	msrbgo
+	test	mbclicks,2
+	jnz	msrbgo
+	mov	mrbtimer,dx
+	or	mbclicks,2
+	jmp	short mouse3
+msrbgo: and	mbclicks,0ffh-2
+	mov	ax,1010 	; fake key ctl-enter
+	jmp	mouseret
+msnorb: sub	dx,mrbtimer
+	cmp	dx,DclickTime
+	jb	mouse3
+	and	mbclicks,0ffh-2
+
+	; get buttons state, if any changed reset mickey counters
+mouse3: mov	ax,03h		; get button status
+	int	33h
+	and	bl,7		; just the button bits
+	cmp	bl,mbstatus	; any changed?
+	je	mouse4
+	mov	mbstatus,bl	; yup, reset stuff
+	mov	mhmickeys,0
+	mov	mvmickeys,0
+	mov	ax,0Bh
+	int	33h		; reset driver's mickeys by reading them
+
+	; get motion counters, forget any jiggle
+mouse4: mov	ax,0Bh		; get motion counters
+	int	33h
+	mov	bx,mousetime	; just to have it in a register
+	cmp	cx,0		; horiz motion?
+	jne	moushm		; yup, go accum it
+	mov	ax,bx
+	sub	ax,mhtimer
+	cmp	ax,JitterTime	; timeout since last horiz motion?
+	jb	mousev
+	mov	mhmickeys,0
+	jmp	short mousev
+moushm: mov	mhtimer,bx	; note time of latest motion
+	add	mhmickeys,cx
+	; same as above for vertical movement:
+mousev: cmp	dx,0		; vert motion?
+	jne	mousvm
+	mov	ax,bx
+	sub	ax,mvtimer
+	cmp	ax,JitterTime
+	jb	mouse5
+	mov	mvmickeys,0
+	jmp	short mouse5
+mousvm: mov	mvtimer,bx
+	add	mvmickeys,dx
+
+	; pick the axis with largest pending movement
+mouse5: mov	bx,mhmickeys
+	or	bx,bx
+	jns	mchkv
+	neg	bx		; make it +ve
+mchkv:	mov	cx,mvmickeys
+	or	cx,cx
+	jns	mchkmx
+	neg	cx
+mchkmx: mov	moveaxis,0	; flag that we're going horiz
+	cmp	bx,cx		; horiz>=vert?
+	jge	mangle
+	xchg	bx,cx		; nope, use vert
+	mov	moveaxis,1	; flag that we're going vert
+
+	; if moving nearly horiz/vert, make it exactly horiz/vert
+mangle: mov	ax,TextVHLimit
+	cmp	lookatmouse,2	; slow (text) mode?
+	je	mangl2
+	mov	ax,GraphVHLimit
+	cmp	lookatmouse,3	; special mode?
+	jne	mangl2
+	cmp	mbstatus,0	; yup, any buttons down?
+	je	mangl2
+	mov	ax,ZoomVHLimit	; yup, special zoom functions
+mangl2: mul	cx		; smaller axis * limit
+	cmp	ax,bx
+	ja	mchkmv		; min*ratio <= max?
+	cmp	moveaxis,0	; yup, clear the smaller movement axis
+	jne	mzeroh
+	mov	mvmickeys,0
+	jmp	short mchkmv
+mzeroh: mov	mhmickeys,0
+
+	; pick sensitivity to use
+mchkmv: cmp	lookatmouse,2	; slow (text) mode?
+	je	mchkmt
+	mov	dx,ZoomSens+JitterMickeys
+	cmp	lookatmouse,3	; special mode?
+	jne	mchkmg
+	cmp	mbstatus,0	; yup, any buttons down?
+	jne	mchkm2		; yup, use zoomsens
+mchkmg: mov	dx,GraphSens
+	mov	cx,xdots	; reduce sensitivity for higher res
+mchkg2: cmp	cx,400		; horiz dots >= 400?
+	jl	mchkg3
+	shr	cx,1		; horiz/2
+	shr	dx,1
+	inc	dx		; sensitivity/2+1
+	jmp	short mchkg2
+mchkg3: add	dx,JitterMickeys
+	jmp	short mchkm2
+mchkmt: mov	dx,TextVSens+JitterMickeys
+	cmp	moveaxis,0
+	jne	mchkm2
+	mov	dx,TextHSens+JitterMickeys ; slower on X axis than Y
+
+	; is largest movement past threshold?
+mchkm2: cmp	bx,dx
+	jge	mmove
+	jmp	mouseidle	; no movement past threshold, return nothing
+
+	; set bx for right/left/down/up, and reduce the pending mickeys
+mmove:	sub	dx,JitterMickeys
+	cmp	moveaxis,0
+	jne	mmovev
+	cmp	mhmickeys,0
+	jl	mmovh2
+	sub	mhmickeys,dx	; horiz, right
+	mov	bx,0
+	jmp	short mmoveb
+mmovh2: add	mhmickeys,dx	; horiz, left
+	mov	bx,2
+	jmp	short mmoveb
+mmovev: cmp	mvmickeys,0
+	jl	mmovv2
+	sub	mvmickeys,dx	; vert, down
+	mov	bx,4
+	jmp	short mmoveb
+mmovv2: add	mvmickeys,dx	; vert, up
+	mov	bx,6
+
+	; modify bx if a button is being held down
+mmoveb: cmp	lookatmouse,3
+	jne	mmovek		; only modify in mode 3
+	cmp	mbstatus,1
+	jne	mmovb2
+	add	bx,8		; modify by left button
+	jmp	short mmovek
+mmovb2: cmp	mbstatus,2
+	jne	mmovb3
+	add	bx,16		; modify by rb
+	jmp	short mmovek
+mmovb3: cmp	mbstatus,0
+	je	mmovek
+	add	bx,24		; modify by middle or multiple
+
+	; finally, get the fake key number
+mmovek: mov	ax,mousefkey[bx]
+
+mouseret:
+	stc
+	ret
+mouseread endp
 
 
-; Check if a button was hit on the mouse
-msemvd	proc  near
-	cmp	mouse,-1	       ; is mouse installed
-	jz	short mchkit	       ; yes, so do stuff
-	clc			       ; clear the carry flag
-	ret			       ; and return
+; long readticker() returns current bios ticker value
 
-mchkit:	push	bx                     ; save registers
-	push	dx
-	push	cx
-	push	ax
-mousecheck2:
-	mov	ax,3                   ; function to check mouse status
-	int	33h                    ; call mouse driver
-	and	bx,7                   ; we only care about these bits
-	cmp	mousekey,4	       ; ugly klooge for dual-key presses:
-	jne	short mouseklooge       ; wait until they ALL clear out
-	cmp	bx,0		       ; any keys still down?
-	jne	mousecheck2	       ;  yup.  try again.
-	mov	mousekey,0	       ; else clear out the klooge flag
-mouseklooge:
-	cmp	bx,0		       ; any buttons pressed?
-	jnz	short mpress	       ; yes so exit with a yes
-	clc			       ; indicate that nothing changed
-	jmp	short mexit	       ; and exit
-mpress:	stc			       ; indicate a change
-mexit:	pop	ax
-	pop	cx
-	pop	dx
-	pop	bx		       ; restore value 
-	ret			       ; return to caller
-msemvd	endp
+readticker proc uses es
+	sub	ax,ax		; reset ES to BIOS data area
+	mov	es,ax		;  see notes at mouse1 in similar code
+tickread:
+	mov	ax,es:046ch	; obtain the current timer value
+	mov	dx,es:046eh	; high word of ticker
+	cmp	ax,es:046ch	; did a tick get counted just as we looked?
+	jne	tickread	; yep, reread both words to be safe
+	ret
+readticker endp
+
 
 ;===============================================================
 ;
@@ -1242,11 +1476,11 @@ farmemalloc	proc	uses es, bytestoallocate:dword
 	cmp	dx,0			; ensure that we don't want > 1MB
 	jne	farmemallocfailed	;  bail out if we do
 	mov	ah,48h			; invoke DOS to allocate memory
-	int	21h			;  ... 
+	int	21h			;  ...
 	jc	farmemallocfailed	; bail out on failure
 	mov	dx,ax			; set up DX:AX as far address
 	mov	ax,0			;  ...
-	jmp	short farmemallocreturn	; and return
+	jmp	short farmemallocreturn ; and return
 farmemallocfailed:
 	mov	ax,0			; (load up with a failed response)
 	mov	dx,0			;  ...
@@ -1302,7 +1536,7 @@ xxxfar_memcmp	proc	near	; compare two strings - length in CX
 	rep	cmpsb
 	jz	wedone
 	mov	ax,1
-wedone:	ret
+wedone: ret
 xxxfar_memcmp	endp
 
 xxxfar_memicmp	proc	near	; compare two caseless strings - length in CX
@@ -1322,22 +1556,22 @@ loop1:	inc	si
 	cmp	al,'Z'
 	ja	lower1
 	add	al,20h
-lower1:	cmp	ah,'A'
+lower1: cmp	ah,'A'
 	jb	lower2
 	cmp	ah,'Z'
 	ja	lower2
 	add	ah,20h
-lower2:	cmp	al,ah
+lower2: cmp	al,ah
 	jne	uneql
 loop2:	loop	loop1
 	mov	ax,0
 	jmp	short wedone
 uneql:	mov	ax,1
-wedone:	ret
+wedone: ret
 xxxfar_memicmp	endp
 
 
-far_strcpy proc	uses ds es di si, toaddr:dword, fromaddr:dword
+far_strcpy proc uses ds es di si, toaddr:dword, fromaddr:dword
 	les	di,fromaddr		; point to start-of-string
 	call	xxxfar_memlen		; find the string length
 	les	di,toaddr		; now move to here
@@ -1346,7 +1580,7 @@ far_strcpy proc	uses ds es di si, toaddr:dword, fromaddr:dword
 	ret				; we done.
 far_strcpy endp
 
-far_strcmp proc	uses ds es di si, toaddr:dword, fromaddr:dword
+far_strcmp proc uses ds es di si, toaddr:dword, fromaddr:dword
 	les	di,fromaddr		; point to start-of-string
 	call	xxxfar_memlen		; find the string length
 	les	di,toaddr		; now compare to here
@@ -1364,7 +1598,7 @@ far_stricmp proc	uses ds es di si, toaddr:dword, fromaddr:dword
 	ret				; we done.
 far_stricmp endp
 
-far_strcat proc	uses ds es di si, toaddr:dword, fromaddr:dword
+far_strcat proc uses ds es di si, toaddr:dword, fromaddr:dword
 	les	di,fromaddr		; point to start-of-string
 	call	xxxfar_memlen		; find the string length
 	push	cx			; save it
@@ -1379,7 +1613,7 @@ far_strcat proc	uses ds es di si, toaddr:dword, fromaddr:dword
 	ret				; we done.
 far_strcat endp
 
-far_memset proc	uses es di, toaddr:dword, fromvalue:byte, slength:word
+far_memset proc uses es di, toaddr:dword, fromvalue:byte, slength:word
 	mov	al,fromvalue		; get the value to store
 	mov	cx,slength		; get the store length
 	les	di,toaddr		; now move to here
@@ -1387,7 +1621,7 @@ far_memset proc	uses es di, toaddr:dword, fromvalue:byte, slength:word
 	ret				; we done.
 far_memset endp
 
-far_memcpy proc	uses ds es di si, toaddr:dword, fromaddr:dword, slength:word
+far_memcpy proc uses ds es di si, toaddr:dword, fromaddr:dword, slength:word
 	mov	cx,slength		; get the move length
 	les	di,toaddr		; now move to here
 	lds	si,fromaddr		; from here
@@ -1395,7 +1629,7 @@ far_memcpy proc	uses ds es di si, toaddr:dword, fromaddr:dword, slength:word
 	ret				; we done.
 far_memcpy endp
 
-far_memcmp proc	uses ds es di si, toaddr:dword, fromaddr:dword, slength:word
+far_memcmp proc uses ds es di si, toaddr:dword, fromaddr:dword, slength:word
 	mov	cx,slength		; get the compare length
 	les	di,toaddr		; now compare to here
 	lds	si,fromaddr		; compare here
@@ -1411,10 +1645,10 @@ far_memicmp proc uses ds es di si, toaddr:dword, fromaddr:dword, slength:word
 	ret				; we done.
 far_memicmp endp
 
-disable	proc				; disable interrupts
+disable proc				; disable interrupts
 	cli
 	ret
-disable	endp
+disable endp
 
 enable	proc				; re-enable interrupts
 	sti
@@ -1444,7 +1678,7 @@ enable	endp
 
 .DATA
 
-emm_name	db	'EMMXXXX0',0	; device driver for EMM
+emm_name	db	'EMMXXXX0',0    ; device driver for EMM
 emm_segment	dw	0		; EMM page frame segment
 emm_zeroflag	db	0		; klooge flag for handle==0
 
@@ -1467,7 +1701,7 @@ emmquery	proc
 	mov	ah,3eh			; function 3H = close
 	int	21h			; BX still cintains handle
 	pop	ax			; restore AX for the status query
-	jc	emmqueryfailed		; huh?  close FAILED?
+	jc	emmqueryfailed		; huh?	close FAILED?
 
 	or	al,al			; was the status 0?
 	jz	emmqueryfailed		; well then, it wasn't EMM!
@@ -1513,11 +1747,11 @@ emmallocate	proc	pages:word	; allocate EMM pages
 	mov	emm_zeroflag,0		; clear the klooge flag
 	cmp	ah,0			; did the call work?
 	jne	emmallocatebad		;  nope.
-	mov	ax,dx			; yup.  save the handle here
+	mov	ax,dx			; yup.	save the handle here
 	cmp	ax,0			; was the handle a zero?
 	jne	emmallocatereturn	;  yup.  no kloogy fixes
 	mov	emm_zeroflag,1		; oops.  set an internal flag
-	mov	ax,1234			; and make up a dummy handle.
+	mov	ax,1234 		; and make up a dummy handle.
 	jmp	short	emmallocatereturn ; and return
 emmallocatebad:
 	mov	ax,0			; indicate no handle
@@ -1525,14 +1759,14 @@ emmallocatereturn:
 	ret				; we done.
 emmallocate	endp
 
-emmdeallocate	proc	emm_handle:word	; De-allocate EMM memory
+emmdeallocate	proc	emm_handle:word ; De-allocate EMM memory
 emmdeallocatestart:
 	mov	dx,emm_handle		; get the EMM handle
-	cmp	dx,1234			; was it our special klooge value?
+	cmp	dx,1234 		; was it our special klooge value?
 	jne	emmdeallocatecontinue	;  nope.  proceed.
 	cmp	emm_zeroflag,1		; was it really a zero handle?
 	jne	emmdeallocatecontinue	;  nope.  proceed.
-	mov	dx,0			; yup.  use zero instead.
+	mov	dx,0			; yup.	use zero instead.
 emmdeallocatecontinue:
 	mov	ah,45h			; EMM function: deallocate
 	int	67h			; EMM call
@@ -1545,11 +1779,11 @@ emmdeallocate	endp
 emmgetpage	proc	pagenum:word, emm_handle:word	; get EMM page
 	mov	bx,pagenum		; BX = page numper
 	mov	dx,emm_handle		; DX = EMM handle
-	cmp	dx,1234			; was it our special klooge value?
+	cmp	dx,1234 		; was it our special klooge value?
 	jne	emmgetpagecontinue	;  nope.  proceed.
 	cmp	emm_zeroflag,1		; was it really a zero handle?
 	jne	emmgetpagecontinue	;  nope.  proceed.
-	mov	dx,0			; yup.  use zero instead.
+	mov	dx,0			; yup.	use zero instead.
 emmgetpagecontinue:
 	mov	ah,44h			; EMM call: get page
 	mov	al,0			; get it into page 0
@@ -1560,11 +1794,11 @@ emmgetpage	endp
 emmclearpage	proc	pagenum:word, emm_handle:word	; clear EMM page
 	mov	bx,pagenum		; BX = page numper
 	mov	dx,emm_handle		; DX = EMM handle
-	cmp	dx,1234			; was it our special klooge value?
+	cmp	dx,1234 		; was it our special klooge value?
 	jne	emmclearpagecontinue	;  nope.  proceed.
 	cmp	emm_zeroflag,1		; was it really a zero handle?
 	jne	emmclearpagecontinue	;  nope.  proceed.
-	mov	dx,0			; yup.  use zero instead.
+	mov	dx,0			; yup.	use zero instead.
 emmclearpagecontinue:
 	mov	ah,44h			; EMM call: get page
 	mov	al,0			; get it into page 0
@@ -1573,12 +1807,100 @@ emmclearpagecontinue:
 	push	es			;  ...
 	mov	es,ax			;  ...
 	mov	di,0			; start at offset 0
-	mov	cx,8192			; for 16K (in words)
+	mov	cx,8192 		; for 16K (in words)
 	mov	ax,0			; clear out EMM segment to zeroes
 	rep	stosw			; clear the page
 	pop	es			; restore ES
 	ret				; we done
 emmclearpage	endp
+
+; *************** Extended Memory Manager Support Routines ******************
+;		  for use XMS 2.0 and later Extended Memory
+;
+;	xmmquery()		; Query presence of XMM and initialize XMM code
+;				; returns 0 if no XMM
+;	handle = xmmallocate(Kbytes)	; allocate XMM block in Kbytes
+;				; returns handle # if OK, or else 0
+;	xmmdeallocate(handle)	; return XMM block to system - MUST BE CALLED
+;				; or allocated XMM memory is not released.
+;	xmmmoveextended(&MoveStruct)	; Moves a block of memory to or
+;				; from extended memory.  Returns 1 if OK
+;				; else returns 0.
+; The structure format for use with xmmoveextended is:
+;
+;	ASM			 |		C
+;--------------------------------+----------------------------------------
+; XMM_Move	struc		 |	struct XMM_Move
+;				 |	{
+;   Length	  dd ?		 |	    unsigned long   Length;
+;   SourceHandle  dw ?		 |	    unsigned int    SourceHandle;
+;   SourceOffset  dd ?		 |	    unsigned long   SourceOffset;
+;   DestHandle	  dw ?		 |	    unsigned int    DestHandle;
+;   DestOffset	  dd ?		 |	    unsigned long   DestOffset;
+; XMM_Move	ends		 |	};
+;				 |
+;
+; Please refer to XMS spec version 2.0 for further information.
+
+.model medium,c
+
+.data
+xmscontrol	dd dword ptr (?) ; Address of driver's control function
+
+.code
+xmmquery	proc
+	mov	ax,4300h		; Is an XMS driver installed?
+	int	2fh
+	cmp	al, 80h 		; Did it succeed?
+	jne	xmmqueryfailed		; No
+	mov	ax,4310h		; Get control function address
+	int	2fh
+	mov	word ptr [xmscontrol], bx   ; Put address in xmscontrol
+	mov	word ptr [xmscontrol+2], es ; ...
+	mov	ah,00h			; Get version number
+	call [xmscontrol]
+	cmp	ax,0200h		; Is 2.00 or higher?
+	jge  xmmquerydone		; Yes
+xmmqueryfailed:
+	mov	ax,0			; return failure
+	mov	dx,0
+xmmquerydone:
+	ret
+xmmquery	endp
+
+xmmallocate	proc	ksize:word
+	mov	ah,09h			; Allocate extended memory block
+	mov	dx,ksize		; size of block in Kbytes
+	call	[xmscontrol]
+	cmp	ax,0001h		; did it succeed?
+	jne	xmmallocatefail 	; nope
+	mov	ax,dx			; Put handle here
+	jmp	short xmmallocatedone
+xmmallocatefail:
+	mov	ax, 0			; Indicate failure;
+xmmallocatedone:
+	ret
+xmmallocate	endp
+
+xmmdeallocate	proc	xmm_handle:word
+	mov	ah,0ah			; Deallocate extended memory block
+	mov	dx, xmm_handle		; Give it handle
+	call	[xmscontrol]
+	ret
+xmmdeallocate	endp
+
+xmmmoveextended proc uses si, MoveStruct:word
+
+	; Call the XMS MoveExtended function.
+	mov	ah,0Bh
+	mov	si,MoveStruct			; the move structure.
+	call	[xmscontrol]			;
+
+; The call to xmscontrol returns a 1 in AX if successful, 0 otherwise.
+
+	ret
+
+xmmmoveextended endp
 
 	end
 

@@ -46,21 +46,21 @@ struct MP MPabs(struct MP x) {
 struct MPC MPCsqr(struct MPC x) {
    struct MPC z;
 
-	z.x = pMPsub(pMPmul(x.x, x.x), pMPmul(x.y, x.y));
-	z.y = pMPmul(x.x, x.y);
-	z.y.Exp++;
+        z.x = pMPsub(pMPmul(x.x, x.x), pMPmul(x.y, x.y));
+        z.y = pMPmul(x.x, x.y);
+        z.y.Exp++;
    return(z);
 }
 
 struct MP MPCmod(struct MPC x) {
-	return(pMPadd(pMPmul(x.x, x.x), pMPmul(x.y, x.y)));
+        return(pMPadd(pMPmul(x.x, x.x), pMPmul(x.y, x.y)));
 }
 
 struct MPC MPCmul(struct MPC x, struct MPC y) {
    struct MPC z, t;
 
-	z.x = pMPsub(pMPmul(x.x, y.x), pMPmul(x.y, y.y));
-	z.y = pMPadd(pMPmul(x.x, y.y), pMPmul(x.y, y.x));
+        z.x = pMPsub(pMPmul(x.x, y.x), pMPmul(x.y, y.y));
+        z.y = pMPadd(pMPmul(x.x, y.y), pMPmul(x.y, y.x));
    return(z);
 }
 
@@ -68,25 +68,25 @@ struct MPC MPCdiv(struct MPC x, struct MPC y) {
    struct MP mod;
 
    mod = MPCmod(y);
-	y.y.Exp ^= 0x8000;
-	y.x = pMPdiv(y.x, mod);
-	y.y = pMPdiv(y.y, mod);
+        y.y.Exp ^= 0x8000;
+        y.x = pMPdiv(y.x, mod);
+        y.y = pMPdiv(y.y, mod);
    return(MPCmul(x, y));
 }
 
 struct MPC MPCadd(struct MPC x, struct MPC y) {
    struct MPC z;
 
-	z.x = pMPadd(x.x, y.x);
-	z.y = pMPadd(x.y, y.y);
+        z.x = pMPadd(x.x, y.x);
+        z.y = pMPadd(x.y, y.y);
    return(z);
 }
 
 struct MPC MPCsub(struct MPC x, struct MPC y) {
    struct MPC z;
 
-	z.x = pMPsub(x.x, y.x);
-	z.y = pMPsub(x.y, y.y);
+        z.x = pMPsub(x.x, y.x);
+        z.y = pMPsub(x.y, y.y);
    return(z);
 }
 
@@ -102,13 +102,13 @@ struct MPC MPCpow(struct MPC x, int exp) {
       z = MPCone;
    exp >>= 1;
    while(exp) {
-		zz.x = pMPsub(MPmul(x.x, x.x), pMPmul(x.y, x.y));
-		zz.y = pMPmul(x.x, x.y);
-		zz.y.Exp++;
+                zz.x = pMPsub(MPmul(x.x, x.x), pMPmul(x.y, x.y));
+                zz.y = pMPmul(x.x, x.y);
+                zz.y.Exp++;
       x = zz;
       if(exp & 1) {
-			zz.x = pMPsub(pMPmul(z.x, x.x), pMPmul(z.y, x.y));
-			zz.y = pMPadd(pMPmul(z.x, x.y), pMPmul(z.y, x.x));
+                        zz.x = pMPsub(pMPmul(z.x, x.x), pMPmul(z.y, x.y));
+                        zz.y = pMPadd(pMPmul(z.x, x.y), pMPmul(z.y, x.x));
          z = zz;
       }
       exp >>= 1;
@@ -119,10 +119,10 @@ struct MPC MPCpow(struct MPC x, int exp) {
 int MPCcmp(struct MPC x, struct MPC y) {
    struct MPC z;
 
-	if(pMPcmp(x.x, y.x) || pMPcmp(x.y, y.y)) {
-		z.x = MPCmod(x);
-		z.y = MPCmod(y);
-		return(pMPcmp(z.x, z.y));
+        if(pMPcmp(x.x, y.x) || pMPcmp(x.y, y.y)) {
+                z.x = MPCmod(x);
+                z.y = MPCmod(y);
+                return(pMPcmp(z.x, z.y));
    }
    else
       return(0);
@@ -131,16 +131,16 @@ int MPCcmp(struct MPC x, struct MPC y) {
 struct complex MPC2cmplx(struct MPC x) {
    struct complex z;
 
-	z.x = *pMP2d(x.x);
-	z.y = *pMP2d(x.y);
+        z.x = *pMP2d(x.x);
+        z.y = *pMP2d(x.y);
    return(z);
 }
 
 struct MPC cmplx2MPC(struct complex z) {
    struct MPC x;
 
-	x.x = pd2MP(z.x);
-	x.y = pd2MP(z.y);
+        x.x = pd2MP(z.x);
+        x.y = pd2MP(z.y);
    return(x);
 }
 
@@ -223,37 +223,43 @@ extern int  xdots, ydots;     /* coordinates of dots on the screen  */
 extern int  colors;           /* maximum colors available */
 extern int  maxit;
 
-char far *LogTable = (char far *)0;
+unsigned char far *LogTable = (unsigned char far *)0;
 extern int LogFlag;
-float fColors;
 
-void ChkLogFlag(void) {
-   float l, f, c = (float)256.0, m;
-   unsigned n, x;
+void SetupLogTable(void) {
+   float l, f, c, m;
+   unsigned n, x, prev, limit;
 
-   if(!LogFlag) {
-      if(LogTable) {
-         farmemfree(LogTable);
-         LogTable = (char far *)0;
+   if(LogTable = farmemalloc((long)maxit + 1)) {
+      Fg2Float((long)maxit, 0, m);
+      fLog14(m, m);
+      Fg2Float((long)(colors-1), 0, c);
+      fDiv(m, c, m);
+      prev = 1;
+      for (n = 1; n < colors; n++) {
+         Fg2Float((long)n, 0, f);
+         fMul16(f, m, f);
+         fExp14(f, l);
+         limit = Float2Fg(l, 0);
+         if (limit > maxit || n == colors-1)
+            limit = maxit;
+         while (prev <= limit)
+            LogTable[prev++] = n;
       }
+      LogTable[0] = 0;
+      if (LogFlag != 2)
+         for (n = 1; n < maxit; n++) /* spread top to incl unused colors */
+            if (LogTable[n] > LogTable[n-1])
+               LogTable[n] = LogTable[n-1]+1;
    }
    else {
-      if(!LogTable) {
-         if(LogTable = farmemalloc((long)maxit + 1)) {
-            Fg2Float((long)maxit, 0, m);
-            fLog14(m, m);
-            fDiv(c, m, c);
-            for(n = 1; n < maxit; n++) {
-               Fg2Float((long)n, 0, f);
-               fLog14(f, l);
-               fMul16(l, c, l);
-               LogTable[n] = Float2Fg(l, 0) + 1;
-            }
-            LogTable[0] = 0;
-         }
-         else
-            buzzer(2);
-      }
+      setfortext();
+      printf("\n\n\n\nInsufficient memory for logarithmic palette with this maxiter.\n");
+      printf("\n\nAny key to continue.\n");
+      buzzer(2);
+      getakey();
+      setforgraphics();
+      LogFlag = 0;
    }
 }
 
@@ -277,7 +283,7 @@ struct complex cdegree = { 3.0, 0.0 },
 int ComplexNewtonSetup(void) {
    threshold = .001;
    periodicitycheck = 0;
-   if(param[0] != 0.0 || param[1] != 0.0 || param[2] != 0.0 || 
+   if(param[0] != 0.0 || param[1] != 0.0 || param[2] != 0.0 ||
       param[3] != 0.0) {
       croot.x = param[2];
       croot.y = param[3];
@@ -361,7 +367,7 @@ int ComplexBasin(void) {
    return(0);
 }
 
-void fullscreen_prompt(int startrow, int numprompts, char *prompts[], 
+void fullscreen_prompt(int startrow, int numprompts, char *prompts[],
    double values[]);
 int get_fracttype(int t);
 

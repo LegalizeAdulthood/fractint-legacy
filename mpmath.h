@@ -130,4 +130,19 @@ unsigned long far ExpFudged(long x, int Fudge);
 #define fExp14(x, z) (void)((*(long*)&z) = ExpFloat14(*(long*)&x));
 #define fSqrt14(x, z) fLog14(x, z); fShift(z, -1, z); fExp14(z, z)
 
+struct lcomplex {
+   long x, y;
+};
+
+union Arg {
+   struct complex d;
+   struct MPC m;
+   struct lcomplex l;
+};
+
+extern union Arg *Arg1,*Arg2;
+
+extern void lStkSin(),lStkCos(),lStkSinh(),lStkCosh(),lStkLog(),lStkExp(),lStkSqr();  
+extern void dStkSin(),dStkCos(),dStkSinh(),dStkCosh(),dStkLog(),dStkExp(),dStkSqr();  
+
 #endif
