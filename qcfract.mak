@@ -1,5 +1,5 @@
 .c.obj:	
-	cl /AM /W1 /FPi /c /Gs /Oait $*.c
+	cl /AM /W1 /FPi /c /Gs /Os $*.c
 
 .asm.obj:
 	masm /MX $*;
@@ -33,7 +33,7 @@ general.obj : general.asm
 
 gifview.obj : gifview.c fractint.h
 
-tgaview.obj : tgaview.c fractint.h targa_lc.h port.h
+tiwview.obj : tiwview.c fractint.h
 
 help.obj : help.c fractint.h
 
@@ -46,8 +46,6 @@ printer.obj : printer.c fractint.h
 
 rotate.obj : rotate.c fractint.h
 
-testpt.obj: testpt.c fractint.h
-
 targa.obj : targa.c targa.h fractint.h
 
 loadmap.obj : loadmap.c targa.h
@@ -58,11 +56,6 @@ fmath.obj : fmath.c fmath.h
 
 fmath086.obj : fmath086.asm
 
-f16.obj : f16.c targa_lc.h
+f16.obj : f16.c
 
-fractint.exe : fractint.obj help.obj config.obj encoder.obj gifview.obj \
-     decoder.obj rotate.obj general.obj calcmand.obj calcfrac.obj testpt.obj \
-     diskvid.obj line3d.obj 3d.obj newton.obj farmsg.obj cmdfiles.obj \
-     targa.obj loadmap.obj tgasubs.obj printer.obj fmath.obj fmath086.obj \
-     tgaview.obj f16.obj farvideo.obj
-	link /ST:4096 @fractint.lnk
+tgaview.obj : tgaview.c lc_targa.h

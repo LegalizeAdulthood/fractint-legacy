@@ -1,100 +1,111 @@
+
 /*
-	FRACTINT - Integer Mandelbrot/Julia Fractal Generator
+	FRACTINT - The Ultimate Fractal Generator
 			Main Routine
-		Original/Primary Author:  Bert Tyler
-		Mandelbrot/Julia/32-bit Integer Fractals by Bert Tyler
-		Newton/Lamda/Other Fractals by Timothy Wegner
-		Super-VGA support by Timothy Wegner and John Bridges
-		Mouse support by Michael Kaufman
 */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
+#ifndef __TURBOC__
+#include <dos.h>
+#include <malloc.h>
+#endif
+
 #define PUTTHEMHERE 1			/* stuff common external arrays here */
 
 #include "fractint.h"
 
-void main(int argc, char *argv[]);
-int getakey(void);
-void setvideomode(int a, int b, int c, int d);
-void drawbox(int);
-void spindac(int, int);
-
-int	adapter;		/* Video Adapter chosen from above list	*/
-
-char *fkeys[] = {		/* Function Key names for display table */
-	"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10",
-	"SF1","SF2","SF3","SF4","SF5","SF6","SF7","SF8","SF9","SF10",
-	"CF1","CF2","CF3","CF4","CF5","CF6","CF7","CF8","CF9","CF10",
-	"AF1","AF2","AF3","AF4","AF5","AF6","AF7","AF8","AF9","AF10",
-	"Alt-1","Alt-2","Alt-3","Alt-4","Alt-5",
-	"Alt-6","Alt-7","Alt-8","Alt-9","Alt-0",
-	"Alt-Q","Alt-W","Alt-E","Alt-R","Alt-T",
-	"Alt-Y","Alt-U","Alt-I","Alt-O","Alt-P",
-	"Alt-A","Alt-S","Alt-D","Alt-F","Alt-G",
-	"Alt-H","Alt-J","Alt-K","Alt-L",
-	"Alt-Z","Alt-X","Alt-C","Alt-V","Alt-B","Alt-N","Alt-M",
-	"END"};
-int kbdkeys[] = {		/* Function Keystrokes for above names */
-	1059, 1060, 1061, 1062, 1063, 1064, 1065, 1066, 1067, 1068,
-	1084, 1085, 1086, 1087, 1088, 1089, 1090, 1091, 1092, 1093,
-	1094, 1095, 1096, 1097, 1098, 1099, 1100, 1101, 1102, 1103,
-	1104, 1105, 1106, 1107, 1108, 1109, 1110, 1111, 1112, 1113,
-	1120, 1121, 1122, 1123, 1124, 1125, 1126, 1127, 1128, 1129,
-	1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025,
-	1030, 1031, 1032, 1033, 1034, 1035, 1036, 1037, 1038,
-	1044, 1045, 1046, 1047, 1048, 1049, 1050,
-	0};
+int	adapter;		/* Video Adapter chosen from list in ...h */
 
 char *accessmethod[] =
-	{" ","B"," "," "," "," "," "," "," "}; /* BIOS access indicator */
+	{" ","B"," "," "," ",
+	 " "," "," "," "," ",
+	 " "," "," "," "," "}; /* BIOS access indicator */
 
 struct fractal_info save_info, read_info; /*  for saving data in file */
 
-char    readname[81];     /* name of fractal input file */
-int     showfile;        /* has file been displayed yet? */
-int	warn;		/* 0 if savename warnings off, 1 if warnings on */
+extern	char    readname[81];     /* name of fractal input file */
+extern	int     showfile;        /* has file been displayed yet? */
 
 #define	FUDGEFACTOR	29		/* fudge all values up by 2**this */
+#define FUDGEFACTOR2	24		/* (or maybe this)		  */
+
+#ifndef __TURBOC__
 #define MAXHISTORY	50		/* save this many historical rcds */
+long	far history[MAXHISTORY][7];	/* for historical (HOME Key) purposes */
+#else
+#define MAXHISTORY	10		/* save this many historical rcds */
+long	history[MAXHISTORY][7];		/* for historical (HOME Key) purposes */
+#endif
 
-long	history[MAXHISTORY][7];	/* for historical (HOME Key) purposes */
-char	savename[80];		/* save files using this name */
+extern	char	savename[80];		/* save files using this name */
 
-int	debugflag;		/* internal use only - you didn't see this */
-int	timerflag;		/* you didn't see this, either */
+extern	int	debugflag;		/* internal use only - you didn't see this */
 /*
    the following variables are out here only so
    that the calcfract() and assembler routines can get at them easily
 */
 	int	dotmode;			/* video access method      */
 	int	oktoprint;			/* 0 if printf() won't work */
-	int	cyclelimit;			/* color-rotator upper limit */
 	int	xdots, ydots;			/* # of dots on the screen  */
 	int	colors;				/* maximum colors available */
 	int	maxit;				/* try this many iterations */
 	int	ixmin, ixmax, iymin, iymax;	/* corners of the zoom box  */
 	int	boxcount;			/* 0 if no zoom-box yet     */
 
-	int	inside;				/* inside color: 1=blue     */
 	int	fractype;			/* if == 0, use Mandelbrot  */
 	int	numpasses;			/* 0 if single-pass, else 1 */
 	int	solidguessing;			/* 0 if disabled, else 1    */
 	long	creal, cimag;			/* real, imag'ry parts of C */
-	long	lx0[MAXPIXELS], ly0[MAXPIXELS];	/* x, y grid                */
 	long	delx, dely;			/* screen pixel increments */
 	double	param[4];			/* up to four parameters    */
+	double	potparam[4];		/* four potential parameters TW 6-18-89*/
 	long	fudge;				/* 2**fudgefactor	*/
+	int	bitshift;			/* fudgefactor		*/
 
 	int	hasconfig;			/* = 0 if 'fractint.cfg'    */
+	int	diskisactive;			/* disk-video drivers flag  */
+	int	diskvideo;			/* disk-video access flag   */
+
+extern	long	lx0[MAXPIXELS], ly0[MAXPIXELS];	/* x, y grid                */
+
+extern	int	inside;				/* inside color: 1=blue     */
+extern	int	cyclelimit;			/* color-rotator upper limit */
+extern	int	display3d;			/* 3D display flag: 0 = OFF */
+extern	int	overlay3d;			/* 3D overlay flag: 0 = OFF */
+extern	int	init3d[20];			/* '3d=nn/nn/nn/...' values */
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
+extern unsigned char olddacbox[256][3]; /* backup copy of the Video-DAC */
 extern int	daclearn, daccount;	/* used by the color-cyclers */
 extern int	extraseg;		/* used by Save-to-DISK routines */
 extern int	cpu;			/* cpu type			*/
+extern int	fpu;			/* fpu type			*/
 extern int	lookatmouse;		/* used to activate non-button mouse movement */
+extern int	out_line();		/* called in decoder */
+extern	int	outlin16();		/* called in decoder */
+extern int	line3d();		/* called in decoder */
+extern int	(*outln)();		/* called in decoder */
+extern	int	filetype;		/* GIF or other */
+
+/* variables defined by the command line/files processor */
+
+extern	int	initbatch;		/* 1 if batch run (no kbd)  */
+extern	int	initmode;		/* initial video mode       */
+extern	int	inititer;		/* initial value of maxiter */
+extern	int	initincr;		/* initial maxiter incrmnt  */
+extern	int	initpass;		/* initial pass mode        */
+extern	int	initsolidguessing;	/* initial solid-guessing md*/
+extern	int	initfractype;		/* initial type set flag    */
+extern	int	initcyclelimit;		/* initial cycle limit      */
+extern	int	initcorners;		/* initial flag: corners set*/
+extern	double	initxmin,initxmax;	/* initial corner values    */
+extern	double	initymin,initymax;	/* initial corner values    */
+extern	double	initparam[4];		/* initial parameters       */
+extern	double	initpot[4];		/* potential parameters -TW 6/25/89  */
+
 
 void main(argc,argv)
 int argc;
@@ -111,149 +122,38 @@ char *argv[];
 	int	zoomoff;			/* = 0 when zoom is disabled */
 	int	kbdchar;			/* keyboard key-hit value */
 	int	more, kbdmore;			/* continuation variables */
-	int	i, j, k;			/* temporary loop counters */
+	int	i, j, k, l;			/* temporary loop counters */
 
-	int	initbatch;			/* 1 if batch run (no kbd)  */
-	int	initmode;			/* initial video mode       */
-	int	inititer;			/* initial value of maxiter */
-	int	initincr;			/* initial maxiter incrmnt  */
-	int	initpass;			/* initial pass mode        */
-	int	initsolidguessing;		/* initial solid-guessing md*/
-	int	initfractype;			/* initial type set flag    */
-	int	initcyclelimit;			/* initial cycle limit      */
-	int	initcorners;			/* initial flag: corners set*/
-	double	initxmin,initxmax;		/* initial corner values    */
-	double	initymin,initymax;		/* initial corner values    */
-	double	initparam[4];			/* initial parameters       */
-	char	temp1[81], temp2[81], *slash;	/* temporary strings        */
+	char	temp1[81];			/* temporary strings        */
 	int	displaypage;			/* signon display page      */
+	int	savedac;			/* save-the-Video DAC flag  */
+	int	olddotmode;			/* temp copy of dotmode	    */
+	long	huge *xxxalloc;			/* Quick-C klooge (extraseg) */
+
+initasmvars();					/* initialize ASM stuff */
 
 hasconfig = readconfig();			/* read fractint.cfg, if any */
 
-for (maxvideomode = 0;				/* get size of adapter list */
-	strcmp(videomode[maxvideomode].name,"END") != 0
-		&& maxvideomode < 76;	/* that's all the Fn keys we got! */
-	maxvideomode++);
+maxvideomode = initvideotable();		/* get the size of video table */
+if ( maxvideomode >= MAXVIDEOMODES)		/* that's all the Fn keys we got! */
+	maxvideomode = MAXVIDEOMODES;
+	
+cmdfiles(argc,argv);				/* process the command-line */
 
-warn = 0;					/* no warnings on savename */
-initbatch = 0;					/* not in batch mode      */
-initmode = -1;					/* no initial video mode  */
-inside = 1;					/* inside color = blue    */
-inititer = 150;					/* initial maxiter        */
-initincr = 50;					/* initial iter increment */
-initpass = 2;					/* initial dual-pass mode */
-initsolidguessing = 1;				/* initial solid-guessing */
-initfractype = 0;				/* initial type Set flag  */
-initcorners = 0;				/* initial flag: no corners */
-for (i = 0; i < 4; i++) initparam[i] = 0;	/* initial parameter values */
-initxmin = -2.5; initxmax = 1.5;		/* initial corner values  */
-initymin = -1.5; initymax = 1.5;		/* initial corner values  */
-strcpy(savename,"fract001");			/* initial save filename  */
-initcyclelimit=55;				/* spin-DAC default speed limit */
-oktoprint = 1;					/* default:  printf() ok  */
+if (debugflag == 8088) cpu = debugflag;	/* for testing purposes */
 
-*readname= NULL;                                  /* initial input filename */
-
-for (i = 1; i < argc; i++) {			/* cycle through args	*/
-	strcpy(temp1,argv[i]);
-	strlwr(temp1);				/* using lower case	*/
-	for (j = 1; j < strlen(temp1) && temp1[j] != '='; j++) ;
-	if (j < strlen(temp1)) k = atoi(&temp1[j+1]);
-
-	if (j == strlen(temp1)){
-        strcpy(readname,temp1);
-		showfile = 1;
-		}
-	else if (strncmp(temp1,"batch=",j) == 0 ) {		/* batch=?	*/
-		k = temp1[j+1];
-		if (k == 'c' || k == 'C') {		/* config run */
-			makeconfig();
-			goodbye();
-			}
-		if (k == 'y' || k == 'Y')
-			initbatch = 1;
-		}
-	else if (strncmp(temp1,"warn=",j) == 0 ) {		/* warn=?	*/
-		k = temp1[j+1];
-		if (k == 'y' || k == 'Y')
-			warn = 1;
-		}
-	else if (strncmp(temp1,"type=",j) == 0 ) {		/* type=?	*/
-		for (k = 0; typelist[k] != NULL; k++)
-			if (strcmp(&temp1[j+1],typelist[k]) == 0)
-				break;
-		if (typelist[k] == NULL) argerror(temp1);
-		initfractype = k;
-		}
-	else if (strncmp(temp1,"inside=",j) == 0 ) {		/* inside=?	*/
-		inside = k;
-		}
-	else if (strncmp(temp1,"maxiter=",j) == 0) {	/* maxiter=?	*/
-		if (k < 10 || k > 1000) argerror(temp1);
-		inititer = k;
-		}
-	else if (strncmp(temp1,"iterincr=",j) == 0) {	/* iterincr=?	*/
-		if (k <= 0 || k > inititer) argerror(temp1);
-		initincr = k;
-		}
-	else if (strncmp(temp1,"passes=",j) == 0) {	/* passes=?	*/
-		initsolidguessing = 0;
-		if ( temp1[j+1] == 'g') {		/* solid-guessing */
-			k = 2;
-			initsolidguessing = 1;
-			}
-		if (k < 1 || k > 2) argerror(temp1);
-		initpass = k;
-		}
-	else if (strncmp(temp1,"cyclelimit=",j) == 0 ) {/* cyclelimit=?	*/
-		if (k > 1 && k <= 256)
-			initcyclelimit = k;
-		}
-	else if (strncmp(temp1,"savename=",j) == 0) {	/* savename=?	*/
-		strcpy(savename,&temp1[9]);
-		}
-	else if (strncmp(temp1,"video=",j) == 0) {	/* video=?	*/
-		for (k = 0; k < maxvideomode; k++) {
-			strcpy(temp2,fkeys[k]);
-			strlwr(temp2);
-			if (strcmp(&temp1[j+1],temp2) == 0)
-				break;
-			}
-			if (k == maxvideomode) argerror(temp1);
-		initmode = k;
-		}
-	else if (strncmp(temp1,"params=",j) == 0) {	/* params=?,?	*/
-		if (initcorners == 0) {
-			initxmin = -2.0; initxmax = 2.0;
-			initymin = -1.5; initymax = 1.5;
-			}
-		k = 0;
-		slash = strchr(temp1,'=');
-		while ( k < 4) {
-			initparam[k++] = atof(++slash);
-			if ((slash = strchr(slash,'/')) == NULL) k = 99;
-			}
-		}
-	else if (strncmp(temp1,"corners=",j) == 0) {	/* corners=?,?,?,? */
-	        initcorners = 1;
-		slash = temp1;
-		initxmin=atof(&temp1[j+1]);
-		if ((slash = strchr(slash,'/')) == NULL) argerror(temp1);
-		initxmax=atof(++slash);
-		if ((slash = strchr(slash,'/')) == NULL) argerror(temp1);
-		initymin=atof(++slash);
-		if ((slash = strchr(slash,'/')) == NULL) argerror(temp1);
-		initymax=atof(++slash);
-		}
-	else if (strncmp(temp1,"debugflag=",j) == 0) {	/* internal use only */
-		debugflag = k;
-		}
-	else argerror(temp1);
-	}
+savedac = 0;				/* don't save the VGA DAC */
+diskisactive = 0;			/* disk-video is inactive */
+diskvideo = 0;				/* disk driver is not in use */
+setvideomode(3,0,0,0);			/* switch to text mode */
 
 restorestart:
 
 if(*readname){  /* This is why readname initialized to null string */
+	if (!overlay3d)			/* overlays use the existing mode */
+		initmode = -1;		/* no viewing mode set yet */
+	else
+		initmode = adapter;	/* use previous adapter mode for overlays */
 	if(find_fractal_info(readname,&read_info)==0){
       		inititer   = read_info.iterations;
       		initfractype  = read_info.fractal_type;
@@ -264,46 +164,255 @@ if(*readname){  /* This is why readname initialized to null string */
       		initparam[0]   = read_info.creal;
       		initparam[1]   = read_info.cimag;
  		showfile = 0;
- 		initmode = getGIFmode(&read_info);
-                if(initmode < maxvideomode && hasconfig != 0 
-			&& initbatch == 0){
+	if (!overlay3d) {		/* don't worry about the video if overlay */
+		if (read_info.info_id[0] == 'G') {
+			buzzer(2);
+			printf("You have selected an unknown (non-fractal) GIF image\n");
+			printf("I am treating this image as a PLASMA CLOUD of unknown video type\n");
+			}
+		if (read_info.dotmode == 11) {
+			buzzer(2);
+			printf("You have selected a fractal image generated in 'no-video' mode\n");
+			}
+		if (read_info.info_id[0] == 'G' || read_info.dotmode == 11) {
+			printf("with resolution %d x %d x %d\n",
+				read_info.xdots, read_info.ydots, read_info.colors);
+			}
+		if (read_info.info_id[0] != 'G' && read_info.dotmode != 11)
+	 		initmode = getGIFmode(&read_info);
+		if (initmode >= maxvideomode) initmode = -1;
+		if (read_info.info_id[0] != 'G' && read_info.dotmode != 11
+			&& initmode >= 0
+			&& hasconfig && ! initbatch ){
                         char c;
+			fromvideotable(initmode);
                 	printf("fractal file contains following mode:\n\n");
- 			               
-			printf("%-6s%-25s%5d x%4d%5d %1s  %-25s\n\n",
+#ifdef __TURBOC__
+			printf("%-6.6s %-25.25s%5d x%4d%5d %1.1s  %-25.25s\n",
+#else
+			printf("%-6s %-25s%5d x%4d%5d %1s  %-25s\n",
+#endif
 			        fkeys[initmode],
-				videomode[initmode].name,
-				videomode[initmode].xdots,
-				videomode[initmode].ydots,
-				videomode[initmode].colors,
-				accessmethod[videomode[initmode].dotmode],
-				videomode[initmode].comment);
+				videoentry.name,
+				videoentry.xdots,
+				videoentry.ydots,
+				videoentry.colors,
+				accessmethod[videoentry.dotmode],
+				videoentry.comment);
                         printf("Legal for this machine? ([Y] or N) --> ");
                 	while((c=getch())!='y' && c!='Y' && c!='n' && c!='N' && c!=13);
-                	if( c == 'n' || c == 'N'){
+                	if( c == 'n' || c == 'N')
                 		initmode = -1;
-                	   	showfile = 1; /* pretend already displayed */
-                           	}
 			}
 		else 	{
 			/* initmode bad */
-			if (initmode >= maxvideomode) {
-				initmode = -1;
+			if (initmode == -1 && initbatch) 
         	       		showfile = 1; /* pretend already displayed */
-				}
                        	}
+		if (initmode == -1 && ! initbatch) {
+			printf("\nPlease select a video mode with which to view this image by\n");
+			printf("pressing the appropriate function key (or press the ENTER)\n");
+			printf("key to bail out without displaying this image).  You can also press\n");
+			printf("the 'h' or '?' keys to get help on the available video modes)\n");
+			helpmode = HELPVIDEO;
+			while (!keypressed());
+			kbdchar = getakey();
+			for (initmode = 0; initmode < maxvideomode; initmode++)
+				if (kbdchar == kbdkeys[initmode]) break;
+			if (initmode == maxvideomode) {
+				*readname = NULL; /* failed ... zap filename */
+                		initmode = -1;
+                	   	showfile = 1; /* pretend already displayed */
+				}
+		}
+			if (initmode >= 0) fromvideotable(initmode);
+			if (initmode >= 0 && (
+				read_info.xdots != videoentry.xdots ||
+			 	read_info.ydots != videoentry.ydots)) {
+					initxmax = initxmin +
+						((initxmax-initxmin)*videoentry.xdots)/
+						read_info.xdots;
+					initymin = initymax -
+						((initymax-initymin)*videoentry.ydots)/
+						read_info.ydots;
+					if ((initfractype == MANDEL || initfractype == JULIA) &&
+						((initxmax-initxmin) > 4.0 || (initymax-initymin) > 4.0)) {
+						initfractype = PLASMA;
+						initparam[0] = 0;
+						}
+					}
+				}
+
+		if (initmode >= 0 && display3d) {
+			initfractype = PLASMA;
+			initparam[0] = 0;
+			}
+		if (initmode >= 0 && display3d && ! initbatch) {
+			printf("\n\n");
+		    if(SPHERE)
+		       strcpy(temp1,"yes");
+		    else
+		       strcpy(temp1,"no");
+            printf("\n\nSphere Projection? (y or n) (if not %3s) ",temp1);
+			gets(temp1);
+			if((*temp1 == 'y' || *temp1 == 'Y') && !SPHERE)
+		            {
+               /* reset sphere defaults */
+               SPHERE    = TRUE;    
+               PHI1      =  180;    
+               PHI2      =  0;   
+               THETA1    =  -90;   
+               THETA2    =  90;   
+               RADIUS    =  100;   
+               ROUGH     =  30;   
+               WATERLINE = 0;
+               FILLTYPE  = 2;
+               ZVIEWER   = 0;
+               XSHIFT    = 0;
+               YSHIFT    = 0;
+               XLIGHT    = 0;
+               YLIGHT    = 0;
+               ZLIGHT    = 1;
+               LIGHTAVG  = 1;
+			}   
+			else if((*temp1 == 'n' || *temp1 == 'N') && SPHERE)
+            {
+               SPHERE    = FALSE;    
+               XROT      = 60;
+               YROT      = 30;
+               ZROT      = 0;
+               XSCALE    = 90;
+               YSCALE    = 90;
+               ROUGH     = 30;   
+               WATERLINE = 0;
+               FILLTYPE  = 0;
+               ZVIEWER   = 0;
+               XSHIFT    = 0;
+               YSHIFT    = 0;
+               XLIGHT    = 0;
+               YLIGHT    = 0;
+               ZLIGHT    = 1;
+               LIGHTAVG  = 1;
+			}   
+            if(SPHERE){
+
+            /* BEGIN Sphere-specific parameters */
+            printf("\n\nSphere is on its side; North pole to right\n");
+            printf("180 degrees longitude is top; 0 degrees bottom\n");
+            printf("-90 degrees latitude is left; 90 degrees right\n");
+			printf("Longitude start (degrees) (if not %3d) ",PHI1);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) PHI1 = k;
+			printf("Longitude stop  (degrees) (if not %3d) ",PHI2);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) PHI2 = k;
+			printf("Latitude start  (degrees) (if not %3d) ",THETA1);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) THETA1 = k;
+			printf("Latitude stop   (degrees) (if not %3d) ",THETA2);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) THETA2 = k;
+			printf("Radius scaling factor in pct  (if not %3d)  ",RADIUS);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) RADIUS = k;
+            }else{
+            /* BEGIN Regular-3D-specific parameters */
+			printf("X-axis rotation in degrees (if not %3d) ",XROT);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) XROT = k;
+			printf("Y-axis rotation in degrees (if not %3d) ",YROT);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) YROT = k;
+			printf("Z-axis rotation in degrees (if not %3d)  ",ZROT);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) ZROT = k;
+			printf("X-axis scaling factor in pct  (if not %3d)  ",XSCALE);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) XSCALE = k;
+			printf("Y-axis scaling factor in pct  (if not %3d)  ",YSCALE);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) YSCALE = k;
+			}
+            /* Begin Common Parameters */
+			printf("Surface Roughness scaling factor in pct  (if not %3d)  ",ROUGH);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) ROUGH = k;
+			printf("'Water Level' (minimum color value)  (if not %3d)  ",WATERLINE);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) WATERLINE = k;
+			printf("Line-Fill options are 0 - just draw the dots, 1 - connected dots (wire frame),\n");
+			printf("  2 - surface-fill, 3 - surface fill (no interpolation), 4 - solid fill,\n");
+			printf("  5 - light source before transformation, 6 - light source after transformation\n");
+			printf("  Enter the Fill option  (if not %3d)  ",FILLTYPE);
+			gets(temp1);
+			k = atoi(temp1);
+			if (k > 6) k = 6;
+            if (k <= 0) k = 0;
+			if (temp1[0] >19) FILLTYPE = k;
+			printf("Perspective 'height' [1 - 999, 0 for no perspective] (if not %3d) ",ZVIEWER);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) ZVIEWER = k;
+			printf("X shift (positive = right)(if not %3d) ",XSHIFT);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) XSHIFT = k;
+			printf("Y shift (positive = up    )(if not %3d) ",YSHIFT);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) YSHIFT = k;
+			if(ILLUMINE)
+			{
+			printf("X value light vector  )(if not %3d) ",XLIGHT);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) XLIGHT = k;
+			printf("Y value light vector  )(if not %3d) ",YLIGHT);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) YLIGHT = k;
+			printf("Z value light vector  )(if not %3d) ",ZLIGHT);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) ZLIGHT = k;
+			printf("Light Source Smoothing Factor )(if not %3d) ",LIGHTAVG);
+			gets(temp1);
+			k = atoi(temp1);
+			if (temp1[0] >19) LIGHTAVG = k;
+			}
+			}
 		initcorners = 1;
       		}
 	else	{
-		printf("\007");
+		buzzer(2);
+		initmode = -1;
 		*readname = NULL;
 		}
 	}
 
-timerflag = debugflag & 1;		/* separate timer from debug flag */
-debugflag -= timerflag;
+if (overlay3d && initmode < 0) {	/* overlay command failed */
+	setforgraphics();		/* restore the graphics screen */
+	overlay3d = 0;			/* forget overlays */
+	display3d = 0;			/* forget 3D */
+	goto resumeloop;		/* ooh, this is ugly */
+	}
+
 
 restart:                                /* insert key re-starts here */
+
+savedac = 0;				/* don't save the VGA DAC */
 
 lookatmouse = 0;			/* de-activate full mouse-checking */
 
@@ -314,6 +423,7 @@ solidguessing = initsolidguessing;		/* solid-guessing mode */
 fractype = initfractype;			/* use the default set   */
 cyclelimit = initcyclelimit;			/* default cycle limit	 */
 for (i = 0; i < 4; i++) param[i] = initparam[i];/* use the default params*/
+for (i = 0; i < 4; i++) potparam[i] = initpot[i];/* TW 6/25/89 */
 ccreal = param[0]; ccimag = param[1];		/* default C-values      */
 xxmin = initxmin; xxmax = initxmax;		/* default corner values */
 yymin = initymin; yymax = initymax;		/* default corner values */
@@ -323,17 +433,20 @@ if (yymin > yymax) { ftemp = yymax; yymax = yymin; yymin = ftemp; }
 
 /* set some reasonable limits on the numbers (or the algorithms will fail) */
 
-fudge = 1; fudge = fudge << (FUDGEFACTOR-3);	/* fudged value for printfs */
+bitshift = FUDGEFACTOR2;			/* shift bits by this much */
 if (xxmax - xxmin > 31.99) xxmax = xxmin + 31.99;	/* avoid overflow */
 if (yymax - yymin > 31.99) yymax = yymin + 31.99;
 if (fractype == MANDEL || fractype == MANDELFP || 
 	fractype == JULIA || fractype == JULIAFP) {
-	fudge = 1; fudge = fudge << FUDGEFACTOR;	/* fudged value for printfs */
+	if (fabs(potparam[0]) < .0001		/* adjust shift bits if */
+		|| debugflag == 1234)		/* not using potential  */
+		bitshift = FUDGEFACTOR;
 	if (ccreal < -1.99 || ccreal > 1.99) ccreal = 1.99;
 	if (ccimag < -1.99 || ccimag > 1.99) ccimag = 1.99;
 	if (xxmax - xxmin > 3.99) xxmax = xxmin + 3.99;
 	if (yymax - yymin > 3.99) yymax = yymin + 3.99;
 	}
+fudge = 1; fudge = fudge << bitshift;		/* fudged value for printfs */
 
 ccreal = ccreal * fudge; creal = ccreal;
 ccimag = ccimag * fudge; cimag = ccimag;
@@ -342,10 +455,16 @@ xxmax = xxmax * fudge; xmax = xxmax;
 yymin = yymin * fudge; ymin = yymin;
 yymax = yymax * fudge; ymax = yymax;
 
-setvideomode(3,0,0,0);			/* switch to text mode */
+#ifndef __TURBOC__
+if (extraseg == 0) { 
+	xxxalloc = (long huge *)halloc(16384L,4); 
+	extraseg = FP_SEG(xxxalloc);
+	}
+#endif
 
 if (extraseg == 0) {			/* oops.  not enough memory     */
-	printf("\007 I'm sorry, but you don't have enough free memory \n");
+	buzzer(2);
+	printf(" I'm sorry, but you don't have enough free memory \n");
 	printf(" to run this program.\n\n");
 	exit(1);
 	}
@@ -366,7 +485,7 @@ while (adapter < 0) {			/* cycle through instructions	*/
 		}
 	else
 		kbdchar = 27;
-	while (kbdchar == 13) {			/* ENTER calls help, here */
+	while (kbdchar == 13 || kbdchar == 1013) { /* ENTER calls help, here */
 		kbdchar = help();
 		}
 	adapter = -1;				/* no video adapter yet */
@@ -378,6 +497,12 @@ while (adapter < 0) {			/* cycle through instructions	*/
 	if (kbdchar == 1000) goodbye();		/* Control-C */
 	if (kbdchar == 27) goodbye();		/* exit to DOS on Escape Key */
 	if (kbdchar == 1083) goodbye();		/* exit to DOS on Delete Key */
+        if (kbdchar == 'd' || kbdchar == 'D') { /* shell to DOS */
+        	clscr();
+		printf("\n\nShelling to DOS - type 'exit' to return\n\n");
+        	system("command.com");
+        	goto restart;
+        	}
 	if (kbdchar == '1' || kbdchar == '2') {	/* select single or dual-pass */
 		numpasses = kbdchar - '1';
 		solidguessing = 0;
@@ -388,13 +513,19 @@ while (adapter < 0) {			/* cycle through instructions	*/
 		solidguessing = 1;
 		continue;
 		}
-	if (kbdchar == 'r' || kbdchar == 'R') {	/* restore old image	*/
+	if (kbdchar == 'r' || kbdchar == 'R' ||	kbdchar == '3'
+		|| kbdchar == 'o' || kbdchar == 'O') {	/* restore old image	*/
+		display3d = 0;
+		if (kbdchar == '3' || kbdchar == 'o' ||
+			kbdchar == 'O') display3d = 1;
 		setvideomode(3,0,0,0);	/* switch to text mode */
 			printf("\n Restart from what file? ");
 			gets(readname);
 			goto restorestart;
 			}
 	if (kbdchar == 't' || kbdchar == 'T') {	/* set fractal type */
+		olddotmode = dotmode;	/* save the old dotmode */
+		dotmode = 1;		/* force a disable of any 8514/A */
 		setvideomode(3,0,0,0);	/* switch to text mode */
 		printf("\nSelect one of the available fractal types below\n\n");
 		printf("(your current fractal type is %s)\n\n",typelist[initfractype]);
@@ -408,8 +539,10 @@ while (adapter < 0) {			/* cycle through instructions	*/
 			if (temp1[0] == 0) break;
 			strlwr(temp1);
 			for (i = 0; typelist[i] != NULL && strcmp(typelist[i], temp1) != 0; i++) ;
-			if (typelist[i] == NULL)
-				printf("\007\nPlease try that again");
+			if (typelist[i] == NULL) {
+				buzzer(2);
+				printf("\nPlease try that again");
+				}
 			else
 				j = i;
 			}
@@ -417,9 +550,12 @@ while (adapter < 0) {			/* cycle through instructions	*/
 		initfractype = j;
 		for ( i = 0; i < 4; i++)
 			initparam[i] = 0.0;
-		printf("\n\n Please enter any parameters that apply (an empty response bails out) \n");
+		for ( i = 0; i < 4; i++) /* TW 6/19/89 */
+			potparam[i] = 0.0;
+		printf("\n\n Please enter any parameters that apply (an empty response bails out) \n\n");
 		for (i = 0; i < 4; i++) {
-			printf(" Parameter #%d => ", i);
+			if (paramlist[initfractype][i][0] == 0) break;
+			printf(" %s => ", paramlist[initfractype][i]);
 			gets(temp1);
 			initparam[i] = atof(temp1);
 			if (temp1[0] == 0) i = 99;
@@ -433,9 +569,11 @@ while (adapter < 0) {			/* cycle through instructions	*/
 			initxmin = -2.0;
 			initxmax =  2.0;
 			}
+		dotmode = olddotmode;
 		goto restart;
 		}
-	else printf("\007");
+	else 
+		buzzer(2);
 	}
 
 historyptr = 0;					/* initialize history ptr */
@@ -444,38 +582,90 @@ zoomoff = 1;					/* zooming is enabled */
 
 helpmode = HELPMAIN;				/* switch help modes */
 
+
 more = 1;
 while (more) {					/* eternal loop */
 
 						/* collect adapter info */
-	axmode  = videomode[adapter].videomodeax; /* video mode (BIOS call) */
-	bxmode  = videomode[adapter].videomodebx; /* video mode (BIOS call) */
-	cxmode  = videomode[adapter].videomodecx; /* video mode (BIOS call) */
-	dxmode  = videomode[adapter].videomodedx; /* video mode (BIOS call) */
-	dotmode = videomode[adapter].dotmode;	/* assembler dot read/write */
-	xdots   = videomode[adapter].xdots;	/* # dots across the screen */
-	ydots   = videomode[adapter].ydots;	/* # dots down the screen   */
-	colors  = videomode[adapter].colors;	/* # colors available */
+	fromvideotable(adapter);
+	axmode  = videoentry.videomodeax;	 /* video mode (BIOS call) */
+	bxmode  = videoentry.videomodebx;	 /* video mode (BIOS call) */
+	cxmode  = videoentry.videomodecx;	 /* video mode (BIOS call) */
+	dxmode  = videoentry.videomodedx;	 /* video mode (BIOS call) */
+	dotmode = videoentry.dotmode;		/* assembler dot read/write */
+	xdots   = videoentry.xdots;		/* # dots across the screen */
+	ydots   = videoentry.ydots;		/* # dots down the screen   */
+	colors  = videoentry.colors;		/* # colors available */
+
+	diskvideo = 0;				/* set diskvideo flag */
+	if (dotmode == 11)			/* default assumption is disk */
+		diskvideo = 1;
+
+	memcpy(olddacbox,dacbox,256*3);		/* save the DAC */
+	diskisactive = 1;		/* flag for disk-video routines */
+	if (overlay3d) {
+		setforgraphics();	/* restore old graphics image */
+		overlay3d = 0;
+		}
+	else
+	        setvideomode(axmode,bxmode,cxmode,dxmode); /* switch video modes */
+	diskisactive = 0;		/* flag for disk-video routines */
+	if (savedac) {
+		memcpy(dacbox,olddacbox,256*3);		/* restore the DAC */
+		spindac(0,1);
+		}
+	savedac = 1;				/* assume we save next time */
+
+	if(*readname && showfile==0) {
+		/*
+		only requirements for gifview: take file name in global
+		variable "readname" - link to frasmint's video (I used putcolor),
+		and should NOT set video mode (that's done here)
+		*/
+
+		/* TIW 7/22/89 */
+		if (display3d)			/* set up 3D decoding */
+			outln = line3d;
+        else if(filetype >= 1)
+            outln = outlin16;
+        else
+            outln = out_line;
+		{
+		   extern int filetype;	
+           if(filetype == 0)
+              gifview();
+           else
+              tgaview();
+        }
+        /* END 7/22/89 */
+		display3d = 0;			/* turn off 3D retrievals */
+ 		}
 
 	xstep   = xdots / 40;			/* zoom-box increment: across */
 	ystep   = ydots / 40;			/* zoom-box increment: down */
 	if (xdots == 640 && ydots == 350)	/* zoom-box adjust:  640x350 */
 		{ xstep = 16; ystep =  9; }
+	if (xdots == 632 && ydots == 474)	/* zoom-box adjust:  632x474 */
+		{ xstep = 16; ystep = 12; }
 	if (xdots == 720 && ydots == 512)	/* zoom-box adjust:  720x512 */
 		{ xstep = 20; ystep = 15; }
 	if (xdots * 3 == ydots * 4)		/* zoom-box adjust:  VGA Tweaks */
 		{ xstep = 16; ystep = 12; }
 	if (xdots == 1024 && ydots == 768)	/* zoom-box adjust: 1024x768 */
 		{ xstep = 32; ystep = 24; }
+	if (xdots == 1016 && ydots == 762)	/* zoom-box adjust: 1018x762 */
+		{ xstep = 32; ystep = 24; }
 
 	delx = ((xmax - xmin) / (xdots - 1));	/* calculate the stepsizes */
 	dely = ((ymax - ymin) / (ydots - 1));
 
-	if (delx <= 1 || dely <= 1) {		/* oops.  zoomed too far */
+	if (delx <= 1 || dely <= 1) {	/* oops.  zoomed too far */
 		zoomoff = 0;
 		dely = 1;
 		delx = 1;
 		}
+	if (dotmode == 11 || fractype == PLASMA)	/* disable zooming */
+		zoomoff = 0;
 
 	lx0[0] = xmin;				/* fill up the x, y grids */
 	ly0[0] = ymax;
@@ -517,20 +707,47 @@ while (more) {					/* eternal loop */
 		history[historyptr][6] = fractype;
 		}
 
-        setvideomode(axmode,bxmode,cxmode,dxmode); /* switch video modes */
+	if (diskvideo) {		/* disk-file video klooges */
+		numpasses = 0;		/* single-pass mode */
+		solidguessing = 0;	/* no solid-guessing */
+		}
 
-	if(*readname && showfile==0) {
-		/*
-		only requirements for gifview: take file name in global
-		variable "readname" - link to frasmint's video (I used putcolor),
-		and should NOT set video mode (that's done here)
-		*/
-		gifview();
+	if(*readname && showfile==0)
 		showfile = 1;
- 		}
 	else	{
-		if (calcfract() == 0)	/* draw the fractal using "C" */
-			printf("\007");		/* finished!  wake up! */
+		diskisactive = 1;	/* flag for disk-video routines */
+        /* TW 07/21/89 - see below */
+        /* set save parameters in save structure */
+		strcpy(save_info.info_id, INFO_ID);
+		save_info.iterations   = maxit;
+		save_info.fractal_type = fractype;
+		save_info.xmin         = xxmin;
+		save_info.xmax         = xxmax;
+		save_info.ymin         = yymin;
+		save_info.ymax         = yymax;
+		save_info.creal        = param[0];
+		save_info.cimag        = param[1];
+		save_info.videomodeax  = videoentry.videomodeax;
+		save_info.videomodebx  = videoentry.videomodebx;
+		save_info.videomodecx  = videoentry.videomodecx;
+		save_info.videomodedx  = videoentry.videomodedx;
+		save_info.dotmode	= videoentry.dotmode;
+		save_info.xdots		= videoentry.xdots;
+		save_info.ydots		= videoentry.ydots;
+		save_info.colors	= videoentry.colors;
+		for (i = 0; i < 10; i++)
+		   save_info.future[i] = 0;
+
+		if (calcfract() == 0)		/* draw the fractal using "C" */
+			buzzer(0);		/* finished!! */
+		if( dotmode == 9 || dotmode == 11 ) {	/* if TARGA or disk-video */
+			if( dotmode == 11 )	/* TARGA already has some text up */
+				home();
+			else
+				EndTGA();	/* make sure TARGA is OFF */
+			printf("Image has been completed");
+		}
+		diskisactive = 0;	/* flag for disk-video routines */
 		}
 
 	ixmin = 0;  ixmax = xdots-1;		/* initial zoom box */
@@ -542,6 +759,8 @@ while (more) {					/* eternal loop */
 		daccount = 256;
 		daclearn = 1;
 		}
+
+resumeloop:					/* return here on failed overlays */
 
 	kbdmore = 1;
 	while (kbdmore == 1) {			/* loop through cursor keys */
@@ -562,6 +781,8 @@ while (more) {					/* eternal loop */
 		switch (kbdchar) {
 			case 't':			/* new fractal type */
 			case 'T':
+				olddotmode = dotmode;	/* save the old dotmode */
+				dotmode = 1;		/* force a disable of any 8514/A */
 				setvideomode(3,0,0,0);	/* switch to text mode */
 				printf("\nSelect one of the available fractal types below\n\n");
 				printf("(your current fractal type is %s)\n\n",typelist[fractype]);
@@ -575,18 +796,22 @@ while (more) {					/* eternal loop */
 					if (temp1[0] == 0) goto restart;
 					strlwr(temp1);
 					for (i = 0; typelist[i] != NULL && strcmp(typelist[i], temp1) != 0; i++) ;
-					if (typelist[i] == NULL)
-						printf("\007\nPlease try that again");
+					if (typelist[i] == NULL) {
+						printf("\nPlease try that again");
+						buzzer(2);
+						}
 					else
 						j = i;
 					}
 				if (temp1[0] == 0) break;
 				initfractype = j;
+				savedac = 0;
 				for ( i = 0; i < 4; i++)
 					initparam[i] = 0.0;
-				printf("\n\n Please enter any parameters that apply (an empty response bails out) \n");
+				printf("\n\n Please enter any parameters that apply (an empty response bails out)\n\n");
 				for (i = 0; i < 4; i++) {
-					printf(" Parameter #%d => ", i);
+					if (paramlist[initfractype][i][0] == 0) break;
+					printf(" %s => ", paramlist[initfractype][i]);
 					gets(temp1);
 					initparam[i] = atof(temp1);
 					if (temp1[0] == 0) i = 99;
@@ -601,6 +826,7 @@ while (more) {					/* eternal loop */
 					initxmax =  2.0;
 					}
 				initmode = adapter;
+				dotmode = olddotmode;
 				goto restart;
 				break;
 			case 32:			/* spacebar */
@@ -634,7 +860,7 @@ while (more) {					/* eternal loop */
 					ymin = jymin;  ymax = jymax;
 					zoomoff = 1;
 					}
-				else printf("\007"); }		/* no switch */
+				else buzzer(2); }		/* no switch */
 				kbdmore = 0;
 				break;
 			case 1071:			/* home */
@@ -672,6 +898,18 @@ while (more) {					/* eternal loop */
 				setforgraphics();
 				continue;	
 			break;
+			case 'd':			/* shell to MS-DOS */
+			case 'D':
+				setfortext();
+				printf("\n\nShelling to DOS - type 'exit' to return\n\n");
+				if (axmode == 0 || axmode > 7) {
+					printf("Note:  Your graphics image is still squirreled away in your video\n");
+					printf("adapter's memory.  Switching video modes (say, to get your cursor back)\n");
+					printf("will clobber part of that image.  Sorry - it's the best we could do.\n\n");
+					}
+				system("command.com");
+				setforgraphics();
+				break;
 			case '<':			/* lower iter maximum */
 			case ',':
 				if (maxit >= 10+initincr) maxit -= initincr;
@@ -696,6 +934,14 @@ while (more) {					/* eternal loop */
 				break;
                         case 's':                       /* save-to-disk */
                         case 'S':
+				drawbox(0);		/* clobber zoom-box */
+				ixmin = 0;  ixmax = xdots-1;
+				iymin = 0;  iymax = ydots-1;
+				xmin = lx0[0];
+				xmax = lx0[xdots-1];	/* re-set xmax and ymax */
+				ymin = ly0[ydots-1];
+				ymax = ly0[0];
+
                             /* convert parameters back to doubles */
                                 xxmax = xmax; xxmax = xxmax / fudge;
                                 xxmin = xmin; xxmin = xxmin / fudge;
@@ -713,35 +959,54 @@ while (more) {					/* eternal loop */
 		                save_info.creal        = param[0];
 		                save_info.cimag        = param[1];
 		                save_info.videomodeax   =
-					videomode[adapter].videomodeax;
+					videoentry.videomodeax;
 		                save_info.videomodebx   =
-					videomode[adapter].videomodebx;
+					videoentry.videomodebx;
 		                save_info.videomodecx   =
-					videomode[adapter].videomodecx;
+					videoentry.videomodecx;
 		                save_info.videomodedx   =
-					videomode[adapter].videomodedx;
+					videoentry.videomodedx;
 		                save_info.dotmode	=
-					videomode[adapter].dotmode;
+					videoentry.dotmode;
 		                save_info.xdots		=
-					videomode[adapter].xdots;
+					videoentry.xdots;
 		                save_info.ydots		=
-					videomode[adapter].ydots;
+					videoentry.ydots;
 		                save_info.colors	=
-					videomode[adapter].colors;
+					videoentry.colors;
 				for (i = 0; i < 10; i++)
 					save_info.future[i] = 0;
-
-				drawbox(0);		/* clobber zoom-box */
-				ixmin = 0;  ixmax = xdots-1;
-				iymin = 0;  iymax = ydots-1;
+				diskisactive = 1;	/* flag for disk-video routines */
                                 savetodisk(savename);
+				diskisactive = 0;	/* flag for disk-video routines */
 				continue;
                                 break;
+			case 'o':			/* 3D overlay */
+			case 'O':
+				overlay3d = 1;
+			case '3':			/* restore-from (3d) */
+				display3d = 1;
 			case 'r':			/* restore-from */
 			case 'R':
-				setvideomode(3,0,0,0);	/* switch to text mode */
-				printf("\n Restart from what file? ");
-				gets(readname);
+				if (overlay3d) {
+					setfortext();	/* save graphics image */
+					printf("\n Overlay from");
+					}
+				else	{
+					olddotmode = dotmode;	/* save the old dotmode */
+					dotmode = 1;		/* in case of an 8514/A mode */
+					setvideomode(3,0,0,0);	/* switch to text mode */
+					printf("\n Restart from");
+					}
+				if (*readname)
+					printf(" what file (if not %s)? ",
+						readname);
+				else
+					printf(" what file? ");
+				gets(temp1);
+				if (temp1[0] != 0)
+					strcpy(readname,temp1);
+				dotmode = olddotmode;
 				goto restorestart;
 				break;
 			case '1':			/* single-pass mode */
@@ -766,7 +1031,12 @@ while (more) {					/* eternal loop */
 				yymin = ymin; yymin = yymin / fudge;
 				batch=fopen("frabatch.bat","a");
 				fprintf(batch,"fractint type=%s", typelist[fractype]);
-				fprintf(batch," corners=%g/%g/%g/%g", xxmin, xxmax, yymin, yymax);
+				if (delx > 1000 && dely > 1000)
+				fprintf(batch," corners=%g/%g/%g/%g",
+					xxmin, xxmax, yymin, yymax);
+				else
+				fprintf(batch," corners=%+12.9f/%+12.9f/%+12.9f/%+12.9f",
+					xxmin, xxmax, yymin, yymax);
 				if (param[0] != 0.0 || param[1] != 0.0)
 					fprintf(batch," params=%g/%g", param[0], param[1]);
 				if (maxit != 150)
@@ -779,11 +1049,46 @@ while (more) {					/* eternal loop */
 				if(batch != NULL) fclose(batch);
 				}
 				break;
+                                /*  vvvvv  MDS 7/1/89  vvvvv  */
+                        case 'p':
+                        case 'P':
+                                Print_Screen();
+                                if (!keypressed()) buzzer(0);
+                                 else {
+                                        buzzer(1);
+                                        getakey();
+                                 }
+                                continue;
+                                /*  ^^^^^  MDS 7/1/89  ^^^^^  */
 			case 13:			/* Enter */
+			case 1013:			/* Numeric-Keypad Enter */
 			case 1079:			/* end */
 				kbdmore = 0;
 				break;
+			case 10:			/* control-Enter */
+			case 1010:			/* Control-Keypad Enter */
+				ftemp = 1.0 * delx;
+				ftemp = (ftemp * xdots) / (ixmax-ixmin+1);
+				xxmin = lx0[0] - (ftemp * ixmin);
+				xxmax = xxmin  + (ftemp * (xdots-1));
+				ftemp = 1.0 * dely;
+				ftemp = (ftemp * ydots) / (iymax-iymin+1);
+				yymax = ly0[0] + (ftemp * iymin);
+				yymin = yymax  - (ftemp * (ydots-1));
+				if (xxmin < -2.147e9 || xxmax > 2.147e9 ||
+				  yymin < -2.147e9 || yymax > 2.147e9 ||
+				  (xxmax-xxmin) > 2.147e9 ||
+				  (yymax-yymin) > 2.147e9) {
+					buzzer(2);
+					break;
+					}
+				xmin = xxmin; xmax = xxmax;
+				ymin = yymin; ymax = yymax;
+				kbdmore = 0;
+				break;
 			case 1082:			/* insert */
+				dotmode = 1;
+				setvideomode(3,0,0,0); 	/* force text mode */
 				goto restart;
 				break;
 			case 1000:			/* Control-C */
@@ -874,6 +1179,7 @@ while (more) {					/* eternal loop */
 					if (kbdchar == kbdkeys[k]) {
 						adapter = k;
 						kbdmore = 0;
+						savedac = 0;
 						}
 				if (kbdmore != 0)
 					continue;
@@ -894,8 +1200,8 @@ while (more) {					/* eternal loop */
 		}
 
 	}
-
-goodbye();				/* we done. */
+	dotmode = 0;		/* no need to reinit TARGA 2 April 89 j mclain */
+	goodbye();				/* we done. */
 
 }
 
@@ -903,7 +1209,8 @@ argerror(badarg)			/* oops.   couldn't decode this */
 char *badarg;
 {
 
-printf("\7\nOops.   I couldn't understand the argument '%s'\n\n",badarg);
+buzzer(2);
+printf("\nOops.   I couldn't understand the argument '%s'\n\n",badarg);
 printf("(see the Startup Help screens or FRACTINT.DOC for a complete argument list\n");
 printf(" with descriptions):\n\n");
 exit(1);
@@ -916,3 +1223,4 @@ setvideomode(3,0,0,0);
 printf("\n\nThank You for using FRACTINT\n\n");
 exit(0);
 }
+

@@ -1,3 +1,4 @@
+
 /*
 	encoder.c - GIF Encoder and associated routines
 
@@ -10,18 +11,19 @@
 
 #include "fractint.h"
 
-int getakey(void);
-
 extern struct fractal_info save_info;	/*  for saving data in GIF file */
 
 extern	int	oktoprint;		/* 0 if printf() won't work */
 extern	int	xdots, ydots;		/* # of dots on the screen  */
 extern	int	colors;			/* maximum colors available */
+extern	int	dotmode;		/* so we can detect disk-video */
+extern	int	warn;			/* warnings on/off */
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
 extern int	daclearn, daccount;	/* used by the color-cyclers */
+extern int	reallyega;		/* "reall-an-EGA" flag */
 extern int	extraseg;		/* used by Save-to-GIF routines */
-
+extern char potfile[];      /* potential file name TW 7/19/89 */
 
 /*
 			Save-To-Disk Routines (GIF)
@@ -102,10 +104,11 @@ unsigned int hashentry;
 unsigned char bitsperpixel, x;
 
 if (extraseg == 0) {			/* not enough memory for this */
-	printf("\007");
+	buzzer(2);
 	return;
 	}
 
+restart:
 
 strcpy(openfile,filename);		/* decode and open the filename */
 strcpy(openfiletype,DEFAULTFRACTALTYPE);/* determine the file extension */
@@ -115,11 +118,15 @@ for (i = 0; i < strlen(openfile); i++)
 		openfile[i] = 0;
 		}
 if (++numsaves > 1) {
-	updatesavename(filename);
-	strcpy(openfile, filename);	   /* secondary saves? new filename */
+	updatesavename(openfile);	   /* secondary saves? new filename */
+	strncpy(filename, openfile, strlen(openfile));
 	}
 
 strcat(openfile,openfiletype);
+if (warn && (out=fopen(openfile,"r"))) {
+	fclose(out);
+	goto restart;
+	}
 if ((out=fopen(openfile,"wb")) == NULL) {
 	if (oktoprint)
 		printf(" ?? Couldn't create file %s \n",openfile);
@@ -166,9 +173,13 @@ if (colors == 2)			/* write out the B&W palette */
 if (colors == 4)			/* write out the CGA palette */
 	shftwrite(paletteCGA,colors);
 if (colors == 16)			/* Either EGA or VGA */
-	if (dacbox[0][0] != 255)	/* got a  DAC - must be a VGA */
+	if (dacbox[0][0] != 255) {	/* got a  DAC - must be a VGA */
+		if (reallyega)		/* well, maybe really an EGA */
+			shftwrite(dacbox,colors);
+		else
 			for (i = 0; i < colors; i++)
 				shftwrite(dacbox[paletteVGA[i]],1);
+		}
 		else			/* no DAC - must be an EGA */
 			shftwrite(paletteEGA,colors);
 
@@ -240,10 +251,11 @@ for (ydot = 0; ydot < ydots; ydot++) {	/* scan through the dots */
 			inittable();
 			}
 		}
-	for (i = 0; 250*i < xdots; i++) {	/* display vert status bars */
-		putcolor(      i,ydot,outcolor1);	/*   (this is NOT   */
-		putcolor(xdots-1-i,ydot,outcolor2);	/*    GIF-related)  */
-		}
+	if (dotmode != 11)			/* supress this on disk-video */
+		for (i = 0; 250*i < xdots; i++) {	/* display vert status bars */
+			putcolor(      i,ydot,outcolor1);	/*   (this is NOT   */
+			putcolor(xdots-1-i,ydot,outcolor2);	/*    GIF-related)  */
+			}
 	if (kbhit())				/* keyboard hit - bail out */
 		ydot = 9999;
 	}
@@ -257,16 +269,24 @@ fwrite(&i,1,1,out);
 
 fwrite(";",1,1,out);                    /* GIF Terminator */
 
-if (strcmp(openfiletype,CRIPPLEDFRACTALTYPE) != 0)
-	fwrite(&save_info,sizeof(save_info),1,out); /* fractal info [NON-STANDARD]*/
-
+if (strcmp(openfiletype,".gif") != 0) {		/* non-standard fractal info */
+	fwrite("!",1,1,out);			/* extension block identifier */
+	i = 255; fwrite(&i,1,1,out);		/* extension block #255 */
+	i =  11; fwrite(&i,1,1,out);		/* size of Identifier Block */
+	fwrite("fractint001",11,1,out);		/* Application Identifier */
+	i = sizeof(save_info); fwrite(&i,1,1,out); /* size of fractal info */
+	fwrite(&save_info,sizeof(save_info),1,out); /* fractal info */
+	i =   0; fwrite(&i,1,1,out);		/* block terminator */
+	fwrite(";",1,1,out);			/* GIF terminator */
+	}
 fclose(out);
-printf("\007");
 if (ydot < 9999) {			/* signal normal or interrupted end */
-	if (oktoprint)
+	buzzer(0);
+	if (oktoprint) 
 		printf(" File saved as %s \n",openfile);
 		}
 else	{
+	buzzer(1);
 	if (oktoprint)
 		printf(" ** INTERRUPTED ** File %s \n", openfile);
 	getakey();			/* read the (interrupt) key-press */

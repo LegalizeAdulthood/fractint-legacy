@@ -23,8 +23,11 @@ struct RGB
    unsigned char red, green, blue;
 };
 
+extern int decoder();
+extern int rowcount;					/* row counter for screen */
 extern char readname[];					/* file name            */
 static FILE *fpin = NULL;				/* FILE pointer             */
+unsigned int height;
 
 int bad_code_count = 0;					/* needed by decoder module */
 
@@ -32,20 +35,35 @@ get_byte()
 {
    static int c;
 
-   if (strchr(readname,'.') == NULL)
-      strcat(readname,DEFAULTFRACTALTYPE);
-
    /* make sure fpin NULL if not open */
    if (!fpin)
-      if ((fpin = fopen(readname, "rb")) == NULL)
+   {
+      char temp1[81];
+
+      strcpy(temp1,readname);
+      if (strchr(temp1,'.') == NULL) {
+         strcat(temp1,DEFAULTFRACTALTYPE);
+         if ((fpin = fopen(temp1,"rb")) != NULL) {
+            fclose(fpin);
+            }
+         else {
+            strcpy(temp1,readname);
+            strcat(temp1,ALTERNATEFRACTALTYPE);
+            }
+         }
+
+      if ((fpin = fopen(temp1, "rb")) == NULL)
          return (-1);
+   } 
    if (fread(&c, 1, 1, fpin) <= 0)
       c = -1;
    return (c);
 }
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
+extern int reallyega;			/* "really-an-ega" flag */
 extern int paletteVGA[16];		/* VGA Palette-to-DAC registers */
+extern unsigned char decoderline[2049];	/* write-line routines use this */
 
 /* Main entry decoder */
 gifview()
@@ -57,11 +75,13 @@ gifview()
    int status;
    int i, j, k, planes;
 
-   union REGS regs;
-   struct SREGS sregs;
-   char far *addr;
-
    status = 0;
+
+   /* initialize the row count for write-lines */
+   rowcount = 0;
+
+   /* zero out the full write-line */
+   for (width = 0; width < 2049; width++) decoderline[width] = 0;
 
    /* Get the screen description */
    for (i = 0; i < 13; i++)
@@ -73,7 +93,10 @@ gifview()
       }
    }
    
-   if(strncmp(buffer,"GIF87a",6))
+   if(strncmp(buffer,"GIF87a",3) ||		/* use updated GIF specs */
+      buffer[3] < '0' || buffer[3] > '9' ||
+      buffer[4] < '0' || buffer[4] > '9' ||
+      buffer[5] < 'A' || buffer[5] > 'z' )
    {
       close_file();
       return(-1);
@@ -90,7 +113,7 @@ gifview()
 
    for (i = 0; i < numcolors; i++)
    {
-      if (numcolors == 16)	/* straight copy or indirect via palette? */
+      if (numcolors == 16 && !reallyega)	/* straight copy or indirect via palette? */
          k = paletteVGA[i];
       else
          k = i;
@@ -142,10 +165,11 @@ gifview()
           }   
          
           width  = buffer[4] | buffer[5] << 8;
+          height = buffer[6] | buffer[7] << 8;
 
          /* Setup the color palette for the image */
 
-         status = decoder(width);
+         status = timer(decoder,1,width);
          finished = 1;
          break;
       default:

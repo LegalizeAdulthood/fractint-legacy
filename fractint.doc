@@ -1,12 +1,53 @@
 
-               *********   FRACTINT (Version 8.1)  **********
+               *********   FRACTINT (Version 9.3)  **********
+
+    An experiment in "Stone Soup" development.  Got anything for the pot?
+
+*****************************************************************************
+*  AARRGGHH!  The video table got so darned big that we ran clean out of    *
+* Alt-Keys on old (non-enhanced) keyboards!  If you have one of those old   *
+* keyboards, and want to use a video mode at the end of the table (from the *
+* F11 entry on), read the "Config File" section of the documentation and    *
+* then run "fractint batch=config", edit the FRACTINT.CFG file that is left *
+* behind to remove the video modes you don't care about, and leave the      *
+* resulting file somewhere on your DOS PATH.  FRACTINT will use that file   *
+* rather than its full internal video table from that point on.             *
+*  (We will try to come up with a more elegant solution for Version 10.x)   *
+*****************************************************************************
+
+      +++++ Quick Documentation Format -- Features new to 9.3 +++++
+
+      - (9.3 is just version 9.1 with a bug-fix that works around an
+        apparant 8088-incompatibility in the NEC V20 processor <IMUL
+        doesn't set the sign flag, which is an (undocumented) 80xxx "feature">
+        ... and a second bug-fix for the new Trident, Chips & Technologies,
+        and ATI VGA Wonder video modes.
+
+      - New 'P(rint) command and 'printer=' options from Matt Saucier
+      - New 8514/A video modes (from Kyle Powell)
+      - New SSTOOLS.INI sensitivity and '@thisfile' option on the cmd-line
+      - New "Continuous Potential" algorithm for Mandelbrot/Julia sets
+      - New "Light source" 3D option for all fractal types
+      - New "Distance Estimator" Mandelbrot/Julia method (implemented
+        as this version's "test" fractal type) from Phil Wilson
+      - New Lambdacosine and LambdaExponent fractal types
+      - Color-Cycling mode works with 640x350x16 EGA (as well as VGA) adapters
+      - Plasma Clouds can now be generated in 16-color and 4-color video modes
+      - Improved TARGA support (from Joe McLain, again)
+      - CGA modes now use direct-video read/writes
+      - New Tandy 1000 320x200x16 and 640x200x4 modes (thanks to Tom Price)
+      - New TRIDENT chip-set Super-VGA video modes (thanks to Lew Ramsey)
+      - New Direct-Access Video modes for TRIDENT, Chips & Technologies,
+        and ATI VGA WONDER adapters (thanks to John Bridges)
+      - New 'Zoom-out' (Control-Enter) option for zooming out instead of in
+      - New 'D(os)' command lets you shell-to-DOS from inside FRACTINT.
+      - New 2/4/16-color Disk/RAM video mode capability and 2-color
+        video modes supporting full-page printer graphics
+      - New "inside=-1" option (treated dynamically as "inside == maxiter")
+      - slightly improved "Help" and sound routines (even 'sound=off')
+      - Turbo-C and TASM Compatibility (really!  Would we lie to you?)
 
       +++++ Quick Documentation Format -- Features new to 8.1 +++++
-
-      - AARRGGHH!!  Version 8.0 DID NOT WORK on 8088-based PCs!!!
-      - (also, solid-fill failed on non-spherical 3D images)
-
-      +++++ Quick Documentation Format -- Features new to 8.0 +++++
 
       - New 3D Restore-From Disk ('3') and 3D Overlay ('o') commands (Fractal
         Landscapes and Planets!).  (Read the "3D IMAGES" section for details)
@@ -19,7 +60,6 @@
       - Thirty New Color-Cycling palette options (SF1 - AF10)
       - New "Disk-Video" (and RAM-Video and Expanded-RAM video) modes
         (no particular graphics adapter required for these modes)
-      - (first pass at) Turbo-C and Turbo-Assembler compatibility
       - Lambda Sets now use integer math (with 80386 speedups)
       - New "warn=yes" command-line option to eliminate over-writing old
         files during save-to-disk operations.
@@ -104,146 +144,171 @@ video modes currently available and the keys you can hit to activate them.
 As soon as you select a video mode, the program begins drawing an initial
 display (of the full Mandelbrot set, if you haven't selected another fractal
 image).   From this point on, and AT ANY TIME, you can hit any of
-the following keys to select a function:
+the following keys to select a function (functions marked with an "*" are
+also available at the initial credits screen):
 
- Key          Function
- ===========  ===============================================================
+  Key          Function
+  ===========  ===============================================================
 
- h or ?         Enter HELP mode (the Escape key brings you back)
- PageUp         Display and Shrink the Zoom Box ("Zoom In")
- PageDown       Display and Expand the Zoom Box ("Zoom Out")
- Cursor Keys    Display and Move the Zoom Box Left, Right, Up, or Down ("Pan")
- Ctrl-Cursor-Keys   Pan like the normal Cursor-Keys, but (five times) faster
-                (NOTE:  Fast-Panning works only with an Enhanced Keyboard BIOS)
- Enter or End   Redraw the area inside the Zoom Box as a full-screen image
-                (If there is no Zoom Box, just re-draw the current screen)
- F1,F2,F3,F4... Select a new Video Mode and THEN perform a Screen Redraw
-                Currently supported video modes include:
-                F1 = 320x200 16-color EGA/VGA   F2 = 640x350 16-color EGA/VGA
-                F3 = 320x200 256-color MCGA/VGA F4 = 640x480 16-color VGA
-                F5 = 320x200 4-color CGA        F6 = 640x200 B&W CGA
-                F7 = 640x350 B&W EGA/VGA        F8 = 640x480 B&W VGA
-                F9 = 640x200 16-color EGA/VGA   F10= 360x480 256 color VGA (!)
-                ..etc...etc...etc
-                (For a complete list, scan through the Help screens)
- Home           Redraw the Previous Screen (the program tracks 50 screens)
-                (this gives you the ability to "back out" screen-by-screen)
- Tab            Display the Current Fractal Type, Parameters, Screen or
-                Zoom-Box coordinates, and other pertinent image information
-                (this gives you the ability to track where you are and
-                restart the program at your current position later on)
- Spacebar       Toggles between Mandelbrot images and their corresponding
-                Julia set images (read the Julia set notes below before
-                trying this option if you want to see anything interesting)
- < or >         Lower or Raise the maximum iteration count (hit the Tab key
-                to display the current value).  The default value is 150, the
-                range is 10 - 1000, and the default adjustment value is 50).
-                ((Note:  the unshifted equivalents (comma, period) also work))
- 2 or 1 or g    Select dual-pass, single-pass, or solid-guessing (the default)
-                mode.  Dual-pass mode generates a "coarse" screen first using
-                (2x2) pixel boxes, and then generates the rest of the dots
-                with a second pass. (same net speed and final display, but
-                with a quick-preview).  Solid-guessing performs the same
-                first "coarse-screen" pass, and then performs the second pass
-                only for blocks that aren't "surrounded" by a single color.
-                Solid guessing can guess wrong - but it sure guesses (right
-                or wrong) quickly!
- c or C         (for VGA adapters only) Switch to the Color-Cycling command
-                mode described below.  
- + or -         (For VGA adapters only) Begin rotating the Video DAC and
-                switch to the Color-cycling command mode, described below.
-                If you have a VGA adapter, use this for NEAT fractal images!
- s or S         Save the screen contents to disk (default = FRACT001.FRA)
-                To display its progress, the program colors the left-most
-                and right-most dots as it saves the screen, top to bottom.
-                The saved files are restorable with either the 'r' key or a
-                command-line option.  They are also displayable by most GIF
-                decoders, but they are NOT GIF FILES (you can force a save
-                in true GIF format by specifying a '.GIF' extension with the  
-                'savename=' command-line option, but then restoring it later 
-                with the 'r' command causes it to be treated as a "plasma
-                cloud" image.  A full explanation of your save and restore
-                options is in the 'FRACTINT and .GIF files' section).
- r or R         Restore an image previously saved with an 's' command
-                (Images saved using version 7.0 or later of FRACTINT can
-                be fully-restored.  Images saved with earlier versions of
-                FRACTINT and non-FRACTINT GIF images are restored as
-                "plasma cloud" images, which may still be color-cycled) 
- 3  or o or O   Restore a (fractal or GIF) image as a 3-D image.  You will
-                be prompted for all KINDS of options - see the section
-                of this document titled "3D IMAGES" for details.
- b or B         add a line to (and create, if necessary) "frabatch.bat"
-                describing the current image.  The entries in "frabatch.bat"
-                look just like FRACTINT command lines.  An easy way to set up
-                batch files of fractal image commands for later (overnight?)
-                runs at Super-resolution video modes or iteration limits.
- t or T         Select a fractal type (the program lists the available types,
-                then lets you select one and prompts you for any parameters
-                it may require)
- o or O         (the letter, not the number), if pressed while a fractal
-                image is being generated, toggles the display of intermediate
-                results on and off (the "o" stands for "show orbits")
- Insert         Restart the Program all over again at the Credits Screen
- Esc or Delete  Stop the Program and Return to MSDOS
+* h or ?         Enter HELP mode (the Escape key brings you back)
+  PageUp         Display and Shrink the Zoom Box ("Zoom In")
+  PageDown       Display and Expand the Zoom Box ("Zoom Out")
+  Cursor Keys    Display and Move the Zoom Box Left, Right, Up, or Down ("Pan")
+  Ctrl-Cursor-Keys   Pan like the normal Cursor-Keys, but (five times) faster
+                 (NOTE:  Fast-Panning works only with an Enhanced Keyboard BIOS)
+  Enter or End   Redraw the area inside the Zoom Box as a full-screen image
+                 (If there is no Zoom Box, just re-draw the current screen)
+  Control-Enter  'Zoom-out' - zoom out so that your current image is
+                 positioned inside the current Zoom Box location and Redraw
+* F1,F2,F3,F4... Select a new Video Mode and THEN perform a Screen Redraw
+                 Currently supported video modes include:
+                 F1 = 320x200 16-color EGA/VGA   F2 = 640x350 16-color EGA/VGA
+                 F3 = 320x200 256-color MCGA/VGA F4 = 640x480 16-color VGA
+                 F5 = 320x200 4-color CGA        F6 = 640x200 B&W CGA
+                 F7 = 640x350 B&W EGA/VGA        F8 = 640x480 B&W VGA
+                 F9 = 640x200 16-color EGA/VGA   F10= 360x480 256 color VGA (!)
+                 ..etc...etc...etc
+                 (For a complete list, scan through the Help screens)
+  Home           Redraw the Previous Screen (the program tracks 50 screens)
+                 (this gives you the ability to "back out" screen-by-screen)
+  Tab            Display the Current Fractal Type, Parameters, Screen or
+                 Zoom-Box coordinates, and other pertinent image information
+                 (this gives you the ability to track where you are and
+                 restart the program at your current position later on)
+  Spacebar       Toggles between Mandelbrot images and their corresponding
+                 Julia set images (read the Julia set notes below before
+                 trying this option if you want to see anything interesting)
+* < or >         Lower or Raise the maximum iteration count (hit the Tab key
+                 to display the current value).  The default value is 150, the
+                 range is 10 - 1000, and the default adjustment value is 50).
+                 ((Note:  the unshifted equivalents (comma, period) also work))
+* 2 or 1 or g    Select dual-pass, single-pass, or solid-guessing (the default)
+                 mode.  Dual-pass mode generates a "coarse" screen first using
+                 (2x2) pixel boxes, and then generates the rest of the dots
+                 with a second pass. (same net speed and final display, but
+                 with a quick-preview).  Solid-guessing performs the same
+                 first "coarse-screen" pass, and then performs the second pass
+                 only for blocks that aren't "surrounded" by a single color.
+                 Solid guessing can guess wrong - but it sure guesses (right
+                 or wrong) quickly!
+  + or -         (For EGA/VGA adapters only) Begin rotating the palette and
+                 switch to the Color-cycling command mode, described below.
+                 Note: on EGA adapters, only the 640x350x16 mode cycles.
+                 If you have an EGA/VGA adapter, use this for NEAT images!
+  c or C         (for EGA and VGA adapters only) Switch to the Color-Cycling
+                 command mode described below (in "paused" mode).  
+  s or S         Save the screen contents to disk (default = FRACT001.FRA)
+                 To display its progress, the program colors the left-most
+                 and right-most dots as it saves the screen, top to bottom.
+                 The saved files are restorable with either the 'r' key or a
+                 command-line option.  They are also displayable by most GIF
+                 decoders, but they are NOT GIF FILES (you can force a save
+                 in true GIF format by specifying a '.GIF' extension with the  
+                 'savename=' command-line option, but then restoring it later 
+                 with the 'r' command causes it to be treated as a "plasma
+                 cloud" image.  A full explanation of your save and restore
+                 options is in the 'FRACTINT and .GIF files' section).
+* r or R         Restore an image previously saved with an 's' command
+                 (Images saved using version 7.0 or later of FRACTINT can
+                 be fully-restored.  Images saved with earlier versions of
+                 FRACTINT and non-FRACTINT GIF images are restored as
+                 "plasma cloud" images, which may still be color-cycled) 
+* 3  or o or O   Restore a (fractal or GIF) image as a 3-D image.  You will
+                 be prompted for all KINDS of options - see the section
+                 of this document titled "3D IMAGES" for details.
+  p or P         Print the current fractal image on your (Laserjet or Epson-
+                 compatible) printer.  See the 'printer=' command in the
+                 "Command-Line Arguments" section for details on describing
+                 your printer setup to FRACTINT.
+  b or B         add a line to (and create, if necessary) "frabatch.bat"
+                 describing the current image.  The entries in "frabatch.bat"
+                 look just like FRACTINT command lines.  An easy way to set up
+                 batch files of fractal image commands for later (overnight?)
+                 runs at Super-resolution video modes or iteration limits.
+                 Note:  if you've used a lot of options, the "frabatch.bat"
+                 entry you create may well exceed MS-DOS's 128-character limit
+                 on command-line arguments.  If that happens, you can create
+                 an indirect file out of the entry ("fractint @myfile").  In
+                 fact, if "frabatch.bat" contains only a single entry, you can
+                 even use that as an indirect file ("fractint @frabatch.bat").
+* t or T         Select a fractal type (the program lists the available types,
+                 then lets you select one and prompts you for any parameters
+                 it may require)
+  o or O         (the letter, not the number), if pressed while a fractal
+                 image is being generated, toggles the display of intermediate
+                 results on and off (the "o" stands for "show orbits")
+* Insert         Restart the Program all over again at the Credits Screen
+* d or D         Shell to DOS (you return to FRACTINT by typing 'exit' at
+                 a DOS prompt)
+* Esc or Delete  Stop the Program and Return to MSDOS
 
 =============================================================================
 
-                Color-Cycling commands (VGA adapters only)
+                Color-Cycling commands (EGA and VGA adapters only)
 
-If you have a VGA adapter, hitting the 'c', 'C', '+' or '-' keys at the main
-command level will enter 'color-cycling' (animation) mode (if your adapter is
-not VGA compatible - that is, if it does not have a 256-color video DAC - the
+If you have a VGA adapter, or have an EGA adapter and are in 640x350x16 mode,
+hitting the 'c', 'C', '+' or '-' keys at the main command level will enter
+'color-cycling' (animation) mode (if your adapter is not EGA or VGA
+compatible - that is, if it does not have a modifiable color palette - the
 program will simply beep in despair and leave you at the main command level).
 It's pretty easy to tell when you are in Color-Cycling mode, because either
 the overscan (border) area has switched from black to white, or the colors
 are constantly cycling on the screen.  Also, pressing the HELP screen in
-Color-Cycling mode gives you the Color-Cycling HELP screen.  The command
-keys appropriate to color-cycling mode are:
+Color-Cycling mode gives you the Color-Cycling HELP screen.
 
- Key          Function
- ===========  ===============================================================
+Note that the palette colors available on an EGA adapter (16 colors at a
+time out of a palette of 64) are a LOT more restrictive that those on a
+VGA adapter (16 or 256 colors at a time out of a palette of 262,144), so
+color-cycling in general looks a LOT better on VGA screens.  Also, because
+of the EGA palette restrictions, the commands marked with an '*' are not
+available with EGA adapters.
 
- h or ?       Enter HELP mode (the Escape key brings you back)
- + or -       Switch the rotating direction out or in (left or right?)
- Right/Left   (Cursor Keys) perform the same function as the +/- keys
- Up/Down      (Cursor Keys) speed up / slow down the color cycling process
-              Note that speeding it up too much will cause (non-harmful)
-              flickering at the top of the screen as you over-run the
-              vertical retrace / blanking interval.
- F1 thru F10  Switches from simple rotation to color selection using randomly-
-              generated color bands of short (F1) to long (F10) duration.
- 1 thru 9     Causes the screen to be updated every 'n' color cycles (the
-              default is 1).  Handy for slower computers.
- ENTER        Randomly selects a function key (F1 thru F10) and then updates
-              ALL the screen colors prior to displaying them for instant,
-              random colors.  Hit this over and over again (I do).
- Spacebar     Pauses and temporarily switches from the normal black background
-              (overscan area) to a white one (so that you can tell the
-              difference between a 'normal' command state and a paused Color-
-              cycling one).  Restarts automatically with any command key
-              (including another Spacebar).
- SF1 thru AF10  (Shifted-F1 thru Alt-F10) Force a pause and set the palette
-              to one of thirty pre-set color patterns.  Shifted-Fn keys select
-              two-color "straight" patterns (black -> white).  Control-Fn keys
-              select two-color cyclical patterns (red -> yellow -> red). 
-              Alt-Fn keys select three-color cyclical patterns (blue -> green
-              -> white -> blue).
- R or G or B  Forces a pause and raises the Red, Green, or Blue component of
-              the fractal image by a small amount.
- r or g or b  Forces a pause and lowers the Red, Green, or Blue component of
-              the fractal image by a small amount.
- d,D,a or A   Forces a pause and loads an external color map from either
-              DEFAULT.MAP or ALTERN.MAP.  These color-maps must be ASCII files
-              set up as a series of RGB triplet values (one triplet per line).
-              Note that the color values are in TARGA/GIF format (values go
-              from 0 to 255), and get divided by 4 before being stuffed into
-              the VGA's Video-DAC, so '6' and '7' end up being the same color.
-              There are sample DEFAULT.MAP (the VGA start-up values) and
-              ALTERN.MAP (the famous "Peterson-Vigneau Pseudo-Grey Scale")
-              files for you to examine and modify.
- Any Other    terminates the color-cycling process (you can always return
-              to it with another c or +/- key) and returns to the main
-              command mode.
+The command keys appropriate to color-cycling mode are:
+
+  Key          Function
+  ===========  ===============================================================
+
+  h or ?       Enter HELP mode (the Escape key brings you back)
+  + or -       Switch the rotating direction out or in (left or right?)
+  Right/Left   (Cursor Keys) perform the same function as the +/- keys
+  Up/Down      (Cursor Keys) speed up / slow down the color cycling process
+               Note that speeding it up too much will cause (non-harmful)
+               flickering at the top of the screen as you over-run the
+               vertical retrace / blanking interval.
+  F1 thru F10  Switches from simple rotation to color selection using randomly-
+               generated color bands of short (F1) to long (F10) duration.
+  1 thru 9     Causes the screen to be updated every 'n' color cycles (the
+               default is 1).  Handy for slower computers.
+  ENTER        Randomly selects a function key (F1 thru F10) and then updates
+               ALL the screen colors prior to displaying them for instant,
+               random colors.  Hit this over and over again (I do).
+  Spacebar     Pauses and temporarily switches from the normal black background
+               (overscan area) to a white one (so that you can tell the
+               difference between a 'normal' command state and a paused Color-
+               cycling one).  Restarts automatically with any command key
+               (including another Spacebar).
+* SF1 thru AF10  (Shifted-F1 thru Alt-F10) Force a pause and set the palette
+               to one of thirty pre-set color patterns.  Shifted-Fn keys select
+               two-color "straight" patterns (black -> white).  Control-Fn keys
+               select two-color cyclical patterns (red -> yellow -> red). 
+               Alt-Fn keys select three-color cyclical patterns (blue -> green
+               -> white -> blue).
+* R or G or B  Forces a pause and raises the Red, Green, or Blue component of
+               the fractal image by a small amount.
+* r or g or b  Forces a pause and lowers the Red, Green, or Blue component of
+               the fractal image by a small amount.
+  d,D,a or A   Forces a pause and loads an external color map from either
+               DEFAULT.MAP or ALTERN.MAP.  These color-maps must be ASCII files
+               set up as a series of RGB triplet values (one triplet per line).
+               Note that the color values are in TARGA/GIF format (values go
+               from 0 to 255), and get divided by 4 before being stuffed into
+               the VGA's Video-DAC, so '6' and '7' end up being the same color.
+               There are sample DEFAULT.MAP (the VGA start-up values) and
+               ALTERN.MAP (the famous "Peterson-Vigneau Pseudo-Grey Scale")
+               files for you to examine and modify.
+  Any Other    terminates the color-cycling process (you can always return
+               to it with another c or +/- key) and returns to the main
+               command mode. 
 
 
 ==============================================================================
@@ -302,7 +367,7 @@ like 'fractint startup'.   This can be handled automatically with the
 'batch=yes' command-line option (the example below creates a startup
 file for register-compatible VGA adapters using 360x480x256 color mode):
            fractint batch=yes video=f10 type=mandel savename=startup
-One hasn't been added to the distribution .ARC file only because of the 
+One hasn't been added to the distribution files only because of the 
 space it would take (the files are getting big enough as it is!) and because
 we don't know what your favorite (or possible) video modes are.
 
@@ -328,15 +393,19 @@ or the 'passes=' command-line option.
 
 =============================================================================
 
-             ******   Optional Command Line Arguments  ******
+ ***   Optional Command Line Arguments  and the SSTOOLS.INI command file ***
 
 FRACTINT accepts optional arguments that allow you to better control
 such things a video modes, iteration limits, and startup display areas.
-NOTE that the current argument list is (a lot better, much more expandable,
-but) totally incompatible with the argument lists of FRACTINT versions prior
-to version 5.1.   The full FRACTINT command line is:
+With Version 8.3 and later, these arguments can also be included in a
+SSTOOLS.INI startup file or command-files invoked on the command line
+using LINK-style syntax ('fractint @myfile').  When FRACTINT fires up, it
+first looks along the DOS PATH for any file called SSTOOLS.INI and reads
+start-up variables from that file.  Then, it looks at its own command-line
+for arguments that will over-ride those on the .INI file.  The syntax of
+the FRACTINT command-line is:
 
-                FRACTINT [filename] [argument] [argument] ...
+                FRACTINT [argument] [argument] [argument] ...
 
 where the individual arguments are separated by one or more spaces (an
 individual argument can NOT include spaces), can be in any order or
@@ -344,16 +413,26 @@ individual argument can NOT include spaces), can be in any order or
 
 Argument                    Description
 
-filename           Causes FRACTINT to read the named file, which must either
+[filename=]filename  Causes FRACTINT to read the named file, which must either
                    have been saved via an earlier (vers 7.0 or later) FRACTINT
                    session or be a generic GIF file, and use that as its
                    starting point, bypassing the initial information screens
                    (the filetype is optional and defaults to '.fra').  Generic
                    GIF files are restored with fractal type "plasma cloud".
+                   The 'filename=' piece of the argument is optional only
+                   on the command-line - it is mandatory inside command-files
+                   such as SSTOOLS.INI.
+@filename          Causes FRACTINT to read 'filename' for command-line
+                   arguments.  When it finishes reading 'filename', FRACTINT
+                   will resume reading the rest of the command-line arguments
+                   (IE, 'fractint maxiter=250 @myfile passes=1' is legal).
+                   This option is only valid on the command-line - FRACTINT
+                   is not clever enough to deal with multiple-indirection.
 passes=x           Selects (1) Single-Pass mode, (2) Dual-Pass mode, or
                    (g) solid-guessing mode (Examples: passes=1, passes=g).
 inside=nnn         Set the color of the Fractal interior (Example: inside=0
                    sets the inside of the Mandelbrot set to traditional black)
+                   Note: setting 'inside' to -1 makes inside=maxiter.
 maxiter=nnn        Set the starting iteration maximum (Example: maxiter=500).
                    The program accepts maxiter values from 10 to 1000.
 iterincr=nnn       Set the iteration increment (the value maxiter is changed
@@ -380,12 +459,35 @@ params=param1/param2   Set optional (required, for some fractal types) values
 corners=xmin/xmax/ymin/ymax   Begin with these screen corner Coordinates 
                    rather than the default values of -2.0/2.0/-1.5/1.5
                    (Example: corners=-0.739/-0.736/0.288/0.291).
+potential=maxcolor[/slope[/modulus[/potfile]]]  Establishes the "continuous 
+                   potential" mode of the MANDEL and MANDELFP fractal types.  
+                   The four arguments define the maximum color value, the
+                   slope of the potential curve, and the modulus "bailout"
+                   value, and the savefile name.  Example:  
+                   'potential=240/2000/40/potfile'.  Read the section on the 
+                   "continuous potential" algorithm for details.
+                   Note that the current implementation of the MANDEL fractal
+                   type ignores the modulus bailout value and uses its own
+                   hardwired value of 4.0 instead. 
 3d=[nn[/nn[/nn]]]...   Replaces the default answers to the '3(D)' command
                    prompts.  If 'filename' is given (above), also forces
                    the restore to be performed in 3D mode.  Very handy when
                    used with the 'batch=yes' option for batch-mode 3D images.
                    Read the "3D IMAGES" section for a full description of
                    the prompts related to 3D.
+printer=type[/resolution[/port#]]  Defines your printer setup for FRACTINT.
+                   Currently legal printer types (and only the first two
+                   characters count) are HP-Laserjet, Epson-Compatible, and
+                   IBM-Compatible (which == the Epson at the moment) - the
+                   default printer type is the Epson/IBM.  'Resolution' is
+                   in DPI, and currently available values are 60, 120, and
+                   240 for the Epson/IBM and 75, 150, and 300 for the LaserJet
+                   (the default value is the lowest resolution).  Currently 
+                   legal port values are 1, 2, and 3 (for LPT1-3) and 11,
+                   12, 13, and 14 (for COM1-4).
+                   NOTE:  The SSTOOLS.INI file is a REAL handy place to
+                   put this option, so that you don't have to remember
+                   to type it in every time you load the silly program!
 cyclelimit=nnn     Limits the color-cycling speed used by the Color-cycling
                    options.  Technically, the number of DAC registers
                    updated during a single vertical refresh cycle.  Legal
@@ -408,6 +510,11 @@ map=filename       Reads in a replacement color map from "filename".  This
                    NOTE WELL:  If colors 0 and 1 decode to the same color,
                    your HELP screens will use the same color for both text 
                    and background - which can be kind of difficult to read.
+  ;                indicates the rest of the command-line (or the rest of
+                   the individual line inside command-files) is a comment.
+                   ('fractint inside=0 ; set the lake to traditional black')
+sound=off          Now we all know that nobody ever generates fractals at
+                   work, so this is just here so as not to wake the kids...
 
 The 'type=', 'param=' and 'corner=' arguments let you recreate images
 that you or others have generated in previous sessions of FRACTINT or other
@@ -419,6 +526,28 @@ this one) has been introduced with a bigger, better, and generally shuffled
 around Video Table.   BE CAUTIOUS about using this argument and then
 downloading future versions of FRACTINT, particularly if you are using
 the "Super-VGA" modes near the end of the video table.
+
+If you are familiar with Microsoft's TOOLS.INI file, note that you use
+the SSTOOLS.INI file in a similar manner.  In particular, you designate a
+section of SSTOOLS.INI as belonging to a particular program by
+beginning the section with a label in brackets.  FRACTINT looks for the
+label [fractint], and ignores any lines it finds in the file belonging
+to any other label.  If an SSTOOLS.INI file looks like:
+
+         [fractint]   
+         sound=off                    ; (for office use)
+         printer=hp                   ; my printer is a LaserJet
+         [startrek]
+         aye, captain, but I dinna think the engines can take it!
+         [fractint]
+         inside=0                     ; using "traditional" black
+
+FRACTINT will pick up the second, third, and last line of that file.
+
+(Why use a convention like that when FRACTINT is the only program around
+that bothers to look for an SSTOOLS.INI file?  Well, it's because there
+are people working on sister programs to FRACTINT that ARE going to read
+that file!)
 
 =============================================================================
 
@@ -557,7 +686,7 @@ found in other, similar packages.  A quick way to obtain the current list of
 fractal types is by  using the 'T' command.  Current fractal types supported
 by FRACTINT include:
  
-      *** Newton Domains-of-Attraction (type=newtbasin) ***
+       *** Newton Domains-of-Attraction (type=newtbasin) ***
  
 The Newton formula is well known to struggling students of calculus as an
 algorithm for calculating the roots of polynomials. The polynomial 'z**4 - 1'
@@ -575,11 +704,49 @@ To see the answer, try type=newtbasin. Pixels are colored according to the
 language, is a graph of "the basins of attraction for the Newton formula
 of the polynomial z**4-1"
 
-For the above example, use "params=4". Other legal values are 3 through 10.
-The params value of "n" calculates the Newton formula for the equation
-'x**n - 1'.  An FPU is REAL handy.  Thanks to Lee Crocker for developing a
-new, faster, assembler-based algorithm for Newton fractals and adding the
-inversion option to the algorithm.
+
+The first parameter to the Newton fractal type is the "order" of the
+equation - the value of "n" calculates the Newton formula for the equation
+'x**n - 1'.  This determines how many "spokes" are present in the image.
+The overall Newton image is radially symmetrical about the origin.
+
+The other parameters are used to invert the Newton plot through a
+circle, and they represent the radius, x value of center, and y value
+of the center of that circle.  "Inversion" is a process in which each
+point inside a circle is mapped onto a point outside, and each point
+outside is mapped to the corresponding point inside.  Thus, the plane
+is turned "inside-out" with respect to the circle.
+
+For example, if a point on the inside of a circle is 1/3 the way
+along a line drawn from the center to the edge, its inverse point is
+the point outside the circle along the same line at a distance of 3
+times the radius.  If you move the inner point inward to 1/4 the
+distance from center to edge, its inverse moves out to 4 times the
+radius of the circle.
+
+Because the newton plot has spokes radiating out toward infinity,
+inverting each point through a circle centered on the origin makes
+these spokes all radiate in toward the center, and the portion that
+was inside the circle "explodes" out onto the whole plane.
+
+The best way to visualize this is to create two Newton plots of the
+same order, one inverted.  For example:
+
+    type=newton params=5
+    type=newton params=5/1
+
+The second plot will be inverted through a circle of radius 1.0
+centered on the origin.
+
+If 3rd and 4th parameters are specified, they are used as the center
+of the inversion circle.  Inverting through a circle not centered on
+the origin produces bizarre effects that are hard to describe. 
+Remember that when you place the inversion circle, everything that
+was outside the circle will now be inside, and vice versa.
+
+Thanks to Lee Crocker for developing a new, faster, assembler-based algorithm 
+for Newton fractals and adding the inversion option.
+
 
                 *** Newton Formula (type=newton) ***
  
@@ -627,9 +794,10 @@ and integrated it with FRACTINT's graphics and animation facilities).
 Plasma Clouds accept a single parameter, which determines how abruptly
 the colors change.  Selecting "params=.5" results in bland clouds, while
 "params=50" results in very grainy ones.  The default parameter value is 2.
-Sorry, but you must either have a VGA or Super-VGA adapter or be using
-a 256-color "Disk-Video" mode that fits into RAM, and you must select a
-256-color video mode to generate plasma clouds.
+With Version 8.4, FRACTINT can now generate Plasma Clouds on any adapter
+capable of generating four or more colors (previously, Plasma Clouds
+required VGA adapters and 256-color video modes).  Still, the more colors
+the better with Plasma Clouds.
 
 FRACTINT's implementation of Plasma Clouds does not use floating-point math,
 and so does not require (or use) an FPU.  Also, Zoom and Pan is effectively
@@ -637,20 +805,25 @@ ignored for Plasma Clouds, as each Plasma Cloud screen is generated randomly.
 
 Finally, Plasma Clouds make GREAT fractal landscapes when viewed in 3D!
 
-          *** "Lambda*Sine" Sets (type=lambdasine) ***
+         **** "Lambda*Sine" Sets (type=lambdasine) *****
+         **** "Lambda*Cosine" Sets (type=lambdacos) ****
+         *** "Lambda*Exponent" Sets (type=lambdaexp) ***
  
-This type calculates the Julia set of the formula lambda*sine(z), where
-lambda and z are both complex. The algorithm is given in "The Science of
-Fractal Images", by Barnsley, Devaney, Mandelbrot, Peitgen, Saupe, and
-Voss, published by Springer-Verlag in 1988, p. 158.
+Thess types calculate the Julia set of the formulas lambda*sine(z), 
+lambda*cosine(z), or lambda*exp(z), where lambda and z are both complex.
+The LambdaSine algorithm is given in "The Science of Fractal Images", by
+Barnsley, Devaney, Mandelbrot, Peitgen, Saupe, and Voss, published by
+Springer-Verlag in 1988, p. 158.
 
 Two values should be given in the "params=" option.  These values will
-become the real and imaginary parts of lambda. Make the real part = 1,
-and try values for the imaginary part ranging from .1 to .4. In this range
-the Julia set "explodes".  An FPU is a NECESSITY - each iteration calculates
-a hyperbolic sine, hyperbolic cosine, a sine, and a cosine!  However, if you
-DON'T have an FPU, and you are going on a LONG vacation ....  well, that's
-what batch mode is for! 
+become the real and imaginary parts of lambda. For LambdaSines, make the
+real part = 1, and try values for the imaginary part ranging from .1 to .4.
+In these ranges the Julia set "explodes".  An FPU is a NECESSITY - each
+LambdaSine/Cosine iteration calculates a hyperbolic sine, hyperbolic cosine,
+a sine, and a cosine (the LambdaExponent iteration "omly" requires an
+exponent, sine, and cosine operation)!  However, if you DON'T have an FPU,
+and you are going on a LONG vacation ....  well, that's what batch mode
+is for! 
 
    *** "Traditional" Floating-Point Mandelbrot and Julia Functions ***
                   *** (type=mandelfp and type=juliafp) ***
@@ -670,10 +843,22 @@ This is a stub that we (and you!) use for trying out new fractal types.
 Type 'test' fractals use FRACTINT's structure and features (like dual-pass
 mode, zoom-and-pan, and support for a zillion video modes), but use whatever
 code happens to be in routine 'testpt()' (located in the small source file
-'testpt.c') to determine the color of a particular pixel.  If you have a
-favorite fractal type that you believe would fit nicely into FRACTINT, just
-rewrite the C function in testpt.c (which is currently a simple Mandelbrot
-routine) with some algorithm that computes a color based on a point in the
+'testpt.c') to determine the color of a particular pixel.
+
+The "test" fractal type in this version of FRACTINT is an implementation
+of the "Distance Estimator" method for the Mandelbrot and Julia sets
+sent to us by Phil Wilson.  It is described in "The Science of Fractal
+Images", p. 198.  The algorithm takes two parameters.  If they are both zero,
+which is what they will be if you don't specify anything, the algorithm
+will use the Mandelbrot set.  If either parameter IS given, the algorithm
+will generate a Julia Set image (and the parameters mean the same thing
+as they do fir the Julia set fractal).  This algorithm generates two-color
+(monochrome) images.
+
+If you have a favorite fractal type that you believe would fit nicely into
+FRACTINT, just rewrite the C function in testpt.c (or use the prototype
+function in 'testsamp.c', which is a simple Mandelbrot Set implementation)
+with some algorithm that computes a color based on a point in the
 complex plane. After you get it working, send your 'testpt()' code to one of
 the authors and we might just add it to the next "official" release of
 FRACTINT, with full credit to you. Our criteria is 1) an interesting picture,
@@ -687,15 +872,15 @@ documentation.
 
                                 3D IMAGES
 
-FRACTINT can now restore images in 3D.  Note the important point that 
-FRACTINT does not CREATE 3D fractals - it only RESTORES fractal images (or 
-other single-image .GIF images) in 3D.  To view your favorite image in 3D, 
-you must first generate it, save it, and then use the new '3' command (or 
+FRACTINT can now restore images in 3D.  Note the important point that
+FRACTINT does not CREATE 3D fractals - it only RESTORES fractal images (or
+other single-image .GIF images) in 3D.  To view your favorite image in 3D,
+you must first generate it, save it, and then use the new '3' command (or
 the '3D=' command-line option) to restore it as a 3D image.  The advantage
-to this method (aside from the fact that it's the way we could figure out 
-how to do it) is that you can view your favorite image many times, varying 
-the rotation values, aspect ration, and any number of items until you get 
-the perfect image - and then save the results as a GIF file for the world 
+to this method (aside from the fact that it's the way we could figure out
+how to do it) is that you can view your favorite image many times, varying
+the rotation values, aspect ration, and any number of items until you get
+the perfect image - and then save the results as a GIF file for the world
 to share.
 
 In addition, you can use the 'O' (for 'overlay') command to overlay 3D
@@ -706,98 +891,145 @@ over whatever screen you already have).  The 'O' command can be used to
 create as many overlays as you like - think of multiple fractal moons
 overlooking a fractal landscape.
 
-When you type the '3' command, you get bombarded with a number of options. 
-Just remember that all of these options have defaults, the defaults have 
-been chosen so as to give you a pleasant starting point, and that your 
-answers to the prompts become the defaults for the next 3D image.  Unless 
-you are a pro at this take the defaults the first time, and then change one 
+When you type the '3' command, you get bombarded with a number of options.
+Just remember that all of these options have defaults, the defaults have
+been chosen so as to give you a pleasant starting point, and that your
+answers to the prompts become the defaults for the next 3D image.  Unless
+you are a pro at this take the defaults the first time, and then change one
 item at a time until you get what you want.
 
-(First picture your original image - the 2D one - as being a 3D image, with 
-the color of each pixel determining its "height" and pointing toward you.  
+(First picture your original image - the 2D one - as being a 3D image, with
+the color of each pixel determining its "height" and pointing toward you.
 All the twisting and pulling starts from this "image".)
 
-After prompting you for a filename and video mode, the 3D command asks you 
-if you want a sphere projection. Answering "y" wraps your fractal around 
-the surface of a sphere.  Answering "n" gives a "regular" 3D view of your 
-fractal. Some of the prompts are different in the two modes, so let's 
-suppose you answered "n" and want "regular". FRACTINT then prompts you for 
-three rotation values - X, Y, and Z axes.  Think of the result as first 
-tilting your 3D image up by pulling the bottom of your monitor towards you, 
-then tilting it by pulling the left side of the monitor towards you, and 
-then finally spinning it counter-clockwise, all by the number of degrees in 
-the prompts.  Note that these are NOT independent rotations - the image is 
-spun first along the X-axis, then along the Y-axis, and finally along the 
-Z-axis, and those are YOUR axes, not those of your (by now hopelessly 
-skewed) monitor.
+After prompting you for a filename and video mode, the 3D command asks you
+if you want a sphere projection. Answering "y" wraps your fractal around
+the surface of a sphere.  Answering "n" gives a "regular" 3D view of your
+fractal. Some of the prompts are different in the two modes, so let's
+suppose you answered "n" and want "regular", also called the
 
-You are then prompted for three scaling factors in percent - scaling along 
-the X, Y, and surface "roughness".  Initially, leave the X and Y axes alone 
-and play with the roughness.  High values of roughness make large mountains 
-and deep valleys -low values make flat plains. Negative roughness is legal 
-- if you want Mandelbrot lake to be BELOW the ground, instead of eerily 
-floating ABOVE, use a roughness of about -30%. (Mathematical note - 
+                   RECTANGULAR COORDINATE TRANSFORMATION
+
+FRACTINT then prompts you for three rotation values - X, Y, and Z axes.
+Think of the result as first tilting your 3D image up by pulling the bottom
+of your monitor towards you, then tilting it by pulling the left side of
+the monitor towards you, and then finally spinning it counter-clockwise,
+all by the number of degrees in the prompts.  Note that these are NOT
+independent rotations - the image is spun first along the X-axis, then
+along the Y-axis, and finally along the Z-axis, and those are YOUR axes,
+not those of your (by now hopelessly skewed) monitor.
+
+You are then prompted for three scaling factors in percent - scaling along
+the X, Y, and surface "roughness".  Initially, leave the X and Y axes alone
+and play with the roughness.  High values of roughness make large mountains
+and deep valleys -low values make flat plains. Negative roughness is legal
+- if you want Mandelbrot lake to be BELOW the ground, instead of eerily
+floating ABOVE, use a roughness of about -30%. (Mathematical note -
 roughness is really just a z scale factor).
 
-Next you are prompted for a "water level" (say, did we mention that Plasma 
-Clouds make quite realistic fractal landscapes when viewed in 3D?).  This 
-is really a "minimum color" value that performs the function 'if (color < 
-waterlevel) color = waterlevel' and has the effect of filling in fractal 
+Next you are prompted for a "water level" (say, did we mention that Plasma
+Clouds make quite realistic fractal landscapes when viewed in 3D?).  This
+is really a "minimum color" value that performs the function 'if (color <
+waterlevel) color = waterlevel' and has the effect of filling in fractal
 "valleys" and converting them to fractal lakes.
 
-Next, you are prompted for a "line-fill" option.  The default is no fill at 
-all - just draw the dots.  Other options are generating lines ("wire frame"),
-full surfaces (fills in all holes between lines) and solids (lines from the
-"floor" up to the plotted point). These options exist because transformed 
-points of an image that DID cover all the pixels MAY NOT any longer cover 
-all the pixels.  Warning - it takes considerably longer to generate solid 
-images - try lines first if you don't like dot-mode, and then try full
-surfaces (the general favorite of the authors).
+Next, you are prompted for a "fill" option.  These options exist because
+transformed points of an image that DID cover all the pixels MAY NOT any
+longer cover all the pixels.  This will become dramatically clear if you pick
+the first fill option, which maps dots to the corresponding dot after applying
+the 3D transformations. Generally you see many of the dots have been missed.
+Therefore you can choose various algorithms that attempt to "fill in" the
+missing dots.
+                          Fill Options
 
-After all THAT you are prompted for a "perspective 3D" value - the "distance" 
-from your eye to the image.  A zero value here (the default) means no 
-perspective calculations (which uses is a considerably faster algorithm).  
-Otherwise, picture a box with the original x-y plane of your flat fractal on 
-the bottom, and your 3D fractal inside. A perspective value of 100% places 
-your eye RIGHT ON THE EDGE OF THE BOX - results in pretty severe perspective 
-distortion - like taking a close-up with a wide-angle lens. Try about 150% 
-for reasonable results. LARGE values (500%) give small perspective 
-modifications (you are far away), and smaller ones create extreme 
-modifications. Values smaller than 100% put you inside the image itself. 
+     0 - (default) - no fill at all - just draw the dots.
+     1 - wire frame - joins points with lines
+     2 - surface fill - fills in all points on the surface
+     3 - surface fill - (interpolation turned off)
+     4 - solid fill - draws lines from the "ground" up to the point
+     5 - surface fill with light model - calculated before 3D transforms
+     6 - surface fill with light model - calculated after 3D transforms
+
+Warning - it takes considerably longer to generate solid images - try lines
+first if you don't like dot-mode, and then try surface fills (the general
+favorite of the authors).
+
+After all THAT you are prompted for a "perspective 3D" value - the "distance"
+from your eye to the image.  A zero value here (the default) means no
+perspective calculations (which uses is a considerably faster algorithm).
+Otherwise, picture a box with the original x-y plane of your flat fractal on
+the bottom, and your 3D fractal inside. A perspective value of 100% places
+your eye RIGHT ON THE EDGE OF THE BOX - results in pretty severe perspective
+distortion - like taking a close-up with a wide-angle lens. Try about 150%
+for reasonable results. LARGE values (500%) give small perspective
+modifications (you are far away), and smaller ones create extreme
+modifications. Values smaller than 100% put you inside the image itself.
 Try larger values first, and work your way in.
 
-Finally you are prompted for two values that let you move the image up or 
-down.
+Finally you are prompted for two values that let you move the image up or
+down, in case the image is improperly centered.
 
-Now suppose you answered the first question "y" - you WANT a sphere 
-projection. Picture a globe lying on its side - north pole to the right. We 
-are going to map the x and y of the original map to latitude and longitude 
-on the globe (really a hemisphere). Each ROW of the original fractal 
-becomes a LONGITUDE LINE on the globe. By changing the defaults, you can 
-map the fractal to a PIECE of the globe, or wrap the picture clear AROUND 
-the globe. The defaults exactly cover the globe. You are asked for starting 
-longitude (180 degrees is the top) and ending longitude (zero is the 
-bottom). Similarly the latitude goes from -90 to 90 (equator is in the 
+If you selected fill type 5 or 6, you are not done! These two modes color
+each pixel according to the ANGLE the surface makes with an imaginary light
+source. You are asked to enter the three coordinates of of the vector
+pointing toward the light. Finally, you are asked for a "smoothing" factor.
+Unless you used continuous potential when generating the fractal (see
+below), the illumination fills 5 and 6 will be "sparkly", just like a sandy
+beach in bright sun. Applying a smoothing factor of 2 or 3 will allow you
+to see the large-scale shapes better. But if your fractal has sharply-
+defined boundaries (e.g. "Mandelbrot Lake"), the smoothing effect may cause
+the colors to run. If they do, remember, its a FEATURE not a BUG!
+
+The colors will look strange with fill types 5 and 6 until you start color-
+cycling and try one of the more continuous palettes (F8 thru F10), or even
+better, load the GRAY palette with the "A" ("Alternate") command.
+
+Illumination fill type 5 and 6 differ in this respect: type 5 calculates
+the illumination BEFORE doing any transformations. Type 6 applies the
+transformations FIRST, then calculates the color. Type 6 is better, but
+type 5 is faster. In sphere mode, only type 6 gives you a light and dark
+side of the "planet".
+
+Types 2, 5, and 6 interpolate colors when filling, making a very smooth
+fill if the palette is continuous. This may NOT be desirable if the palette
+is NOT continuous. Type 3 is the same as type 2 with interpolation turned
+off. You might want to use fill type 3 if, for example, you wanted to project
+a GIF photograph onto a sphere. With type 2, you might see the filled in
+points, since chances are the palette is not continuous; type 3 fills those
+same points in with the colors of adjacent pixels. However, for most fractal
+images, fill type 2 is better than 3. 
+
+                           SPHERICAL PROJECTIONS
+
+Now suppose you answered the first question "y" - you WANT a sphere
+projection. Picture a globe lying on its side - north pole to the right. We
+are going to map the x and y of the original map to latitude and longitude
+on the globe (really a hemisphere). Each ROW of the original fractal
+becomes a LONGITUDE LINE on the globe. By changing the defaults, you can
+map the fractal to a PIECE of the globe, or wrap the picture clear AROUND
+the globe. The defaults exactly cover the globe. You are asked for starting
+longitude (180 degrees is the top) and ending longitude (zero is the
+bottom). Similarly the latitude goes from -90 to 90 (equator is in the
 center - a vertical line since the globe is on its side).
 
-The next prompt is for a RADIUS factor - this affects the size of globe. 
+The next prompt is for a RADIUS factor - this affects the size of globe.
 
-All the rest of the prompts have the same meaning as in the regular case. 
+All the rest of the prompts have the same meaning as in the regular case.
 However "roughness" in this case is roughness of the GLOBE SURFACE.
 
-AN "UGLY" WARNING - some of these parameters result in points hidden from 
+AN "UGLY" WARNING - some of these parameters result in points hidden from
 view by the obstruction of front globe surfaces. Because the process begins
-at the "edge" of the sphere, this phenomenom happens most often just as 
-the process generates its first few dozen lines.  If the computer seems to 
+at the "edge" of the sphere, this phenomenon happens most often just as
+the process generates its first few dozen lines.  If the computer seems to
 have died, WAIT a respectable time to see if points start to appear.
- 
-You can also specify these values (and there WERE a lot of them, weren't 
-there?) with the "3d=" command-line argument.  The argument lets you list 
-your answers in the same order as they are asked.  You can stop listing 
-your own arguments and take the rest as defaults at any time, and you can 
+
+You can also specify these values (and there WERE a lot of them, weren't
+there?) with the "3d=" command-line argument.  The argument lets you list
+your answers in the same order as they are asked.  You can stop listing
+your own arguments and take the rest as defaults at any time, and you can
 skip over those defaults you don't care about.  IE, "3d=/////50" just over-
-rides the sixth argument (the Z-scaling value).  The "Sphere Projection" 
-question uses a 0/1 parameter, with 0 (the default) meaning "no".  The 
+rides the sixth argument (the Z-scaling value).  The "Sphere Projection"
+question uses a 0/1 parameter, with 0 (the default) meaning "no".  The
 command
 
           fractint myfile savename=my3d 3d= batch=yes
@@ -806,26 +1038,88 @@ by itself causes FRACTINT to load up MYFILE.FRA as a 3D image (taking all
 of the defaults), save the results in MY3D.FRA, and return to MS-DOS.
 
 Note that any image loaded up in 3D is treated as if it was a Plasma
-Cloud.  We have NO idea how to zoom and pan around a 3D image that has 
+Cloud.  We have NO idea how to zoom and pan around a 3D image that has
 been twisted, stretched, perspective-ized, and had lakes added to it.
 And by the time you read this, we've probably added options to wrap it
 around a Mobius Strip and pour it through a Klein Bottle.
 
 =============================================================================
 
-                         BATCH FILE CHALLENGE!!
+                           CONTINUOUS POTENTIAL
 
-The authors hearby challenge FRACTINT USERS everywhere to submit FRACTINT
-command lines that calculate their favorite fractals images. A sample command
-line entry would be something like (and you can do better than THIS):
+Conventional fractals are calculated by the level set method. The image has
+solid bands of color corresponding to regions where the fractal calculation
+gives the same value. When viewed in 3D, these images are like terraced
+landscapes - most of the surface is either horizontal or vertical. This
+does not lend itself to the illumination fill options. However, there is an
+alternative approach that calculates a "continuous potential". For our
+purposes, the word "continuous" is more important than the word
+"potential". The continuous potential method results in CONTINUOUS changes
+in colors. A VGA is mandatory to REALLY see this effect. It is hard to show
+continuously varying colors with 16 or 4 colors!  The intent of continuous
+potential is to display the resulting image in 3D with one of the
+illumination model fills. The results have to be seen to be believed.
 
-   fractint type=julia params=0.3/0.6
-                        or
-   fractint type=newton params=4 corners=-2/2/-2/2
+Continuous potential is approximated by calculating
 
-We will add a batch file with each line credited to the proposer to future
-releases of FRACTINT. Send to one of the authors via CompuServe or BIX.
+         potential =  log(modulus)/2**iterations
 
+where "modulus" is orbit value (magnitude of the complex number) when the
+modulus bailout was exceeded, at the "iterations" iteration. Clear as mud,
+right? Fortunately, you don't REALLY have to understand all the details.
+However, there ARE a few points to understand. First, generally the
+criteria for halting a fractal calculation, the "modulus bailout value", is
+generally set to 4 in FRACTINT.  Continuous potential is inaccurate at such
+a low value.  The BAD news is that the superfast types Mandel and Julia
+have a value of 4 hard wired, a requirement of the integer math that makes
+those types so fast. You can STILL make interesting images in those modes,
+though, so don't avoid them. You will see ridges in the hillsides - some
+folks LIKE the effect. The GOOD news is that the slower Mandelfp and
+Juliafp types have no such limitation.
+
+The parameters for potential are as follows:
+    potential=maxcolor[/slope[/modulus[/potfile]]]
+
+"Maxcolor" is the color corresponding to zero potential, which plots as the
+TOP of the mountain.  Generally this should be set to one less than the
+number of colors - e.g. 255 for VGA. Remember that the last few colors of
+the IBM VGA palette are BLACK, so you won't see what you are really getting
+unless you change to a different palette.
+
+"Slope" affects how rapidly the colors change - affects the SLOPE of the
+mountains when viewed in 3D. If this is too low, the palette will not
+cover all the potential values and large areas will be black. If it is too
+high, the range of colors in the picture will be much less than those
+available. There is no easy way to predict in advance what these values
+should be.
+
+"Modulus" is the bailout value used to determine when an orbit has 
+"escaped". Larger values give more accurate and smoother potential.
+A value of 500 gives excellent results. Note that this value is ignored
+for Mandel and Julia fractal types, which have this value hard-wired at
+4. If you wish to use a higher value, you must use Mandelfp and Juliafp
+types.
+
+"Potfile" is a filename to store the potential image with 16 bits per
+pixel. If you save the image in the normal way, and then use the "3"
+command to view in 3D, the illumination modes 5 and 6 will work fine, but
+the colors will look a bit granular. This is because even with 256 colors,
+the continuous potential is being truncated to integers. If the "potfile"
+parameter is given, much smoother pictures can be obtained. But beware -
+unlike GIF files, these files are not compressed, and they take up 2 bytes
+per pixel, so the files can get quit large.
+
+The following commands can be used to recreate the image that Mark Peterson
+first prototyped for us, and named "MtMand":
+
+                type=Mandelfp
+                corners=-0.19920/-0.11/1.0/1.06707
+                inside=255
+                maxiter=255
+                potential=255/2000/1000/potfile.tiw
+                passes=1
+
+This assumes a 256 color video mode.
 
 =============================================================================
 
@@ -833,8 +1127,8 @@ releases of FRACTINT. Send to one of the authors via CompuServe or BIX.
 
 FRACTINT uses a Video Adapter Table in the "C" program to reference
 everything it needs to know about any particular adapter/mode combination.
-This table can contain information for up to 76 adapter/mode combinations,
-and is automatically tied to seventy-six Function Keys (F1-F10, their Control/
+This table can contain information for up to 98 adapter/mode combinations,
+and is automatically tied to eighty-four Function Keys (F1-F10, their Control/
 Shift/Alt variants, and many Alt-x keypad combos) when the program is running.
 The table entries, and the function keys they are tied to, are displayed
 as part of the Video-Mode Help Screen(s).   With version 7.0, this table is
@@ -845,7 +1139,7 @@ least for the ones that pretend to be a standard adapter with more dots
 and/or colors.   
 
 The table as currently distributed begins with nine standard and several
-non-standard ("tweaked") IBM video modes that have been exercised successfully
+non-standard IBM video modes that have been exercised successfully
 with a PS/2 model 80.   These entries, coupled with the descriptive comments
 in the table definition and the knowledge you have about throwing your adapter
 into its unique modes, should be all you need to see to be able to add your
@@ -862,6 +1156,58 @@ would garbage it).  An internal flag inhibits all text output while the
 screen is in this video mode.  Note, however that the HELP and TAB keys
 still work, because they temporarily switch the screen to an alternate
 video mode.
+
+SPECIAL NOTE ON 8514/A MODES:  The IBM 8514/A modes use IBM's software
+interface, and require the pre-loading of IBM's HDIDLOAD TSR utility.
+There are two sets of 8514/A modes: full sets (640x480, 1024x768) which
+cover the entire 8514/A screen and do NOT have a "border color" (so that
+you cannot tell when you are "paused" in a color-cycling mode), and partial
+sets (632x474, 1016x762) which have small border areas which do turn 
+white when you are paused in color-cycling mode.  Also, the video modes
+are declared to be 256-color modes, but if you do not have your 8514/A
+adapter loaded with its full complement of memory you will actually be
+in 16-color mode.  Finally, because IBM's interface does not handle drawing
+single pixels very well (we have to "draw" a 1x1 pixel "box"), generating
+the zoom-box is excruciatingly slow.  Still, it works!
+
+SPECIAL NOTE ON SUPER-EGA AND SUPER-VGA MODES:  After the IBM-style video
+modes, the video adapter table contains an ever-increasing number of entries
+for third-party (generally "Super-EGA" and "Super-VGA") adapters.   Almost
+all of these entries have been added because someone like you sent us spec
+sheets on his or her adapter, or modified FRACTINT to support it and then
+informed us about it.
+
+SPECIAL NOTE ON TARGA MODES:  TARGA support for FRACTINT is provided courtesy
+of Joe McLain.  The first item we have to bring up about TARGA boards is that
+there are a LOT of possible TARGA configurations, and a LOT of opportunities
+for a TARGA board and a VGA/EGA board to interfere with each other, and we
+may not have all of them smoothed away yet.  Also, the TARGA boards have an
+entirely different color-map scheme than the VGA cards, and at the moment
+they cannot be run through the color-cycling menu.  Joe has managed to set
+up a new "map=" command-line option, however, that works with both TARGA and
+VGA boards and enables you to redefine the default color maps with either
+board - see the command-line section for details.
+ 
+SPECIAL NOTE ON THE "DISK-VIDEO" AND "RAM-VIDEO" MODES:  After the "Super-VGA"
+modes, the video adapter table contains several "Disk/RAM-Video" modes.
+These "Video modes" do not involve a video adapter at all - they use either
+your spare RAM (if you have enough), your spare Expanded Memory (if you have
+that feature, and have enough of it), or your disk drive ("FRACTINT.DSK") to
+store the fractal image temporarily.  These non-video modes are useful for
+creating images beyond the capacity of your "real" video adapter (right up
+to the current internal FRACTINT limit of 2048x2048 x 256 colors), and for
+background processing under multi-tasking DOS managers such as DESKVIEW.
+Note that Zoom and Pan is disabled during these modes (you can't see where
+your Zoom Box is anyway) and, to eliminate thrashing, features such as
+orbit display, dual-pass mode, solid-guessing, symmetry checks and (sorry)
+plasma clouds that require simultaneous access to several lines of the
+"display" are disabled for disk-video and Expanded-Memory-video modes.
+On a "typical" PC with 640K of memory running just FRACTINT under DOS,
+"Disk-Video" modes up to 640x480x256 currently fit into RAM, and any higher
+resolution modes end up going to Expanded Memory or disk.   While in
+"Disk-Video" mode, your screen will display text information that lets
+you know whether you are using your RAM or your disk drive and what
+portion of the "screen" is being read from or written to.
 
 SPECIAL NOTE ON "TWEAKED" VGA MODES:   The IBM VGA adapter is a highly
 programmable device, and can be set up to display many video-mode combinations
@@ -883,48 +1229,9 @@ connected to IBM 8513, IBM 8514, NEC Multisync II, and Zenith 1490 monitors
 (all of which exhibit some overscan and flicker at the highest rates), and
 have tested 800x600 mode on the NEC Multisync II (although I had to fiddle
 with the vertical size knob some to get it to display correctly).
-
-SPECIAL NOTE ON THE "DISK-VIDEO" AND "RAM-VIDEO" MODES:  After the "IBM"
-modes, the video adapter table contains several "Disk/RAM-Video" modes.
-These "Video modes" do not involve a video adapter at all - they use either
-your spare RAM (if you have enough), your spare Expanded Memory (if you have
-that feature, and have enough of it), or your disk drive ("FRACTINT.DSK") to
-store the fractal image temporarily.  These non-video modes are useful for
-creating images beyond the capacity of your "real" video adapter (right up
-to the current internal FRACTINT limit of 2048x2048 x 256 colors), and for
-background processing under multi-tasking DOS managers such as DESKVIEW.
-Note that Zoom and Pan is disabled during these modes (you can't see where
-your Zoom Box is anyway) and, to eliminate thrashing, features such as
-orbit display, dual-pass mode, solid-guessing, symmetry checks and (sorry)
-plasma clouds that require simultaneous access to several lines of the
-"display" are disabled for disk-video and Expanded-Memory-video modes.
-On a "typical" PC with 640K of memory running just FRACTINT under DOS,
-"Disk-Video" modes up to 640x480 currently fit into RAM, and any higher
-resolution modes end up going to Expanded Memory or disk.   While in
-"Disk-Video" mode, your screen will display text information that lets
-you know whether you are using your RAM or your disk drive and what
-portion of the "screen" is being read from or written to.
-
-After the standard and "tweaked" IBM-style video modes, the video adapter
-table contains an ever-increasing number of entries for third-party 
-(generally "Super-EGA " and "Super-VGA") adapters.   Almost all of these
-entries have been added because someone like you sent us spec sheets on his or
-her adapter, or modified FRACTINT to support it and then informed us about it.
-
-
-SPECIAL NOTE ON TARGA MODES:  The first note we should make, at least for the
-8.0 distribution, is that the TARGA support arrived, courtesy of Joe McLain,
-about 48 hours before this release.  Jee has a TARGA 16 board, and verified
-that mode as running (with both a TARGA and a VGA monitor active on the
-same system), but we really don't know about the other modes yet.  Also,
-there are a LOT of opportunities for the TARGA board and the VGA board to
-interfere with each other, and we may not have all of them smoothed away
-yet.  Finally, the TARGA boards have an entirely different color-map scheme
-that the VGA cards, and at the moment they cannot be run through the
-color-cycling menu.  Joe DID manage to set up a new "map=" command-line
-option, however, that works with both TARGA AND VGA boards and enables you
-to redefine the default color maps with either board - see the command-line
-section for details.
+Note: with version 9.x, these "tweaked" IBM VGA modes have been moved to the
+very end of the video table to make the keystroke commands for the Super-VGA
+video modes a bit easier to remember ("Alt-Comma?  Alt-Equals?").
 
 
 =============================================================================
@@ -932,11 +1239,14 @@ section for details.
          The Video Modes Configuration file  (FRACTINT.CFG)
 
 If you have a favorite adapter/video mode that you would like added to
-FRACTINT (or if you want to effectively remove table entries that do not
-apply to you), you can handle that task easily by creating and editing an
-external configuration file (FRACTINT.CFG).  The easiest way to get started
-is by having FRACTINT create a default configuration file for you.  You do
-this by typing 'fractint batch=config'.  FRACTINT will create a configuration
+FRACTINT, if you want to effectively remove table entries that do not
+apply to you, if you just get tired of the fact that your favorite video
+mode involves using the "Alt-Left-Swizzlestick" key, or if you are using a
+non-enhanced keyboard so that you don't HAVE an "Alt-Left-Swizzlestick"
+key, you can handle that task easily by creating and editing an external
+configuration file (FRACTINT.CFG).  The easiest way to get started is by
+having FRACTINT create a default configuration file for you.  You do this
+by typing 'fractint batch=config'.  FRACTINT will create a configuration
 file with an entry for every one of the internal video table entries, and
 from that on will use FRACTINT.CFG instead of its internal table as long as
 it can locate it somewhere along the DOS PATH.
@@ -963,9 +1273,15 @@ fields separated by commas.  The ten fields are defined as:
               9) TARGA video modes
              10) Reserved for Future use (HERCULES)
              11) Non-Video [disk or RAM] "video"
+             12) 8514/A video modes
+             13) CGA 320x200x4-color and 640x200x2-color modes
+             14) Reserved for Tandy 1000 video modes
+             15) SuperVGA 256-Color mode using the Trident Chipset
+             16) SuperVGA 256-Color mode using the Chips & Tech Chipset
+             17) SuperVGA 256-Color mode using the ATI VGA Wonder Chipset
 
-  The number of pixels across the screen (X - 200 to 2048)
-  The number of pixels down   the screen (Y - 200 to 2048)
+  The number of pixels across the screen (X - 160 to 2048)
+  The number of pixels down   the screen (Y - 160 to 2048)
   The number of available colors (2, 4, 16, or 256)
   A Comment describing this mode (25 chars max, leading blanks are OK)
 
@@ -1092,15 +1408,15 @@ extensions in an upward-compatible manner if and when they become available.
 Assembler (also version 5.1) using the "Medium" model.   Note that the
 assembler code uses the "C" model option added to version 5.1, and must
 be assembled with the /MX switch to link with the "C" code.  Because the
-program simply got too large to distribute comfortably as a single .ARC
+program simply got too large to distribute comfortably as a single .ARCed
 file, and because a number of people now download it with no intention of
-ever modifying it, it is now distributed as two .ARC files - one containing
+ever modifying it, it is now distributed as two files - one containing
 this FRACTINT.DOC file and the executable program, and another containing
 complete source code (including a .MAK file and MAKEFRAC.BAT).
 
 =============================================================================
 
-         *** GIF Protocol Statement (required by Compuserve) ***
+                     *** GIF Protocol Statement ***
 
 GIF and 'Graphics Interchange Format' are trademarks (tm) of Compuserve
 Incorporated, an H&R Block Company.
@@ -1109,19 +1425,70 @@ Incorporated, an H&R Block Company.
 
              *** Distribution and Contribution Policies ***
 
-This is public domain software.   There is no warranty or acceptance
-of liability either expressed or implied with it.   Use it, modify it,
-distribute it as you wish.   Your uploading it to other bulletin boards and
-the like is specifically encouraged.
+=============================================================================
+
+FRACTINT is distributed as a public domain package, and the bulk of the
+code in FRACTINT is public domain software (portions of the code are from
+copyrighted sources, and in such cases are clearly marked as such).
+There is no warranty or acceptance of liability either expressed or implied
+with it.   Use it, modify it, distribute it as you wish.   Your uploading it
+to other bulletin boards and the like is specifically encouraged.
 
 Contribution policy:    Don't want money.   Got money.   Want admiration.
 
 
-The following list of authors agreed to the distribution of their mailing
-addresses:
+=============================================================================
 
-            Bert Tyler                    btyler on BIX
-            Tyler Software                [73477,433] on Compuserve
+                    *** Credits and Contact Points ***
+
+=============================================================================
+
+FRACTINT is the result of a combined effort of MANY developers and literally
+thousands of man-hours of time, all for a tiny bit of fame and glory.  Well,
+maybe there's a few "bragging rights" included as well.  At any rate, it
+has become simply impossible to include the names of all of the contributors
+on that pathetic little "credits screen" (a multi-screen "Credits screen"
+will have its own set of problems - who makes it to the first page?), and one
+of the not-so-welcome tasks of the final co-ordinator is deciding just who
+makes it to that screen.
+
+In particular, code and concepts for various sections of FRACTINT have been
+"lifted" (quite legally, but still "lifted") from the following unheralded
+sources:
+
+PC Tech Journal    -  The CPU and FPU detectors.  Sorry to see that fine
+                      magazine bite the dust.
+
+PC Magazine        -  The speaker routines.  "borrowed" from an article in the
+                      (as I remember) April, 1977 issue.
+
+Byte Magazine      -  (and the BIX BBS).  The "tweaked" VGA modes, taken from
+                      an article (and associated programs) by Richard Wilton
+                      in the October, 1988 issue.
+
+MS-Kermit          -  Keyboard routines, including the Expanded Keyboard stuff
+
+Dave Warker        -  The concept of using Integer math for fractal
+                      calculations.  No, he didn't invent it, but he DID
+                      come up with the idea independently.
+
+Compuserve (and    -  A special thanks here for putting up with all the
+the PICS forum        rabble-rousing in PICS Section 16 and elsewhere.
+SYSOPs)
+
+                                -----------------
+
+The following list of authors agreed to the distribution of their mailing
+addresses.  Note that Usenet/Internet/Bitnet/Whatevernet users can access
+Compuserve users directly if they know the Compuserve userid (IE, Bert
+can be reached as 73477.433@compuserve.com).  Just remember that Compuserve
+charges by the minute so it costs us a little bit (maybe 10 or 20 cents) to
+read a message - don't kill us with kindness.  And don't send all your mail
+to Bert - spread it around a little!
+
+
+            Bert Tyler                    [73477,433] on Compuserve
+            Tyler Software                 btyler on BIX
             124 Wooded Lane
             Villanova, Pa  19085
             (215) 525-6355
@@ -1133,7 +1500,8 @@ addresses:
 
             Lee Daniel Crocker             [73407,2030] on Compuserve
             1380 Jewett Avenue             lcrocker on BIX
-            Pittsburg, CA  94565
+            Pittsburg, CA  94565           ames!pacbell!sactoh0!siva!lee
+                                               on Usenet
 
             Michael L. Kaufman             (accessible via EXEC-PC bbs)
             2247 Ridge Ave #2k
@@ -1150,3 +1518,4 @@ addresses:
             128 Hamden Ave., F
             Waterbury, CT 06704
             (203) 754-1162
+

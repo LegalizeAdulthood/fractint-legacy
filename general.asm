@@ -1,16 +1,116 @@
-;
 ;	Generic assembler routines that have very little at all
 ;	to do with fractals.
+;
+; ---- Overall Support
+;
+;	initasmvars()
+;
+; ---- Video Routines 
+;
+;	setvideomode()
+;	getcolor()
+;	putcolor()
+;	out_line()
+;	drawbox()
+;	home()
+;	clscr()
+;	putblock()
+;	storedac()		TARGA - NEW - 3 June 89 j mclain
+;	loaddac()
+;	spindac()
+;	asmdotwrite		(called by CALCMAND.ASM using registers)
+;	asmvideocleanup			""
+;
+; ---- Help (Video) Support
+;
+;	setfortext()
+;	setforgraphics()
+;	setclear()
+;
+; ---- Quick-copy to/from Extraseg support
+;
+;	toextra()
+;	fromextra()
+;
+; ---- far memory allocation support
+;
+;	farmemalloc()
+;	farmemfree()
+;	erasesegment()
+;
+; ---- General Turbo-C (artificial) support
+;
+;	disable()
+;	enable()
+;
+; ---- 32-bit Multiply (includes 16-bit emulation)
+;
+;	multiply()
+;
+; ---- Keyboard, audio (and, hidden inside them, Mouse) support
+;
+;	keypressed()
+;	getakey()
+;	buzzer()
+;	delay()
+;	tone()
+;
+; ---- Expanded Memory Support
+;
+;	emmquery()
+;	emmgetfree()
+;	emmallocate()
+;	emmdeallocate()
+;	emmgetpage()
+;	emmclearpage()
+;
+; ---- CPU, FPU Detectors
+;
+;	cputype()
+;	fputype()
 
-.MODEL	medium,c
 
-.8086
+
+;			 required for compatibility if Turbo ASM
+IFDEF ??Version
+	MASM51
+	QUIRKS
+ENDIF
+
+	.MODEL  medium,c
+
+	.8086
+
+        ; these must NOT be in any segment!!
+        ; this get's rid of TURBO-C fixup errors
+
+        extrn   startdisk:far           ; start disk-video routine
+        extrn   readdisk:far            ; read  disk-video routine
+        extrn   writedisk:far           ; write disk-video routine
+        extrn   enddisk:far             ; end   disk-video routine
+
+; TARGA 28 May 80 - j mclain
+        extrn   StartTGA  :far		; start	TARGA
+        extrn   ReadTGA   :far		; read	TARGA
+        extrn   WriteTGA  :far		; write	TARGA
+	extrn	LineTGA   :far		; line	TARGA
+        extrn   EndTGA    :far		; end	TARGA
+
+
+	extrn   open8514  :far      ; start 8514a
+	extrn   reopen8514:far      ; restart 8514a
+	extrn   close8514 :far      ; stop 8514a
+	extrn   fr85wdot  :far      ; 8514a write dot
+	extrn   fr85wbox  :far      ; 8514a write box
+	extrn   fr85rdot  :far      ; 8514a read dot
+	extrn   w8514pal  :far      ; 8514a pallete update
+
+        extrn   help:far		; help code (in help.c)
 
 .DATA
 
 ; ************************ External variables *****************************
 
-	extrn	lx0:dword, ly0:dword	; arrays of (dword) increment values
 	extrn	oktoprint: word		; flag: == 1 if printf() will work
 	extrn	dotmode: word		; video mode:   1 = use the BIOS (yuck)
 ;							2 = use EGA/VGA style
@@ -19,6 +119,13 @@
 ;							5 = use Paradise 
 ;							6 = use Video 7
 ;							7 = MVGA 256 color
+;							9 = use TARGA
+;							10= Hercules (someday)
+;							11= "disk" video
+;							12= 8514/A 
+;							13= CGA 4,2-color
+
+	extrn	sound:word		; if 0, supress sounds
 	extrn	xdots:word, ydots:word	; number of dots across and down
 	extrn	maxit:word, colors:word	; maximum iterations, colors
 	extrn	ixmin:word, ixmax:word	; for zoom/pan: x and y limits
@@ -28,51 +135,80 @@
 
 	extrn	boxcount:word		; (previous) box pt counter: 0 if none.
 
+	extrn	xorTARGA:word		; TARGA 3 June 89 j mclain
+					; flag says xor pixels for box
+
 ; ************************ Public variables *****************************
 
 public		cpu			; used by 'calcmand'
+public		fpu			; will be used by somebody someday
 public		andcolor		; used by 'calcmand'
 public		lookatmouse		; used by 'calcfrac'
+public		_dataseg		; used by TARGA, other Turbo Code
 
+public		loadPalette		; flag for loading VGA/TARGA palette from disk
 public		dacbox			; GIF saves use this
 public		daclearn, daccount	; Rotate may want to use this
 public		extraseg		; extra 64K segment, if any
+public		rowcount		; row-counter for decoder and out_line
 
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
 
-public		prefix, suffix, stack		; Used by the Decoder
+public		lx0,ly0				; used by FRACTINT, CALCFRAC
+public		prefix, suffix, dstack, decoderline	; Used by the Decoder
 public		strlocn, entrynum, teststring	; used by the Encoder
+public		olddacbox			; temporary DAC saves
+public		diskline			; Used by the Diskvid rtns
+public		rlebuf				; Used ty the TARGA En/Decoder
+public		reallyega			; flag: 1 if "VGA" is an EGA
+
+; ************************* "Shared" array areas **************************
+
+lx0		dd	0		; 8K X-pixel value array
+prefix		dw	4096 dup(0)	; 8K Decoder array
+
+ly0		dd	0		; 8K y-pixel value array
+suffix		dw	2048 dup(0)	; 4K Decoder array
+dstack		dw	2048 dup(0)	; 4K Decoder array
+
+strlocn		dw	0		; 8K Encoder array
+decoderline	db	0		; 2K Decoder array
+olddacbox	db	0		; (256*3) temporary dacbox values
+boxx		dw	2048 dup(0)	; (previous) box data points - x axis
+boxy		dw	2048 dup(0)	; (previous) box data points - y axis
+
+entrynum	dw	0		; 8K Encoder array
+rlebuf		db	0		; TARGA encoder array
+boxvalues	db	2048 dup(0)	; (previous) box color values
+		db	6144 dup(0)	; fluff up to 8K
+
+diskline	db	2049 dup(0)	; 2K Diskvideo array
+
+teststring	db	100  dup(0)	; 100 byte Encoder array
 
 ; ************************ Internal variables *****************************
 
 cpu		dw	0		; cpu type: 86, 186, 286, or 386
+fpu		dw	0		; fpu type: 0, 87, 287, 387
+_dataseg	dw	0		; our "near" data segment
 
 dotwrite	dw	0		; write-a-dot routine:  mode-specific
 dotread		dw	0		; read-a-dot routine:   mode-specific
 linewrite	dw	0		; write-a-line routine: mode-specific
 andcolor	dw	0		; "and" value used for color selection
 color		db	0		; the color to set a pixel
+diskflag	db	0		; special "disk-video" flag
+tgaflag		db	0		; TARGA 28 May 89 - j mclain
+loadPalette	db	0		; TARGA/VGA load palette from disk
+
+f85flag		db	0		;flag for 8514a
 
 ;					; Zoom-Box values (2K x 2K screens max)
 step		dw	0		; Zoom-Box drawing step-size
 boxcolor	db	0		; Zoom-Box color
-
-strlocn		dw	0		; 8K Encoder array
-prefix		dw	0		; 8K Decoder array
-boxx		dw	1028 dup(0)	; (previous) box data points - x axis
-boxy		dw	1028 dup(0)	; (previous) box data points - y axis
-boxvalues	db	1028 dup(0)	; (previous) box color values
-		db	3072 dup(0)	; pad up to 8K
-
-entrynum	dw	0		; 8K Encoder array
-suffix		dw	0		; 4K Decoder array
-		dw	2048 dup(0)	; fluff up to 4K
-stack		dw	0		; 4K Decoder array
-		dw	2048 dup(0)	; fluff up to 8K total
-teststring	dw	0		; 100 byte Encoder array
-		dw	50 dup (0)	; fluff up to 100 bytes
-
+reallyega	dw	0		; 1 if its an EGA posing as a VGA
+palettega	db	17 dup(0)	; EGA palette registers go here
 daclearn	db	0		; 0 if "learning" DAC speed
 dacnorm		db	0		; 0 if "normal" DAC update
 daccount	dw	0		; DAC registers to update in 1 pass
@@ -83,9 +219,28 @@ rowcount	dw	0		; row-counter for decoder and out_line
 kbd_type	db	0		; type of keyboard
 keybuffer	dw	0		; real small keyboard buffer
 
+delayloop	dw	32		; delay loop value
+delaycount	dw	0		; number of delay "loops" per ms.
+
+;	"buzzer()" codes:  strings of two-word pairs 
+;		(frequency in cycles/sec, delay in milliseconds)
+;		frequency == 0 means no sound
+;		delay     == 0 means end-of-tune
+
+buzzer0		dw	1047,100	; "normal" completion
+		dw	1109,100
+		dw	1175,100
+		dw	0,0
+buzzer1		dw	2093,100	; "interrupted" completion
+		dw	1976,100
+		dw	1857,100
+		dw	0,0
+buzzer2		dw	40,500		; "error" condition (razzberry)
+		dw	0,0
+
 extraseg	dw	0		; extra 64K segment (allocated by init)
 
-andvideo	db	0		; "and" value for setvideo
+orvideo		db	0		; "or" value for setvideo
 videoax		dw	0		; graphics mode values: ax
 videobx		dw	0		; graphics mode values: bx
 videocx		dw	0		; graphics mode values: cx
@@ -201,8 +356,6 @@ tweaks		dw	offset x704y528		; tweak table
 
 ;	Routines called by this code
 
-extrn	help:far
-
 ; **************** Routines called by 'calcmand.asm' *********************
 ;
 ;	parameters passed directly in registers - just call near routine
@@ -242,6 +395,80 @@ normalread	proc	near		; generic read-a-dot routine
 	pop	bp			; restore the saved register
 	ret				; we done.
 normalread	endp
+
+cgawrite	proc	near		; CGA 320x200 4-color, 640x200 2-color
+	mov	bx,colors		; restrict ourselves to the color cnt
+	dec	bx			;  ...
+	and	al,bl			;  ...
+	push	es			; save ES for a bit
+	push	ax			; save AX for a bit
+	call	near ptr cgasegoff	; compute the segment and offset
+	mov	dl,es:[bx]		; retrieve the byte
+	and	dl,al			; clear out the proper bits
+	pop	ax			; restore AX (the color)
+	shl	al,cl			; apply the shift mask
+	or	dl,al			; add in the color
+	mov	es:[bx],dl		; and write the color back out
+	pop	es			; restore ES
+	ret				; we done
+cgawrite	endp
+
+cgaread	proc	near			; CGA 320x200 4-color, 640x200 2-color
+	push	es			; save ES for a bit
+	call	near ptr cgasegoff	; compute the segment and offset
+	mov	dl,es:[bx]		; retrieve the byte
+	not	al			; reset AL for the AND
+	and	al,dl			; clear out all but the proper bits
+	shr	al,cl			; apply the shift mask
+	mov	ah,0			; clear out the high byte
+	pop	es			; restore ES
+	ret				; we done
+cgaread	endp
+
+cgasegoff	proc	near		; common CGA routine
+	mov	ax,0b800h		; buffer is really here
+	shr	dx,1			; provide the interleaving logic
+	jnc	cgasegeven		;  skip if odd
+	add	ax,200h			; use the other half of the buffer
+cgasegeven:
+	mov	es,ax			; set it up
+	mov	bx,dx			; each row is 80 bytes - shift
+	shl	bx,1			;  instead of multiply (8088s multiply
+	shl	bx,1			;  REAL slowly)
+	shl	bx,1			;  ...
+	shl	bx,1			;  ...
+	mov	ax,bx			;  x*80 = (x<<4) + ((x<<4)<<2)
+	shl	bx,1			;  ...
+	shl	bx,1			;  ...
+	add	ax,bx			; (Finally!)
+	cmp	colors,2		; 2-color mode?
+	je	short cgaseg2color	;  yup.  branch off
+	mov	bx,cx			; get the column offset
+	shr	bx,1			; four columns per byte
+	shr	bx,1			;  ...
+	add	bx,ax			; BX now contains the offset
+	and	cx,3			; calculate the bit mask
+	xor	cx,3			;  ...
+	shl	cx,1			; shift left this many bits
+	push	cx			; save the bit shift
+	mov	al,0fch			; set up the bit mask
+	rol	al,cl			; AL now contains the bit mask
+	pop	cx			; restore the shift count
+	ret				; we done.
+cgaseg2color:				; two-color option
+	mov	bx,cx			; get the column offset
+	shr	bx,1			; eight columns per byte
+	shr	bx,1			;  ...
+	shr	bx,1			;  ...
+	add	bx,ax			; BX now contains the offset
+	and	cx,7			; calculate the bit mask
+	xor	cx,7			;  ...
+	push	cx			; save the bit shift
+	mov	al,0feh			; set up the bit mask
+	rol	al,cl			; AL now contains the bit mask
+	pop	cx			; restore the shift count
+	ret
+cgasegoff	endp
 
 mcgawrite	proc	near		; MCGA 320*200, 246 colors
 	push	ax			; save this for a tad
@@ -431,13 +658,15 @@ tweak400write	proc near		; Tweaked-VGA ...x400 color mode
 tweak400write	endp
 ;
 ;	The following 'Super256' code is courtesy of Timothy Wegner
-;		and John Bridges (who wrote 'newbank')
+;	and John Bridges ( mostly John Bridges, who wrote 'newbank')
 
-;			Thanks, Guys!
-
-; Super256read/write has been tested with Tseng (Genoa) at 640x480x256
-; it should work with any 256 color mode on Tseng, Paradise,
-; and video 7 
+;	The original "newbank" routine carries John's Copyright,
+;	duplicated below:
+;
+;
+;	Copyright 1988,89 John Bridges
+;	Free for use in commercial, shareware or freeware applications
+;
 
 super256write	proc near		; super-VGA ...x256 colors write-a-dot
         call    super256addr		; calculate address and switch banks
@@ -549,12 +778,248 @@ nov7:	cmp	dotmode,5
 	shl	ah,1
 	mov	al,9
 	out	dx,ax
+	sti
+	pop	dx
+	pop	ax
+	ret
 
-nopd:	sti
+nopd:
+	cmp	dotmode,15	;Trident
+	jne	notri
+	mov	dx,3ceh		;set page size to 64k
+	mov	al,6
+	out	dx,al
+	inc	dl
+	in	al,dx
+	dec	dl
+	or	al,4
+	mov	ah,al
+	mov	al,6
+	out	dx,ax
+		
+	mov	dl,0c4h		;switch to BPS mode
+	mov	al,0bh
+	out	dx,al
+	inc	dl
+	in	al,dx
+	dec	dl
+
+	mov	ah,current_bank
+	xor	ah,2
+	mov	dx,3c4h
+	mov	al,0eh
+	out	dx,ax
+	sti
+	pop	dx
+	pop	ax
+	ret
+
+notri:
+	cmp	dotmode,16	; Chips & Technologies
+	jne	noct
+	mov	ah,al
+	mov	al,10h
+	mov	dx,3d6h
+	out	dx,ax
+	sti
+	pop	dx
+	pop	ax
+	ret
+
+noct:
+	cmp	dotmode,17	;ATI VGA Wonder
+	jne	noati
+	mov	ah,al
+	mov	dx,1ceh
+	mov	al,0b2h
+	out	dx,al
+	inc	dl
+	in	al,dx
+	shl	ah,1
+	and	al,0e1h
+	or	ah,al
+	mov	al,0b2h
+	dec	dl
+	out	dx,ax
+	sti
+	pop	dx
+	pop	ax
+	ret
+
+noati:
+	sti
 	pop	dx
 	pop	ax
 	ret
 newbank	endp
+
+diskwrite	proc	near		; disk-video write routine
+	push	es			; save registers around the call
+	push	si			; save registers around the call
+	push	di			; save registers around the call
+	mov	ah,0			; clear the high-order color byte
+	push	ax			; colors parameter
+	push	dx			; 'y' parameter
+	push	cx			; 'x' parameter
+	call	far ptr writedisk	; let the external routine do it
+	pop	cx			; restore registers
+	pop	dx			; restore registers
+	pop	ax			; restore registers
+	pop	di			; restore registers
+	pop	si			; restore registers
+	pop	es			; restore registers
+	ret				; we done.
+diskwrite	endp
+
+diskread	proc	near		; disk-video read routine
+	push	es			; save registers around the call
+	push	si			; save registers around the call
+	push	di			; save registers around the call
+	push	dx			; 'y' parameter
+	push	cx			; 'x' parameter
+	call	far ptr readdisk	; let the external routine do it
+	pop	cx			; restore registers
+	pop	dx			; restore registers
+	pop	di			; restore registers
+	pop	si			; restore registers
+	pop	es			; restore registers
+	ret				; we done.
+diskread	endp
+
+diskstart	proc	near		; disk-video start routine
+	push	es			; save registers around the call
+	push	si			; save registers around the call
+	push	di			; save registers around the call
+	call	far ptr startdisk	; let the external routine do it
+	pop	di			; restore registers
+	pop	si			; restore registers
+	pop	es			; restore registers
+	ret				; we done.
+diskstart	endp
+
+diskend		proc	near		; disk-video end routine
+	push	es			; save registers around the call
+	push	si			; save registers around the call
+	push	di			; save registers around the call
+	call	far ptr enddisk		; let the external routine do it
+	pop	di			; restore registers
+	pop	si			; restore registers
+	pop	es			; restore registers
+	ret				; we done.
+diskend		endp
+
+; ***********************************************************************
+;
+; TARGA MODIFIED 1 JUNE 89 - j mclain
+;
+tgawrite 	proc	near		;
+        push	es			;
+        push	si			;
+        push	di			;
+	push	ax			; colors parameter
+	push	dx			; 'y' parameter
+	push	cx			; 'x' parameter
+	call	far ptr WriteTGA	; writeTGA( x, y, color )
+	pop	cx			;
+	pop	dx			;
+	pop	ax			;
+        pop	di			;
+	pop	si			;
+	pop	es			;
+	ret				;
+tgawrite	endp
+
+tgaline 	proc	near		; 
+        push	es			;
+  	push	si			;
+	push	di			;
+	mov	ax,xdots		; pixels on line
+	push	ax			; 
+	mov	ax,rowcount		; line to do it too
+	push	ax			; 
+	push	ds			; far ptr
+	push	si			; line data
+	call	far ptr LineTGA		; lineTGA( ldata, line, cnt )
+	add	sp,8			; stack bias
+	pop	di			;
+	pop	si			;
+	pop	es			;
+	ret
+tgaline	endp
+
+tgaread		proc	near		;
+	push	es			;
+	push	si			;
+	push	di			;
+	push	dx			; 'y' parameter
+	push	cx			; 'x' parameter
+	call	far ptr ReadTGA		; readTGA( x, y )
+	pop	cx			;
+	pop	dx			;
+	pop	di			;
+	pop	si			;
+	pop	es			;
+	ret				;
+tgaread	endp
+
+tgastart	proc	near		;
+	push	es			;
+	push	si			;
+	push	di			;
+	mov	ax,ydots
+	push	ax
+	mov	ax,xdots
+	push	ax
+	call	far ptr StartTGA	; startTGA( xdim, ydim )
+	add	sp,4			; stack bias, pointer to dacbox
+	pop	di			;
+	pop	si			;
+	pop	es			;
+	ret				;
+tgastart	endp
+
+tgaend		proc	near		;
+	push	es			;
+	push	si			;
+	push	di			;
+	call	far ptr EndTGA		; endTGA( void )
+	pop	di			;
+	pop	si			;
+	pop	es			;
+	mov	tgaflag,0		; 
+	ret				;
+tgaend		endp
+
+f85start    proc    near
+
+	call   far ptr open8514
+	ret
+
+f85start    endp
+
+
+f85end	proc    near
+
+	call   far ptr close8514
+	ret
+
+f85end	endp
+
+
+f85write    proc    near
+
+	call   far ptr fr85wdot
+	ret
+
+f85write    endp
+
+f85read proc    near
+
+	call   far ptr fr85rdot
+	ret
+
+f85read endp
+
 
 ; **************** internal Write-a-line routines ***********************
 ;
@@ -687,11 +1152,25 @@ tweak256line2:
         ret
 tweak256line	endp
 
+f85line proc    near
+
+	mov ax, 0           ;a line is a box one line high
+	mov bx, rowcount
+	mov cx, xdots
+	mov dx, 1
+	
+	call    fr85wbox        ;put out the box
+	ret
+
+f85line endp
+
+
 ; ******************** Function videocleanup() **************************
 
 ;	Called at the end of any assembler video read/writes to make
 ;	the world safe for 'printf()'s.
 ;	Currently, only ega/vga needs cleanup work, but who knows?
+;
 
 videocleanup	proc	near
 	mov	ax,dotwrite		; check: were we in EGA/VGA mode?
@@ -737,6 +1216,11 @@ solidbox2:
 	jbe	short whitebox		;  nope.  use what we can get.
 	mov	al,15			; force a white zoom box
 whitebox:
+; TARGA 3 June 89 j mclain
+					;
+	mov	xorTARGA,1		; faster to flag xorTARGA rather
+					; than check if TARGA is runnin
+notTGAbox:
 	mov	boxcolor,al		; save the box color
 
 	push	es			; save the original ES value
@@ -830,13 +1314,22 @@ drawnewbox:
 	mov	cx,boxx[bx]		; get the (new) point location
 	mov	dx,boxy[bx]		;  ...
 	shr	bx,1			; switch back to character counter
-	push	bx			; save the counter
 	mov	al,boxcolor		; set the (new) box color
+	cmp	colors,2		; uhh, is this a B&W screen?
+	jne	drawnewnotbw		;  nope.  proceed
+	mov	al,1			; XOR the old color
+	sub	al,boxvalues[bx]	;  for visibility
+drawnewnotbw:
+	push	bx			; save the counter
 	call	dotwrite		; adjust the dot.
 	pop	bx			; restore the counter
 	dec	bx			; are we done yet?
 	jns	drawnewbox		;  nope.  try again.
 
+; TARGA 3 June 89 j mclain
+					;
+	mov	xorTARGA,0		; in case of TARGA, no more xor
+					;			 
 endofdrawbox:
 	call	videocleanup		; perform any video cleanup required
 	pop	es			; restore ES register
@@ -857,6 +1350,24 @@ drawbox	endp
 
 setvideomode	proc	uses di si es,argax:word,argbx:word,argcx:word,argdx:word
 
+	cmp	diskflag,1		; say, was the last video disk-video?
+	jne	nodiskvideo		;  nope.
+	call	diskend			; yup.  end the disk-video mode
+	mov	diskflag,0		; set flag: no disk-video
+	jmp	short notarga
+nodiskvideo:
+	cmp	tgaflag,1		; TARGA MODIFIED 2 June 89 j mclain
+	jne	notarga
+	call	tgaend
+	mov	tgaflag,0		; set flag: targa cleaned up
+notarga:
+	cmp	f85flag, 1		; was the last video 8514?
+	jne	no8514			; nope.
+	call    f85end
+	mov	f85flag, 0
+no8514:
+
+
 	mov	ax,argax		; load up for the interrupt call
 	mov	bx,argbx		;  ...
 	mov	cx,argcx		;  ...
@@ -870,53 +1381,106 @@ setvideomode	proc	uses di si es,argax:word,argbx:word,argcx:word,argdx:word
 	call	setvideo		; call the internal routine first
 					; prepare special video-mode speedups
 	mov	oktoprint,1		; say it's OK to use printf()
-	cmp	dotmode,3		; MCGA mode?
-	je	short mcgamode		; yup.
-	cmp	dotmode,2		; EGA/VGA mode?
-	je	short vgamode		; yup.
-	cmp	dotmode,4		; Super-VGA ...x256 color mode?
-	je	short super256mode	; yup.
-	cmp	dotmode,5		; Super-VGA ...x256 color mode?
-	je	short super256mode	; yup.
-	cmp	dotmode,6		; Super-VGA ...x256 color mode?
-	je	short super256mode	; yup.
-	cmp	dotmode,7		; Tweaked-VGA ...x256 color mode?
-	je	short tweak256mode	; yup
-	cmp	dotmode,8		; Tweaked-Super-VGA...x256 color mode?
-	je	short tweak400mode	; yup
+	mov	bx,dotmode		; set up for a video table jump
+	cmp	bx,20			; are we within the range of dotmodes?
+	jbe	videomodesetup		; yup.  all is OK
+	mov	bx,0			; nope.  use dullnormalmode
+videomodesetup:
+	shl	bx,1			; switch to a word offset
+	mov	bx,cs:videomodetable[bx]	; get the next step
+	jmp	bx			; and go there
+videomodetable 	dw	offset dullnormalmode	; mode 0
+	dw	offset dullnormalmode	; mode 1
+	dw	offset vgamode		; mode 2
+	dw	offset mcgamode		; mode 3
+	dw	offset super256mode	; mode 4
+	dw	offset super256mode	; mode 5
+	dw	offset super256mode	; mode 6
+	dw	offset tweak256mode	; mode 7
+	dw	offset tweak400mode	; mode 8
+	dw	offset targaMode	; mode 9 
+	dw	offset dullnormalmode	; mode 10
+	dw	offset diskmode		; mode 11
+	dw	offset f8514mode	; mode 12
+	dw	offset cgacolor		; mode 13
+	dw	offset dullnormalmode	; mode 14
+	dw	offset super256mode	; mode 15
+	dw	offset super256mode	; mode 16
+	dw	offset super256mode	; mode 17
+	dw	offset dullnormalmode	; mode 18
+	dw	offset dullnormalmode	; mode 19
+	dw	offset dullnormalmode	; mode 20
+
 dullnormalmode:
 	mov	ax,offset normalwrite	; set up the BIOS write-a-dot routine
 	mov	bx,offset normalread	; set up the BIOS read-a-dot  routine
 	mov	cx,offset normaline 	; set up the normal linewrite routine
-	jmp	short videomode		; return to common code
+	jmp	videomode		; return to common code
 mcgamode:
 	mov	ax,offset mcgawrite	; set up MCGA write-a-dot routine
 	mov	bx,offset mcgaread	; set up MCGA read-a-dot  routine
 	mov	cx,offset mcgaline 	; set up the MCGA linewrite routine
-	jmp	short videomode		; return to common code
-super256mode:
-	mov	ax,offset super256write	; set up superVGA write-a-dot routine
-	mov	bx,offset super256read	; set up superVGA read-a-dot  routine
-	mov	cx,offset super256line 	; set up the " linewrite routine
-	jmp	short videomode		; return to common code
-tweak256mode:
-	mov	oktoprint,0		; NOT OK to printf() in this mode
-	mov	ax,offset tweak256write	; set up tweaked-256 write-a-dot
-	mov	bx,offset tweak256read	; set up tweaked-256 read-a-dot
-	mov	cx,offset tweak256line 	; set up the normal linewrite routine
-	jmp	short videomode		; return to common code
-tweak400mode:
-	mov	oktoprint,0		; NOT OK to printf() in this mode
-	mov	ax,offset tweak400write	; set up tweaked-400 write-a-dot
-	mov	bx,offset tweak400read	; set up tweaked-400 read-a-dot
-	mov	cx,offset normaline 	; set up the normal linewrite routine
-	jmp	short videomode		; return to common code
+	jmp	videomode		; return to common code
 egamode:
 vgamode:
 	mov	ax,offset vgawrite	; set up EGA/VGA write-a-dot routine.
 	mov	bx,offset vgaread	; set up EGA/VGA read-a-dot  routine
 	mov	cx,offset vgaline 	; set up the EGA/VGA linewrite routine
-	jmp	short videomode		; return to common code
+	jmp	videomode		; return to common code
+super256mode:
+	mov	ax,offset super256write	; set up superVGA write-a-dot routine
+	mov	bx,offset super256read	; set up superVGA read-a-dot  routine
+	mov	cx,offset super256line 	; set up the " linewrite routine
+	jmp	videomode		; return to common code
+tweak256mode:
+	mov	oktoprint,0		; NOT OK to printf() in this mode
+	mov	ax,offset tweak256write	; set up tweaked-256 write-a-dot
+	mov	bx,offset tweak256read	; set up tweaked-256 read-a-dot
+	mov	cx,offset tweak256line 	; set up the normal linewrite routine
+	jmp	videomode		; return to common code
+tweak400mode:
+	mov	oktoprint,0		; NOT OK to printf() in this mode
+	mov	ax,offset tweak400write	; set up tweaked-400 write-a-dot
+	mov	bx,offset tweak400read	; set up tweaked-400 read-a-dot
+	mov	cx,offset normaline 	; set up the normal linewrite routine
+	jmp	videomode		; return to common code
+cgacolor:
+	mov	ax,offset cgawrite	; set up CGA write-a-dot
+	mov	bx,offset cgaread	; set up CGA read-a-dot
+	mov	cx,offset normaline 	; set up the normal linewrite routine
+	jmp	videomode		; return to common code
+diskmode:
+	call	diskstart		; start up the disk routines
+	mov	ax,offset diskwrite	; set up disk-vid write-a-dot routine
+	mov	bx,offset diskread	; set up disk-vid read-a-dot routine
+	mov	cx,offset normaline 	; set up the normal linewrite routine
+	mov	diskflag,1		; flag "disk-end" needed.
+	jmp	videomode		; return to common code
+targaMode:				; TARGA MODIFIED 2 June 89 - j mclain
+	call	tgastart		; 
+	mov	ax,offset tgawrite	; 
+	mov	bx,offset tgaread	; 
+;	mov	cx,offset tgaline 	; 
+	mov	cx,offset normaline 	; set up the normal linewrite routine
+	mov	tgaflag,1		; 
+	jmp	videomode		; return to common code
+f8514Mode:                     ; 8514 modes
+       cmp     videodx, 1      ; requiring dx=1 for turn on allows
+       jne     not8514on       ; setvideomode(3,0,0,0) to display text
+       call    open8514        ; start the 8514a
+       jnc     f85ok
+       mov     dotmode, 0      ; if problem starting use normal mode
+not8514on:
+       jmp     dullnormalmode
+f85ok:
+	mov	ax,offset f85write  	; 
+	mov	bx,offset f85read   	; 
+	mov	cx,offset f85line   	; 
+	mov	f85flag,1       	; 
+	mov	oktoprint,0     	; NOT OK to printf() in this mode
+	jmp	videomode       	; return to common code
+
+
 videomode:
 	mov	dotwrite,ax		; save the results
 	mov	dotread,bx		;  ...
@@ -939,8 +1503,6 @@ setvideoslow:
 
 	call	far ptr loaddac		; load the video dac, if we can
 
-	call	initasmvars		; finally, check out the other hardware
-
 	ret
 setvideomode	endp
 
@@ -954,7 +1516,7 @@ setvideo	proc	near		; local set-video more
 	je	short setvideoregs	;  ...
 
 setvideobios:
-	or	al,andvideo		; this may preserve the video
+	call	maybeor			; maybe or AL or (for Video-7s) BL
 	push	bp			; some BIOS's don't save this
 	int	10h			; do it via the BIOS.
 	pop	bp			; restore the saved register
@@ -967,27 +1529,29 @@ setvideoregs:				; assume genuine VGA and program regs
 	mov	si,word ptr tweaks[si]	;  ...
 
 	mov	ax,0012h		; invoke video mode 12h
-	or	al,andvideo		; this may preserve the video
+	call	maybeor			; maybe or AL or (for Video-7s) BL
 	int	10h			; do it.
 
         cmp	dx,8			; tweak256 mode?
         jne	not256			; if not, start tweak256-specific code
 
 	mov	ax,0013h		; invoke video mode 13h
-	or	al,andvideo		; this may preserve the video
+	call	maybeor			; maybe or AL or (for Video-7s) BL
 	int	10h			; previous mode 12h cleared video
 					;   memory - dirty but effective
 	mov	dx,3c4h			; alter sequencer registers
 	mov	ax,0604h		; disable chain 4
 	out	dx,ax
-        
+
+	jmp	short is256		; forget the ROM characters
+
 not256:	mov	ax,1124h		; load ROM 8*16 characters
 	mov	bx,0
 	mov	dh,0
 	mov	dl,byte ptr [si+1]	; number of rows on the screen
 	int	10h
 
-	push	es			; save ES for a tad
+is256:	push	es			; save ES for a tad
 	mov	ax,40h			; Video BIOS DATA area
 	mov	es,ax			;  ...
 
@@ -1007,6 +1571,7 @@ vrdly2:	in	al,dx			; now loop until it's on!
 	test	al,8			;   ...
 	jz	vrdly2			;   ...
 
+	cli				; turn off all interrupts
 	mov	dx,03c4h		; Sequencer Synchronous reset
 	mov	ax,0100h		; set sequencer reset
 	out	dx,ax
@@ -1032,6 +1597,7 @@ crtcloop:
 	out	dx,ax
 	inc	bx			; ready for the next register
 	loop	crtcloop		; (if there is a next register)
+	sti				; restore interrupts
 
 	pop	es			; restore ES
 
@@ -1039,12 +1605,22 @@ setvideoreturn:
 
 	mov	current_bank,0ffh	; stuff impossible value into cur-bank
 
-	mov	rowcount,0		; clear row-counter for decoder
-
-	mov	andvideo,0		; reset the video to clobber memory
+	mov	orvideo,0		; reset the video to clobber memory
 
 	ret
 setvideo	endp
+
+maybeor	proc	near			; or AL or BL for mon-destr switch
+	cmp	ah,6fh			; video-7 special mode?
+	je	maybeor1		;  yup.  do this one different
+	or	al,orvideo		; normal non-destructive switch
+	jmp	short maybeor2		; we done.
+maybeor1:
+	or	bl,orvideo		; video-7 switch
+maybeor2:
+	ret				; we done.
+maybeor	endp
+
 
 ; ********* Functions setfortext() and setforgraphics() ************
 
@@ -1053,6 +1629,14 @@ setvideo	endp
 ;	setclear() clears the screen after setfortext() [which may be wierd]
 
 setfortext	proc	uses es si di
+	cmp	dotmode, 12		;check for 8514
+	jne	tnot8514
+	cmp	f85flag, 0	 	;check 8514 active flag
+	je	dosettext
+	call    close8514		;close adapter if not
+	mov	f85flag, 0
+	jmp	short dosettext
+tnot8514:
 	cmp	videoax,0		; check for CGA modes
 	je	setfortextnocga		;  not this one
 	cmp	videoax,7		;  ...
@@ -1069,6 +1653,7 @@ setfortextcga:
 	mov	cx,8192			; save this many words
 	rep	movsw			;  save them.
 	pop	ds			; restore DS
+dosettext:
 	mov	ax,3			; set up the text call
 	mov	bx,0			;  ...
 	mov	cx,0			;  ...
@@ -1078,7 +1663,7 @@ setfortextcga:
 setfortextnocga:	
 	mov	ax,0			; disable the video (I think)
 	call	disablevideo		;  ...
-	mov	andvideo,80h		; set the video to preserve memory
+	mov	orvideo,80h		; set the video to preserve memory
 	mov	ax,6			; set up the text call
 	mov	bx,0			;  ...
 	mov	cx,0			;  ...
@@ -1111,6 +1696,15 @@ setfortextreturn:
 setfortext	endp
 
 setforgraphics	proc	uses es si di
+	cmp	 dotmode, 12		;check for 8514
+	jne	gnot8514
+	cmp	f85flag, 0
+	jne	f85isgraphics
+	call    reopen8514
+	mov	f85flag, 1
+f85isgraphics:
+	jmp	setforgraphicsreturn
+gnot8514:
 	cmp	videoax,0		; check for CGA modes
 	je	setforgraphicsnocga	;  not this one
 	cmp	videoax,7		;  ...
@@ -1147,7 +1741,7 @@ setforgraphicsnocga:
 	mov	cx,8192			; restore this many words
 	rep	movsw			; restore them.
 	pop	ds			; restore DS
-	mov	andvideo,80h		; set the video to preserve memory
+	mov	orvideo,80h		; set the video to preserve memory
 	mov	ax,videoax		; set up the video call
 	mov	bx,videobx		;  ...
 	mov	cx,videocx		;  ...
@@ -1212,6 +1806,22 @@ home	proc
 	pop	bp			; restore the saved register
 	ret
 home	endp
+
+; **************** Function movecursor(row, col)  **********************
+
+;	Move the cursor (called before printfs)
+
+movecursor	proc	cursorrow:word, cursorcol:word
+	mov	ax,0200h		; force the cursor
+	mov	bx,0			; in page 0
+	mov	cx,cursorrow		; put this in a register temporarily
+	mov	dx,cursorcol		; move to this column
+	mov	dh,cl			; move to this row
+	push	bp			; some BIOS's don't save this
+	int	10h			; do it.
+	pop	bp			; restore the saved register
+	ret
+movecursor	endp
 
 ; **************** Function clscr() ********************************
 
@@ -1293,14 +1903,159 @@ putblock	endp
 ;	Called by the GIF decoder
 
 out_line	proc	uses di si es, ycolor:word
+	mov	ax,rowcount		; sanity check: don't proceed
+	cmp	ax,ydots		; beyond the end of the screen
+	ja	out_lineret		;  ...
 	mov	ax,0a000h		; EGA, VGA, MCGA starts here
 	mov	es,ax			; save it here during this routine
 	mov	si,offset ycolor	; get the color for dot 'x'
         call    linewrite		; mode-specific linewrite routine
         inc	rowcount		; next row
+out_lineret:
         xor	ax,ax			; return 0
 	ret
 out_line	endp
+
+
+; ****************  EGA Palette <==> VGA DAC Conversion Routines **********
+
+;	paltodac	converts a 16-palette EGA value to a 256-color VGA
+;			value (duplicated 16 times)
+;	dactopal	converts the first 16 VGA values to a 16-palette
+;			EGA value
+
+;	local routines called with register values
+;		BH = VGA Red Color	xxRRRRRR
+;		BL = VGA Green Color	xxGGGGGG
+;		CH = VGA Blue Color	xxBBBBBB
+;		CL = EGA Palette	xxrgbRGB
+;
+;	palettetodac	converts CL to BH/BL/CH
+;	dactopalette	converte BH/BL/CH to CL
+
+; *************************************************************************
+
+palettetodac	proc	near
+	mov	bx,0			; initialize RGB values to 0
+	mov	ch,0			;  ...
+	test	cl,20h			; low-red high?
+	jz	palettetodac1		;  nope
+	or	bh,10h			; set it
+palettetodac1:
+	test	cl,10h			; low-green high?
+	jz	palettetodac2		;  nope
+	or	bl,10h			; set it
+palettetodac2:
+	test	cl,08h			; low-blue high?
+	jz	palettetodac3		;  nope
+	or	ch,10h			; set it
+palettetodac3:
+	test	cl,04h			; high-red high?
+	jz	palettetodac4		;  nope
+	or	bh,20h			; set it
+palettetodac4:
+	test	cl,02h			; high-green high?
+	jz	palettetodac5		;  nope
+	or	bl,20h			; set it
+palettetodac5:
+	test	cl,01h			; high-blue high?
+	jz	palettetodac6		;  nope
+	or	ch,20h			; set it
+palettetodac6:
+	ret
+palettetodac	endp
+
+dactopalette	proc	near
+	mov	cl,0			; initialize RGB values to 0
+	test	bh,10h			; low-red high?
+	jz	dactopalette1		;  nope
+	or	cl,20h			; set it
+dactopalette1:
+	test	bl,10h			; low-green high?
+	jz	dactopalette2		;  nope
+	or	cl,10h			; set it
+dactopalette2:
+	test	ch,10h			; low-blue high?
+	jz	dactopalette3		;  nope
+	or	cl,08h			; set it
+dactopalette3:
+	test	bh,20h			; high-red high?
+	jz	dactopalette4		;  nope
+	or	cl,04h			; set it
+dactopalette4:
+	test	bl,20h			; high-green high?
+	jz	dactopalette5		;  nope
+	or	cl,02h			; set it
+dactopalette5:
+	test	ch,20h			; high-blue high?
+	jz	dactopalette6		;  nope
+	or	cl,01h			; set it
+dactopalette6:
+	ret
+dactopalette	endp
+
+paltodac	proc	uses es si di
+	mov	si,0			; initialize the loop values
+	mov	di,0
+paltodacloop:
+	mov	cl,palettega[si]	; load up a single palette register
+	call	palettetodac		; convert it to VGA colors
+	mov	dacbox+0[di],bh		; save the red value
+	mov	dacbox+1[di],bl		;  and the green value
+	mov	dacbox+2[di],ch		;  and the blue value
+	inc	si			; bump up the registers
+	add	di,3			;  ...
+	cmp	si,16			; more to go?
+	jne	paltodacloop		;  yup.
+	push	ds			; set ES to DS temporarily
+	pop	es			;  ...
+	mov	ax,15			; do this 15 times to get to 256
+	mov	di,offset dacbox+48	; set up the first destination
+paltodacloop2:
+	mov	cx,24			; copy another block of 16 registers
+	mov	si,offset dacbox	; set up for the copy
+	rep	movsw			;  do it
+	dec	ax			; need to do another block?
+	jnz	paltodacloop2		;  yup.  do it.
+	ret				;  we done.
+paltodac	endp
+
+dactopal	proc	uses es si di
+	mov	si,0			; initialize the loop values
+	mov	di,0
+dactopalloop:
+	mov	bh,dacbox+0[di]		; load up the VGA red value
+	mov	bl,dacbox+1[di]		;  and the green value
+	mov	ch,dacbox+2[di]		;  and the blue value
+	call	dactopalette		; convert it to an EGA palette
+	mov	palettega[si],cl	; save as a single palette register
+	inc	si			; bump up the registers
+	add	di,3			;  ...
+	cmp	si,16			; more to go?
+	jne	dactopalloop		;  yup.
+	mov	cl,palettega		; copy palette 0
+	mov	palettega+16,cl		;  to the overscan register
+	ret				;  we done.
+dactopal	endp
+
+
+; *********************** Function storedac() ****************************
+
+;	Function to Store the dacbox[][] array into VGA,
+;	called from loaddac() durring initialization.
+
+storedac	proc
+	push	es			; need ES == DS temporarily
+	push	ds			;  ...
+	pop	es			;  ...
+	mov	ax,1012h		; get the old DAC values
+	mov	bx,0			;  (assuming, of course, they exist)
+	mov	cx,256			;  ...
+	mov	dx,offset dacbox	;  ...
+	int	10h			; do it.
+	pop	es			;  ...
+	ret
+storedac endp
 
 ; *********************** Function loaddac() ****************************
 
@@ -1308,16 +2063,52 @@ out_line	endp
 ;	(sets dacbox[0][0] to an invalid '255' if it can't)
 
 loaddac	proc
+	mov	reallyega,0		; set flag: not an EGA posing as a VGA
+	cmp	dotmode,9		; TARGA 3 June 89 j mclain
+	je	loaddacdone
+	cmp	f85flag, 0
+	jne	loaddacdone
+	cmp	loadPalette,1		; TARGA/VGA 3 June 89 j mclain
+	jne	normalLoadDac
+	call	storedac
+	jmp	short loaddacdone
+normalLoadDac:
+	mov	dacbox,255		; a flag value to detect invalid DAC
+	cmp	debugflag,16		; pretend we're not a VGA?
+	je	loaddacdebug		;  yup.
 	push	es			; need ES == DS temporarily
 	push	ds			;  ...
 	pop	es			;  ...
-	mov	dacbox,255		; a flag value to detect invalid DAC
 	mov	ax,1017h		; get the old DAC values
 	mov	bx,0			;  (assuming, of course, they exist)
 	mov	cx,256			;  ...
 	mov	dx,offset dacbox	;  ...
+	push	bp			; some older BIOSes don't save this
 	int	10h			; do it.
+	pop	bp			; restore registers
 	pop	es			;  ...
+loaddacdebug:
+	cmp	dacbox,255		; did it work?  do we have a VGA?
+	jne	loaddacdone		;  yup.
+	cmp	colors,16		; are we using 16 or more colors?
+	jb	loaddacdone		;  nope.  forget it.
+	cmp	ydots,350		; 640x350 range?
+	jb	loaddacdone		;  nope.  forget it.
+	mov	bx,offset palettega	; make up a dummy palette
+	mov	cx,3800h		; start with color 0 == black
+loaddacega1:				; and        color 8 == low-white
+	mov	0[bx],cl		; save one color
+	mov	8[bx],ch		; and another color
+	inc	bx			; bump up the DAC
+	add	cx,0101h		; and the colors
+	cmp	cl,8			; finished 8 colors?
+	jne	loaddacega1		;  nope.  get more.
+	mov	reallyega,1		; note that this is really an EGA
+	call	far ptr paltodac	; "convert" it to a VGA DAC
+	mov	daclearn,1		; bypass learn mode
+	mov	ax,cyclelimit		;  and spin as fast as he wants
+	mov	daccount,ax		;  ...
+loaddacdone:
 	ret
 loaddac	endp
 
@@ -1327,6 +2118,8 @@ loaddac	endp
 ;	in "rstep" increments - or, if "direction" is 0, just replace it.
 
 spindac	proc	uses di si es, direction:word, rstep:word
+	cmp	dotmode,9		; TARGA 3 June 89 j mclain
+	je	spinbailout
 	cmp	dacbox,255		; do we have DAC registers to spin?
 	je	spinbailout		;  nope.  bail out.
 	cmp	colors,16		; at least 16 colors?
@@ -1371,6 +2164,11 @@ newDAC:
 	pop	cx			; restore the loop counter
 	loop	stepDAC			; and loop until done.
 
+	cmp	f85flag, 0		; if 8514a then update pallette
+	je	spindoit
+	jmp	spin8514
+
+spindoit:
 	mov	bx,0			;  set up to update the DAC
 	mov	dacnorm,0		;  indicate no overflow
 dacupdate:
@@ -1389,7 +2187,9 @@ retrace1:
 retrace2:
 	in	al,dx			; wait for no retrace
 	and	al,8			; this bit is high during a retrace
-	jz	retrace2		;  so loop until it goes low
+	jz	retrace2		;  so loop until it goes high
+	cmp	reallyega,1		; is this really an EGA?
+	je	spinega			;  yup.  spin it that way.
 	cmp	cpu,88			; are we on a (yuck, ugh) 8088/8086?
 	jle	spinbios		;  yup. go through the BIOS
 .186
@@ -1417,6 +2217,18 @@ spinbios:
 	add	dx,bx			;  ...
 	mov	ax,1012h		; update the DAC
 	int	10h			; do it.
+	jmp	spindone		; jump to common code
+spinega:
+	cmp	bx,0			; skip this if not the first time thru
+	jne	spindone		;  ...
+	push	bx			; save some registers
+	push	cx			;  aroud the call
+	call	far ptr dactopal	; convert the VGA DAC to an EGA palette
+	pop	cx			; restore the registers
+	pop	bx			;  from prior to the call
+	mov	ax,1002h		; update the EGA palette
+	mov	dx,offset palettega	;  ...
+	int	10h			; do it.
 spindone:
 	cmp	daclearn,0		; are we still in learn mode?
 	jne	nolearn			;  nope.
@@ -1440,6 +2252,9 @@ nolearn:
 	cmp	bx,256			; more to go?
 	jge	spindacreturn		;  nope.  we done.
 	jmp	dacupdate		;  yup.  do it.
+
+spin8514:
+	call    w8514pal
 
 spindacreturn:
 	ret
@@ -1504,6 +2319,158 @@ cmpend:
 	ret				; we done.
 cmpextra	endp
 
+; =======================================================
+;
+;	quick-and-dirty (no error/overflow checks performed)
+;	32-bit integer multiply routine with an 'n'-bit shift.
+;
+;	long x, y, z, multiply();
+;	int n;
+;
+;	z = multiply(x,y,n)
+;
+;	requires the presence of an external variable, 'cpu'.
+;		'cpu' == 386 if a 386 is present.
+
+.MODEL	medium,c
+
+.8086
+
+.DATA
+
+temp	dw	4 dup(0)		; temporary 64-bit result goes here
+sign	db	0			; sign flag goes here
+
+.CODE
+
+multiply	proc	uses di si es, x:dword, y:dword, n:word
+
+	cmp	cpu,386			; go-fast time?
+	jne	slowmultiply		; no.  yawn...
+
+.386					; 386-specific code starts here
+
+	mov	eax,x			; load X into EAX
+	imul	y			; do the multiply
+	mov	cx,n			; set up the shift
+	cmp	cx,32			; ugly klooge:  check for 32-bit shift
+	jb	short fastm1		;  < 32 bits:  no problem
+	mov	eax,edx			;  >= 32 bits:  manual shift
+	mov	edx,0			;  ...
+	sub	cx,32			;  ...
+fastm1:	shrd	eax,edx,cl		; shift down 'n' bits
+	push	eax			; save the 64-bit result
+	pop	ax			; low-order  16 bits
+	pop	dx			; high-order 16 bits
+	jmp	multiplyreturn		; back to common code
+
+.8086					; 386-specific code ends here
+
+slowmultiply:				; (sigh)  time to do it the hard way...
+
+	mov	ax,0
+	mov	temp+4,ax		; first, zero out the (temporary)
+	mov	temp+6,ax		;  result
+
+	les	bx,x			; move X to SI:BX
+	mov	si,es			;  ...
+	les	cx,y			; move Y to DI:CX
+	mov	di,es			;  ...
+
+	mov	sign,0			; clear out the sign flag
+	cmp	si,0			; is X negative?
+	jge	mults1			;  nope
+	not	sign			;  yup.  flip signs
+	not	bx			;   ...
+	not	si			;   ...
+	stc				;   ...
+	adc	bx,ax			;   ...
+	adc	si,ax			;   ...
+mults1:	cmp	di,0			; is DI:CX negative?
+	jge	mults2			;  nope
+	not	sign			;  yup.  flip signs
+	not	cx			;   ...
+	not	di			;   ...
+	stc				;   ...
+	adc	cx,ax			;   ...
+	adc	di,ax			;   ...
+mults2:
+
+	mov	ax,bx			; perform BX x CX
+	mul	cx			;  ...
+	mov	temp,ax			;  results in lowest 32 bits
+	mov	temp+2,dx		;  ...
+
+	mov	ax,bx			; perform BX x DI
+	mul	di			;  ...
+	add	temp+2,ax		;  results in middle 32 bits
+	adc	temp+4,dx		;  ...
+	jnc	mults3			;  carry bit set?
+	inc	word ptr temp+6		;  yup.  overflow
+mults3:
+
+	mov	ax,si			; perform SI * CX
+	mul	cx			;  ...
+	add	temp+2,ax		;  results in middle 32 bits
+	adc	temp+4,dx		;  ...
+	jnc	mults4			;  carry bit set?
+	inc	word ptr temp+6		;  yup.  overflow
+mults4:
+
+	mov	ax,si			; perform SI * DI
+	mul	di			;  ...
+	add	temp+4,ax		; results in highest 32 bits
+	adc	temp+6,dx		;  ...
+
+	mov	cx,n			; set up for the shift loop
+	cmp	cx,24			; shifting by three bytes or more?
+	jl	multc1			;  nope.  check for something else
+	sub	cx,24			; quick-shift 24 bits
+	mov	ax,temp+3		; load up the registers
+	mov	dx,temp+5		;  ...
+	mov	bx,temp+7		;  ...
+	jmp	short multc4		; branch to common code
+multc1:	cmp	cx,16			; shifting by two bytes or more?
+	jl	multc2			;  nope.  check for something else
+	sub	cx,16			; quick-shift 16 bits
+	mov	ax,temp+2		; load up the registers
+	mov	dx,temp+4		;  ...
+	mov	bx,temp+6		;  ...
+	jmp	short multc4		; branch to common code
+multc2:	cmp	cx,8			; shifting by one byte or more?
+	jl	multc3			;  nope.  check for something else
+	sub	cx,8			; quick-shift 8 bits
+	mov	ax,temp+1		; load up the registers
+	mov	dx,temp+3		;  ...
+	mov	bx,temp+5		;  ...
+	jmp	short multc4		; branch to common code
+multc3:	mov	ax,temp			; load up the regs
+	mov	dx,temp+2		;  ...
+	mov	bx,temp+4		;  ...
+multc4:	cmp	cx,0			; done shifting?
+	je	multc5			;  yup.  bail out
+
+multloop:
+	shr	bx,1			; shift down 1 bit, cascading
+	rcr	dx,1			;  ...
+	rcr	ax,1			;  ...
+	loop	multloop		; try the next bit, if any
+multc5:
+
+	cmp	sign,0			; should we negate the result?
+	je	mults5			;  nope.
+	not	ax			;  yup.  flip signs.
+	not	dx			;   ...
+	mov	bx,0			;   ...
+	stc				;   ...
+	adc	ax,bx			;   ...
+	adc	dx,bx			;   ...
+mults5:
+
+multiplyreturn:				; that's all, folks!
+	ret
+multiply	endp
+
 
 ; ****************** Function getakey() *****************************
 ; **************** Function keypressed() ****************************
@@ -1566,6 +2533,20 @@ keypressed5:
 keypressed	endp
 
 getakey	proc
+; TARGA 31 May 89 j mclain
+; when using '.model size,c' with TASM,
+;   TASM 'gifts' us with automatic insertions of:
+;  proc xxxx
+;   -> push bp
+;   -> mov bp,sp
+;    ...
+;   ->pop bp
+;  ret
+;
+; we corrected a situation here where we had a constant 'jz getakey'
+; can we say 'stack overflow'
+;
+getakey0:
 	mov	ax,keybuffer			; keypress may be here
 	mov	keybuffer,0			; if it was, clear it
 	cmp	ax,0				; is a keypress outstanding?
@@ -1575,7 +2556,7 @@ getakey	proc
 	mov	ah,kbd_type			; get the keyboard type
 	or	ah,1				; check if a key is ready
 	int	16h				; now check a key
-	jz	getakey				; so check the mouse again
+	jz	getakey0			; so check the mouse again
 	mov	ah,kbd_type			; get the keyboard type
 	int	16h				; now get a key
 	cmp	al,0e0h				; check: Enhanced Keyboard key?
@@ -1602,6 +2583,105 @@ getakey4:
 	ret
 getakey	endp
 
+; ****************** Function buzzer(int buzzertype) *******************
+;
+;	Sound a tone based on the value of the parameter
+;
+;	0 = normal completion of task
+;	1 = interrupted task
+;	2 = error contition
+
+; ***********************************************************************
+
+buzzer	proc	uses si, buzzertype:word
+	cmp	sound,0			; is the sound supressed?
+	je	buzzerreturn		;  yup.  bail out.
+	mov	si, offset buzzer0	; normal completion frequency
+	cmp	buzzertype,0		; normal completion?
+	je	buzzerdoit		; do it
+	mov	si,offset buzzer1	; interrupted task frequency
+	cmp	buzzertype,1		; interrupted task?
+	je	buzzerdoit		; do it
+	mov	si,offset buzzer2	; error condition frequency
+buzzerdoit:
+	mov	ax,0[si]		; get the (next) frequency
+	mov	bx,2[si]		; get the (next) delay
+	add	si,4			; get ready for the next tone
+	cmp	bx,0			; are we done?
+	je	buzzerreturn		;  yup.
+	push	bx			; put delay time on the stack
+	push	ax			; put tone value on the stack
+	call	far ptr tone		; do it
+	pop	ax			; restore stack
+	pop	bx			; restore stack
+	jmp	short buzzerdoit	; get the next tone
+buzzerreturn:
+	ret				; we done
+buzzer	endp
+
+; ***************** Function delay(int delaytime) ************************
+;
+;	performs a delay loop for 'delaytime' milliseconds
+;
+; ************************************************************************
+
+delayamillisecond	proc	near	; internal delay-a-millisecond code
+	mov	bx,delaycount		; set up to burn another millisecond
+delayamill1:
+	mov	cx,delayloop		; start up the counter
+delayamill2:				;
+	loop	delayamill2		; burn up some time
+	dec	bx			; have we burned up a millisecond?
+	jnz	delayamill1		;  nope.  try again.
+	ret				; we done
+delayamillisecond	endp
+
+delay	proc	uses es, delaytime:word	; delay loop (arg in milliseconds)
+	mov	ax,delaytime		; get the number of milliseconds
+	cmp	ax,0			; any delay time at all?
+	je	delayreturn		;  nope.
+delayloop1:
+	call	delayamillisecond	; burn up a millisecond of time
+	dec	ax			; have we burned up enough m-seconds?
+	jnz	delayloop1		;  nope.  try again.
+delayreturn:
+	ret				; we done.
+delay	endp
+
+; ************** Function tone(int frequency,int delaytime) **************
+;
+;	buzzes the speaker with this frequency for this amount of time
+;
+; ************************************************************************
+
+tone	proc	uses es, tonefrequency:word, tonedelay:word
+	mov	al,0b6h			; latch to channel 2
+	out	43h,al			;  ...
+	cmp	tonefrequency,12h	; was there a frequency?
+	jbe	tonebypass		;  nope.  delay only
+	mov	bx,tonefrequency	; get the frequency value
+	mov	ax,0			; ugly klooge: convert this to the
+	mov	dx,12h			; divisor the 8253 wants to see
+	div	bx			;  ...
+	out	42h,al			; send the low value
+	mov	al,ah			; then the high value
+	out	42h,al			;  ...
+	in	al,61h			; get the current 8255 bits
+	or	al,3			; turn bits 0 and 1 on
+	out	61h,al			;  ...
+tonebypass:
+	mov	ax,tonedelay		; get the delay value
+	push	ax			; set the parameter
+	call	far ptr delay		; and force a delay
+	pop	ax			; restore the parameter
+
+	in	al,61h			; get the current 8255 bits
+	and	al,11111100b		; turn bits 0 and 1 off
+	out	61h,al
+
+	ret				; we done
+tone	endp
+
 
 ; ********************* Mouse Support Code ******************************
 ;
@@ -1611,17 +2691,44 @@ getakey	endp
 ; ***********************************************************************
 
 ; ****************** Function initasmvars() *****************************
-initasmvars proc near
+
+initasmvars	proc	uses es si di
 
 	 cmp	cpu,0			; have we been called yet:
-	 jne	initreturn		;  yup.  no need to be here.
+	 je	initasmvarsgo		;  nope.  proceed.
+	 jmp	initreturn		;  yup.  no need to be here.
 
-	mov	ah,48h			; grab 64K of memory, if we can
-	mov	bx,4096			; (in paragraphs)
-	int	21h			; do it.
-	jc	nomemory		;  oops.  no can do.
-	mov	extraseg,ax		; got it.  save here.
-nomemory:
+initasmvarsgo:
+	mov	ax,ds			; save the data segment
+	mov	_dataseg,ax		;  for the C code
+
+	mov	dx,1			; ask for 64K of far space
+	mov	ax,0			;  ...
+	push	dx			;  ...
+	push	ax			;  ...
+	call	far ptr farmemalloc	; use the assembler routine to do it
+	pop	ax			; restore the stack
+	pop	ax			;  ...
+	mov	extraseg,dx		; save the results here.
+
+	push	es			; save ES for a tad
+	mov	ax,0			; reset ES to BIOS data area
+	mov	es,ax			;  ...
+	mov	dx,es:46ch		; obtain the current timer value
+delaystartuploop:
+	cmp	dx,es:46ch		; has the timer value changed?
+	je	delaystartuploop	;  nope.  check again.
+	mov	dx,es:46ch		; obtain the current timer value again
+	mov	ax,0			; clear the delay counter
+	mov	delaycount,55		; 55 millisecs = 1/18.2 secs
+delaytestloop:
+	call	delayamillisecond	; burn up a (fake) millisecond
+	inc	ax			; indicate another loop has passed
+	cmp	dx,es:46ch		; has the timer value changed?
+	je	delaytestloop		; nope.  burn up some more time.
+	mov	delaycount,ax		; save the results here
+	pop	es			; restore ES again
+
 				       ; first see if a mouse is installed 
          xor	ax,ax                  ; function for mouse check
          int	33h                    ; call mouse driver
@@ -1636,7 +2743,7 @@ nomemory:
 	 and	ah,10h		       ; isolate the Enhanced KBD bit
 	 mov	kbd_type,ah	       ; and save it
 
-	call	cputype			; what kind of CPU do we have here?
+	call	far ptr cputype		; what kind of CPU do we have here?
 	cmp	ax,0			; protected mode of some sort?
 	jge	positive		;  nope.  proceed.
 	neg	ax			;  yup.  flip the sign.
@@ -1647,6 +2754,8 @@ itsa386:
 	jne	nodebug			;  nope.
 	mov	cpu,86			; yup.  use 16-bit emulation.
 nodebug:
+	call far ptr fputype		; what kind of an FPU do we have?
+	mov	fpu,ax			;  save the results
 
 initreturn:
 	 ret                           ; return to caller
@@ -1790,62 +2899,363 @@ mexit:	pop	ax
 	ret			       ; return to caller
 msemvd	endp
 
+;===============================================================
+;
+; CPUTYPE.ASM : C-callable functions cputype() and ndptype() adapted
+; by Lee Daniel Crocker from code appearing in the late PC Tech Journal,
+; August 1987 and November 1987.  PC Tech Journal was a Ziff-Davis
+; Publication.	Code herein is copyrighted and used with permission.
+;
+; The function cputype() returns an integer value based on what kind
+; of CPU it found, as follows:
+;
+;	Value	CPU Type
+;	=====	========
+;	86	8086, 8088, V20, or V30
+;	186	80186 or 80188
+;	286	80286
+;	386	80386 or 80386sx
+;	-286	80286 in protected mode
+;	-386	80386 or 80386sx in protected or 32-bit address mode
+;
+; The function ndptype() returns an integer based on the type of NDP
+; it found, as follows:
+;
+;	Value	NDP Type
+;	=====	========
+;	0	No NDP found
+;	87	8087
+;	287	80287
+;	387	80387
+;
+; No provisions are made for the 80486 CPU/FPU or Weitek FPA chips.
+;
+; Neither function takes any arguments or affects any external storage,
+; so there should be no memory-model dependencies.
 
-; ****************** Function cputype() *****************************
-
-; This program was downloaded from PC Tech Journal's Hotline service
-; (it was originally in their November, 1987 issue), and is used here
-; with their knowledge and permission.
-
-; Function cputype(), for real OR protected mode.  Returns (in AX)
-; the value 86, 186, 286 or 386; negative if protected mode.
-
-
-           .286P                  ;enable protected-mode instr.
-
+.model medium, c
+.286P
 .code
 
-cputype    proc    near
-           push    bp
-           push    sp             ;86/186 will push SP-2,
-           pop     ax             ;286/386 will push SP
-           cmp     ax,sp
-           jz      not86          ;if equal, SP was pushed
-           mov     ax,186         ;is it 86 or 186?
-           mov     cl,32          ;  186 uses count mod 32 = 0;
-           shl     ax,cl          ;  86 shifts 32 so ax = 0
-           jnz     exit           ;non-zero: no shift, so 186
-           mov     ax,86          ;zero: shifted out all bits
-           jmp     short exit
+cputype proc
+	push	bp
 
-not86:     pushf                  ;Test 16 or 32 operand size:
-           mov     ax,sp          ;  pushed 2 or 4 bytes of flags?
-           popf                   ;  restore SP
-           inc     ax             ;  restore AX by 2 bytes
-           inc     ax
-           cmp     ax,sp          ;  did pushf change SP by 2?
-           jnz     is32bit        ;  if not, then 4 bytes of flags
+	push	sp			; 86/186 will push SP-2;
+	pop	ax			; 286/386 will push SP.
+	cmp	ax, sp
+	jz	not86			; If equal, SP was pushed
+	mov	ax, 186
+	mov	cl, 32			;   186 uses count mod 32 = 0;
+	shl	ax, cl			;   86 shifts 32 so ax = 0
+	jnz	exit			; Non-zero: no shift, so 186
+	mov	ax, 86			; Zero: shifted out all bits
+	jmp	short exit
+not86:
+	pushf				; Test 16 or 32 operand size:
+	mov	ax, sp			;   Pushed 2 or 4 bytes of flags?
+	popf
+	inc	ax
+	inc	ax
+	cmp	ax, sp			;   Did pushf change SP by 2?
+	jnz	is32bit 		;   If not, then 4 bytes of flags
+is16bit:
+	sub	sp, 6			; Is it 286 or 386 in 16-bit mode?
+	mov	bp, sp			; Allocate stack space for GDT pointer
+	sgdt	fword ptr [bp]
+	add	sp, 4			; Discard 2 words of GDT pointer
+	pop	ax			; Get third word
+	inc	ah			; 286 stores -1, 386 stores 0 or 1
+	jnz	is386
+is286:
+	mov	ax, 286
+	jmp	short testprot		; Check for protected mode
+is32bit:
+	db	66h			; 16-bit override in 32-bit mode
+is386:
+	mov	ax, 386
+testprot:
+	smsw	cx			; Protected?  Machine status -> CX
+	ror	cx,1			; Protection bit -> carry flag
+	jnc	exit			; Real mode if no carry
+	neg	ax			; Protected:  return neg value
+exit:
+	pop	bp
+	ret
+cputype endp
 
-is16bit:   sub     sp,6           ;Is it 286 or 386 in 16-bit mode?
-           mov     bp,sp          ;allocate stack space for GDT ptr
-           sgdt    fword ptr[bp]  ;(use PWORD PTR for MASM5)
-           add     sp,4           ;discard 2 words of GDT pointer
-           pop     ax             ;get third word
-           inc     ah             ;286 stores -1, 386 0 or 1
-           jnz     is386
-is286:     mov     ax,286         ;set return value
-           jmp     short testprot
+.data
 
-is32bit:   db      66H            ;16-bit override in 32-bit mode
-is386:     mov     ax,386
+control dw	0			; Temp storage for 8087 control
+					;   and status registers
+.code
 
-testprot:  smsw    cx             ;Protected?  Machine status -> CX
-           ror     cx,1           ;protection bit -> carry flag
-           jnc     exit           ;real mode if no carry
-           neg     ax             ;protected:  return neg value
-exit:      pop     bp
-           ret
-cputype    endp
+fputype proc
+	push	bp
 
-           end
+	fninit				; Defaults to 64-bit mantissa
+	mov	byte ptr control+1, 0
+	fnstcw	control 		; Store control word over 0
+;	dw	3ed9h			; (klooge to avoid the MASM \e switch)
+;	dw	offset control		; ((equates to the above 'fnstcw' cmd))
+	mov	ah, byte ptr control+1	; Test contents of byte written
+	cmp	ah, 03h 		; Test for 64-bit precision flags
+	je	gotone			; Got one!  Now let's find which
+	xor	ax, ax
+	jmp	short fexit		; No NDP found
+gotone:
+	and	control, not 0080h	; IEM = 0 (interrupts on)
+	fldcw	control
+	fdisi				; Disable ints; 287/387 will ignore
+	fstcw	control
+	test	control, 0080h
+	jz	not87			; Got 287/387; keep testing
+	mov	ax, 87
+	jmp	short fexit
+not87:
+	finit
+	fld1
+	fldz
+	fdiv				; Divide 1/0 to create infinity
+	fld	st
+	fchs				; Push -infinity on stack
+	fcompp				; Compare +-infinity
+	fstsw	control
+	mov	ax, control
+	sahf
+	jnz	got387			; 387 will compare correctly
+	mov	ax, 287
+	jmp	short fexit
+got387: 				; Only one left (until 487/Weitek
+	mov	ax, 387 		;   test is added)
+fexit:
+	pop	bp
+	ret
+fputype endp
+
+; ************************* Far Segment RAM Support **************************
+;
+;
+;	farptr = (char far *)farmemalloc(long bytestoalloc);
+;	(void)farmemfree(farptr);
+;
+;	alternatives to Microsoft/TurboC routines
+;
+;
+.8086
+
+farmemalloc	proc	uses es, bytestoallocate:dword
+	les	bx,bytestoallocate	; get the # of bytes into DX:BX
+	mov	dx,es			;  ...
+	add	bx,15			; round up to next paragraph boundary
+	adc	dx,0			;  ...
+	shr	dx,1			; convert to paragraphs
+	rcr	bx,1			;  ...
+	shr	dx,1			;  ...
+	rcr	bx,1			;  ...
+	shr	dx,1			;  ...
+	rcr	bx,1			;  ...
+	shr	dx,1			;  ...
+	rcr	bx,1			;  ...
+	cmp	dx,0			; ensure that we don't want > 1MB
+	jne	farmemallocfailed	;  bail out if we do
+	mov	ah,48h			; invoke DOS to allocate memory
+	int	21h			;  ... 
+	jc	farmemallocfailed	; bail out on failure
+	mov	dx,ax			; set up DX:AX as far address
+	mov	ax,0			;  ...
+	jmp	short farmemallocreturn	; and return
+farmemallocfailed:
+	mov	ax,0			; (load up with a failed response)
+	mov	dx,0			;  ...
+farmemallocreturn:
+	ret				; we done.
+farmemalloc	endp
+
+farmemfree	proc	uses es, farptr:dword
+	les	ax,farptr		; get the segment into ES
+	mov	ah,49h			; invoke DOS to free the segment
+	int	21h			;  ...
+	ret
+farmemfree	endp
+
+erasesegment	proc	uses es di si, segaddress:word, segvalue:word
+	mov	ax,segaddress		; load up the segment address
+	mov	es,ax			;  ...
+	mov	di,0			; start at the beginning
+	mov	ax,segvalue		; use this value
+	mov	cx,8000h		; over the entire segment
+	repnz	stosw			; do it
+	ret				; we done
+erasesegment	endp
+
+disable	proc				; disable interrupts
+	cli
+	ret
+disable	endp
+
+enable	proc				; re-enable interrupts
+	sti
+	ret
+enable	endp
+
+; *************** Expanded Memory Manager Support Routines ******************
+;		for use with LIM 3.2 or 4.0 Expanded Memory
+;
+;	farptr = emmquery()	; Query presence of EMM and initialize EMM code
+;				; returns EMM FAR Address, or 0 if no EMM
+;	freepages = emmgetfree(); Returns the number of pages (1 page = 16K)
+;				; not already allocated for something else
+;	handle = emmallocate(pages)	; allocate EMM pages (1 page = 16K)
+;				; returns handle # if OK, or else 0
+;	emmdeallocate(handle)	; return EMM pages to system - MUST BE CALLED
+;				; or allocated EMM memory fills up
+;	emmgetpage(page, handle); get an EMM page (actually, links the EMM
+;				; page to the EMM Segment ADDR, saving any
+;				; prior page in the process)
+;	emmclearpage(page, handle) ; performs an 'emmgetpage()' and then clears
+;				; it out (quickly) to zeroes with a 'REP STOSW'
+
+.MODEL	medium,c
+
+.8086
+
+.DATA
+
+emm_name	db	'EMMXXXX0',0	; device driver for EMM
+emm_segment	dw	0		; EMM page frame segment
+emm_zeroflag	db	0		; klooge flag for handle==0
+
+.CODE
+
+emmquery	proc
+	mov	ah,3dh			; function 3dh = open file
+	mov	al,0			;  read only
+	mov	dx,offset emm_name	; DS:DX = address of name of EMM
+	int	21h			; open it
+	jc	emmqueryfailed		;  oops.  no EMM.
+
+	mov	bx,ax			; BX = handle for EMM
+	mov	ah,44h			; function 44h = IOCTL
+	mov	al,7			; get outo. status
+	mov	cx,0			; CX = # of bytes to read
+	int	21h			; do it.
+	push	ax			; save the IOCTL handle.
+
+	mov	ah,3eh			; function 3H = close
+	int	21h			; BX still cintains handle
+	pop	ax			; restore AX for the status query
+	jc	emmqueryfailed		; huh?  close FAILED?
+
+	or	al,al			; was the status 0?
+	jz	emmqueryfailed		; well then, it wasn't EMM!
+
+	mov	ah,40h			; query EMM: hardware ok?
+	int	67h			; EMM call
+	cmp	ah,0			; is it ok?
+	jne	emmqueryfailed		; if not, fail
+
+	mov	ah,41h			; query EMM: Get Page Frame Segment
+	int	67h			; EMM call
+	cmp	ah,0			; is it ok?
+	jne	emmqueryfailed		; if not, fail
+	mov	emm_segment,bx		; save page frame segment
+	mov	dx,bx			; return page frame address
+	mov	ax,0			;  ...
+	jmp	short	emmqueryreturn	; we done.
+
+emmqueryfailed:
+	mov	ax,0			; return 0 (no EMM found)
+	mov	dx,0			;  ...
+emmqueryreturn:
+	ret				; we done.
+emmquery	endp
+
+emmgetfree	proc			; get # of free EMM pages
+	mov	ah,42h			; EMM call: get total and free pages
+	int	67h			; EMM call
+	cmp	ah,0			; did we suceed?
+	jne	emmgetfreefailed	;  nope.  return 0 free pages
+	mov	ax,bx			; else return # of free pages
+	jmp	emmgetfreereturn	; we done.
+emmgetfreefailed:
+	mov	ax,0			; failure mode
+emmgetfreereturn:
+	ret				; we done
+emmgetfree	endp
+
+emmallocate	proc	pages:word	; allocate EMM pages
+	mov	bx,pages		; BX = # of 16K pages
+	mov	ah,43h			; ask for the memory
+	int	67h			; EMM call
+	mov	emm_zeroflag,0		; clear the klooge flag
+	cmp	ah,0			; did the call work?
+	jne	emmallocatebad		;  nope.
+	mov	ax,dx			; yup.  save the handle here
+	cmp	ax,0			; was the handle a zero?
+	jne	emmallocatereturn	;  yup.  no kloogy fixes
+	mov	emm_zeroflag,1		; oops.  set an internal flag
+	mov	ax,1234			; and make up a dummy handle.
+	jmp	short	emmallocatereturn ; and return
+emmallocatebad:
+	mov	ax,0			; indicate no handle
+emmallocatereturn:
+	ret				; we done.
+emmallocate	endp
+
+emmdeallocate	proc	emm_handle:word	; De-allocate EMM memory
+emmdeallocatestart:
+	mov	dx,emm_handle		; get the EMM handle
+	cmp	dx,1234			; was it our special klooge value?
+	jne	emmdeallocatecontinue	;  nope.  proceed.
+	cmp	emm_zeroflag,1		; was it really a zero handle?
+	jne	emmdeallocatecontinue	;  nope.  proceed.
+	mov	dx,0			; yup.  use zero instead.
+emmdeallocatecontinue:
+	mov	ah,45h			; EMM function: deallocate
+	int	67h			; EMM call
+	cmp	ah,0			; did it work?
+	jne	emmdeallocatestart	; well then, try it again!
+emmdeallocatereturn:
+	ret				; we done
+emmdeallocate	endp
+
+emmgetpage	proc	pagenum:word, emm_handle:word	; get EMM page
+	mov	bx,pagenum		; BX = page numper
+	mov	dx,emm_handle		; DX = EMM handle
+	cmp	dx,1234			; was it our special klooge value?
+	jne	emmgetpagecontinue	;  nope.  proceed.
+	cmp	emm_zeroflag,1		; was it really a zero handle?
+	jne	emmgetpagecontinue	;  nope.  proceed.
+	mov	dx,0			; yup.  use zero instead.
+emmgetpagecontinue:
+	mov	ah,44h			; EMM call: get page
+	mov	al,0			; get it into page 0
+	int	67h			; EMM call
+	ret				; we done
+emmgetpage	endp
+
+emmclearpage	proc	pagenum:word, emm_handle:word	; clear EMM page
+	mov	bx,pagenum		; BX = page numper
+	mov	dx,emm_handle		; DX = EMM handle
+	cmp	dx,1234			; was it our special klooge value?
+	jne	emmclearpagecontinue	;  nope.  proceed.
+	cmp	emm_zeroflag,1		; was it really a zero handle?
+	jne	emmclearpagecontinue	;  nope.  proceed.
+	mov	dx,0			; yup.  use zero instead.
+emmclearpagecontinue:
+	mov	ah,44h			; EMM call: get page
+	mov	al,0			; get it into page 0
+	int	67h			; EMM call
+	mov	ax,emm_segment		; get EMM segment into ES
+	push	es			;  ...
+	mov	es,ax			;  ...
+	mov	di,0			; start at offset 0
+	mov	cx,8192			; for 16K (in words)
+	mov	ax,0			; clear out EMM segment to zeroes
+	rep	stosw			; clear the page
+	pop	es			; restore ES
+	ret				; we done
+emmclearpage	endp
+
+	end
 

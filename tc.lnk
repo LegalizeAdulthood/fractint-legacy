@@ -1,0 +1,32 @@
+\tools\tc\libs\c0m +
+FRACTINT +
+3D +
+CALCFRAC +
+CONFIG +
+DECODER +
+DISKVID +
+ENCODER +
+GIFVIEW +
+HELP +
+LINE3D +
+ROTATE +
+TESTPT +
+CALCMAND +
+FARMSG +
+FARVIDEO +
+GENERAL +
+NEWTON +
+FR8514A +
+CMDFILES +
+PRINTER +
+FMATH +
+FMATH086 +
+F16 +
+TGAVIEW +
+targa loadmap tgasubs
+fractint.exe
+fractint.map /s
+\tools\tc\libs\emu  +
+\tools\tc\libs\mathm +
+\tools\tc\libs\cm
+

@@ -1,3 +1,4 @@
+
 /* DECODE.C - An LZW decoder for GIF
  * Copyright (C) 1987, by Steven A. Bennett
  *
@@ -19,10 +20,18 @@
  == 1) The original #includes were folded into the routine strictly to hold
  ==    down the number of files we were dealing with.
  ==
- == 2) The 'stack', 'suffix', and 'prefix' arrays were changed from static
- ==    to external only so that the assembler program could use the same
- ==    array space for several independent chunks of code.
+ == 2) The 'stack', 'suffix', 'prefix', and 'buf' arrays were changed from
+ ==    static and 'malloc()'ed to external only so that the assembler
+ ==    program could use the same array space for several independent
+ ==    chunks of code.  Also, 'stack' was renamed to 'dstack' for TASM
+ ==    compatibility.
  == 
+ == 3) The 'out_line()' external function has been changed to reference 
+ ==    '*outln()' for flexibility (in particular, 3D transformations)
+ ==
+ == 4) A call to 'keypressed()' has been added after the 'outln()' calls
+ ==    to check for the presenc of a key-press as a bail-out signal
+ ==
  == (Bert Tyler and Timothy Wegner)
  */
 
@@ -55,7 +64,6 @@ typedef int INT;
 #define CREATE_ERROR -4
 
 
-IMPORT TEXT *malloc();                 /* Standard C library allocation */
 
 /* IMPORT INT get_byte()
  *
@@ -79,6 +87,7 @@ IMPORT INT get_byte();
  * equal to the number of pixels passed...
  */
 IMPORT INT out_line();
+INT (*outln)() = out_line;
 
 /* IMPORT INT bad_code_count;
  *
@@ -215,9 +224,10 @@ The arrays are actually declared in the assembler source.
 						Bert Tyler
 */
 
-extern UTINY stack[MAX_CODES + 1];            /* Stack for storing pixels */
+extern UTINY dstack[MAX_CODES + 1];           /* Stack for storing pixels */
 extern UTINY suffix[MAX_CODES + 1];           /* Suffix table */
 extern UWORD prefix[MAX_CODES + 1];           /* Prefix linked list */
+extern UTINY decoderline[2];                  /* decoded line goes here */
 
 /* WORD decoder(linewidth)
  *    WORD linewidth;               * Pixels per line of image *
@@ -225,7 +235,7 @@ extern UWORD prefix[MAX_CODES + 1];           /* Prefix linked list */
  * - This function decodes an LZW image, according to the method used
  * in the GIF spec.  Every *linewidth* "characters" (ie. pixels) decoded
  * will generate a call to out_line(), which is a user specific function
- * to display a line of pixels.  The function gets it's codes from
+ * to display a line of pixels.  The function gets its codes from
  * get_next_code() which is responsible for reading blocks of data and
  * seperating them into the proper size codes.  Finally, get_byte() is
  * the global routine to read the next byte from the GIF file.
@@ -259,14 +269,11 @@ WORD decoder(linewidth)
     */
    oc = fc = 0;
 
-   /* Allocate space for the decode buffer
-    */
-   if ((buf = (UTINY *)malloc(linewidth + 1)) == NULL)
-      return(OUT_OF_MEMORY);
+   buf = decoderline;
 
    /* Set up the stack pointer and decode buffer pointer
     */
-   sp = stack;
+   sp = dstack;
    bufptr = buf;
    bufcnt = linewidth;
 
@@ -284,10 +291,7 @@ WORD decoder(linewidth)
       /* If we had a file error, return without completing the decode
        */
       if (c < 0)
-         {
-         free(buf);
          return(0);
-         }
 
       /* If the code is a clear code, reinitialize all necessary items.
        */
@@ -327,11 +331,12 @@ WORD decoder(linewidth)
          *bufptr++ = c;
          if (--bufcnt == 0)
             {
-            if ((ret = out_line(buf, linewidth)) < 0)
-               {
-               free(buf);
+            if ((ret = (*outln)(buf, linewidth)) < 0)
                return(ret);
-               }
+            if (keypressed()) {
+		buzzer(1);
+		return(-1);
+		}
             bufptr = buf;
             bufcnt = linewidth;
             }
@@ -394,16 +399,17 @@ WORD decoder(linewidth)
           * buffer...  And when the decode buffer is full, write another
           * line...
           */
-         while (sp > stack)
+         while (sp > dstack)
             {
             *bufptr++ = *(--sp);
             if (--bufcnt == 0)
                {
-               if ((ret = out_line(buf, linewidth)) < 0)
-                  {
-                  free(buf);
+               if ((ret = (*outln)(buf, linewidth)) < 0)
                   return(ret);
-                  }
+               if (keypressed()) {
+                  buzzer(1);
+                  return(-1);
+		}
                bufptr = buf;
                bufcnt = linewidth;
                }
@@ -413,7 +419,5 @@ WORD decoder(linewidth)
    ret = 0;
    if (bufcnt != linewidth)
       ret = out_line(buf, (linewidth - bufcnt));
-   free(buf);
    return(ret);
    }
-

@@ -8,16 +8,23 @@
 
 #include "fractint.h"
 
-int getakey(void);
-void spindac(int, int);
-
 extern	int	colors;				/* maximum colors available */
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
 extern int	daclearn, daccount;	/* used by the color-cyclers */
+extern int	reallyega;		/* == 0 if it's really an EGA */
 extern int	extraseg;		/* used by Save-to-GIF routines */
 
 static int paused;				/* rotate-is-paused flag */
+
+
+static unsigned char Red[3]    = {63, 0, 0};	/* for shifted-Fkeys */
+static unsigned char Green[3]  = { 0,63, 0};
+static unsigned char Blue[3]   = { 0, 0,63};
+static unsigned char Black[3]  = { 0, 0, 0};
+static unsigned char White[3]  = {63,63,63};
+static unsigned char Yellow[3] = {63,63, 0};
+static unsigned char Brown[3]  = {31,31, 0};
 
 rotate(direction)			/* rotate-the-palette routine	*/
 int direction;
@@ -30,9 +37,11 @@ int oldhelpmode;
 
 static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 
+FILE *dacfile;
+
 if (dacbox[0][0] == 255 || 		/* ??? no DAC to rotate!	*/
 	colors < 16) {			/* strange things happen in 2x modes */
-		printf("\007");
+		buzzer(2);
 		return;
 		}
 oldhelpmode = helpmode;			/* save the old help mode */
@@ -45,7 +54,7 @@ fkey = 0;				/* no random coloring		*/
 changecolor = -1;			/* no color (rgb) to change	*/
 changedirection = 0;			/* no color derection to change */
 incr = 999;				/* ready to randomize		*/
-srand((unsigned char)time(NULL));	/* randomize things		*/
+srand((unsigned)time(NULL));		/* randomize things		*/
 
 if (direction == 0) {			/* firing up in paused mode?	*/
 	pauserotate();			/* then force a pause		*/
@@ -142,11 +151,15 @@ while (more) {
 		case 1067:
 		case 1068:
 			fkey = kbdchar-1058;
+			if (reallyega) fkey = (fkey+1)>>1; /* limit on EGA */
 			fstep = 1;
 			incr = 999;
 			break;
 		case 13:		/* enter key: randomize all colors */
+		case 1013:		/* also the Numeric-Keypad Enter */
 			fkey = rand()/3277 + 1;
+			if (reallyega)			/* limit on EGAs */
+				fkey = (fkey+1)>>1;
 			fstep = 1;
 			incr = 999;
 			oldstep = step;
@@ -170,6 +183,7 @@ while (more) {
 		case 'B':		/* color changes */
 			if (changecolor    == -1) changecolor = 2;
 			if (changedirection == 0) changedirection = 1;
+			if (reallyega) break;	/* no sense on real EGAs */
 			for (i = 1; i < 256; i++) {
 				dacbox[i][changecolor] += changedirection;
 				if (dacbox[i][changecolor] == 64)
@@ -185,8 +199,98 @@ while (more) {
 		case 'C':
 			pauserotate();	/* pause */
 			break;
-		default:		/* anything else means bail out */
-			more = 0;
+		case 'd':		/* load colors from "default.map" */
+		case 'D':
+			dacfile = fopen("default.map","r");
+			if (dacfile == NULL) {
+				buzzer(2);
+				break;
+				}
+			ValidateLuts(dacfile);	/* read the palette file */
+			fclose(dacfile);
+			fkey = 0;	/* disable random generation */
+			pauserotate();	/* update palette and pause */
+			break;
+		case 'a':		/* load colors from "altern.map" */
+		case 'A':
+			dacfile = fopen("altern.map","r");
+			if (dacfile == NULL) {
+				buzzer(2);
+				break;
+				}
+			ValidateLuts(dacfile);	/* read the palette file */
+			fclose(dacfile);
+			fkey = 0;	/* disable random generation */
+			pauserotate();	/* update palette and pause */
+			break;
+		default:		/* maybe a new palette, maybe bail-out */
+		if (kbdchar < 1084 || kbdchar > 1113) {
+			more = 0;	/* time to bail out */
+			break;
+			}
+			if (reallyega) break;	/* no sense on real EGAs */
+			fkey = 0;		/* disable random generation */
+			if (kbdchar == 1084)
+				set_palette(Black, White);
+			if (kbdchar == 1085)
+				set_palette(Red, Yellow);
+			if (kbdchar == 1086)
+				set_palette(Blue, Green);
+			if (kbdchar == 1087)
+				set_palette(Black, Yellow);
+			if (kbdchar == 1088)
+				set_palette(Black, Red);
+			if (kbdchar == 1089)
+				set_palette(Black, Blue);
+			if (kbdchar == 1090)
+				set_palette(Black, Green);
+			if (kbdchar == 1091)
+				set_palette(Blue, Yellow);
+			if (kbdchar == 1092)
+				set_palette(Red, Green);
+			if (kbdchar == 1093)
+				set_palette(Green, White);
+			if (kbdchar == 1094)
+				set_palette2(Black, White);
+			if (kbdchar == 1095)
+				set_palette2(Red, Yellow);
+			if (kbdchar == 1096)
+				set_palette2(Blue, Green);
+			if (kbdchar == 1097)
+				set_palette2(Black, Yellow);
+			if (kbdchar == 1098)
+				set_palette2(Black, Red);
+			if (kbdchar == 1099)
+				set_palette2(Black, Blue);
+			if (kbdchar == 1100)
+				set_palette2(Black, Green);
+			if (kbdchar == 1101)
+				set_palette2(Blue, Yellow);
+			if (kbdchar == 1102)
+				set_palette2(Red, Green);
+			if (kbdchar == 1103)
+				set_palette2(Green, White);
+			if (kbdchar == 1104)
+				set_palette3(Blue, Green, Red);
+			if (kbdchar == 1105)
+				set_palette3(Blue, Yellow, Red);
+			if (kbdchar == 1106)
+				set_palette3(Red, White, Blue);
+			if (kbdchar == 1107)
+				set_palette3(Red, Yellow, White);
+			if (kbdchar == 1108)
+				set_palette3(Black, Brown, Yellow);
+			if (kbdchar == 1109)
+				set_palette3(Blue, Brown, Green);
+			if (kbdchar == 1110)
+				set_palette3(Blue, Green, Green);
+			if (kbdchar == 1111)
+				set_palette3(Blue, Green, White);
+			if (kbdchar == 1112)
+				set_palette3(Green, Green, White);
+			if (kbdchar == 1113)
+				set_palette3(Red, Blue, White);
+			pauserotate();	/* update palette and pause */
 			break;
 		}
 	}
@@ -218,3 +322,34 @@ else {					/* else set border, wait for a key */
 	}
 }
 
+set_palette(start, finish)
+unsigned char start[3], finish[3];
+{
+   int i, j;
+   for(i=1;i<=255;i++)			/* fill the palette	*/
+      for (j = 0; j < 3; j++)
+         dacbox[i][j] = (i*start[j] + (256-i)*finish[j])/255;
+}
+
+set_palette2(start, finish)
+unsigned char start[3], finish[3];
+{
+   int i, j;
+   for(i=1;i<=128;i++) 
+      for (j = 0; j < 3; j++) {
+         dacbox[i][j]     = (i*finish[j] + (128-i)*start[j] )/128;
+         dacbox[i+127][j] = (i*start[j]  + (128-i)*finish[j])/128;
+      }
+}
+
+set_palette3(start, middle, finish)
+unsigned char start[3], middle[3], finish[3];
+{
+   int i, j;
+   for(i=1;i<=85;i++) 
+      for (j = 0; j < 3; j++) {
+         dacbox[i][j]     = (i*middle[j] + (86-i)*start[j] )/85;
+         dacbox[i+85][j]  = (i*finish[j] + (86-i)*middle[j])/85;
+         dacbox[i+170][j] = (i*start[j]  + (86-i)*finish[j])/85;
+      }
+}

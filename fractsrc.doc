@@ -1,0 +1,101 @@
+FRACTSRC.ARC includes the complete source code for FRACTINT (.C and .ASM).
+Recognizing that not everyone HAS (or even wants) an assembler, much less
+either MASM 5.1 or Turbo-ASM, which are the only two assemblers that the
+authors are aware of that can handle these particular files, it also contains
+a complete set of .OBJ files from the assembler code,
+
+Note that the Keepers of the Official Sets of Source Code (Bert Tyler and
+Timothy Wegner) both use the Microsoft 5.1 C compiler and Microsoft 5.1
+assembler, so that is the one combination of compiler/assemblers that is
+pretty much guaranteed to handle FRACTINT in all of its various mutations.
+Given that several of FRACTINT's co-authors now prefer (or only have!)
+alternate combinations, we have re-arranged the code to (usually) handle 
+several popular alternatives.  In particular:
+
+
+Microsoft C 5.1 (and MASM 5.1):
+===============================
+
+Just run MAKEFRAC.BAT, which invokes the Microsoft MAKE utility using
+the files FRACTINT.MAK and FRACTINT.LNK.  Note that the assembler .OBJ files
+have been included in the .ARC file, so that you don't really need MASM
+unless you are going to modify one or more of them.  If you ARE going to
+modify one of the assembler files, note that the distributed versions rely
+on some nifty features added to version 5.x (like the '.model medium,c'
+option) and will not assemble under older versions of MASM without a LOT
+of work.
+
+
+Quick-C:
+========
+
+Mark Peterson uses both Microsoft's 5.1 C compiler and their Quick-C 
+compiler, and prefers the interactive Quick-C environment.  With versions
+7.45 and above, Mark was able to use the interactive Quick-C
+environment with most (but not all - some of the modules are just too big)
+of the FRACTINT source code.  We have included two sample .MAK files
+provided by Mark as examples of his particular method.  QCFRACT.MAK
+uses 5.1 to compile all but TESTPT.C, and QCTESTPT.MAK is used to load
+and test TESTPT.C in the interactive Quick-C environment.
+
+Uhh, we've gotten word that version 9.0 of FRACTINT is now too big for
+the interactive Quick-C environment.  You apparantly have to use the
+command-line variant of Quick-C these days.
+
+Turbo-C and TASM
+================
+
+We THINK FRACTINT is now compatible with both of these products, although
+this one is a constant struggle.  At various points in the development
+cycle the FRACTINT source is processed by several developers like Joe McLain
+that only have the Turbo compiler/assemblers.  Still, there is always the
+possibility that we managed to sneak a last-minute update by them.
+We have included two sample files from Joe (TC.MAK, TC.LNK) that he uses
+to compile and link his copy of FRACTINT.
+
+Note that FRACTINT is simply too large for the interactive Turbo-C
+environment.  Sorry, but you're gonna have to use the command line option.
+
+
+Where the Goodies are
+=====================
+
+It has come to our attention that people who have no interest in fractals
+at all have been wandering through the FRACTINT source code just to get at
+some of the neat tricks buried therein.  Here are a few hints as to where
+to look:
+
+FRACTINT.C	- The main routine.  Nothing special here.
+FRACTINT.H	- General Include file.  Nothing special here, either.
+GENERAL.ASM	- General assembler code having nothing to do with fractals.
+		  MOST OF THE TRICKY STUFF IS IN HERE, and many of the "C"
+		  routines that perform tricky functions rely on support
+		  code buried in here.  In particular, this routine has the:
+			CPU, FPU Detectors
+			All direct-video access routines
+			Keyboard routines
+			Mouse routines
+			Zoom-Box routines
+			Expanded memory routines
+			32-bit scaled integer multiply routine
+FARVIDEO.ASM	- Contains the ever-growing internal video table.
+ENCODER.C	- GIF Encoder routine.
+GIFVIEW.C,	- GIF Decoder routines.
+DECODER.C,
+TGAVIEW.C,	  (including a TARGA-format encoder/decoder currently used
+F16.C		  only for the "Continuous Potential" algorithm)
+LINE3D.C,	- 3D manipulation routines
+3D.C
+ROTATE.C	- routines which "spin" the VGA video-DAC.
+CALCMAND.ASM	- The Mandelbrot/Julia set calculations.
+NEWTON.ASM	- The Newton calculations
+CALCFRAC.C	- All of the other fractal set calculations
+TESTPT.C	- "Roll-your-own" fractal routine
+CONFIG.C	- general Fractal File configuration routines.
+DISKVID.C	- "DISK'RAM" video routines
+HELP.C,		- HELP support
+FARMSG.ASM
+TARGA.C,	- TARGA Video support
+TARGA.H,
+LOADMAP.C,
+TGASUBS.C
