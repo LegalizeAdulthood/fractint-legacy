@@ -23,9 +23,9 @@
 static int menu_checkkey(int curkey,int choice);
 
 /* uncomment following for production version */
-/* #define PRODUCTION */
+/* #define PRODUCTION */ 
 
-int release=1910; /* this has 2 implied decimals; increment it every synch */
+int release=1920; /* this has 2 implied decimals; increment it every synch */
 int patchlevel=0; /* patchlevel for DOS version */
 #ifdef XFRACT
 int xrelease=300;
@@ -66,10 +66,10 @@ int stopmsg (int flags, char far *msg)
 {
    int ret,toprow,color,savelookatmouse;
    static unsigned char batchmode = 0;
-   if(debugflag != 0)
+   if(debugflag != 0 || initbatch >= 1)
    {
       static FILE *fp = NULL;
-      if(fp==NULL)
+      if(fp==NULL && initbatch == 0)
          fp=dir_fopen(workdir,"stopmsg.txt","w");
       else
          fp=dir_fopen(workdir,"stopmsg.txt","a");

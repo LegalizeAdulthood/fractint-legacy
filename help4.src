@@ -93,11 +93,11 @@
   maxiter=nnn		   Maximum number of iterations (default = 150)
   bailout=nnnn		   Use this as the iteration bailout value (instead
 			   of the default (4.0 for most fractal types)
-  bailoutest=mod|real|imag|or|and  Sets the test for bailing out
-			   (default = mod)
+  bailoutest=mod|real|imag|or|and  Sets the test for bailing out (default=mod)
   initorbit=nnn/nnn	   Sets the value used to initialize Mandelbrot orbits
 			   to the given complex number (real and imag parts)
   orbitdelay=nn		   Slows up the display of orbits (by nn/10000 sec)
+  showorbit=yes|no         Causes during-generation <o> toggle start on.
   initorbit=pixel	   Sets the value used to initialize Mandelbrot orbits
 			   to the complex number corresponding to the screen
 			   pixel. This is the default for most types.
@@ -621,6 +621,10 @@ the first time you press the 'o' key with the 'orbitdelay' function
 active, your computer will pause for a half-second or so to calibrate
 a high-resolution timer.        
 
+SHOWORBIT=yes|no\
+Causes the during-generation orbits feature toggled by the <O> command to
+start off in the "on" position each time a new fractal calculation starts.
+
 PERIODICITY=no|show|nnn\
 Controls periodicity checking (see {Periodicity Logic}).
 "no" turns it off, "show" lets
@@ -1115,7 +1119,7 @@ the sound of decoding images.
 
 HERTZ=nnn\
 Adjusts the sound produced by the "sound=x/y/z" option.  Legal values are
-200 through 10000.
+20 through 15000.
 ;
 ;
 ~Topic=Printer Parameters

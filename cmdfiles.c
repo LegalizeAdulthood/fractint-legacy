@@ -49,6 +49,7 @@ int	pseudox=0;		/* xdots to use for video independence */
 int	pseudoy=0;		/* ydots to use for video independence */
 int     bfdigits=0;    		/* digits to use (force) for bf_math */
 int	showdot;		/* color to show crawling graphics cursor */
+char	start_showorbit=0;	/* show orbits on at start of fractal */
 char	temp1[256];		/* temporary strings	    */
 char	readname[FILE_MAX_PATH];/* name of fractal input file */
 char	tempdir[FILE_MAX_DIR] = {""}; /* name of temporary directory */
@@ -332,6 +333,7 @@ char s_savetime[] =         "savetime";
 char s_scalexyz[] =         "scalexyz";
 char s_showbox[] =          "showbox";
 char s_showdot[] =          "showdot";
+char s_showorbit[] =        "showorbit";
 char s_smoothing[] =        "smoothing";
 char s_sound[] =            "sound";
 char s_sphere[] =           "sphere";
@@ -1265,7 +1267,6 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       }
 
    if (strcmp(variable,s_type) == 0 ) {         /* type=? */
-      int extra;
       if (value[valuelen-1] == '*')
 	 value[--valuelen] = 0;
       /* kludge because type ifs3d has an asterisk in front */
@@ -1282,17 +1283,8 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
 	 yy3rd = yymin = curfractalspecific->ymin;
 	 yymax	       = curfractalspecific->ymax;
       }	 
-      if (initparams == 0) {
-	 for (k = 0; k < 4; ++k) {
-	    param[k] = curfractalspecific->paramvalue[k];
-	    if(fractype != CELLULAR) /* don't round cellular */
-	       roundfloatd(&param[k]);
-	  }
-          if((extra=find_extra_param(fractype)) > -1)
-             for(i=0;i<MAXPARAMS-4;i++) {
-                param[i+4] = moreparams[extra].paramvalue[i];
-         }
-      }   
+      if (initparams == 0)
+         load_params(fractype);
       return 1;
       }
    if (strcmp(variable,s_inside) == 0 ) {       /* inside=? */
@@ -1669,36 +1661,37 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
          if (dec < 0)
             goto badarg;     /* ie: Magnification is +-1.#INF */
 
-         /* if(dec > decimals) */
+         if(dec > decimals)  /* get corners again if need more precision */
+         {
             init_bf_dec(dec);
 
-         /* now get parameters and corners all over again at new decimal setting */
-#if 0
-         for (k = 0; k < MAXPARAMS; k++)
-            floattobf(bfparms[k],param[k]);
-
-         /* xx3rd = xxmin = floatval[0]; */
-         get_bf(bfxmin,floatvalstr[0]);
-         get_bf(bfx3rd,floatvalstr[0]);
-
-         /* xxmax = floatval[1]; */
-         get_bf(bfxmax,floatvalstr[1]);
-
-         /* yy3rd = yymin = floatval[2]; */
-         get_bf(bfymin,floatvalstr[2]);
-         get_bf(bfy3rd,floatvalstr[2]);
-
-         /* yymax = floatval[3]; */
-         get_bf(bfymax,floatvalstr[3]);
-
-         if (totparms == 6) {
-	    /* xx3rd = floatval[4]; */
-            get_bf(bfx3rd,floatvalstr[4]);
-
-	    /* yy3rd = floatval[5]; */
-            get_bf(bfy3rd,floatvalstr[5]);
-         }
-#endif         
+            /* now get parameters and corners all over again at new 
+               decimal setting */
+            for (k = 0; k < MAXPARAMS; k++)
+               floattobf(bfparms[k],param[k]);
+   
+            /* xx3rd = xxmin = floatval[0]; */
+            get_bf(bfxmin,floatvalstr[0]);
+            get_bf(bfx3rd,floatvalstr[0]);
+   
+            /* xxmax = floatval[1]; */
+            get_bf(bfxmax,floatvalstr[1]);
+   
+            /* yy3rd = yymin = floatval[2]; */
+            get_bf(bfymin,floatvalstr[2]);
+            get_bf(bfy3rd,floatvalstr[2]);
+   
+            /* yymax = floatval[3]; */
+            get_bf(bfymax,floatvalstr[3]);
+   
+            if (totparms == 6) {
+ 	    /* xx3rd = floatval[4]; */
+               get_bf(bfx3rd,floatvalstr[4]);
+   
+ 	    /* yy3rd = floatval[5]; */
+               get_bf(bfy3rd,floatvalstr[5]);
+            }
+         }         
       }
       xx3rd = xxmin = floatval[0];
       xxmax =	      floatval[1];
@@ -2034,7 +2027,8 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       }
 
    if (strcmp(variable,s_hertz) == 0) {         /* Hertz=? */
-      if (numval < 200 || numval > 10000) goto badarg;
+      /* these limits are quite arbitrary*/
+      if (numval < 20 || numval > 15000) goto badarg;
       basehertz = numval;
       return 0;
       }
@@ -2089,6 +2083,11 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       showdot=numval;
       if(showdot<0)
          showdot=0;
+      return 0;
+      }
+
+   if (strcmp(variable,s_showorbit) == 0) {  /* showorbit=yes|no */
+      start_showorbit=(char)yesnoval;
       return 0;
       }
 
@@ -2617,6 +2616,10 @@ Oops. I couldn't understand the argument:\n  "};
       sprintf(msg,"%s%s",argerrmsg1,badarg);
 #endif
    stopmsg(0,msg);
+   if (initbatch) {
+      initbatch = 4;
+      goodbye();
+   }
 }
 
 void set_3d_defaults()

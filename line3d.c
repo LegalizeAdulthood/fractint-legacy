@@ -1407,7 +1407,7 @@ static int startdisk1(char *File_Name2, FILE * Source, int overlay)
    FILE *fps;
 
    /* Open File for both reading and writing */
-   if ((fps = dir_fopen(tempdir,File_Name2, "w+b")) == NULL)
+   if ((fps = dir_fopen(workdir,File_Name2, "w+b")) == NULL)
    {
       File_Error(File_Name2, 1);
       return (-1);              /* Oops, somethings wrong! */
@@ -2628,9 +2628,9 @@ static int line3dmem(void)
    /* lastrow stores the previous row of the original GIF image for
       the purpose of filling in gaps with triangle procedure */
    /* first 8k of extraseg now used in decoder TW 3/95 */
-   lastrow = MK_FP(extraseg, (MAX_CODES+1)*sizeof(short));
+   lastrow = MK_FP(extraseg, 0);
 
-   check_extra = (MAX_CODES+1)*sizeof(short) + sizeof(*lastrow) * xdots;
+   check_extra = sizeof(*lastrow) * xdots;
    if (SPHERE)
    {
       sinthetaarray = (float far *) (lastrow + xdots);

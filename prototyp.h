@@ -366,6 +366,8 @@ extern void _fastcall noplot(int ,int ,int );
 extern void fractal_floattobf(void);
 extern void adjust_cornerbf(void);
 extern char *typehasparm(int,int);
+extern void fill_dx_array();
+extern void fill_lx_array();
 
 /*  fractals -- C file prototypes */
 
@@ -992,6 +994,7 @@ extern int get_3d_params(void);
 extern int prompt_valuestring(char *buf,struct fullscreenvalues *val);
 extern void setbailoutformula(enum bailouts);
 extern int find_extra_param(int);
+extern void load_params(int fractype);
 extern int check_orbit_name(char *);
 extern int scan_entries(FILE *infile, void far *ch, char *itemname);
 

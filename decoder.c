@@ -38,8 +38,6 @@
  *	          altered logic to allow newcode to input a line at a time
  *	          altered logic to allow decoder to place characters
  *	          directly into the output buffer if they fit
- * Rev 03/02/95 - Revised by Tim Wegner
- *	          made sizeofstring local pointing to extraseg
 */
 
 /***** C Library Includes ***********************************************/
@@ -81,7 +79,7 @@ int (*outln)(BYTE *,int) = out_line;
 #define OPEN_ERROR -3
 #define CREATE_ERROR -4
 
-/* #define MAX_CODES   4095 */ /* moved to Fractint.h */
+#define MAX_CODES   4095 
 
 #define NOPE 0
 #define YUP -1
@@ -169,7 +167,7 @@ The arrays are actually declared in the assembler source.
 short decoder( short linewidth)
 {
 #ifndef XFRACT
-	static short far *sizeofstring;
+	static short far sizeofstring[MAX_CODES+1];	/* size of string list */
 #else
 	extern int prefix[];
 	short sizeofstring[MAX_CODES+1];	/* size of string list */
@@ -194,9 +192,6 @@ short decoder( short linewidth)
 	short ending;					/* Value for a ending code */
 	BYTE out_value;
 
-#ifndef XFRACT
-	sizeofstring = (short far *)MK_FP(extraseg, ENDVID);
-#endif
 	/* Initialize for decoding a new image...
 	*/
 

@@ -101,6 +101,10 @@ static char symdegree[] = "+Degree of symmetry";
 
 static char shiftval[] = "Function Shift Value";
 
+/* plasma and ant */
+
+static char s_randomseed[] = "+Random Seed Value (0 = Random, 1 = Reuse Last)";
+
 /* ifs */
 static char color_method[] = "+Coloring method (0,1)";
 
@@ -146,15 +150,16 @@ MOREPARAMS moreparams[] =
 {
     ICON,             s_omega, symdegree,ES,ES,ES,ES,0,3,0,0,0,0,
     ICON3D,           s_omega, symdegree,ES,ES,ES,ES,0,3,0,0,0,0,
-    HYPERCMPLXJFP,    ZJ,     ZK,ES,ES,ES,ES,0,0,0,0,0,0,
-    QUATJULFP,        ZJ,     ZK,ES,ES,ES,ES,0,0,0,0,0,0,
-    PHOENIXCPLX,      degreeZ,ES,ES,ES,ES,ES,0,0,0,0,0,0,
-    PHOENIXFPCPLX,    degreeZ,ES,ES,ES,ES,ES,0,0,0,0,0,0,
-    MANDPHOENIXCPLX,  degreeZ,ES,ES,ES,ES,ES,0,0,0,0,0,0,
-    MANDPHOENIXFPCPLX,degreeZ,ES,ES,ES,ES,ES,0,0,0,0,0,0,
-    FORMULA,          p3real,p3imag,ES,ES,ES,ES,0,0,0,0,0,0,
-    FFORMULA,         p3real,p3imag,ES,ES,ES,ES,0,0,0,0,0,0,
-    -1,      NULL,NULL,NULL,NULL,NULL,NULL,0,0,0,0,0,0
+    HYPERCMPLXJFP,    ZJ,     ZK,ES,ES,ES,ES,        0,0,0,0,0,0,
+    QUATJULFP,        ZJ,     ZK,ES,ES,ES,ES,        0,0,0,0,0,0,
+    PHOENIXCPLX,      degreeZ,ES,ES,ES,ES,ES,        0,0,0,0,0,0,
+    PHOENIXFPCPLX,    degreeZ,ES,ES,ES,ES,ES,        0,0,0,0,0,0,
+    MANDPHOENIXCPLX,  degreeZ,ES,ES,ES,ES,ES,        0,0,0,0,0,0,
+    MANDPHOENIXFPCPLX,degreeZ,ES,ES,ES,ES,ES,        0,0,0,0,0,0,
+    FORMULA,          p3real,p3imag,ES,ES,ES,ES,     0,0,0,0,0,0,
+    FFORMULA,         p3real,p3imag,ES,ES,ES,ES,     0,0,0,0,0,0,
+    ANT,           "+Wrap?",s_randomseed,ES,ES,ES,ES, 1,0,0,0,0,0,
+    -1,      NULL,NULL,NULL,NULL,NULL,NULL,0,        0,0,0,0,0
 };         
 
 /*
@@ -1120,8 +1125,8 @@ struct fractalspecificstuff far fractalspecific[]=
    (float)-2.5, (float)1.5, (float)-1.5, (float)1.5, 0, PHOENIXFPCPLX, NOFRACTAL, MANDPHOENIXCPLX, XAXIS,
    PhoenixFractalcplx, mandphoenix_per_pixel, MandPhoenixCplxSetup, StandardFractal, STDBAILOUT,
 
-   "ant", "Rule String (1's and non-1's)","Maxpts",ES,ES,1100,1.0E9,0,0,
-   HT_ANT, HF_ANT, NOZOOM+NOGUESS+NOTRACE+NORESUME,
+   "ant", "Rule String (1's and non-1's, 0 rand)","+Maxpts","+Numants (max 256)","+Ant type (1 or 2)",
+   1100,1.0E9,1,1,HT_ANT, HF_ANT, NOZOOM+NOGUESS+NOTRACE+NORESUME+MORE,
    (float)-1.0, (float)1.0, (float)-1.0, (float)1.0, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,  NOSYM,
    NULL,    NULL,   StandaloneSetup,  ant,   NOBAILOUT,
 

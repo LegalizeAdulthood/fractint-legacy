@@ -17,7 +17,7 @@
    { Introduction }                         { Distribution of Fractint }
    { Conditions on Use }                    { Contacting the Authors }
    { Getting Started }                      { The Stone Soup Story }
-   { New Features in Version 19.1 }         { A Word About the Authors }
+   { New Features in Version 19.2 }         { A Word About the Authors }
                                           { Other Fractal Products }
    { Display Mode Commands }                
    { Color Cycling Commands }               { Fractint on Unix }               
@@ -38,7 +38,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New Features in Version 19.1", FF}
+{     , 0, "New Features in Version 19.2", FF}
 {     , 0, "Introduction", "Conditions on Use", FF}
 
 {1.   , 0, Fractint Commands, FF}
@@ -262,7 +262,31 @@ documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in Version 19.1
+~Topic=New Features in Version 19.2
+Version 19.2 is a bug-fix release for version 19.1. Changes from 19.1 
+  to 19.2 include:
+
+Fixed the 3D function, which was broken in 19.1 due to a side-effect of
+  a repair of a minor bug in 19.0. Arrgghh! This is the main reason for the 
+  release of this version so quickly.
+
+Fixed a bug that caused the Julia inverse window and the orbits window to lose
+  their place after loading a color map.
+
+Fixed a bug that causes corners to be lost when too many digits are entered.
+
+Added an enhanced ants automaton by Luciano Genero and Fulvio Cappelli.
+
+New showorbit command allows orbits-during-generation feature to be turned
+  on by default. Expanded limits of Hertz command to 20 to 15000.
+
+Targa 3D files are now correctly written to workdir rather than tempdir.
+
+Uncommented garbage between file entries is now ignored. (But note that "\{"
+  must be on same line as entry name.)
+
+Fixed savename update logic.
+
 Version 19.1 is a bug-fix release for version 19.0. Changes from 19.0 
   to 19.1 include:
 

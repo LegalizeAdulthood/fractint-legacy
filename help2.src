@@ -22,14 +22,15 @@ SUMMARY OF FRACTAL TYPES
 {=HT_ANT ant}
 ~Label=HF_ANT
     Generalized Ant Automaton as described in the July 1994 Scientific
-    American. An ant wanders around the screen. A rule string (the first 
-    parameter) determines the ant's direction. When the ant leaves a cell of 
-    color k, it turns right if the kth symbol in the first parameter is a 1, 
-    or left otherwise. Then the color in the abandoned cell is incremented. 
-    The 2nd parameter is a maximum iteration to guarantee that the fractal 
-    will terminate. Also terminates if the edge is reached. You can slow down
-    the ant to see her better using the <x> screen Orbit Delay - try 10.
-
+    American. Some ants wander around the screen. A rule string (the first
+    parameter) determines the ant's direction. When the type 1 ant leaves a
+    cell of color k, it turns right if the kth symbol in the first parameter
+    is a 1, or left otherwise. Then the color in the old cell is incremented.
+    The 2nd parameter is a maximum iteration to guarantee that the fractal
+    will terminate. The 3rd parameter is the number of ants. The 4th is the
+    ant type 1 or 2. The 5th parameter determines if the ants wrap the screen
+    or stop at the edge.  The 6th parameter is a random seed. You can slow 
+    down the ants to see them better using the <x> screen Orbit Delay.
 {=HT_BARNS barnsleyj1}
 ~Label=HF_BARNSJ1
       z(0) = pixel;
@@ -1422,9 +1423,9 @@ lambda*fn(Z), for various values of the function "fn", where lambda
 and Z are both complex.  Two values, the real and imaginary parts of
 lambda, should be given in the "params=" option.  The third value is
 the shift value.  The space bar will generate the corresponding
-"psuedo Mandelbrot" set, manlam(fn||fn).
+"pseudo Mandelbrot" set, manlam(fn||fn).
 
-The manlam(fn||fn) type calculates the "psuedo Mandelbrot" set of the
+The manlam(fn||fn) type calculates the "pseudo Mandelbrot" set of the
 formula fn(Z)*C, for various values of the function "fn", where C
 and Z are both complex.  Two values, the real and imaginary parts of
 Z(0), should be given in the "params=" option.  The third value is
@@ -2323,12 +2324,29 @@ The ant wanders around the screen, starting at the middle. A rule string,
 which the user can input as Fractint's first parameter, determines the ant's 
 direction. This rule string is stored as a double precision number in our 
 implementation. Only the digit 1 is significant -- all other digits are 
-treated as 0. When the ant leaves a cell (a pixel on the screen) of color k, 
-it turns right if the kth symbol in the rule string is a 1, or left otherwise.
-Then the color in the abandoned cell is incremented. Fractint's 2nd parameter
-is a maximum iteration to guarantee that the fractal will terminate. Our 
-implementation also terminates when the edge is reached. You can slow down
-the ant to see her better using the <x> screen Orbit Delay - try 10.
+treated as 0. When the type 1 ant leaves a cell (a pixel on the screen) of 
+color k, it turns right if the kth symbol in the rule string is a 1, or left 
+otherwise. Then the color in the abandoned cell is incremented. The type 2
+ant uses only the rule string to move around. If the digit of the rule string
+is a 1, the ant turns right and puts a zero in current cell, otherwise it 
+turns left and put a number in the current cell. An empty rule string causes
+the rule to be generated randomly.
+
+Fractint's 2nd parameter is a maximum iteration to guarantee that the fractal 
+will terminate. 
+
+The 3rd parameter is the number of ants (up to 256). If you select 0 ants,
+then the number oif ants is random. 
+
+The 4th paramter allows you to select ant type 1 (the original), or type 2. 
+
+The 5th parameter determines whether the ant's progress stops when the edge 
+of the screen is reaches (as in the original implementation), or whether the 
+ant's path wraps to the opposite side of the screen. You can slow down the 
+ant to see her better using the <x> screen Orbit Delay - try 10.
+
+The 6th parameter accepts a random seed, allowing you to duplicate images
+using random values (empty rule string or 0 maximum ants.
 
 Try rule string 10. In this case, the ant moves in a seemingly random pattern,
 then suddenly marches off in a straight line. This happens for many other
@@ -2346,7 +2364,7 @@ toggles a step-by-step mode. When in this mode, press <enter> to see each step
 of the ant's progress. When orbit delay (on <x> screen) is set to 1, the step 
 mode is the default.
 
-If you press the right or left arrow diuring the ant's journey, you can
+If you press the right or left arrow during the ant's journey, you can
 adjust the orbit delay factor with the arrow keys (increment by 10) or 
 ctrl-arrow keys (increment by 100). Press any other key to get out of the 
 orbit delay adjustment mode. Higher values cause slower motion. Changed values

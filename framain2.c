@@ -567,17 +567,16 @@ int main_menu_switch(int *kbdchar, int *frommandel, int *kbdmore, char *stacked,
    case 1:                     /* ^a Ant */
       clear_zoombox();
       {
-	 int oldtype, err;
-	 double oldparm[2];
+	 int oldtype, err, i;
+	 double oldparm[MAXPARAMS];
 	 oldtype = fractype;
-	 oldparm[0] = param[0];
-	 oldparm[1] = param[1];
+	 for(i=0;i<MAXPARAMS;i++)
+	    oldparm[i] = param[i];
 	 if (fractype != ANT)
 	 {
 	    fractype = ANT;
 	    curfractalspecific = &fractalspecific[fractype];
-	    param[0] = curfractalspecific->paramvalue[0];
-	    param[1] = curfractalspecific->paramvalue[1];
+            load_params(fractype);
 	 }
 	 if (!fromtext_flag)
 	    stackscreen();
@@ -591,8 +590,8 @@ int main_menu_switch(int *kbdchar, int *frommandel, int *kbdmore, char *stacked,
 	 else
 	    unstackscreen();
 	 fractype = oldtype;
-	 param[0] = oldparm[0];
-	 param[1] = oldparm[1];
+	 for(i=0;i<MAXPARAMS;i++)
+	    param[i] = oldparm[i];
 	 if (err >= 0)
 	    return(CONTINUE);
       }

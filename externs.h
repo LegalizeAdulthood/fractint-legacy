@@ -403,6 +403,7 @@ extern int                   Slope;
 extern int                   soundflag;
 extern char                  speed_prompt[];
 extern void (_fastcall*      standardplot)(int,int,int);
+extern char                  start_showorbit;
 extern int                   started_resaves;
 extern _CMPLX                staticroots[]; 
 extern char                  stdcalcmode;

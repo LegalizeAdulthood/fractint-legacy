@@ -1296,6 +1296,20 @@ int find_extra_param(int type)
    return(ret);
 }     
 
+void load_params(int fractype)
+{
+   int i, extra;
+   for (i = 0; i < 4; ++i) 
+   {
+      param[i] = fractalspecific[fractype].paramvalue[i];
+      if(fractype != CELLULAR) /* don't round cellular */
+        roundfloatd(&param[i]);
+   }
+   if((extra=find_extra_param(fractype)) > -1)
+      for(i=0;i<MAXPARAMS-4;i++) 
+         param[i+4] = moreparams[extra].paramvalue[i];
+}
+
 int check_orbit_name(char *orbitname)
 {
    int i, numtypes, bad;
@@ -1421,6 +1435,7 @@ int scan_entries(FILE * infile, void far * ch, char *itemname)
    for (;;)
    {                            /* scan the file for entry names */
       int c, len;
+top:
       if ((c = skip_white_space(infile, &file_offset)) == ';')
       {
          c = skip_comment(infile, &file_offset);
@@ -1438,6 +1453,8 @@ int scan_entries(FILE * infile, void far * ch, char *itemname)
             buf[len++] = (char) c;
          c = getc(infile);
          ++file_offset;
+         if(c == '\n' || c == '\r')
+            goto top;
       }
       buf[len] = 0;
       while (c != '{' && /* c != '\n' && c != '\r' && */  c != EOF && c != '\032')
@@ -1448,6 +1465,8 @@ int scan_entries(FILE * infile, void far * ch, char *itemname)
          { 
             c = getc(infile);
             ++file_offset;
+            if(c == '\n' || c == '\r')
+               goto top;
          }   
       }
       if (c == '{')

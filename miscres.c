@@ -476,19 +476,17 @@ void cvtcornersbf(bf_t Xctr, bf_t Yctr, LDBL Magnification, double Xmagfactor, d
 void updatesavename(char *filename) /* go to the next file name */
 {
    char *save, *hold;
-   char name[80];
    char drive[FILE_MAX_DRIVE];
    char dir[FILE_MAX_DIR];
    char fname[FILE_MAX_FNAME];
    char ext[FILE_MAX_EXT];
 
    splitpath(filename ,drive,dir,fname,ext);
-   makepath(name,""   ,"" ,fname,ext);
 
    suffix[0] = 0;
 
-   hold = name + strlen(name) - 1; /* start at the end */
-   while(hold >= name && (*hold == ' ' || isdigit(*hold))) /* skip backwards */
+   hold = fname + strlen(fname) - 1; /* start at the end */
+   while(hold >= fname && (*hold == ' ' || isdigit(*hold))) /* skip backwards */
       hold--;
    hold++;			/* recover first digit */
    while (*hold == '0')         /* skip leading zeros */
@@ -505,7 +503,6 @@ void updatesavename(char *filename) /* go to the next file name */
    else
       save = hold;
    sprintf(save,"%d",atoi(hold)+1); /* increment the number */
-   splitpath(name ,NULL,NULL,fname,ext);
    makepath(filename,drive,dir,fname,ext);
 }
 
@@ -1156,7 +1153,7 @@ top:
    sprintf(msg,"%f",rqlim);
    putstring(-1,-1,C_GENERAL_HI,msg);
 
-   if (fractype == PLASMA) {
+   if (fractype == PLASMA || fractype == ANT || fractype == CELLULAR) {
       putstring(++row,2,C_GENERAL_MED,scurrent_rseed);
       sprintf(msg,"%d",rseed);
       putstring(-1,-1,C_GENERAL_HI,msg);

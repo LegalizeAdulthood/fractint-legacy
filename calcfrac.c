@@ -281,7 +281,7 @@ int calcfract(void)
 
    /* ORBIT stuff */
    save_orbit = (int far *)((double huge *)dx0 + 4*MAXPIXELS);
-   show_orbit = 0;
+   show_orbit = start_showorbit;
    orbit_ptr = 0;
    orbit_color = 15;
    if(colors < 16)

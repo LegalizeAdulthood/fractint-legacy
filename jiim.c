@@ -809,6 +809,12 @@ void Jiim(int which)         /* called by fractint */
    xcrsr = (int)(cvt.a*cr + cvt.b*ci + cvt.e + .5);
    ycrsr = (int)(cvt.c*cr + cvt.d*ci + cvt.f + .5);
 
+   /* possible extraseg arrays have been trashed, so set up again */
+   if(integerfractal)
+      fill_lx_array();
+   else
+      fill_dx_array();
+
    Cursor_SetPos(xcrsr, ycrsr);
    Cursor_Show();
    color = color_bright;
