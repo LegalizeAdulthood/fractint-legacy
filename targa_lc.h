@@ -1,3 +1,6 @@
+#ifndef TARGA_LC_H
+#define TARGA_LC_H
+
 #define HEADERSIZE 18		/* Size, offsets, and masks for the */
 #define O_COMMENTLEN 0		/* TGA file header.  This is not a	*/
 #define O_MAPTYPE 1			/* structure to avoid problems with	*/
@@ -21,3 +24,4 @@
 #define T_RLERGB 10
 #define T_RLEMON 11
 
+#endif

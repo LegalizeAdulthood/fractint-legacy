@@ -118,10 +118,20 @@ product in.  The *good* news is that some of the FRACTINT authors now
 use Turbo-C++, so the odds of released FRACTINT distributions that do
 not compile with Turbo products are lower than they used to be.
 
-A FRACTINT.PRJ file is included for Turbo-C users.
+A TCFRACT.PRJ and TCHELP.PRJ file is included for Turbo-C users.  You should
+rename these to FRACTINT.PRJ and HC.PRJ before compiling fractint.  
 
 With TC++ you'll have to do a manual step for the help system each time you
 create a new fractint.exe - see notes in next section.
+
+
+Borland C++ 3.0 and 3.1 Users
+-----------------------------
+Rename the BCFRACT.PRJ and BCHELP.PRJ files to FRACTINT.PRJ and HC.PRJ.
+The project file will generate the FRACTINT.HLP file, but you will still
+have to run "hc /a" from the DOS command line to append the help
+information.
+
 
 
 Help System
@@ -292,3 +302,126 @@ REALDOS.C	- Some subroutines isolated from Windows development work;
 
 PORT.H		- Some portability stuff, nothing special here.
 
+How things are set up
+=====================
+I've had to go through a lot of the code to figure out how things are set
+up.  These are my rough notes, which I'm including in case they can help
+someone else. -- Ken Shirriff
+
+The control flow is very confusing.  Here are some details:
+
+Each fractal type has an entry in the fractalspecific table in fractalp.c.
+Entries that are not displayed are marked with an asterisk.  Each entry is
+marked as int or not int, and either has a pointer to another entry
+(tofloat) or NOFRACTAL.  If you select float and the type is int or vice
+versa, you will end up with the tofloat type.  (e.g. If you select entry
+MANDEL, and select floating point, you will get entry MANDELFP).  There are
+also pointers tojulia and tomandel, which allow you to switch between mandel
+and julia.  The four functions listed are curfractalspecific->orbitcalc,
+curfractalspecific->per_pixel, curfractalspecific->per_image, and
+curfractalspecific->calctype.
+
+main calls calcfracinit.
+calcfractint: this sets up curfractalspecific, which is the appropriate entry
+	from the fractalspecific table.  This routine does the int/float
+	conversion.
+
+main calls calcfract, which calls timer, which calls perform_worklist
+perform_worklist calls curfractalspecific->per_image, which is eg.  MandelSetup
+MandelSetup: sets calctype to curfractalspecific->calctype, or for special
+    cases (eg. decomposition) to StandardFractal
+
+perform_worklist calls solidguess (or whatever drawing system)
+solidguess calls *calctype for each pixel; calctype is eg. StandardFractal
+
+StandardFractal calls curfractalspecific->per_pixel once, and then loops over
+    each iteration calling curfractalspecific->orbitcalc.  These routines
+    are eg.  mandel_per_pixel and JuliaFractal.
+
+
+
+Here is the structure of the main routine:
+
+main()
+{
+    initialize things
+restorestart:
+    if loading, look after specifying image
+imagestart:
+    while (adapter<0) {
+	process keys from short main menu
+    }
+
+    while (1) {
+	if (calc_status != 2 || showfile==0) {
+	    initialize videoentry from videotable[adapter]
+	    initialize size, color, etc. from videoentry
+	    setvideomode()
+	}
+	if (showfile==0) {
+	    load file
+	}
+	calcfracinit();
+	save corners, zoom data
+	if (showfile != 0) {
+	    calcfract(); /* calculates the fractal until interrupted */
+	}
+resumeloop:
+	if (no key pressed) {
+	    set keypress = 13 to continue
+	} else if (key pressed) {
+	    check input key
+	} else if (batch mode) {
+	    look after batch key
+	}
+
+	process key from long menu
+    }
+}
+
+
+How the video entries are managed:
+
+get_video_mode(fractal_info): This routine is used to select a video mode
+    to match a picture we're loading.  It loads vidtbl and then  tries to
+    find a video mode that matches that in fractal_info.  Asks the user to
+    select one if there's no good match.  Figures out how to reduce the image
+    to fit the screen.
+
+select_video_mode(curmode): This is the main-menu routine for the user to
+    pick a video mode.  picks default video mode, lets user select mode
+    from menu, copies entry to videoentry, puts entry in videotable if not
+    there, calls update_fractint_cfg if key reassigned, returns key
+    corresponding to mode
+
+check_vidmode_key(option, keypress): if keypress corresponds to a videomode in
+    videotable (for option 0) or vidtbl (for option 1) return the videomode
+    index, else -1.
+
+check_vidmode_keyname: converts ascii key name into key number
+
+adapter_detect: checks for type of video (ega, cga, etc) and set video_type,
+mode7text, textsafe.
+
+load_videotable: reads the entries in fractint.cfg into vidtbl
+    copies entries with an associated function key into videotable
+
+load_fractint_cfg: reads video modes in fractint.cfg into vidtbl
+    (or copies from videotable) if fractint.cfg missing or bad
+
+update_fractint_cfg: writes the entry in videoentry into the fractint.cfg file.
+
+vidtbl: contains the video modes from fractint.cfg
+videotable: contains video modes with function keys; initialized in video.asm
+video_type: contains type: hgc, egc, cga, mcga
+
+
+Here is how the floating point modes are set up.
+parser.c uses the MathTypes:
+D_MATH: uses double precision routines, such as dStkMul, and FPUsincos
+    This is used if we have a fpu.
+M_MATH: uses MP type (mantissa, exponent).  These routines such as mStkAdd
+    call MPCadd, which call pMPadd, which calls MPadd086 or MPadd386.
+    The MP routines work on multiple precision, MPC works on complex pairs
+    of multiple precision.
+L_MATH: uses integer math.  Routines such as lStkAdd.

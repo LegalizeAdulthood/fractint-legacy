@@ -35,20 +35,20 @@ SCALE MATRIX =	      Sx    0	  0	0
 		      0     0	  0	1
 
 Rotation about x axis i degrees:
-ROTX(é) =		1     0     0	  0
-		      0   cosé  siné    0
-		      0  -siné  cosé    0
+ROTX(i) =		1     0     0	  0
+		      0   cosi  sini    0
+		      0  -sini  cosi    0
 		      0     0	  0	1
 
 Rotation about y axis i degrees:
-ROTY(é) =	      cosé	0  -siné    0
+ROTY(i) =	      cosi	0  -sini    0
 		      0     1	  0	0
-		    siné    0   cosé    0
+		    sini    0   cosi    0
 		      0     0	  0	1
 
 Rotation about z axis i degrees:
-ROTZ(é) =	      cosé  siné	0     0
-		   -siné  cosé    0     0
+ROTZ(i) =	      cosi  sini	0     0
+		   -sini  cosi    0     0
 		      0     0	  1	0
 		      0     0	  0	1
 
@@ -57,7 +57,9 @@ ROTZ(é) =	      cosé  siné	0     0
 
 #include <stdio.h>
 #include <float.h>
+#include <string.h>
 #include "fractint.h"
+#include "prototyp.h"
 extern int overflow;
 extern int bad_value;
 
@@ -229,7 +231,7 @@ MATRIX m;
 /* use with a function pointer in line3d.c */
 /* must coordinate calling conventions with */
 /* mult_vec_iit in general.asm */
-int mult_vec_c(s)
+void mult_vec_c(s)
 VECTOR s;
 {
    extern MATRIX m;
@@ -245,7 +247,6 @@ VECTOR s;
    }
    /* set target = tmp. Necessary to use tmp in case source = target */
    memcpy(s,tmp,sizeof(tmp));
-   return(0);
 }
 
 /* perspective projection of vector v with respect to viewpont vector view */

@@ -23,7 +23,6 @@
 IFDEF ??version
 MASM51
 QUIRKS
-EMUL
 ENDIF
 
 .model	medium, c

@@ -24,8 +24,9 @@ extern int xdots;		/* the screen is this many dots across */
 extern int ydots;		/* the screen is this many dots down */
 extern int colors;		/* the screen has this many colors */
 
-void teststart()     /* this routine is called just before the fractal starts */
+int teststart()     /* this routine is called just before the fractal starts */
 {
+    return( 0 );
 }
 
 void testend()	     /* this routine is called just after the fractal ends */

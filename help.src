@@ -17,8 +17,8 @@
    { Introduction }			    { Distribution of Fractint }
    { Conditions on Use }		    { Contacting the Authors }
    { Getting Started }			    { The Stone Soup Story }
-   { New Features in Version 17.2 }	    { A Word About the Authors }
-					  { A Plug for "Fractal Creations" }
+   { New Features in Version 18 }	    { A Word About the Authors }
+					  { Other Fractal Products }
    { Display Mode Commands }
    { Color Cycling Commands }		    { Using Fractint With a Mouse }
    { Palette Editing Commands } 	    { Video Adapter Notes }
@@ -37,7 +37,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New Features in Version 17.2", FF}
+{     , 0, "New Features in Version 18", FF}
 
 {     , 0, "Introduction", "Conditions on Use", FF}
 
@@ -52,48 +52,61 @@
 {1.8  , 1, "Parameter Save/Restore Commands"}
 {1.9  , 1, "\"3D\" Commands"}
 {1.10 , 1, "Interrupting and Resuming"}
-{1.11 , 1, "View Window"}
-{1.12 , 1, "Video Mode Function Keys"}
-{1.13 , 1, "Hints"}
+{1.11 , 1, "Orbits Window"}
+{1.12 , 1, "View Window"}
+{1.13 , 1, "Video Mode Function Keys"}
+{1.14 , 1, "Hints"}
 
 {2.   , 0, "Fractal Types", FF}
 {2.1  , 1, "The Mandelbrot Set"}
 {2.2  , 1, "Julia Sets"}
-{2.3  , 1, "Newton domains of attraction"}
-{2.4  , 1, "Newton"}
-{2.5  , 1, "Complex Newton"}
-{2.6  , 1, "Lambda Sets"}
-{2.7  , 1, "Mandellambda Sets"}
-{2.8  , 1, "Circle"}
-{2.9  , 1, "Plasma Clouds"}
-{2.10 , 1, "Lambdafn"}
-{2.11 , 1, "Mandelfn"}
-{2.12 , 1, "Barnsley Mandelbrot/Julia Sets"}
-{2.13 , 1, "Barnsley IFS Fractals"}
-{2.14 , 1, "Sierpinski Gasket"}
-{2.15 , 1, "Quartic Mandelbrot/Julia"}
-{2.16 , 1, "Distance Estimator"}
-{2.17 , 1, "Pickover Mandelbrot/Julia Types"}
-{2.18 , 1, "Pickover Popcorn"}
-{2.19 , 1, "Peterson Variations"}
-{2.20 , 1, "Unity"}
-{2.21 , 1, "Scott Taylor / Lee Skinner Variations"}
-{2.22 , 1, "Kam Torus"}
-{2.23 , 1, "Bifurcation"}
-{2.24 , 1, "Orbit Fractals"}
-{2.25 , 1, "Lorenz Attractors"}
-{2.26 , 1, "Rossler Attractors"}
-{2.27 , 1, "Henon Attractors"}
-{2.28 , 1, "Pickover Attractors"}
-{2.29 , 1, "Gingerbreadman"}
-{2.30 , 1, "Martin Attractors"}
-{2.31 , 1, "Test"}
-{2.32 , 1, "Formula"}
-{2.33 , 1, "Julibrots"}
-{2.34 , 1, "Diffusion Limited Aggregation"}
-{2.35 , 1, "Magnetic Fractals"}
-{2.36 , 1, "L-Systems"}
-{2.37 , 1, "Lyapunov Fractals"}
+{2.3  , 1, "Julia Toggle Spacebar Commands"}
+{2.4  , 1, "Inverse Julias"}
+{2.5  , 1, "Newton domains of attraction"}
+{2.6  , 1, "Newton"}
+{2.7  , 1, "Complex Newton"}
+{2.8  , 1, "Lambda Sets"}
+{2.9  , 1, "Mandellambda Sets"}
+{2.10 , 1, "Circle"}
+{2.11 , 1, "Plasma Clouds"}
+{2.12 , 1, "Lambdafn"}
+{2.13 , 1, "Mandelfn"}
+{2.14 , 1, "Barnsley Mandelbrot/Julia Sets"}
+{2.15 , 1, "Barnsley IFS Fractals"}
+{2.16 , 1, "Sierpinski Gasket"}
+{2.17 , 1, "Quartic Mandelbrot/Julia"}
+{2.18 , 1, "Distance Estimator"}
+{2.19 , 1, "Pickover Mandelbrot/Julia Types"}
+{2.20 , 1, "Pickover Popcorn"}
+{2.21 , 1, "Peterson Variations"}
+{2.22 , 1, "Unity"}
+{2.23 , 1, "Scott Taylor / Lee Skinner Variations"}
+{2.24 , 1, "Kam Torus"}
+{2.25 , 1, "Bifurcation"}
+{2.26 , 1, "Orbit Fractals"}
+{2.27 , 1, "Lorenz Attractors"}
+{2.28 , 1, "Rossler Attractors"}
+{2.29 , 1, "Henon Attractors"}
+{2.30 , 1, "Pickover Attractors"}
+{2.31 , 1, "Gingerbreadman"}
+{2.32 , 1, "Martin Attractors"}
+{2.33 , 1, "Icon"}
+{2.34 , 1, "Test"}
+{2.35 , 1, "Formula"}
+{2.36 , 1, "Julibrots"}
+{2.37 , 1, "Diffusion Limited Aggregation"}
+{2.38 , 1, "Magnetic Fractals"}
+{2.39 , 1, "L-Systems"}
+{2.40 , 1, "Lyapunov Fractals"}
+{2.41 , 1, "fn||fn Fractals"}
+{2.42 , 1, "Halley"}
+{2.43 , 1, "Dynamic System"}
+{2.44 , 1, "Mandelcloud"}
+{2.45 , 1, "Quaternion"}
+{2.46 , 1, "HyperComplex"}
+{2.47 , 1, "Cellular Automata"}
+{2.48 , 1, "Phoenix"}
+{2.49 , 1, "Frothy Basins"}
 
 {3.   , 0, Doodads\, Bells\, and Whistles, FF}
 {3.1  , 1, "Drawing Method"}
@@ -162,7 +175,7 @@
 
 {Appendix A, 0, Mathematics of the Fractal Types,
 		   "Summary of Fractal Types",
-		   "Inside=bof60|bof61|zmag",
+		   "Inside=bof60|bof61|zmag|period",
 		   "Inside=epscross|startrail",
 		   "Finite Attractors",
 		   "Trig Identities", FF}
@@ -175,13 +188,14 @@
 
 {Appendix C, 0, "GIF Save File Format", FF}
 
-{Appendix D, 0, An Unabashed Plug for \"Fractal Creations\", "A Plug for \"Fractal Creations\"", FF}
+{Appendix D, 0, Other Fractal Products, FF}
 
 {Appendix E, 0, "Bibliography", FF}
 
 {Appendix F, 0, "Other Programs", FF}
 
 {Appendix G, 0, Revision History,
+		   "Version 17",
 		   "Version 16",
 		   "Version 15",
 		   "Versions 12 through 14",
@@ -239,165 +253,211 @@ documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in Version 17.2
+~Topic=New Features in Version 18
 
-The 17.2 release contains fixes to the 17.10 release in the following areas:
+New fractal types:
 
- - Fixed a bug which caused Fractint to hang when a Continuous Potential\
-   Bailout value was set (using the 'Y') screen and then the 'Z' screen\
-   was activated.\
- - fixed a bug which caused "batch=yes" runs to abort whenever any\
-   key was pressed.\
- - bug-fixes in the Stereo3D/Targa logic from Marc Reinig.\
- - Fractint now works correctly again on FPU-less 8088s when\
-   zoomed deeply into the Mandelbrot/Julia sets\
- - The current image is no longer marked as "not resumable" on a\
-   Shell-To-Dos ("D") command.\
- - fixed a bug which prevented the "help" functions from working\
-   properly during fractal-type selection for some fractal types.\
+ 19 new fractal types, including:
 
-The 17.10 release contains fixes to the 17.0 release in the following areas:
+ New fractal types - 'lambda(fn||fn)', 'julia(fn||fn)', 'manlam(fn||fn)',
+ 'mandel(fn||fn)', 'halley', 'phoenix', 'mandphoenix', 'cellular',
+ generalized bifurcation, and 'bifmay' - from Jonathan Osuch.
 
- - fixed a bug which caused PCs with no FPU to lock up when they attempted\
-   to use some fractal types.\
- - fixed a color-cycling bug which caused the palette to single-step \
-   when you pressed ESCAPE to exit color-cycling.\
- - fixed the action of the '<' and '>' keys during color-cycling.\
+ New Mandelcloud, Quaternion, Dynamic System, Cellular Automata fractal
+ types from Ken Shirriff.
 
-The 17.0 release contained the following enhancements:
+ New HyperComplex fractal types from Timothy Wegner
 
-- New fractal types (but of course!): 
+ New ICON type from Dan Farmer, including a PAR file of examples.
 
-Lyapunov Fractals from Roy Murphy (see {Lyapunov Fractals} for details)
+ New Frothy Basin fractal types (and PAR entries) by Wesley Loewer
 
-'BifStewart' (Stewart Map bifurcation) fractal type and new bifurcation
-parameters (filter cycles, seed population) from Kevin Allen.
+ MIIM (Modified Inverse Iteration Method) implementation of Inverse Julia
+ from Michael Snyder.
 
-Lorenz3d1, Lorenz3d2, and Lorenz3d3 fractal types from Scott Taylor.
-Note that a bug in the Lorenz3d1 fractal prevents zooming-out from
-working with it at the moment.
+ New Inverse Julia fractal type from Juan Buhler.
 
-Martin, Circle, and Hopalong (culled from Dewdney's Scientific American
-Article)
+ New floating-point versions of Markslambda, Marksmandel, Mandel4,
+ and Julia4 types (chosen automatically if the floating-point option
+ is enabled).
 
-Lots of new entries in fractint.par.
+New options/features:
 
-New ".L" files (TILING.L, PENROSE.L)
+ New assembler-based parser logic from Chuck Ebbert - significantly
+ faster than the C-based code it replaces!
 
-New 'rand()' function added to the 'type=formula' parser
+ New assembler-based Lyapunov logic from Nicholas Wilt and Wes Loewer.
+ Roughly six times faster than the old version!
 
-- New fractal generation options:
+ New Orbits-on-a-window / Julia-in-a-window options:\
+  1) The old Overlay option is now '#' (Shift-3).\
+  2) During generation, 'O' brings up orbits (as before) - after\
+     generation, 'O' brings up new orbits Windows mode.\
+  3) Control-O brings up new orbits Windows mode at any time.\
+  4) Spacebar toggles between Inverse Julia mode and the Julia set and\
+     back to the Mandelbrot set.\
+ These new "in-a-window" modes are really neat!  See {Orbits Window}
+ and {Julia Toggle Spacebar Commands} for details.
 
-New 'Tesseral' calculation algorithm (use the 'X' option list to
-select it) from  Chris Lusby Taylor.
+ New multi-image GIF support in the <B> command.  You can now generate
+ 65535x65535x256 fractal images using Fractint (if you have the disk
+ space, of course).  This option builds special PAR entries and a
+ MAKEMIG.BAT file that you later use to invoke Fractint multiple times
+ to generate individual sections of the image and (in a final step)
+ stitch them all together.  If your other software can't handle
+ Multiple-image GIFs, a SIMPLGIF program is also supplied that converts
+ MIGS into simgle-image GIFs.  Press F1 at the <B> prompts screen for
+ details.
 
-New 'Fillcolor=' option shows off Boundary Tracing and Tesseral structure
+ Fractint's decoder now handles Multi-Image Gifs.
 
-inside=epscross and inside=startrail options taken from a paper by
-Kenneth Hooper, with credit also to Clifford Pickover
+ New SuperVGA/VESA Autodetect logic from the latest version of
+ VGAKIT.  Sure hope we didn't break anything.
 
-New Color Postscript Printer support from Scott Taylor.
+ New register-compatible 8514/A code from Jonathan Osuch.  By default,
+ Fractint now looks first for the presence of an 8514/A register-compatible
+ adapter and then (and only if it doesn't find one) the presence of the
+ 8514/A API (IE, HDILOAD is no longer necessary for register-compatible
+ "8514/a" adapters).  Fractint can be forced to use the 8514/A API by using
+ a new command-line option, "afi=yes".  Jonathan also added ATI's
+ "8514/a-style" 800x600x256 and 1280x1024x16 modes.
 
-Sound= command now works with <O>rbits and <R>ead commands.
+ New XGA-detection logic for ISA-based XGA-2 systems.
 
-New 'orbitdelay' option in X-screen and command-line interface
+ The palette editor now has full "undo" capabilities and a "freestyle"
+ editing option.  See {Palette Editing Commands} for details.
 
-New "showdot=nn" command-line option that displays the pixel currently
-being worked on using the specified color value (useful for those lloooonngg
-images being calculated using solid guessing - "where is it now?").
 
-New 'exitnoask=yes' commandline/SSTOOLS.INI option to avoid the final
-"are you sure?" screen
+ Fractint is now more "batch file" friendly.  When running Fractint from
+ a batch file, pressing any key will cause Fractint to exit with an
+ errorlevel = 2.  Any error that interrupts an image save to disk will
+ cause an exit with errorlevel = 2.  Any error that prevents an
+ image from being generated will cause an exit with errorlevel = 1.
 
-New plasma-cloud options.  The interface at the moment (documented here and
-  here only because it might change later) lets you:\
-  - use an alternate drawing algorithm that gives you an earlier preview\
-    of the finished image.
-  - re-generate your favorite plasma cloud (say, at a higher resolution)
-    by forcing a re-select of the random seed.\
+ New Control-X, Control-Y, and Control-Z options flip a fractal image
+ along the X-axis, Y-axis, and Origin, respectively.
 
-New 'N' (negative palette) option from Scott Taylor - the documentation at
-this point is:	Pressing 'N' while in the palette editor will invert
-each color. It will convert only the current color if it is in 'x' mode,
-a range if in 'y' mode, and every color if not in either the 'x' or 'y' mode.
+ New area calculation mode in TAB screen from Ken Shirriff 
+ (for accuracy use inside=0).
+ 
+ The TAB screen now indicates when the Integer Math algorithms are in use.
 
-- Speedups:
+ The palette must now be explicitly changed, it will not reset to the default
+ unexpectedly when doing things like switching video modes.
+ 
+ The Julibrot type has been generalized.
+ Julibrot fractals can now be generated from PAR files.
 
-New, faster floating-point Mandelbrot/Julia set code from Wesley Loewer,
-Frank Fussenegger and Chris Lusby Taylor (in separate contributions).
+ Added <b> command support for viewwindows. 
 
-Faster non-386 integer Mandelbrot code from Chris Lusby Taylor, Mike Gelvin
-and Bill Townsend (in separate contributions)
+ Added room for two additional PAR comments in the <B> command
 
-New integer Lsystems logic from Nicholas Wilt
+ New coloring method for IFS shows which parts of fractal came from
+ which transform.
 
-Finite-Attractor fixups and Lambda/mandellambda speedups from Kevin Allen.
+ Added attractor basin phase plotting for Julia sets from Ken Shirriff.
 
-GIF Decoder speedups from Mike Gelvin
+ Improved finite attractor code to find more attractors from Ken Shirriff.
 
-- Bug-fixes and other enhancements:
+ New zero function, to be used in PAR files to replace old integer tan, tanh
 
-Fractint now works with 8088-based AMSTRAD computers.
+ Debugflag=10000 now reports video chipset in use as well as CPU/FPU
+ type and available memory
 
-The video logic is improved so that (we think) fewer video boards will need
-"textsafe=save" for correct operation.
+ Added 6 additional parameters for params= for those fractal types that
+ need them.
 
-Fixed a bug in the VESA interface which effectively messed up adapters
-with unusual VESA-style access, such as STB's S3 chipset.
+ New 'matherr()' logic lets Fractint get more aggressive when these errors
+ happen.
 
-Fixed a color-cycling bug that would at times restore the wrong colors
-to your image if you exited out of color-cycling, displayed a 'help'
-screen, and then returned to the image.
+ New autologmap option (log=+-2) from Robin Bussell that ensures that
+ all palette values are used by searching the screen border for the lowest
+ value and then setting log= to +- that color.
 
-Fixed the XGA video logic so that its 256-color modes use the same 
-default 256 colors as the VGA adapter's 320x200x256 mode.
+ Two new diffusion options - falling and square cavity.
 
-Fixed the 3D bug that caused bright spots on surfaces
-to show as black blotches of color 0 when using a light source.
+ Three new Editpal commands: '!', '@' and '#' commands (that's
+ <shift-1>, <shift-2>, and <shift-3>) to swap R<->G, G<->B, R<->B.
 
-Fixed an image-generation bug that sometimes caused image regeneration
-to restart even if not required if the image had been zoomed in
-to the point that floating-point had been automatically activated.
+ Parameter files now use a slightly shorter maximum line length, making
+ them a bit more readable when stuffed into messages on Compuserve.
 
-Added autodetection and 640x480x256 support for the Compaq Advanced VGA
-Systems board - I wonder if it works?
+ Plasma now has 16-bit .POT output for use with Ray tracers. The "old"
+ algorithm has been modified so that the plasma effect is independent
+ of resolution.
 
-Added VGA register-compatible 320x240x256 video mode.
+ Slight modification to the Raytrace code to make it compatible with
+ Rayshade 4.0 patch level 6.
 
-Fixed the "logmap=yes" option to (again) take effect for continuous potential
-images.  This was broken in version 15.x.
+ Improved boundary-tracing logic from Wesley Loewer.
 
-The colors for the floating-point algorithm of the Julia fractal
-now match the colors for the integer algorithm.
+ Command-line parameters can now be entered on-the-fly using the <g> key
+ thanks to Ken Shirriff.
 
-If the GIF Encoder (the "Save" command) runs out of disk space, it now
-tells you about it.
+ Dithered gif images can now be loaded onto a b/w display.
+ Thanks to Ken Shirriff.
 
-If you select both the boundary-tracing algorithm and either "inside=0"
-or "outside=0", the algorithm will now give you an error message instead
-of silently failing.
+ Pictures can now be output as compressed PostScript.
+ Thanks to Ken Shirriff.
 
-Updated 3D logic from Marc Reinig.
+ Periodicity is a new inside coloring option.
+ Thanks to Ken Shirriff.
 
-Minor changes to permit IFS3D fractal types to be handled properly
-using the "B" command.
+ Fixes: symmetry values for the SQR functions, bailout for the floating-pt
+ versions of 'lambdafn' and 'mandelfn' fractals from Jonathan Osuch.
 
-Minor changes to the "Obtaining the latest Source" section to refer
-to BBS access (Peter Longo's) and mailed diskettes (the Public (Software)
-Library).
+ "Flip", "conj" operators are now selectable in the parser
 
-;Transparent 3D and Antialiasing stuff, not documented yet, some initial
-;notes:
-;  new command line parms:\
-;    solidcore=y|n		 y\
-;    antialias=0...8		 0\
-;    transparent3d=n|y		 n\
-;    corecolor=nnn/nnn/nnn	 128/128/128\
-;    mdcorners=nnn/nnn/nnn/nnn	 -1.5/1.5/0/0\
-;    numframes=nnn		 1\
-;  antialiasing can be modified on X screen
-;  new keywords "xy" and "dt" in formulas
-;
+ New DXF Raytracing option from Dennis Bragg.
+
+ Improved boundary-tracing logic from Wesley Loewer.
+
+ New MSC7-style overlay structure is used if MAKEFRAC.BAT specifies MSC7.
+ (with new FRACTINT.DEF and FRACTINT.LNK files for MSC7 users).  Several
+ modules have been re-organized to take advantage of this new overlay
+ capability if compiled under MSC7.
+ 
+ Fractint now looks first any embedded help inside FRACTINT.EXE, and then
+ for an external FRACTINT.HLP file before giving up. Previous releases
+ required that the help text be embedded inside FRACTINT.EXE.
+
+Bug fixes:
+
+ Corrected formulas displayed for Marksmandel, Cmplxmarksmandel, and
+  associated julia types.
+
+ BTM and precision fixes.
+
+ Symmetry logic changed for various "outside=" options
+
+ Symmetry value for EXP function in lambdafn and lambda(fn||fn) fixed.
+
+ Fixed bug where math errors prevented save in batch mode.
+ 
+ The <3> and <r> commands no longer destroy image -- user can back out
+ with ESC and image is still there.
+
+ Fixed display of correct number of Julibrot parameters, and Julibrot
+ relaxes and doesn't constantly force ALTERN.MAP.
+
+ Fixed tesseral type for condition when border is all one color but center
+ contains image.
+
+ Fixed integer mandel and julia when used with parameters > +1.99 and < -1.99
+
+ Eliminated recalculation when generating a julia type from a mandelbrot
+ type when the 'z' screen is viewed for the first time.
+
+ Minor logic change to prevent double-clutching into and out of graphics
+ mode when pressing, say, the 'x' key from a menu screen.
+
+ Changed non-US phone number for the Houston Public (Software) Library
+
+ The "Y" screen is now "Extended Options" instead of "Extended Doodads"
+
+ ...and probably a lot more bux-fixes that we've since forgotten that
+ we've implemented.
+
 ~Topic=Introduction
 
 FRACTINT plots and manipulates images of "objects" -- actually, sets of
@@ -445,9 +505,9 @@ tasking control programs such as DESQview and Windows 3.
 ~OnlineFF
 
 Fractint is an experiment in collaboration. Many volunteers have joined
-Bert Tyler, the program's first author, in improving successive versions.
-Through electronic mail messages, first on CompuServe's PICS forum and now
-on COMART, new versions are hacked out and debugged a little at a time.
+Bert Tyler, the program's first author, in improving successive versions. 
+Through electronic mail messages, first on CompuServe's PICS forum and now 
+on GRAPHDEV, new versions are hacked out and debugged a little at a time.
 Fractint was born fast, and none of us has seen any other fractal plotter
 close to the present version for speed, versatility, and all-around
 wonderfulness. (If you have, tell us so we can steal somebody else's ideas
@@ -551,6 +611,7 @@ see "Command Line Parameters, Parameter Files, Batch Mode" for details.
    { Print Command }
    { Parameter Save/Restore Commands }
    { Interrupting and Resuming }
+   { Orbits Window }
    { View Window }
    { \"3D\" Commands }
    { Video Mode Function Keys }
@@ -586,10 +647,17 @@ Commands marked with an '*' are also available at the credits screen.
    a		   Convert the current image into a fractal 'starfield'
    o		   toggles 'orbits' option on and off during image generation
  * d		   Shell to DOS (type 'exit' at the DOS prompt to return)
+   Ctrl-X	   Flip the current image along the screen's X-axis
+   Ctrl-Y	   Flip the current image along the screen's Y-axis
+   Ctrl-Z	   Flip the current image along the screen's Origin
 
 {Image Save/Restore Commands}
    s		   Save the current screen image to disk
  * r		   Restore a saved (or .GIF) image ('3' or 'o' for 3-D)
+
+{Orbits Window}
+   o		   Turns on Orbits Window mode after image generation
+   ctrl-o	   Turns on Orbits Window mode 
 
 {View Window}
  * v		   Set view window parameters (reduction, aspect ratio)
@@ -601,10 +669,11 @@ Commands marked with an '*' are also available at the credits screen.
    b		   Save commands describing the current image in a file
 		   (writes an entry to be used with @ command)
  * @		   Run a set of commands (in command line format) from a file
+   g		   Give a startup parameter: {Summary of all Parameters}
 
 {\"3D\" Commands}
  * 3		   3D transform a saved (or .GIF) image
-   o		   same as 3, but overlay the current image
+   # (shift-3)	   same as 3, but overlay the current image
 
 {Zoom Box Commands}
    PageUp	   When no Zoom Box is active, bring one up
@@ -668,6 +737,11 @@ image is incomplete, it also tells you whether it can be interrupted and
 resumed.  (Any function other than <Tab> and <F1> counts as an
 "interrupt".)
 
+The Tab screen also includes a pixel-counting function, which will count
+the number of pixels colored in the inside color.  This gives an estimate
+of the area of the fractal.  Note that the inside color must be different
+from the outside color(s) for this to work; inside=0 is a good choice.
+
 <T>\
 Select a fractal type. Move the cursor to your choice (or type the first
 few letters of its name) and hit <Enter>. Next you will be prompted for
@@ -715,8 +789,8 @@ that selection. You can enter "e" or "p" in column one of the input fields
 to get the numbers e and pi (2.71828... and 3.14159...).\
 From the fractal parameters screen, you can press <F6> to bring up a
 sub parameter screen for the coordinates of the image's corners.
-With the IFS fractal type, <Z> brings up the IFS editor (see
-{=HT_IFS Barnsley IFS Fractals}).
+; With the IFS fractal type, <Z> brings up the IFS editor (see
+; {=HT_IFS Barnsley IFS Fractals}).
 
 <+> or <->\
 Switch to color-cycling mode and begin cycling the palette
@@ -732,8 +806,11 @@ Enter Palette-Editing Mode.  See {Palette Editing Commands}.
 <Spacebar>\
 Toggle between Mandelbrot set images and their corresponding Julia-set
 images. Read the notes in {=HT_JULIA Fractal Types, Julia Sets}
-before trying this option if you want
-to see anything interesting.
+before trying this option if you want to see anything interesting.
+
+<J>\
+Toggle between Julia escape time fractal and the Inverse Julia orbit
+fractal. See {=HT_INVERSE Inverse Julias}
 
 <Enter>\
 Enter is used to resume calculation after a pause. It is only
@@ -859,7 +936,7 @@ non-standard aspect ratio) become non-circular, and so on. The vast
 majority of PC screens *do* have a 4:3 aspect ratio.
 
 Zooming is not implemented for the plasma and diffusion fractal types, nor
-for <O>verlayed and <3>d images. A few fractal types support zooming but
+for overlayed and 3D images. A few fractal types support zooming but
 do not support rotation and skewing - nothing happens when you try it.
 ;
 ;
@@ -893,6 +970,10 @@ you can type the name of a different directory (and optionally a different
 drive) and press <Enter> for a new display. You can also type a mask such
 as "*.XYZ" and press <Enter> to display files whose name ends with the
 matching suffix (XYZ).
+
+You can use <F6> to switch directories to the default fractint directory
+or to your own directory which is specified through the DOS environment
+variable "FRACTDIR".
 
 Once you have selected a file to restore, a summary description of the
 file is shown, with a video mode selection list. Usually you can just
@@ -973,8 +1054,9 @@ After you press <B>, Fractint prompts for:
   Main comment:  A comment to be shown beside the entry in the <@> command
   display.
 
-  Second comment:  A second comment to store in the file with the entry.
-  This comment goes in the file only, is not displayed by the <@> command.
+  Second, Third, and Fourth comment:  Additional comments to store in the 
+  file with the entry. These comments go in the file only, and are not 
+  displayed by the <@> command.
 
   Record colors?:  Whether color information should be included in the
   entry. Usually the default value displayed by Fractint is what you want.
@@ -1001,6 +1083,41 @@ After you press <B>, Fractint prompts for:
   using a 256 color mode with maxiter 150, and have used the palette
   editor to set all 256 possible colors for use with color cycling, then
   you'll want to set the "# of colors" to 256.
+
+  At the bottom of the input screen are inputs for Fractint's "pieces"
+  divide-and-conquer feature. You can create multiple PAR entries that
+  break an image up into pieces so that you can generate the image pieces 
+  one by one. There are two reasons for doing this. The first is in case the
+  fractal is very slow, and you want to generate parts of the image at the 
+  same time on several computers. The second is that you might want to make 
+  an image greater than 2048 x 2048. The parameters for this feature are:
+     X Multiples - How many divisions of final image in the x direction\
+     Y Multiples - How many divisions of final image in the y direction\
+     Video mode  - Fractint video mode for each piece (e.g. "F3")\
+
+  The last item defaults to the current video mode. If either X Multiples or
+  Y Multiples are greater than 1, then multiple numbered PAR entries for the
+  pieces are added to the PAR file, and a MAKEMIG.BAT file is created that
+  builds all of the component pieces and then stitches them together into
+  a "multi-image" GIF.  The current limitations of the "divide and conquer"
+  algorithm are 36 or fewer X and Y multiples (so you are limited to "only"
+  36x36=1296 component images), and a final resolution limit in both the
+  X and Y directions of 65,535 (a limitation of "only" four billion pixels
+  or so).
+ 
+  The final image generated by MAKEMIG is a "multi-image" GIF file called
+  FRACTMIG.GIF.  In case you have other software that can't handle
+  multi-image GIF files, MAKEMIG includes a final (but commented out) call
+  to SIMPLGIF, a companion program that reads a GIF file that may contain
+  little tricks like multiple images and creates a simple GIF from it.
+  Fair warning: SIMPLGIF needs room to build a composite image while it
+  works, and it does that using a temporary disk file equal to the size
+  of the final image - and a 64Kx64K GIF image requires a 4GB temporary
+  disk file!
+
+<G>
+
+The <G> command lets you give a startup parameter interactively.
 ;
 ;
 ;
@@ -1048,7 +1165,7 @@ using the zoom box to move around.  You can also use <F4> to reset
 the coordinates to the defaults for the current fractal type.
 
 There are two formats for the display: corners or center-mag.  You can
-toggle between the two by using <F6>.
+toggle between the two by using <F7>.
 
 In corners mode, corner coordinate values are entered directly.  Usually
 only the top-left and bottom-right corners need be specified - the
@@ -1108,13 +1225,40 @@ To <R>estore and resume a "formula", "lsystem", or "ifs" type fractal your
 ;
 ;
 ;
+~Topic=Orbits Window, Label=HELP_ORBITS
+The <O> key turns on the Orbit mode.  In this mode a cursor appears 
+over the fractal. A window appears showing the orbit used in the 
+calculation of the color at the point where the cursor is. Move the 
+cursor around the fractal using the arrow keys or the mouse and watch
+the orbits change. Try entering the Orbits mode with View Windows (<V>)
+turned on. The following keys take effect in Orbits mode. 
+
+<c>         Circle toggle - makes little circles with radii inversely\
+            proportional to the iteration. Press <c> again to toggle\
+            back to point-by-point display of orbits.\
+<l>         Line toggle - connects orbits with lines (can use with <c>)\
+<n>         Numbers toggle - shows coordinates of the cursor on the\ 
+            screen. Press <n> again to turn off numbers.\
+<p>         Enter pixel coordinates directly\ 
+<h>         Hide fractal toggle. Works only if View Windows is turned on\ 
+            and set for a small window (such as the default size.) Hides the\ 
+            fractal, allowing the orbit to take up the whole screen. Press\
+            <h> again to uncover the fractal.\
+<s>         Saves the fractal, cursor, orbits, and numbers as they appear\
+            on the screen.\
+<<> or <,>  Zoom orbits image smaller\
+<>> or <.>  Zoom orbits image larger\
+<z>         Restore default zoom.\
+;
+;
+;
 ~Topic=View Window, Label=HELPVIEW
 
 The <V> command is used to set the view window parameters described below.
 These parameters can be used to:\
  o Define a small window on the screen which is to contain the generated
    images. Using a small window speeds up calculation time (there are
-   less pixels to generate). You can use a small window to explore
+   fewer pixels to generate). You can use a small window to explore
    quickly, then turn the view window off to recalculate the image at
    full screen size.
  o Generate an image with a different "aspect ratio"; e.g. in a square
@@ -1122,9 +1266,6 @@ These parameters can be used to:\
  o View saved GIF images which have pixel dimensions different from any
    mode supported by your hardware. This use of view windows occurs
    automatically when you restore such an image.
-
-Note that there are currently no command-line parameters for view windows
-- they can only be set interactively.
 
 "Preview display"\
 Set this to "yes" to turn on view window, "no" for full screen display.
@@ -1182,11 +1323,8 @@ See {\"3D\" Images} for details of these commands.
 Restore a saved image as a 3D "landscape", translating its color
 information into "height". You will be prompted for all KINDS of options.
 
-<O>\
-Restore in 3D and overlay the result on the current screen. (This only
-works when there's a completed image on screen, so it can't be confused
-with the <O>-for-orbits toggle that ONLY operates WHILE a fractal is being
-generated.)
+<#>\
+Restore in 3D and overlay the result on the current screen.
 ;
 ;
 ;
@@ -1241,7 +1379,7 @@ Remember, you do NOT have to wait for the program to finish a full screen
 display before entering a command. If you see an interesting spot you want
 to zoom in on while the screen is half-done, don't wait -- do it! If you
 think after seeing the first few lines that another video mode would look
-better, go ahead -- Fractint will shift modes and start the re-draw at
+better, go ahead -- Fractint will shift modes and start the redraw at
 once. When it finishes a display, it beeps and waits for your next
 command.
 
@@ -1394,7 +1532,7 @@ file (.MAP assumed).  See {Palette Maps}.
   Enter 	   Randomly (re)-select all new colors	[TRY THIS ONE!]
   Spacebar	   Pause until another key is hit
   < or >	   Pause and single-step through one color-cycle
-* SF1 thru AF10    Pause and re-set the Palette to one of 30 fixed sequences
+* SF1 thru AF10    Pause and reset the Palette to one of 30 fixed sequences
   d or a	   pause and load the palette from DEFAULT.MAP or ALTERN.MAP
   l		   load palette from a map file
   s		   save palette to a map file
@@ -1500,6 +1638,9 @@ See {Color Cycling Commands}.
 Create a smoothly shaded range of colors between the colors selected by
 the two color registers.
 
+<m>\
+Specify a gamma value for the shading created by <=>.
+
 <D>\
 Duplicate the inactive color register's values to the active color
 register.
@@ -1567,6 +1708,40 @@ which match the active color are displayed.
 <Y>\
 Toggle 'exclude' range on or off - similar to <X>, but all pixels matching
 colors in the range of the two color registers are displayed.
+
+<N>\
+Make a negative color palette - will convert only current color if in 'x' 
+mode or range between editors in 'y' mode or entire palette if in "normal" 
+mode.
+
+<!>\
+<@>\
+<#>\
+Swap R<->G, G<->B, and R<->B columns. These keys are shifted 1, 2, and 3,
+which you may find easier to remember.
+
+<F>\
+Toggles "Freestyle mode" on and off (Freestyle mode changes a range of
+palette values smoothly from a center value outward).
+With your cursor inside the palette box, press the <F> key to enter
+Freestyle mode.  A default range of colors will be selected for you
+centered at the cursor (the ends of the color range are noted by putting
+dashed lines around the corresponding palette values). While in Freestyle
+mode:
+ 
+ Moving the mouse changes the location of the range of colors that are
+ affected.
+ 
+ Control-Insert/Delete or the shifted-right-mouse-button changes the
+ size of the affected palette range.
+ 
+ The normal color editing keys (R,G,B,1-6, etc) set the central color
+ of the affected palette range.
+ 
+ Pressing ENTER or double-clicking the left mouse button makes the
+ palette changes permanent (if you don't perform this step, any
+ palette changes disappear when you press the <F> key again to exit
+ freestyle mode).
 ;
 ;
 ;
@@ -1593,6 +1768,7 @@ colors in the range of the two color registers are displayed.
   < or >	   Rotate the palette continuously (until next keystroke)
   c		   Enter Color-Cycling Mode (see {=HELPCYCLING Color Cycling Commands})
   =		   Create a smoothly shaded range of colors
+  m		   Set the gamma value for '='.
   d		   Duplicate the inactive color register in active color
   t		   Stripe-shade; after hitting 't', hit a number from 2 to 9
 		   which is used as stripe width
@@ -1611,6 +1787,13 @@ colors in the range of the two color registers are displayed.
   y		   Toggle 'exclude' range on or off
   o		   Set the 'cyclerange' (range affected by color cycling
 		   commands) to the range of the two registers
+  n		   Make a negative color palette
+  !		   Swap red and green columns
+  @		   Swap green and blue columns
+  #		   Swap red and blue columns
+  f                Enter Palette-Editing Mode.  See {Palette Editing Commands}
+                   for details.
+
 ;
 ;
 ; Fractal Types:

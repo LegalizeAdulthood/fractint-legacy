@@ -218,7 +218,7 @@ NYUF009            { ; pretty bug if changed to float=n     Dan Farmer
 Arrow              { ; formula Wineglass                    Richard Hughes
   reset type=formula formulafile=fractint.frm formulaname=Wineglass
   corners=-0.650529/-0.306983/-0.128843/0.128827 maxiter=256 inside=0
-  outside=mult logmap=yes
+  outside=mult logmap=yes symmetry=xaxis
   colors=00000S88YBBaDDeEEiFFmHHsKKwNNzOOz<2>WWzZZzccz00522755977BAAF<11>cchee\
   jffl<2>mmrppurrvttwuuxP0P<2>c0cg0gj0jm0mp0p<3>z0zzFz<6>zmzgfoZ`iTVdPR`<2>HJU\
   FHUCHS9LV0OY0Tc0Yh<2>0jw5mz0ozFpz<5>hpzmpzppz000555<18>zzz00V88Y<6>NNz<13>nn\
@@ -237,8 +237,8 @@ Egg                { ; FN*FN   SINH/SQR                     Richard Hughes
   s_CsYECE<20>sCs<20>ECsCCsCEs<19>CqsCssCsq<19>CsECsCEsE<19>qsqsssssq<18>ssG
   }
 
-mandala            { ; Sqr(1/FN)  COTAN                     Richard Hughes
-  reset type=sqr(1/fn) function=cotan
+mandala            { ; Sqr(1/FN)  IDENT                     Richard Hughes
+  reset type=sqr(1/fn) function=ident  ; TW changed - cotan was broken
   corners=-1.984573/1.98143/-1.486908/1.487839 maxiter=256 inside=0
   outside=real
   colors=000ztn<49>zV1zU0zU0zT0<28>z10z00z00y00<30>c00b11a11`22_22<23>GEEFFFFF\
@@ -328,7 +328,7 @@ Rich8z3            { ; Fractal Creations cover              Lee Skinner
 
 
 Owl                { ; fn*z+z, TANH                         Scott Taylor
-  reset type=fn*z+z function=tanh
+  reset type=fn*z+z function=tanh symmetry=yaxis
   corners=-1.996257/1.996259/0.79092/3.785347 params=1/0/1 maxiter=512
   inside=255 potential=255/355/0 colors=@volcano.map
   }
@@ -341,19 +341,19 @@ SWT-018            { ; fn+fn, SINH/COSH                     Scott Taylor
   }
 
 SWT-023            { ; color cycle and press "2" for fun    Scott Taylor
-  reset type=mandelfn function=cos
+  reset type=mandelfn function=cos symmetry=xyaxis
   corners=-3.679993/3.681534/-2.759262/2.759003 maxiter=512 inside=255
   outside=summ potential=255/400/0 colors=@headache.map
   }
 
 SWT-027            { ; magnet2m                             Scott Taylor
-  reset type=magnet2m passes=b
+  reset type=magnet2m passes=b symmetry=xaxis
   corners=-4.552174/6.752174/-4.239131/4.239131 maxiter=512 inside=255
   outside=summ potential=255/400/0 colors=@headache.map
   }
 
 SWT-029            { ; lambdafn, EXP                        Scott Taylor
-  reset type=lambdafn function=exp
+  reset type=lambdafn function=exp symmetry=xaxis
   corners=-4.340851/4.336975/-3.250305/3.254669 params=1.9/0.4 maxiter=512
   inside=255 potential=255/455/0 colors=@royal.map
   }
@@ -364,4 +364,34 @@ SWT-030            { ; lambdafn, COSH                       Scott Taylor
   inside=255 potential=255/455/0 colors=@neon.map
   }
 
+EvilFrog          { ; Kermit with rabies                   Wesley Loewer
+  reset type=frothybasin passes=1
+  corners=0.1987794025371462/0.1987794025306378/-1.287290394040766/-1.2872\
+  90394029171/0.1987794025292465/-1.287290394030193 params=6/1 float=y
+  maxiter=100
+  colors=000z00<82>M00z0z<40>M0M0z0<40>0M000z<40>00Mzz0<40>MM0000000000
+  }
+Horsetail          { ; MIIM Julia                           Michael Snyder
+                     ; Reminds me of a horsetail fern
+                     ; Give it your highest 16-color resolution.
+  reset=1732 type=julia_inverse miim=depth/left
+  corners=-1.303326/1.303335/-1.0648/1.064791
+  params=-0.194/0.6557/3/1024
+  }
+
+SeaHorse           { ; MIIM Julia                           Michael Snyder
+                     ; The famous Seahorse Julia -- from a different angle!
+                     ; Give it your highest 16-color resolution.
+  reset=1732 type=julia_inverse miim=depth/left
+  corners=-0.213794/0.213791/-1.003197/1.003186/-1.812457/0.013164
+  params=-0.74543/0.11301/3/1024
+  }
+
+SeaShell           { ; MIIM Julia                           Michael Snyder
+                     ; Like a Chambered Nautilus cut in half; my favorite.
+                     ; Give it your highest 16-color resolution.
+  reset=1732 type=julia_inverse miim=depth/right
+  corners=0.839251/-0.839269/-1.119046/1.119006/-0.839269/1.119006
+  params=0.27334/0.00742/5/1024
+  }
 

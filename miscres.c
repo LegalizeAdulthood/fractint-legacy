@@ -7,7 +7,12 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <time.h>
+#ifndef XFRACT
 #include <stdarg.h>
+#include <io.h>
+#else
+#include <varargs.h>
+#endif
 #include <math.h>
 #ifdef __TURBOC__
 #include <dir.h>
@@ -15,45 +20,27 @@
 #include "fractint.h"
 #include "fractype.h"
 #include "helpdefs.h"
+#include "prototyp.h"
 
 /* routines in this module	*/
 
-extern	void restore_active_ovly(void );
-extern	void findpath(char *filename,char *fullpathname);
-extern	void notdiskmsg(void );
-extern	int cvtcentermag(double *Xctr,double *Yctr,double *Magnification);
-extern	void updatesavename(char *name);
-extern	int check_writefile(char *name,char *ext);
-extern	int check_key(void );
-extern	int timer(int timertype,int(*subrtn)(),...);
-extern	void showtrig(char *buf);
-extern	int set_trig_array(int k,char *name);
-extern	void set_trig_pointers(int which);
-extern	int tab_display(void );
-extern	int endswithslash(char *fl);
-extern	int ifsload(void);
-extern	int find_file_item(char *filename,char *itemname,FILE **infile);
-extern	int file_gets(char *buf,int maxlen,FILE *infile);
-extern	void roundfloatd(double *);
-
 static	void trigdetails(char *);
+static void area();
 
 int active_ovly = -1;
-long timer_start,timer_interval;	/* timer(...) start & total */
 
 extern char IFSFileName[80];
 extern char IFSName[40];
 extern float far *ifs_defn;
 extern int  ifs_changed;
 extern int  ifs_type;
-
+extern int neworbittype;
 extern char temp[], temp1[256];   /* temporary strings	      */
 
 extern int  active_ovly;
 extern int  xdots, ydots;
 extern int  dotmode;
 extern int  show_orbit;
-extern int  timerflag;
 extern int  debugflag;
 extern int  maxit;
 extern int  fractype;
@@ -62,6 +49,9 @@ extern int  fileydots;
 extern int  xxstart,xxstop,yystart,yystop;
 extern int  display3d;
 extern char overwrite;
+extern int  inside;
+extern int  outside;
+extern double xxmax,xxmin,yymax,yymin,xx3rd,yy3rd;
 
 
 /* TW's static string consolidation campaign to help brain-dead compilers */
@@ -79,7 +69,8 @@ void restore_active_ovly()
       case OVLY_MISCOVL:  miscovl_overlay();  break;
       case OVLY_CMDFILES: cmdfiles_overlay(); break;
       case OVLY_HELP:	  help_overlay();     break;
-      case OVLY_PROMPTS:  prompts_overlay();  break;
+      case OVLY_PROMPTS1: prompts1_overlay(); break;
+      case OVLY_PROMPTS2: prompts2_overlay(); break;
       case OVLY_LOADFILE: loadfile_overlay(); break;
       case OVLY_ROTATE:   rotate_overlay();   break;
       case OVLY_PRINTER:  printer_overlay();  break;
@@ -87,13 +78,15 @@ void restore_active_ovly()
       case OVLY_ENCODER:  encoder_overlay();  break;
       case OVLY_CALCFRAC: calcfrac_overlay(); break;
       case OVLY_INTRO:	  intro_overlay();    break;
+      case OVLY_DECODER:  decoder_overlay();  break;
       }
 }
 
 
+#ifndef XFRACT
 void findpath(char *filename, char *fullpathname) /* return full pathnames */
 {
-   if (filename[0] == '\\'
+   if (filename[0] == SLASHC
      || (filename[0] && filename[1] == ':')) {
       strcpy(fullpathname,filename);
       return;
@@ -105,16 +98,17 @@ void findpath(char *filename, char *fullpathname) /* return full pathnames */
    _searchenv(filename,"PATH",fullpathname);
 #endif
    if (fullpathname[0] != 0)			/* found it! */
-      if (strncmp(&fullpathname[2],"\\\\",2) == 0) /* stupid klooge! */
+      if (strncmp(&fullpathname[2],SLASHSLASH,2) == 0) /* stupid klooge! */
 	 strcpy(&fullpathname[3],filename);
 }
+#endif
 
 
 void notdiskmsg()
 {
 static char far sorrymsg[]={
-"I'm sorry, but because of its random-screen-access algorithms, this\n"
-"type cannot be created using a real-disk based 'video' mode."};
+"I'm sorry, but because of its random-screen-access algorithms, this\n\
+type cannot be created using a real-disk based 'video' mode."};
    stopmsg(1,sorrymsg);
 }
 
@@ -122,7 +116,6 @@ static char far sorrymsg[]={
 /* convert corners to center/mag */
 int cvtcentermag(double *Xctr, double *Yctr, double *Magnification)
 {
-   extern double xxmax,xxmin,yymax,yymin,xx3rd,yy3rd;
    double Width, Height, Radius, Ratio;
    Width  = xxmax - xxmin;
    Height = yymax - yymin;
@@ -149,7 +142,7 @@ void updatesavename(char *filename) /* go to the next file name */
    strcpy(name,filename);
    suffix[0] = 0;
    if ((dotptr = strrchr(name,'.')) != NULL
-     && dotptr > strrchr(name,'\\')) {
+     && dotptr > strrchr(name,SLASHC)) {
       strcpy(suffix,dotptr);
       *dotptr = 0;
       }
@@ -204,117 +197,30 @@ nextname:
    return 1;
 }
 
+/* ('check_key()' was moved to FRACTINT.C for MSC7-overlay speed purposes) */
+/* ('timer()'     was moved to FRACTINT.C for MSC7-overlay speed purposes) */
 
-int check_key()
-{
-   int key;
-   if((key = keypressed()) != 0) {
-      if(key != 'o' && key != 'O')
-	 return(-1);
-      getakey();
-      if (dotmode != 11)
-	 show_orbit = 1 - show_orbit;
-   }
-   return(0);
-}
-
-
-/* timer function:
-     timer(0,(*fractal)())		fractal engine
-     timer(1,NULL,int width)		decoder
-     timer(2)				encoder
-  */
-int timer(int timertype,int(*subrtn)(),...)
-{
-   va_list arg_marker;	/* variable arg list */
-   char *timestring;
-   time_t ltime;
-   FILE *fp;
-   int out;
-   int i;
-   int do_bench;
-
-   va_start(arg_marker,subrtn);
-   do_bench = timerflag; /* record time? */
-   if (timertype == 2)	 /* encoder, record time only if debug=200 */
-      do_bench = (debugflag == 200);
-   if(do_bench)
-      fp=fopen("bench","a");
-   timer_start = clock();
-   switch(timertype) {
-      case 0:
-	 out = (*subrtn)();
-	 break;
-      case 1:
-	 i = va_arg(arg_marker,int);
-	 out = decoder(i);	     /* not indirect, safer with overlays */
-	 break;
-      case 2:
-	 out = encoder();	     /* not indirect, safer with overlays */
-	 break;
-      }
-   /* next assumes CLK_TCK is 10^n, n>=2 */
-   timer_interval = (clock() - timer_start) / (CLK_TCK/100);
-
-   if(do_bench) {
-      time(&ltime);
-      timestring = ctime(&ltime);
-      timestring[24] = 0; /*clobber newline in time string */
-      switch(timertype) {
-	 case 1:
-	    fprintf(fp,"decode ");
-	    break;
-	 case 2:
-	    fprintf(fp,"encode ");
-	    break;
-	 }
-      fprintf(fp,"%s type=%s resolution = %dx%d maxiter=%d",
-	  timestring,
-	  curfractalspecific->name,
-	  xdots,
-	  ydots,
-	  maxit);
-      fprintf(fp," time= %ld.%02ld secs\n",timer_interval/100,timer_interval%100);
-      if(fp != NULL)
-	 fclose(fp);
-      }
-   return(out);
-}
-
-
-extern void lStkSin(void) ,dStkSin(void) ,mStkSin(void) ;
-extern void lStkCos(void) ,dStkCos(void) ,mStkCos(void) ;
-extern void lStkSinh(void),dStkSinh(void),mStkSinh(void);
-extern void lStkCosh(void),dStkCosh(void),mStkCosh(void);
-extern void lStkExp(void) ,dStkExp(void) ,mStkExp(void) ;
-extern void lStkLog(void) ,dStkLog(void) ,mStkLog(void) ;
-extern void lStkSqr(void) ,dStkSqr(void) ,mStkSqr(void) ;
-extern void lStkRecip(void) ,dStkRecip(void) ,mStkRecip(void) ;
-extern void StkIdent(void);
-extern void lStkTan(void) ,dStkTan(void) ,mStkTan(void) ;
-extern void lStkTanh(void),dStkTanh(void),mStkTanh(void);
-extern void lStkCoTan(void),dStkCoTan(void),mStkCoTan(void);
-extern void lStkCoTanh(void),dStkCoTanh(void),mStkCoTanh(void);
-extern void lStkCosXX(void) ,dStkCosXX(void) ,mStkCosXX(void) ;
-
-unsigned char trigndx[] = {SIN,SQR,SINH,COSH};
-void (*ltrig0)() = lStkSin;
-void (*ltrig1)() = lStkSqr;
-void (*ltrig2)() = lStkSinh;
-void (*ltrig3)() = lStkCosh;
-void (*dtrig0)() = dStkSin;
-void (*dtrig1)() = dStkSqr;
-void (*dtrig2)() = dStkSinh;
-void (*dtrig3)() = dStkCosh;
-void (*mtrig0)() = mStkSin;
-void (*mtrig1)() = mStkSqr;
-void (*mtrig2)() = mStkSinh;
-void (*mtrig3)() = mStkCosh;
+BYTE trigndx[] = {SIN,SQR,SINH,COSH};
+#ifndef XFRACT
+void (*ltrig0)(void) = lStkSin;
+void (*ltrig1)(void) = lStkSqr;
+void (*ltrig2)(void) = lStkSinh;
+void (*ltrig3)(void) = lStkCosh;
+void (*mtrig0)(void) = mStkSin;
+void (*mtrig1)(void) = mStkSqr;
+void (*mtrig2)(void) = mStkSinh;
+void (*mtrig3)(void) = mStkCosh;
+#endif
+void (*dtrig0)(void) = dStkSin;
+void (*dtrig1)(void) = dStkSqr;
+void (*dtrig2)(void) = dStkSinh;
+void (*dtrig3)(void) = dStkCosh;
 
 struct trig_funct_lst trigfn[] =
 /* changing the order of these alters meaning of *.fra file */
 /* maximum 6 characters in function names or recheck all related code */
 {
+#ifndef XFRACT
    {"sin",   lStkSin,   dStkSin,   mStkSin   },
    {"cosxx", lStkCosXX, dStkCosXX, mStkCosXX },
    {"sinh",  lStkSinh,  dStkSinh,  mStkSinh  },
@@ -329,6 +235,28 @@ struct trig_funct_lst trigfn[] =
    {"tanh",  lStkTanh,  dStkTanh,  mStkTanh  },
    {"cotan", lStkCoTan, dStkCoTan, mStkCoTan },
    {"cotanh",lStkCoTanh,dStkCoTanh,mStkCoTanh},
+   {"flip",  lStkFlip,  dStkFlip,  mStkFlip  },
+   {"conj",  lStkConj,  dStkConj,  mStkConj  },
+   {"zero",  lStkZero,  dStkZero,  mStkZero  },
+#else
+   {"sin",   dStkSin,   dStkSin,   dStkSin   },
+   {"cosxx", dStkCosXX, dStkCosXX, dStkCosXX },
+   {"sinh",  dStkSinh,  dStkSinh,  dStkSinh  },
+   {"cosh",  dStkCosh,  dStkCosh,  dStkCosh  },
+   {"exp",   dStkExp,   dStkExp,   dStkExp   },
+   {"log",   dStkLog,   dStkLog,   dStkLog   },
+   {"sqr",   dStkSqr,   dStkSqr,   dStkSqr   },
+   {"recip", dStkRecip, dStkRecip, dStkRecip }, /* from recip on new in v16 */
+   {"ident", StkIdent,  StkIdent,  StkIdent  },
+   {"cos",   dStkCos,   dStkCos,   dStkCos   },
+   {"tan",   dStkTan,   dStkTan,   dStkTan   },
+   {"tanh",  dStkTanh,  dStkTanh,  dStkTanh  },
+   {"cotan", dStkCoTan, dStkCoTan, dStkCoTan },
+   {"cotanh",dStkCoTanh,dStkCoTanh,dStkCoTanh},
+   {"flip",  dStkFlip,  dStkFlip,  dStkFlip  },
+   {"conj",  dStkConj,  dStkConj,  dStkConj  },
+   {"zero",  dStkZero,  dStkZero,  dStkZero  },
+#endif
 };
 int numtrigfn = sizeof(trigfn)/sizeof(struct trig_funct_lst);
 
@@ -346,7 +274,10 @@ static void trigdetails(char *buf)
    extern char maxfn;
    int i, numfn;
    char tmpbuf[20];
-   numfn = (curfractalspecific->flags >> 6) & 7;
+   if(fractype==JULIBROT || fractype==JULIBROTFP)
+      numfn = (fractalspecific[neworbittype].flags >> 6) & 7;
+   else
+      numfn = (curfractalspecific->flags >> 6) & 7;
    if(curfractalspecific == &fractalspecific[FORMULA] ||
       curfractalspecific == &fractalspecific[FFORMULA]	)
       numfn = maxfn;
@@ -393,24 +324,32 @@ void set_trig_pointers(int which)
    switch(which)
    {
    case 0:
+#ifndef XFRACT
       ltrig0 = trigfn[trigndx[0]].lfunct;
-      dtrig0 = trigfn[trigndx[0]].dfunct;
       mtrig0 = trigfn[trigndx[0]].mfunct;
+#endif
+      dtrig0 = trigfn[trigndx[0]].dfunct;
       break;
    case 1:
+#ifndef XFRACT
       ltrig1 = trigfn[trigndx[1]].lfunct;
-      dtrig1 = trigfn[trigndx[1]].dfunct;
       mtrig1 = trigfn[trigndx[1]].mfunct;
+#endif
+      dtrig1 = trigfn[trigndx[1]].dfunct;
       break;
    case 2:
+#ifndef XFRACT
       ltrig2 = trigfn[trigndx[2]].lfunct;
-      dtrig2 = trigfn[trigndx[2]].dfunct;
       mtrig2 = trigfn[trigndx[2]].mfunct;
+#endif
+      dtrig2 = trigfn[trigndx[2]].dfunct;
       break;
    case 3:
+#ifndef XFRACT
       ltrig3 = trigfn[trigndx[3]].lfunct;
-      dtrig3 = trigfn[trigndx[3]].dfunct;
       mtrig3 = trigfn[trigndx[3]].mfunct;
+#endif
+      dtrig3 = trigfn[trigndx[3]].dfunct;
       break;
    default: /* do 'em all */
       for(i=0;i<4;i++)
@@ -422,10 +361,41 @@ void set_trig_pointers(int which)
 
 int tab_display()	/* display the status of the current image */
 {
+/* TW's static string consolidation campaign to help brain-dead compilers */
+   static char far sfractal_type[] =     {"Fractal type:"};
+   static char far s3D_transform[] =     {"3D Transform"};
+   static char far syou_are_cycling[] =  {"You are in color-cycling mode"};
+   static char far sfloating_point[] =   {"Floating-point"};
+   static char far sruns_forever[] =     {"Note: this type runs forever."};
+   static char far ssolid_guessing[] =   {"Solid Guessing"};
+   static char far sboundary_tracing[] = {"Boundary Tracing"};
+   static char far stesseral[] =         {"Tesseral"};
+   static char far scalculation_time[] = {"Calculation time:"};
+   static char far scornersxy[] =        {"Corners:                X                     Y"};
+   static char far stop_left[] =         {"top-left"};
+   static char far sbottom_right[] =     {"bottom-right"};
+   static char far scenter[] =           {"Center: "};
+   static char far smag[] =              {"  Mag: "};
+   static char far sbottom_left[] =      {"bottom-left"};
+   static char far sparams[] =           {"Params,"};
+   static char far siteration_maximum[] ={"Iteration maximum: "};
+   static char far seffective_bailout[] ={"     Effective bailout: "};
+   static char far scurrent_rseed[] =    {"Current 'rseed': "};
+   static char far sinversion_radius[] = {"Inversion radius: "};
+   static char far sxcenter[] =          {"  xcenter: "};
+   static char far sycenter[] =          {"  ycenter: "};
+   static char far sparms_chgd[] = {"Parms chgd since generated"};
+   static char far sstill_being[] = {"Still being generated"};
+   static char far sinterrupted_resumable[] = {"Interrupted, resumable"};
+   static char far sinterrupted_non_resumable[] = {"Interrupted, non-resumable"};
+   static char far simage_completed[] = {"Image completed"};
+   static char far sflag_is_activated[] = {" flag is activated"};
+   static char far sinteger_math[]      = {"Integer math is in use"};
+   static char far sin_use_required[] = {" in use (required)"};
+
    extern char floatflag;
    extern char usr_floatflag;
-   extern double xxmin, xxmax, xx3rd, yymin, yymax, yy3rd;
-   extern double param[4];
+   extern double param[];
    extern double rqlim;
    extern long calctime, timer_start;
    extern int  calc_status;
@@ -437,20 +407,22 @@ int tab_display()	/* display the status of the current image */
    int row, i, j;
    double Xctr, Yctr, Magnification;
    char msg[81];
-   char *msgptr;
+   char far *msgptr;
+   int key;
 
    if (calc_status < 0) 	/* no active fractal image */
       return(0);		/* (no TAB on the credits screen) */
    if (calc_status == 1)	/* next assumes CLK_TCK is 10^n, n>=2 */
-      calctime += (clock() - timer_start) / (CLK_TCK/100);
+      calctime += (clock_ticks() - timer_start) / (CLK_TCK/100);
    stackscreen();
+top:
    helptitle();
    setattr(1,0,C_GENERAL_MED,24*80); /* init rest to background */
 
    row = 2;
-   putstring(row,2,C_GENERAL_MED,"Fractal type:");
+   putstring(row,2,C_GENERAL_MED,sfractal_type);
    if (display3d > 0)
-      putstring(row,16,C_GENERAL_HI,"3D Transform");
+      putstring(row,16,C_GENERAL_HI,s3D_transform);
    else {
       putstring(row,16,C_GENERAL_HI,
 	   curfractalspecific->name[0] == '*' ?
@@ -469,22 +441,23 @@ int tab_display()	/* display the status of the current image */
       if (fractype == IFS || fractype == IFS3D)
 	 putstring(row+1,16,C_GENERAL_HI,IFSName);
       }
+
    switch (calc_status) {
-      case 0:  msgptr = "Parms chgd since generated";
+      case 0:  msgptr = sparms_chgd;
 	       break;
-      case 1:  msgptr = "Still being generated";
+      case 1:  msgptr = sstill_being;
 	       break;
-      case 2:  msgptr = "Interrupted, resumable";
+      case 2:  msgptr = sinterrupted_resumable;
 	       break;
-      case 3:  msgptr = "Interrupted, non-resumable";
+      case 3:  msgptr = sinterrupted_non_resumable;
 	       break;
-      case 4:  msgptr = "Image completed";
+      case 4:  msgptr = simage_completed;
 	       break;
       default: msgptr = "";
       }
    putstring(row,45,C_GENERAL_HI,msgptr);
    if (helpmode == HELPCYCLING)
-      putstring(row+1,45,C_GENERAL_HI,"You are in color-cycling mode");
+      putstring(row+1,45,C_GENERAL_HI,syou_are_cycling);
    row += 2;
 
     i = j = 0;
@@ -496,14 +469,20 @@ int tab_display()	/* display the status of the current image */
        if (floatflag)
 	  j = (usr_floatflag) ? 1 : 2;
     if (j) {
-       putstring(row,45,C_GENERAL_HI,"Floating-point");
-       putstring(-1,-1,C_GENERAL_HI,(j == 1) ? " flag is activated"
-					     : " in use (required)");
+       putstring(row,45,C_GENERAL_HI,sfloating_point);
+ 
+       putstring(-1,-1,C_GENERAL_HI,(j == 1) ? sflag_is_activated
+					     : sin_use_required );
+      i = 1;
+      }
+      else
+      {
+       putstring(row,45,C_GENERAL_HI,sinteger_math);
       i = 1;
       }
    if (calc_status == 1 || calc_status == 2)
       if (curfractalspecific->flags&INFCALC) {
-	 putstring(row,2,C_GENERAL_HI,"Note: this type runs forever.");
+	 putstring(row,2,C_GENERAL_HI,sruns_forever);
 	 i = 1;
 	 }
    row += i;
@@ -523,17 +502,17 @@ int tab_display()	/* display the status of the current image */
 	    putstring(row,2,C_GENERAL_HI,msg);
 	    break;
 	 case 1:
-	    putstring(row,2,C_GENERAL_HI,"Solid Guessing");
+	    putstring(row,2,C_GENERAL_HI,ssolid_guessing);
 	    break;
 	 case 2:
-	    putstring(row,2,C_GENERAL_HI,"Boundary Tracing");
+	    putstring(row,2,C_GENERAL_HI,sboundary_tracing);
 	    break;
 	 case 3:
 	    sprintf(msg,"Processing row %d (of %d) of input image",currow,fileydots);
 	    putstring(row,2,C_GENERAL_HI,msg);
 	    break;
 	 case 4:
-	    putstring(row,2,C_GENERAL_HI,"Tesseral");
+	    putstring(row,2,C_GENERAL_HI,stesseral);
 	    break;
 	 }
       ++row;
@@ -563,7 +542,7 @@ int tab_display()	/* display the status of the current image */
 	 ++row;
 	 }
       }
-   putstring(row,2,C_GENERAL_MED,"Calculation time:");
+   putstring(row,2,C_GENERAL_MED,scalculation_time);
    sprintf(msg,"%3ld:%02ld:%02ld.%02ld", calctime/360000,
 	  (calctime%360000)/6000, (calctime%6000)/100, calctime%100);
    putstring(-1,-1,C_GENERAL_HI,msg);
@@ -577,19 +556,19 @@ int tab_display()	/* display the status of the current image */
       }
    ++row;
 
-   putstring(row,2,C_GENERAL_MED,"Corners:                X                     Y");
-   putstring(++row,3,C_GENERAL_MED,"top-left");
+   putstring(row,2,C_GENERAL_MED,scornersxy);
+   putstring(++row,3,C_GENERAL_MED,stop_left);
    sprintf(msg,"%20.16f  %20.16f",xxmin,yymax);
    putstring(-1,17,C_GENERAL_HI,msg);
-   putstring(++row,3,C_GENERAL_MED,"bottom-right");
+   putstring(++row,3,C_GENERAL_MED,sbottom_right);
    sprintf(msg,"%20.16f  %20.16f",xxmax,yymin);
    putstring(-1,17,C_GENERAL_HI,msg);
    adjust_corner(); /* make bottom left exact if very near exact */
    if (cvtcentermag(&Xctr, &Yctr, &Magnification)) {
-      putstring(row+=2,2,C_GENERAL_MED,"Center: ");
+      putstring(row+=2,2,C_GENERAL_MED,scenter);
       sprintf(msg,"%20.16f %20.16f",Xctr,Yctr);
       putstring(-1,-1,C_GENERAL_HI,msg);
-      putstring(-1,-1,C_GENERAL_MED,"  Mag: ");
+      putstring(-1,-1,C_GENERAL_MED,smag);
       if (Magnification < 1e6)
 	 sprintf(msg,"%20.14f",Magnification);
       else if (Magnification < 1e12)
@@ -599,11 +578,11 @@ int tab_display()	/* display the status of the current image */
       putstring(-1,-1,C_GENERAL_HI,msg);
       }
    else if (xxmin != xx3rd || yymin != yy3rd) {
-      putstring(++row,3,C_GENERAL_MED,"bottom-left");
+      putstring(++row,3,C_GENERAL_MED,sbottom_left);
       sprintf(msg,"%20.16f  %20.16f",xx3rd,yy3rd);
       putstring(-1,17,C_GENERAL_HI,msg);
       }
-   putstring(row+=2,2,C_GENERAL_MED,"Params,");
+   putstring(row+=2,2,C_GENERAL_MED,sparams);
    for (i = 0; i < 4; i++) {
       sprintf(msg,"%3d: ",i+1);
       putstring(-1,-1,C_GENERAL_MED,msg);
@@ -611,61 +590,113 @@ int tab_display()	/* display the status of the current image */
       putstring(-1,-1,C_GENERAL_HI,msg);
       }
 
-   putstring(row+=2,2,C_GENERAL_MED,"Iteration maximum: ");
+   putstring(row+=2,2,C_GENERAL_MED,siteration_maximum);
    sprintf(msg,"%d",maxit);
    putstring(-1,-1,C_GENERAL_HI,msg);
-   putstring(-1,-1,C_GENERAL_MED,"     Effective bailout: ");
+   putstring(-1,-1,C_GENERAL_MED,seffective_bailout);
    sprintf(msg,"%f",rqlim);
    putstring(-1,-1,C_GENERAL_HI,msg);
 
    if (fractype == PLASMA) {
-      putstring(++row,2,C_GENERAL_MED,"Current 'rseed': ");
+      putstring(++row,2,C_GENERAL_MED,scurrent_rseed);
       sprintf(msg,"%d",rseed);
       putstring(-1,-1,C_GENERAL_HI,msg);
       }
 
    if(invert) {
       extern double f_radius,f_xcenter,f_ycenter;
-      putstring(++row,2,C_GENERAL_MED,"Inversion radius: ");
+      putstring(++row,2,C_GENERAL_MED,sinversion_radius);
       sprintf(msg,"%12.9f",f_radius);
       putstring(-1,-1,C_GENERAL_HI,msg);
-      putstring(-1,-1,C_GENERAL_MED,"  xcenter: ");
+      putstring(-1,-1,C_GENERAL_MED,sxcenter);
       sprintf(msg,"%12.9f",f_xcenter);
       putstring(-1,-1,C_GENERAL_HI,msg);
-      putstring(-1,-1,C_GENERAL_MED,"  ycenter: ");
+      putstring(-1,-1,C_GENERAL_MED,sycenter);
       sprintf(msg,"%12.9f",f_ycenter);
       putstring(-1,-1,C_GENERAL_HI,msg);
       }
 
    if ((row += 2) < 23) ++row;
-   putstringcenter(row,0,80,C_GENERAL_LO,"...Press any key to continue...");
+waitforkey:
+   putstringcenter(row,0,80,C_GENERAL_LO,
+       "...Press any key to continue, F6 for area...");
    movecursor(25,80);
-   getakeynohelp();
+#ifdef XFRACT
+   while (keypressed()) {
+       getakey();
+   }
+#endif
+   key = getakeynohelp();
+   if (key==F6) {
+       unstackscreen();
+       area();
+       stackscreen();
+/*       goto waitforkey;*/
+        goto top;
+   }
    unstackscreen();
-   timer_start = clock(); /* tab display was "time out" */
+   timer_start = clock_ticks(); /* tab display was "time out" */
    return(0);
 }
 
+static void area()
+{
+    /* apologies to UNIX folks, we PC guys have to save near space */
+    static char far warning[] = {"Warning: inside may not be unique\n"};
+    static char far total_area[] = {".  Total area "}; 
+    char far *msg;
+    int x,y;
+    char buf[160];
+    long cnt=0;
+    if (inside<0) {
+      static char far msg[] = {"Need solid inside to compute area"};
+      stopmsg(0,msg);
+      return;
+    }
+    for (y=0;y<ydots;y++) {
+      for (x=0;x<xdots;x++) {
+          if (getcolor(x,y)==inside) {
+              cnt++;
+          }
+      }
+    }
+    if (inside>0 && outside<0 && maxit>inside) {
+      msg = warning;
+    } else {
+      msg = (char far *)"";
+    }
+#ifndef XFRACT
+      sprintf(buf,"%Fs%ld inside pixels of %ld%Fs%f",
+              msg,cnt,(long)xdots*(long)ydots,total_area,
+              cnt/((float)xdots*(float)ydots)*(xxmax-xxmin)*(yymax-yymin));
+#else
+      sprintf(buf,"%s%ld inside pixels of %ld%s%f",
+              msg,cnt,(long)xdots*(long)ydots,total_area,
+              cnt/((float)xdots*(float)ydots)*(xxmax-xxmin)*(yymax-yymin));
+#endif
+    stopmsg(4,buf);
+}
 
 int endswithslash(char *fl)
 {
    int len;
    len = strlen(fl);
    if(len)
-      if(fl[--len]=='\\')
+      if(fl[--len] == SLASHC)
 	 return(1);
    return(0);
 }
 
+char far insufficient_ifs_mem[]={"Insufficient memory for IFS"};
 /* --------------------------------------------------------------------- */
-
+int numaffine;
 int ifsload()			/* read in IFS parameters */
 {
    int i;
    FILE *ifsfile;
    char buf[201];
    char *bufptr;
-   extern float dstack[];	/* shared temp */
+   extern float tstack[];	/* shared temp */
    int ret,rowsize;
 
    if (ifs_defn) { /* release prior parms */
@@ -690,9 +721,9 @@ int ifsload()			/* read in IFS parameters */
       }
 
    for (i = 0; i < (NUMIFS+1)*IFS3DPARM; ++i)
-      dstack[i] = 0.0;
+      tstack[i] = 0.0;
    i = ret = 0;
-   while (fscanf(ifsfile," %f ",&dstack[i])) {
+   while (fscanf(ifsfile," %f ",&tstack[i])) {
       if (++i >= NUMIFS*rowsize) {
       static char far msg[]={"IFS definition has too many lines"};
 	 stopmsg(0,msg);
@@ -712,17 +743,17 @@ int ifsload()			/* read in IFS parameters */
       }
    fclose(ifsfile);
 
-   if (ret == 0)
+   if (ret == 0) {
+      numaffine = i;
       if ((ifs_defn = (float far *)farmemalloc(
 			(long)((NUMIFS+1)*IFS3DPARM*sizeof(float)))) == NULL) {
-	 static char far msg[]={"Insufficient memory for IFS"};
-     stopmsg(0,msg);
+     stopmsg(0,insufficient_ifs_mem);
 	 ret = -1;
 	 }
       else
 	 for (i = 0; i < (NUMIFS+1)*IFS3DPARM; ++i)
-	    ifs_defn[i] = dstack[i];
-
+	    ifs_defn[i] = tstack[i];
+   }
    return(ret);
 }
 
@@ -774,7 +805,7 @@ int file_gets(char *buf,int maxlen,FILE *infile)
    if (feof(infile)) return -1;
    len = 0;
    while (len < maxlen) {
-      if ((c = getc(infile)) == EOF || c == '\x1a') {
+      if ((c = getc(infile)) == EOF || c == '\032') {
 	 if (len) break;
 	 return -1;
 	 }
@@ -785,6 +816,9 @@ int file_gets(char *buf,int maxlen,FILE *infile)
    return len;
 }
 
+int first_err = 1;
+
+#ifndef XFRACT
 #ifdef WINFRACT
 /* call this something else to dodge the QC4WIN bullet... */
 int win_matherr( struct exception *except )
@@ -793,6 +827,12 @@ int matherr( struct exception *except )
 #endif
 {
     extern int debugflag;
+    static char far msg[]={"Math error, but we'll try to keep going"};
+    if(first_err)
+    {
+       if(debugflag == 4000)stopmsg(0,msg);
+       first_err = 0;
+    }
     if(debugflag)
     {
        static int ct = 0;
@@ -825,10 +865,32 @@ int matherr( struct exception *except )
 	      except->retval = 1.0;
 	      return(1);
 	   }
+	   else if( strcmp( except->name, "log" ) == 0 )
+	   {
+	      except->retval = 1.0;
+	      return(1);
+	   }
        }
     }
-    return (0);
+    if( except->type == TLOSS )
+    {
+       /* try valiantly to keep going */
+	   if( strcmp( except->name, "sin" ) == 0 )
+	   {
+	      except->retval = 0.5;
+	      return(1);
+	   }
+	   else if( strcmp( except->name, "cos" ) == 0 )
+	   {
+	      except->retval = 0.5;
+	      return(1);
+	   }
+    }
+    /* shucks, no idea what went wrong, but our motto is "keep going!" */
+    except->retval = 1.0;
+    return(1);
 }
+#endif
 
 void roundfloatd(double *x) /* make double converted from float look ok */
 {
@@ -837,3 +899,19 @@ void roundfloatd(double *x) /* make double converted from float look ok */
    *x = atof(buf);
 }
 
+/* fake a keystroke, returns old pending key */
+int ungetakey(int key)
+{
+   int old;
+   extern int keybuffer;
+   old = keybuffer;
+   keybuffer = key;
+   return(old);
+}
+
+/* use this indirect aproach so that we can put GIFVIEW.C in an overlay */
+
+int gifview()
+{
+    return(gifview1());
+}

@@ -990,7 +990,6 @@ effect of filling in "valleys" and converting them to "lakes."
 Now we enter a perspective distance, which you can think of as the
 "distance" from your eye to the image. A zero value (the default) means no
 perspective calculations, which allows use of a faster algorithm.
-perspective calculations, which allows use of a faster algorithm.
 Perspective distance is not available if you have selected a ray tracing
 option.
 
@@ -1044,7 +1043,7 @@ next and final screen will appear (honestly!).
 
 This one deals with all the aspects of light source and Targa files.
 
-You must chose the direction of the light from the light source. This will
+You must choose the direction of the light from the light source. This will
 be scaled in the x, y, and z directions the same as the image. For
 example, 1,1,3 positions the light to come from the lower right front of
 the screen in relation to the untransformed image. It is important to
@@ -1073,14 +1072,10 @@ direct lighting at all. All light values are scaled from this value to
 white. This effectively adjusts the depth of the shadows and sets the
 overall contrast of the image.
 
-If you selected the full color option, you have a few more choices. The
-next is the haze factor. Set this to make distant objects more hazy. Close
-up objects will show little effect, distant objects will have most.
-If you selected the Targa Out option, you have a few more choices.
-
+If you selected the full color option, you have a few more choices.
 The next is the haze factor. Set this to make distant objects more hazy.
-Close up objects will have little effect, distant objects will have most. 0
-disables the function. 100 is the maximum effect, the farthest objects
+Close up objects will have little effect, distant objects will have most.
+0 disables the function. 100 is the maximum effect, the farthest objects
 will be lost in the mist. Currently, this does not really use distance
 from the viewer, we cheat and use the y value of the original image. So
 the effect really only works if the y-rotation (set earlier) is between
@@ -1152,12 +1147,13 @@ system.
 ~Topic=3D Overlay Mode, Label=HELP3DOVLY
 
 While the <3> command (see {\"3D\" Images})
-creates its image on a blank screen, the <O> command
+creates its image on a blank screen, the <#> (or <shift-3> on some 
+keyboards) command
 draws a second image over an existing displayed image. This image can be
 any restored image from a <R> command or the result of a just executed <3>
-command. So you can do a landscape, then hit <O> and choose spherical
+command. So you can do a landscape, then press <#> and choose spherical
 projection to re-plot that image or another as a moon in the sky above the
-landscape. <O> can be repeated as many times as you like.
+landscape. <#> can be repeated as many times as you like.
 
 It's worth noting that not all that many years ago, one of us watched
 Benoit Mandelbrot and fractal-graphics wizard Dick Voss creating just such
@@ -1231,7 +1227,7 @@ Using the full color option allows you to also set a haze factor with the
 
 As a default, full color files also have the background set to sky blue.
 Warning, the files which are created with the full color option are very
-large, 3 bytes per pixel. So make sure to use a disk with enough space.
+large, 3 bytes per pixel. So be sure to use a disk with enough space.
 The file is created using Fractint's disk-video caching, but is always
 created on real disk (expanded or extended memory is not used.) Try the
 following settings of the new variables in sequence to get a feel for the
@@ -1261,7 +1257,7 @@ However, if you are worried, hit ESC several times and when Fractint gets
 to the end of the current line it will abort. Your partial image will be
 there as LIGHT001.TGA or with whatever file name you selected with the
 lightname option. Convert it as described above and adjust any parameters
-you are not happy with. Its a little awkward, but all we haven't figured
+you are not happy with. Its a little awkward, but we haven't figured
 out a better way yet.
 ;
 ;
@@ -1381,7 +1377,5 @@ These are harmless, but may be edited out of the file if desired.
 ;
 ;
 ;
-
-
 
 

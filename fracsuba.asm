@@ -4,7 +4,6 @@
 IFDEF ??version
 MASM51
 QUIRKS
-EMUL
 ENDIF
 
 .MODEL	medium,c

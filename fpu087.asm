@@ -33,12 +33,18 @@ SUBTTL All rights reserved.
 ; 21 Aug 91 CJLT corrected Table[1] from 6 to b
 ;                improved bx factors in Log086 for more accuracy
 ;                corrected Exp086 overflow detection to 15 from 16 bits.
+; 07 Sep 92 MP   corrected problem in FPUcplxlog
+; 07 Sep 92 MP   added argument test for FPUcplxdiv
+; 06 Nov 92 CAE  made some varibles public for PARSERA.ASM
+; 07 Dec 92 CAE  sped up FPUsinhcosh function
 ;
 ; CJLT=      Chris J Lusby Taylor
 ;            32 Turnpike Road
 ;            Newbury, England (where's that?)
 ;        Contactable via Compuserve user Stan Chelchowski [100016,351]
 ;                     or Tel 011 44 635 33270 (home)
+;
+; CAE=   Chuck Ebbert  CompuServe [76306,1226]
 ;
 ;
 ;PROCs in this module:
@@ -65,7 +71,6 @@ SUBTTL All rights reserved.
 IFDEF ??version
 MASM51
 QUIRKS
-EMUL
 ENDIF
 
 .model medium, c
@@ -81,6 +86,9 @@ extrn cpu:WORD
 
 PUBLIC TrigLimit, TrigOverflow
 
+; CAE 6Nov92 made these public for PARSERA.ASM */
+PUBLIC _1_, _2_, PointFive, infinity
+
 PiFg13         dw       6487h
 InvPiFg33      dd       0a2f9836eh
 InvPiFg16      dw       517ch
@@ -91,7 +99,7 @@ TrigLimit      dd       0
 ;
 ;Table of 2^(n/16) for n=0 to 15. All entries fg15.
 ;Used by e2xLT
-; 
+;
 Table		dw	08000h,085abh,08b96h,091c4h
 		dw	09838h,09ef5h,0a5ffh,0ad58h
 		dw	0b505h,0bd09h,0c567h,0ce25h
@@ -154,10 +162,18 @@ FPUcplxmul     PROC     x:word, y:word, z:word
 FPUcplxmul     ENDP
 
 
+.DATA
 
+infinity          dq    1.0E+300
+
+PUBLIC DivideOverflow
+DivideOverflow    dw    0
+
+.CODE
 
 
 FPUcplxdiv     PROC     x:word, y:word, z:word
+LOCAL Status:WORD
    mov   bx, x
    fld   QWORD PTR [bx]       ; x.x
    fld   QWORD PTR [bx+8]     ; x.y, x.x
@@ -169,6 +185,29 @@ FPUcplxdiv     PROC     x:word, y:word, z:word
    fld   st(2)                ; y.x, y.y*y.y, y.y, y.x, x.y, x.x
    fmul  st, st               ; y.x*y.x, y.y*y.y, y.y, y.x, x.y, x.x
    fadd                       ; mod, y.y, y.x, x.y, x.x
+
+   ftst                       ; test whether mod is (0,0)
+   fstsw Status
+   mov   ax, Status
+   and   ah, 01000101b
+   cmp   ah, 01000000b
+   jne   NotZero
+
+   fstp  st
+   fstp  st
+   fstp  st
+   fstp  st
+   fstp  st
+
+   fld   infinity
+   fld   st
+   mov   bx, z
+   fstp  QWORD PTR [bx]
+   fstp  QWORD PTR [bx+8]
+   inc   DivideOverflow
+   jmp   ExitDiv
+
+NotZero:
    fdiv  st(1), st            ; mod, y.y=y.y/mod, y.x, x.y, x.x
    fdivp st(2), st            ; y.y, y.x=y.x/mod, x.y, x.x
    mov   bx, z
@@ -182,14 +221,27 @@ FPUcplxdiv     PROC     x:word, y:word, z:word
    fmul                       ; y.x*x.y, x.x*y.y
    fsubr                      ; y.x*x.y + x.x*y.y
    fstp  QWORD PTR [bx+8]
+
+ExitDiv:
    ret
 FPUcplxdiv     ENDP
 
 
 
 FPUcplxlog     PROC     x:word, z:word
-LOCAL Status:word
+LOCAL Status:word, ImagZero:WORD
    mov   bx, x
+
+   mov   ax, WORD PTR [bx+8+6]
+   mov   ImagZero, ax
+   or    ax, WORD PTR [bx+6]
+   jnz   NotBothZero
+
+   fldz
+   fldz
+   jmp   StoreZX
+
+NotBothZero:
    fld   QWORD PTR [bx+8]        ; x.y
    fld   QWORD PTR [bx]          ; x.x, x.y
    mov   bx, z
@@ -201,11 +253,12 @@ LOCAL Status:word
    fmul  st, st                  ; sqr(x.x), sqr(x.y), ln2/2, x.x, x.y
    fadd                          ; mod, ln2/2, x.x, x.y
    fyl2x                         ; z.x, x.x, x.y
-   fstp  QWORD PTR [bx]          ; x.x, x.y
+   fxch  st(2)                   ; x.y, x.x, z.x
+   fxch                          ; x.x, x.y, z.x
    cmp   fpu, 387
    jne   Restricted
 
-   fpatan
+   fpatan                        ; z.y, z.x
    jmp   StoreZX
 
 Restricted:
@@ -214,42 +267,42 @@ Restricted:
    or    dh, dh
    jns   ChkYSign
 
-   fchs                          ; |x.x|, x.y
+   fchs                          ; |x.x|, x.y, z.x
 
 ChkYSign:
    mov   dl, BYTE PTR [bx+8+7]
    or    dl, dl
    jns   ChkMagnitudes
 
-   fxch                          ; x.y, |x.x|
-   fchs                          ; |x.y|, |x.x|
-   fxch                          ; |x.x|, |x.y|
+   fxch                          ; x.y, |x.x|, z.x
+   fchs                          ; |x.y|, |x.x|, z.x
+   fxch                          ; |x.x|, |x.y|, z.x
 
 ChkMagnitudes:
-   fcom  st(1)                   ; x.x, x.y
-   fstsw Status                  ; x.x, x.y
+   fcom  st(1)                   ; x.x, x.y, z.x
+   fstsw Status                  ; x.x, x.y, z.x
    test  Status, 4500h
    jz    XisGTY
 
    test  Status, 4000h
    jz    XneY
 
-   fstp  st                      ; x.y
-   fstp  st                      ; <empty>
-   fldpi                         ; Pi
-   fdiv  _4_                     ; Pi/4
+   fstp  st                      ; x.y, z.x
+   fstp  st                      ; z.x
+   fldpi                         ; Pi, z.x
+   fdiv  _4_                     ; Pi/4, z.x
    jmp   ChkSignZ
 
 XneY:
-   fxch                          ; x.y, x.x
-   fpatan                        ; Pi/2 - Angle
-   fldpi                         ; Pi, Pi/2 - Angle
-   fdiv  _2_                     ; Pi/2, Pi/2 - Angle
-   fsubr                         ; Angle
+   fxch                          ; x.y, x.x, z.x
+   fpatan                        ; Pi/2 - Angle, z.x
+   fldpi                         ; Pi, Pi/2 - Angle, z.x
+   fdiv  _2_                     ; Pi/2, Pi/2 - Angle, z.x
+   fsubr                         ; Angle, z.x
    jmp   ChkSignZ
 
 XisGTY:
-   fpatan
+   fpatan                        ; Pi-Angle or Angle+Pi, z.x
 
 ChkSignZ:
    or    dh, dh
@@ -265,23 +318,20 @@ NegX:
    or    dl, dl
    js    QuadIII
 
-   fldpi
-   fsubr
+   fldpi                        ; Pi, Pi-Angle, z.x
+   fsubr                        ; Angle, z.x
    jmp   StoreZX
 
 QuadIII:
-   fldpi
-   fsubr
-   fchs
+   fldpi                        ; Pi, Angle+Pi, z.x
+   fsub                         ; Angle,  z.x
 
 StoreZX:
    mov   bx, z
-   fstp  QWORD PTR [bx+8]        ; <empty>
+   fstp  QWORD PTR [bx+8]       ; z.x
+   fstp  QWORD PTR [bx]         ; <empty>
    ret
 FPUcplxlog     ENDP
-
-
-
 
 FPUsinhcosh    PROC     x:word, sinh:word, cosh:word
 LOCAL Control:word
@@ -306,7 +356,8 @@ DuplicateX:
    frndint                    ; int = integer(|x|/ln(2)), x/ln(2)
    fxch                       ; x/ln(2), int
    fsub  st, st(1)            ; rem < 1.0, int
-   fdiv  _2_                  ; rem/2 < 0.5, int
+   fmul  PointFive            ; rem/2 < 0.5, int
+      ; CAE 7Dec92 changed above from divide by 2 to multiply by .5
    f2xm1                      ; (2**rem/2)-1, int
    fadd  _1_                  ; 2**rem/2, int
    fmul  st, st               ; 2**rem, int
@@ -323,7 +374,8 @@ ExitFexp:
    fdivr PointFive            ; e**-x/2, e**x
    fld   st                   ; e**-x/2, e**-x/2, e**x
    fxch  st(2)                ; e**x, e**-x/2, e**-x/2
-   fdiv  _2_                  ; e**x/2,  e**-x/2, e**-x/2
+   fmul  PointFive            ; e**x/2,  e**-x/2, e**-x/2
+      ; CAE 7Dec92 changed above from divide by 2 to multiply by .5
    fadd  st(2), st            ; e**x/2,  e**-x/2, cosh(x)
    fsubr                      ; sinh(x), cosh(x)
 
@@ -526,8 +578,6 @@ RegFloat2Fg     PROC    x1:word, x2:word, Fudge:word
    ExitRegFloat2Fg:
       ret
 RegFloat2Fg    ENDP
-
-
 
 PUBLIC RegFg2Float
 RegFg2Float     PROC   x1:word, x2:word, FudgeFact:byte

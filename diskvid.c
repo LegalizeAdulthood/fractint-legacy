@@ -10,8 +10,12 @@
 */
 
 #include <stdio.h>
+#ifndef XFRACT
 #include <dos.h>
+#endif
+#include <string.h>
 #include "fractint.h"
+#include "prototyp.h"
 
 extern int sxdots, sydots, colors;
 extern int dotmode;	  /* video access method, 11 if really disk video */
@@ -41,7 +45,7 @@ static int disktarga;
 
 static struct cache {	/* structure of each cache entry */
    long offset; 		   /* pixel offset in image */
-   unsigned char pixel[BLOCKLEN];  /* one pixel per byte (this *is* faster) */
+   BYTE pixel[BLOCKLEN];  /* one pixel per byte (this *is* faster) */
    unsigned int hashlink;	   /* ptr to next cache entry with same hash */
    unsigned int dirty : 1;	   /* changed since read? */
    unsigned int lru : 1;	   /* recently used? */
@@ -59,65 +63,46 @@ static int headerlength;
 static unsigned int rowsize = 0;   /* doubles as a disk video not ok flag */
 static unsigned int colsize;	   /* sydots, *2 when pot16bit */
 
-static char far *charbuf = NULL;   /* currently used only with XMM */
+static BYTE far *charbuf = NULL;   /* currently used only with XMM */
 
 /* For expanded memory: */
-static unsigned char far *expmemoryvideo;
+static BYTE far *expmemoryvideo;
 static int oldexppage,expoffset;
 static unsigned int emmhandle = 0;
 
 /* For extended memory: */
 static unsigned int xmmhandle = 0;
 static long extoffset;
-static unsigned char far *extbufptr, far *endreadbuf, far *endwritebuf;
-struct XMM_Move
-  {
-    unsigned long   Length;
-    unsigned int    SourceHandle;
-    unsigned long   SourceOffset;
-    unsigned int    DestHandle;
-    unsigned long   DestOffset;
-  };
+static BYTE far *extbufptr, far *endreadbuf, far *endwritebuf;
 #define XMMREADLEN 64	/* amount transferred from extended mem at once */
 #define XMMWRITELEN 256 /* max amount transferred to extended mem at once,
 			   must be a factor of 1024 and >= XMMREADLEN */
 
-int startdisk(),pot_startdisk();
-void enddisk();
-int readdisk(unsigned int,unsigned int);
-void writedisk(unsigned int,unsigned int,unsigned int);
-int targa_startdisk(FILE *, int);
-void targa_readdisk (unsigned int, unsigned int,
-		     unsigned char *, unsigned char *, unsigned char *);
-void targa_writedisk(unsigned int, unsigned int,
-		     unsigned char, unsigned char, unsigned char);
-void dvid_status(int,char *);
-
-static int  _fastcall near common_startdisk(int newrowsize, int newcolsize);
+int  _fastcall common_startdisk(long newrowsize, long newcolsize, int colors);
 static void _fastcall near findload_cache(long);
 static struct cache far * _fastcall near find_cache(long);
 static void near write_cache_lru(void);
-static void (_fastcall near *put_char)(unsigned char);
-static void _fastcall near disk_putc(unsigned char);
-static void _fastcall near exp_putc(unsigned char);
-static void _fastcall near ext_putc(unsigned char);
-static unsigned char (near *get_char)();
-static unsigned char near disk_getc();
-static unsigned char near exp_getc();
-static unsigned char near ext_getc();
+static void (_fastcall near *put_char)(BYTE);
+static void _fastcall near disk_putc(BYTE);
+static void _fastcall near exp_putc(BYTE);
+static void _fastcall near ext_putc(BYTE);
+static BYTE (near *get_char)();
+static BYTE near disk_getc();
+static BYTE near exp_getc();
+static BYTE near ext_getc();
 static void (_fastcall near *doseek)(long);
 static void _fastcall near disk_seek(long);
 static void _fastcall near exp_seek(long);
 static void _fastcall near ext_seek(long);
 
 int made_dsktemp = 0;
-
+char diskfilename[] = {"FRACTINT.$$$"};
 int startdisk()
 {
    if (!diskisactive)
       return(0);
    headerlength = disktarga = 0;
-   return (common_startdisk(sxdots,sydots));
+   return (common_startdisk(sxdots,sydots,colors));
    }
 
 int pot_startdisk()
@@ -128,9 +113,10 @@ int pot_startdisk()
    else
       showtempmsg("clearing 16bit pot work area");
    headerlength = disktarga = 0;
-   i = common_startdisk(sxdots,sydots<<1);
+   i = common_startdisk(sxdots,sydots<<1,colors);
    cleartempmsg();
-   disk16bit = 1;
+   if (i == 0)
+      disk16bit = 1;
    return (i);
    }
 
@@ -144,12 +130,14 @@ int targa_startdisk(FILE *targafp,int overhead)
    headerlength = overhead;
    fp = targafp;
    disktarga = 1;
-   i = common_startdisk(sxdots*3,sydots);
+   i = common_startdisk(sxdots*3,sydots,colors);
    high_offset = 100000000L; /* targa not necessarily init'd to zeros */
    return (i);
 }
 
-static int _fastcall near common_startdisk(int newrowsize, int newcolsize)
+extern char dstack[];
+
+int _fastcall common_startdisk(long newrowsize, long newcolsize, int colors)
 {
    int i,success;
    long memorysize;
@@ -159,7 +147,7 @@ static int _fastcall near common_startdisk(int newrowsize, int newcolsize)
    unsigned int cache_size;
    int exppages;
    struct XMM_Move MoveStruct;
-   unsigned char far *tempfar;
+   BYTE far *tempfar;
 
    if (diskflag)
       enddisk();
@@ -243,8 +231,8 @@ static int _fastcall near common_startdisk(int newrowsize, int newcolsize)
       memorysize += BLOCKLEN - i;
    memorysize >>= pixelshift;
    diskflag = 1;
-   rowsize = newrowsize;
-   colsize = newcolsize;
+   rowsize = (unsigned int) newrowsize;
+   colsize = (unsigned int) newcolsize;
 
    if (debugflag != 420 && debugflag != 422 /* 422=xmm test, 420=disk test */
      && disktarga == 0) {
@@ -267,7 +255,7 @@ static int _fastcall near common_startdisk(int newrowsize, int newcolsize)
       /* Try Extended Memory */
       if ((charbuf = farmemalloc((long)XMMWRITELEN)) != NULL
 	&& xmmquery() !=0
-	&& (xmmhandle = xmmallocate(longtmp = (memorysize+1023) >> 10)) != 0) {
+	&& (xmmhandle = xmmallocate((unsigned int)(longtmp = (memorysize+1023) >> 10))) != 0) {
 	 if (dotmode == 11)
 	    putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,"Using your Extended Memory");
 	 for (i = 0; i < XMMWRITELEN; i++)
@@ -298,10 +286,28 @@ static int _fastcall near common_startdisk(int newrowsize, int newcolsize)
    if (dotmode == 11)
       putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,"Using your Disk Drive");
    if (disktarga == 0) {
-      if ((fp = fopen("FRACTINT.DSK","w+b")) != NULL) {
+      if ((fp = fopen(diskfilename,"w+b")) != NULL) {
 	 made_dsktemp = 1;
+#if 1					/* added by Michael Snyder */
+	 memset(dstack, 0, 1024);
+	 while (memorysize >= 0)
+	 {
+	    static char far cancel[] =
+		"Disk Video initialization interrupted:\n";
+
+	    fwrite(dstack, (memorysize > 1024) ? 1024 : (int)memorysize, 1, fp);
+	    memorysize -= 1024;
+	    if (keypressed())   	/* user interrupt */
+	       if (stopmsg(2, cancel))  /* esc to cancel, else continue */
+	       {
+		  enddisk();
+		  return -2;            /* -1 == failed, -2 == cancel   */
+	       }
+	 }
+#else
 	 while (--memorysize >= 0) /* "clear the screen" (write to the disk) */
 	    putc(0,fp);
+#endif
 	 if (ferror(fp)) {
 	    static char far msg[]={"*** insufficient free disk space ***"};
 	    stopmsg(0,msg);
@@ -311,10 +317,12 @@ static int _fastcall near common_startdisk(int newrowsize, int newcolsize)
 	    return(-1);
 	    }
 	 fclose(fp); /* so clusters aren't lost if we crash while running */
-	 fp = fopen("FRACTINT.DSK","r+b"); /* reopen */
+	 fp = fopen(diskfilename,"r+b"); /* reopen */
 	 }
       if (fp == NULL) {
-	 static char far msg[]={"*** Couldn't create FRACTINT.DSK ***"};
+         char msg[80];
+	 static char far s1[]={"*** Couldn't create "};
+	 sprintf(msg,"%Fs%s",s1,diskfilename);
 	 stopmsg(0,msg);
 	 rowsize = 0;
 	 return(-1);
@@ -383,8 +391,24 @@ int readdisk(unsigned int col, unsigned int row)
    return (cur_cache->pixel[col_subscr]);
 }
 
+int FromMemDisk(long offset, int size, void far *dest)
+{
+   int col_subscr =  (offset & (BLOCKLEN - 1));
+
+   if (col_subscr + size > BLOCKLEN)		/* access violates  a */
+      return 0;                                 /*   cache boundary   */
+
+   if (cur_offset != (offset & (0L-BLOCKLEN))) /* same entry as last ref? */
+      findload_cache (offset & (0L-BLOCKLEN));
+
+   far_memcpy(dest, (void far *) &cur_cache->pixel[col_subscr], size);
+   cur_cache->dirty = 0;
+   return 1;
+}
+
+
 void targa_readdisk(unsigned int col, unsigned int row,
-		    unsigned char *red, unsigned char *green, unsigned char *blue)
+		    BYTE *red, BYTE *green, BYTE *blue)
 {
    col *= 3;
    *blue  = readdisk(col,row);
@@ -428,8 +452,23 @@ void writedisk(unsigned int col, unsigned int row, unsigned int color)
       }
 }
 
+int ToMemDisk(long offset, int size, void far *src)
+{
+   int col_subscr =  (offset & (BLOCKLEN - 1));
+
+   if (col_subscr + size > BLOCKLEN)		/* access violates  a */
+      return 0;                                 /*   cache boundary   */
+
+   if (cur_offset != (offset & (0L-BLOCKLEN))) /* same entry as last ref? */
+      findload_cache (offset & (0L-BLOCKLEN));
+
+   far_memcpy((void far *) &cur_cache->pixel[col_subscr], src, size);
+   cur_cache->dirty = 1;
+   return 1;
+}
+
 void targa_writedisk(unsigned int col, unsigned int row,
-		    unsigned char red, unsigned char green, unsigned char blue)
+		    BYTE red, BYTE green, BYTE blue)
 {
    writedisk(col*=3,row,blue);
    writedisk(++col, row,green);
@@ -438,16 +477,17 @@ void targa_writedisk(unsigned int col, unsigned int row,
 
 static void _fastcall near findload_cache(long offset) /* used by read/write */
 {
+#ifndef XFRACT
    unsigned int tbloffset;
    int i,j;
    unsigned int far *fwd_link;
-   unsigned char far *pixelptr;
-   unsigned char tmpchar;
+   BYTE far *pixelptr;
+   BYTE tmpchar;
    cur_offset = offset; /* note this for next reference */
    /* check if required entry is in cache - lookup by hash */
    tbloffset = hash_ptr[ ((unsigned short)offset >> BLOCKSHIFT) & (HASHSIZE-1) ];
    while (tbloffset != 0xffff) { /* follow the hash chain */
-      (char far *)cur_cache = (char far *)cache_start + tbloffset;
+      cur_cache = (struct cache far *)((char far *)cache_start + tbloffset);
       if (cur_cache->offset == offset) { /* great, it is in the cache */
 	 cur_cache->lru = 1;
 	 return;
@@ -518,29 +558,32 @@ static void _fastcall near findload_cache(long offset) /* used by read/write */
    cache_lru->hashlink = *fwd_link;
    *fwd_link = (char far *)cache_lru - (char far *)cache_start;
    cur_cache = cache_lru;
+#endif
    }
 
 static struct cache far * _fastcall near find_cache(long offset)
 /* lookup for write_cache_lru */
 {
+#ifndef XFRACT
    unsigned int tbloffset;
    struct cache far *ptr1;
    tbloffset = hash_ptr[ ((unsigned short)offset >> BLOCKSHIFT) & (HASHSIZE-1) ];
    while (tbloffset != 0xffff) {
-      (char far *)ptr1 = (char far *)cache_start + tbloffset;
+      ptr1 = (struct cache far *)((char far *)cache_start + tbloffset);
       if (ptr1->offset == offset)
 	 return (ptr1);
       tbloffset = ptr1->hashlink;
       }
    return (NULL);
+#endif
 }
 
 static void near write_cache_lru()
 {
    int i,j;
-   unsigned char far *pixelptr;
+   BYTE far *pixelptr;
    long offset;
-   unsigned char tmpchar;
+   BYTE tmpchar;
    struct cache far *ptr1, far *ptr2;
 #define WRITEGAP 4 /* 1 for no gaps */
    /* scan back to also write any preceding dirty blocks, skipping small gaps */
@@ -580,7 +623,7 @@ write_stuff:
 	 break;
       case 3:
 	 for (i = 0; i < BLOCKLEN/8; ++i) {
-	    (*put_char)((unsigned char)
+	    (*put_char)((BYTE)
 			((((((((((((((*pixelptr
                         << 1)
                         | *(pixelptr+1) )
@@ -623,12 +666,12 @@ static void _fastcall near disk_seek(long offset)	/* real disk seek */
    fseek(fp,offset+headerlength,SEEK_SET);
    }
 
-static unsigned char near disk_getc()			/* real disk get_char */
+static BYTE near disk_getc()			/* real disk get_char */
 {
    return(getc(fp));
    }
 
-static void _fastcall near disk_putc(unsigned char c)	/* real disk put_char */
+static void _fastcall near disk_putc(BYTE c)	/* real disk put_char */
 {
    putc(c,fp);
    }
@@ -644,14 +687,14 @@ static void _fastcall near exp_seek(long offset)	/* expanded mem seek */
       }
    }
 
-static unsigned char near exp_getc()			/* expanded get_char */
+static BYTE near exp_getc()			/* expanded get_char */
 {
    if (expoffset > 0x3fff) /* wrapped into a new page? */
       exp_seek((long)(oldexppage+1) << 14);
    return(expmemoryvideo[expoffset++]);
    }
 
-static void _fastcall near exp_putc(unsigned char c)	/* expanded put_char */
+static void _fastcall near exp_putc(BYTE c)	/* expanded put_char */
 {
    if (expoffset > 0x3fff) /* wrapped into a new page? */
       exp_seek((long)(oldexppage+1) << 14);
@@ -660,6 +703,7 @@ static void _fastcall near exp_putc(unsigned char c)	/* expanded put_char */
 
 static void near ext_writebuf() /* subrtn for extended mem seek/put_char */
 {
+#ifndef XFRACT
    struct XMM_Move MoveStruct;
    MoveStruct.Length = extbufptr - charbuf;
    MoveStruct.SourceHandle = 0; /* Source is conventional memory */
@@ -667,6 +711,7 @@ static void near ext_writebuf() /* subrtn for extended mem seek/put_char */
    MoveStruct.DestHandle = xmmhandle;
    MoveStruct.DestOffset = extoffset;
    xmmmoveextended(&MoveStruct);
+#endif
    }
 
 static void _fastcall near ext_seek(long offset)	/* extended mem seek */
@@ -677,8 +722,9 @@ static void _fastcall near ext_seek(long offset)	/* extended mem seek */
    extbufptr = endreadbuf = charbuf;
    }
 
-static unsigned char near ext_getc()			/* extended get_char */
+static BYTE near ext_getc()			/* extended get_char */
 {
+#ifndef XFRACT
    struct XMM_Move MoveStruct;
    if (extbufptr >= endreadbuf) { /* drained the last read buffer we fetched? */
       MoveStruct.Length = XMMREADLEN;
@@ -691,9 +737,10 @@ static unsigned char near ext_getc()			/* extended get_char */
       endreadbuf = XMMREADLEN + (extbufptr = charbuf);
       }
    return (*(extbufptr++));
+#endif
    }
 
-static void _fastcall near ext_putc(unsigned char c)	/* extended get_char */
+static void _fastcall near ext_putc(BYTE c)	/* extended get_char */
 {
    if (extbufptr >= endwritebuf) { /* filled the local write buffer? */
       ext_writebuf();
@@ -718,4 +765,3 @@ void dvid_status(int line,char *msg)
    putstring(BOXROW+8+line,BOXCOL+12,attrib,buf);
    movecursor(25,80);
 }
-

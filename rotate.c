@@ -6,15 +6,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "fractint.h"
 #include "helpdefs.h"
+#include "prototyp.h"
 
 /* routines in this module	*/
-
-void rotate_overlay(void);
-void rotate(int);
-void save_palette(void);
-void load_palette(void);
 
 static void pauserotate(void);
 static void set_palette(),set_palette2(),set_palette3();
@@ -23,9 +20,9 @@ extern char temp1[];
 
 extern	int	colors; 		/* maximum colors available */
 
-extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
+extern BYTE dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
 extern	int	gotrealdac;		/* dacbox valid? */
-extern unsigned char olddacbox[256][3];
+extern BYTE olddacbox[256][3];
 extern int	daclearn, daccount;	/* used by the color-cyclers */
 extern int	reallyega;		/* == 0 if it's really an EGA */
 extern int	rotate_lo,rotate_hi;	/* range of colors to cycle */
@@ -35,16 +32,13 @@ extern int	dotmode;
 
 static int paused;			/* rotate-is-paused flag */
 
-extern int field_prompt(int options, char *hdg, char *instr, char *fld, int len,
-		int (*checkkey)() );
-
-static unsigned char Red[3]    = {63, 0, 0};	/* for shifted-Fkeys */
-static unsigned char Green[3]  = { 0,63, 0};
-static unsigned char Blue[3]   = { 0, 0,63};
-static unsigned char Black[3]  = { 0, 0, 0};
-static unsigned char White[3]  = {63,63,63};
-static unsigned char Yellow[3] = {63,63, 0};
-static unsigned char Brown[3]  = {31,31, 0};
+static BYTE Red[3]    = {63, 0, 0};	/* for shifted-Fkeys */
+static BYTE Green[3]  = { 0,63, 0};
+static BYTE Blue[3]   = { 0, 0,63};
+static BYTE Black[3]  = { 0, 0, 0};
+static BYTE White[3]  = {63,63,63};
+static BYTE Yellow[3] = {63,63, 0};
+static BYTE Brown[3]  = {31,31, 0};
 
 char mapmask[13] = {"*.map"};
 
@@ -111,13 +105,13 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	       while (jstep > rotate_max) jstep -= rotate_size;
 	       if (++incr > fstep) {	/* time to randomize */
 		  incr = 1;
-		  fstep = ((fsteps[fkey-1]* (rand() >> 8)) >> 6) + 1;
+                  fstep = ((fsteps[fkey-1]* (rand15() >> 8)) >> 6) + 1;
 		  fromred   = dacbox[last][0];
 		  fromgreen = dacbox[last][1];
 		  fromblue  = dacbox[last][2];
-		  tored     = rand() >> 9;
-		  togreen   = rand() >> 9;
-		  toblue    = rand() >> 9;
+                  tored     = rand15() >> 9;
+                  togreen   = rand15() >> 9;
+                  toblue    = rand15() >> 9;
 		  }
 	       dacbox[jstep][0] = fromred   + (((tored	 - fromred  )*incr)/fstep);
 	       dacbox[jstep][1] = fromgreen + (((togreen - fromgreen)*incr)/fstep);
@@ -125,7 +119,7 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	       }
 	    }
 	 if (step >= rotate_size) step = oldstep;
-         spindac(direction, step);
+	 spindac(direction, step);
 	 }
       if (step >= rotate_size) step = oldstep;
       kbdchar = getakey();
@@ -133,7 +127,7 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	 paused = 0;			/* clear paused condition	*/
       switch (kbdchar) {
 	 case '+':                      /* '+' means rotate forward     */
-	 case 1077:			/* RightArrow = rotate fwd	*/
+         case RIGHT_ARROW:              /* RightArrow = rotate fwd      */
 	    fkey = 0;
 	    direction = 1;
 	    last = rotate_max;
@@ -141,18 +135,18 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	    incr = 999;
 	    break;
 	 case '-':                      /* '-' means rotate backward    */
-	 case 1075:			/* LeftArrow = rotate bkwd	*/
+         case LEFT_ARROW:               /* LeftArrow = rotate bkwd      */
 	    fkey = 0;
 	    direction = -1;
 	    last = rotate_lo;
 	    next = rotate_max;
 	    incr = 999;
 	    break;
-	 case 1072:			/* UpArrow means speed up	*/
+         case UP_ARROW:                 /* UpArrow means speed up       */
 	    daclearn = 1;
 	    if (++daccount >= colors) --daccount;
 	    break;
-	 case 1080:			/* DownArrow means slow down	*/
+         case DOWN_ARROW:               /* DownArrow means slow down    */
 	    daclearn = 1;
 	    if (daccount > 1) daccount--;
 	    break;
@@ -168,24 +162,49 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	    step = kbdchar - '0';   /* change step-size */
 	    if (step > rotate_size) step = rotate_size;
 	    break;
-	 case 1059:			/* F1 - F10:			*/
-	 case 1060:			/* select a shading factor	*/
-	 case 1061:
-	 case 1062:
-	 case 1063:
-	 case 1064:
-	 case 1065:
-	 case 1066:
-	 case 1067:
-	 case 1068:
-	    fkey = kbdchar-1058;
+         case F1:                       /* F1 - F10:                    */
+         case F2:                       /* select a shading factor      */
+         case F3:
+         case F4:
+         case F5:
+         case F6:
+         case F7:
+         case F8:
+         case F9:
+         case F10:
+#ifndef XFRACT
+            fkey = kbdchar-1058;
+#else
+            switch (kbdchar) {
+               case F1:
+                  fkey = 1;break;
+               case F2:
+                  fkey = 2;break;
+               case F3:
+                  fkey = 3;break;
+               case F4:
+                  fkey = 4;break;
+               case F5:
+                  fkey = 5;break;
+               case F6:
+                  fkey = 6;break;
+               case F7:
+                  fkey = 7;break;
+               case F8:
+                  fkey = 8;break;
+               case F9:
+                  fkey = 9;break;
+               case F10:
+                  fkey = 10;break;
+            }
+#endif
 	    if (reallyega) fkey = (fkey+1)>>1; /* limit on EGA */
 	    fstep = 1;
 	    incr = 999;
 	    break;
-	 case 13:			/* enter key: randomize all colors */
-	 case 1013:			/* also the Numeric-Keypad Enter */
-	    fkey = rand()/3277 + 1;
+         case ENTER:                    /* enter key: randomize all colors */
+         case ENTER_2:                  /* also the Numeric-Keypad Enter */
+            fkey = rand15()/3277 + 1;
 	    if (reallyega)		/* limit on EGAs */
 	       fkey = (fkey+1)>>1;
 	    fstep = 1;
@@ -229,7 +248,7 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	 case '<':
 	 case ',':
 	    if (kbdchar == '>' || kbdchar == '.') {
-               direction = 1;
+	       direction = 1;
 	       last = rotate_max;
 	       next = rotate_lo;
 	       incr = 999;
@@ -241,7 +260,7 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	       incr = 999;
 	       }
 	    fkey = 0;
-            spindac(direction,1);
+	    spindac(direction,1);
 	    if (! paused)
 	       pauserotate();		/* pause */
 	    break;
@@ -260,7 +279,9 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	    pauserotate();		/* update palette and pause */
 	    break;
 	 case 'l':                      /* load colors from a specified map */
+#ifndef XFRACT /* L is used for RIGHT_ARROW in Unix keyboard mapping */
 	 case 'L':
+#endif
 	    load_palette();
 	    fkey = 0;			/* disable random generation */
 	    pauserotate();		/* update palette and pause */
@@ -271,21 +292,21 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	    fkey = 0;			/* disable random generation */
 	    pauserotate();		/* update palette and pause */
 	    break;
-	 case 27:			/* escape */
+         case ESC:                      /* escape */
 	    more = 0;			/* time to bail out */
 	    break;
 	 default:			/* maybe a new palette */
 	    if (reallyega) break;	/* no sense on real EGAs */
 	    fkey = 0;			/* disable random generation */
 	    if (kbdchar == 1084) set_palette(Black, White);
-	    if (kbdchar == 1085) set_palette(Red, Yellow);
-	    if (kbdchar == 1086) set_palette(Blue, Green);
-	    if (kbdchar == 1087) set_palette(Black, Yellow);
-	    if (kbdchar == 1088) set_palette(Black, Red);
-	    if (kbdchar == 1089) set_palette(Black, Blue);
-	    if (kbdchar == 1090) set_palette(Black, Green);
-	    if (kbdchar == 1091) set_palette(Blue, Yellow);
-	    if (kbdchar == 1092) set_palette(Red, Green);
+	    if (kbdchar == SF2) set_palette(Red, Yellow);
+	    if (kbdchar == SF3) set_palette(Blue, Green);
+	    if (kbdchar == SF4) set_palette(Black, Yellow);
+	    if (kbdchar == SF5) set_palette(Black, Red);
+	    if (kbdchar == SF6) set_palette(Black, Blue);
+	    if (kbdchar == SF7) set_palette(Black, Green);
+	    if (kbdchar == SF8) set_palette(Blue, Yellow);
+	    if (kbdchar == SF9) set_palette(Red, Green);
 	    if (kbdchar == 1093) set_palette(Green, White);
 	    if (kbdchar == 1094) set_palette2(Black, White);
 	    if (kbdchar == 1095) set_palette2(Red, Yellow);
@@ -319,7 +340,7 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 static void pauserotate()		/* pause-the-rotate routine */
 {
 int olddaccount;			/* saved dac-count value goes here */
-unsigned char olddac0,olddac1,olddac2;
+BYTE olddac0,olddac1,olddac2;
 
    if (paused)				/* if already paused , just clear */
       paused = 0;
@@ -334,8 +355,12 @@ unsigned char olddac0,olddac1,olddac2;
       dacbox[0][2] = 48;
       spindac(0,1);			/* show white border */
       if (dotmode == 11)
-	 dvid_status(100," Paused in ""color cycling"" mode ");
-      while (!keypressed());		/* wait for any key */
+         dvid_status(100," Paused in \"color cycling\" mode ");
+#ifndef XFRACT
+      while (!keypressed());          /* wait for any key */
+#else
+      waitkeypressed(0);                /* wait for any key */
+#endif
       if (dotmode == 11)
 	 dvid_status(0,"");
       dacbox[0][0] = olddac0;
@@ -348,7 +373,7 @@ unsigned char olddac0,olddac1,olddac2;
 }
 
 static void set_palette(start, finish)
-unsigned char start[3], finish[3];
+BYTE start[3], finish[3];
 {
    int i, j;
    dacbox[0][0] = dacbox[0][1] = dacbox[0][2] = 0;
@@ -358,7 +383,7 @@ unsigned char start[3], finish[3];
 }
 
 static void set_palette2(start, finish)
-unsigned char start[3], finish[3];
+BYTE start[3], finish[3];
 {
    int i, j;
    dacbox[0][0] = dacbox[0][1] = dacbox[0][2] = 0;
@@ -370,7 +395,7 @@ unsigned char start[3], finish[3];
 }
 
 static void set_palette3(start, middle, finish)
-unsigned char start[3], middle[3], finish[3];
+BYTE start[3], middle[3], finish[3];
 {
    int i, j;
    dacbox[0][0] = dacbox[0][1] = dacbox[0][2] = 0;
@@ -400,7 +425,11 @@ void save_palette()
       if (dacfile == NULL)
 	 buzzer(2);
       else {
+#ifndef XFRACT
 	 for (i = 0; i < colors; i++)
+#else
+	 for (i = 0; i < 256; i++)
+#endif
 	    fprintf(dacfile, "%3d %3d %3d\n",
 		    dacbox[i][0] << 2,
 		    dacbox[i][1] << 2,

@@ -4,7 +4,11 @@
 */
 
 #include <float.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "fractint.h"
+#include "prototyp.h"
 
 /* screen dimensions here are (1.0,1.0) corresponding to (xdots-1,ydots-1) */
 extern double zbx,zby;		   /* topleft of unrotated zoombox  */
@@ -26,12 +30,10 @@ extern char stdcalcmode;	   /* '1', '2', 'g', 'b', or 't' */
 extern int  num_worklist;	   /* resume worklist for standard engine */
 extern struct workliststuff worklist[MAXCALCWORK];
 extern char dstack[4096];	   /* common temp, used for get_line/put_line */
-extern int  StandardFractal();
-extern int  calcmand();
-extern int  calcmandfp();
 extern int  potflag;
 extern int  pot16bit;
 extern float finalaspectratio;
+extern float  screenaspect;
 
 struct coords {
     int x,y;
@@ -110,11 +112,23 @@ void drawbox(int drawit)
 	boxcount = 0; }
 
     if (drawit) { /* caller wants box drawn as well as co-ords calc'd */
+#ifndef XFRACT
 	/* build the list of zoom box pixels */
 	addbox(tl); addbox(tr); 	      /* corner pixels */
 	addbox(bl); addbox(br);
 	drawlines(tl,tr,bl.x-tl.x,bl.y-tl.y); /* top & bottom lines */
 	drawlines(tl,bl,tr.x-tl.x,tr.y-tl.y); /* left & right lines */
+#else
+        boxx[0] = tl.x + sxoffs;
+        boxy[0] = tl.y + syoffs;
+        boxx[1] = tr.x + sxoffs;
+        boxy[1] = tr.y + syoffs;
+        boxx[2] = br.x + sxoffs;
+        boxy[2] = br.y + syoffs;
+        boxx[3] = bl.x + sxoffs;
+        boxy[3] = bl.y + syoffs;
+        boxcount = 1;
+#endif
 	dispbox();			      /* asm routine to paint it */
 	}
     }
@@ -232,8 +246,8 @@ static void _fastcall chgboxf(double dwidth, double ddepth)
 void resizebox(int steps)
 {
     double deltax,deltay;
-    if (zdepth*SCREENASPECT > zwidth) { /* box larger on y axis */
-	deltay = steps * 0.036 / SCREENASPECT;
+    if (zdepth*screenaspect > zwidth) { /* box larger on y axis */
+	deltay = steps * 0.036 / screenaspect;
 	deltax = zwidth * deltay / zdepth;
 	}
     else {				/* box larger on x axis */
@@ -318,7 +332,8 @@ static int check_pan() /* return 0 if can't, alignment requirement if can */
 	return(0); /* not resumable, not complete */
     if ( curfractalspecific->calctype != StandardFractal
       && curfractalspecific->calctype != calcmand
-      && curfractalspecific->calctype != calcmandfp)
+      && curfractalspecific->calctype != calcmandfp
+      && curfractalspecific->calctype != lyapunov)
 	return(0); /* not a worklist-driven type */
     if (zwidth != 1.0 || zdepth != 1.0 || zskew != 0.0 || zrotate != 0.0)
 	return(0); /* not a full size unrotated unskewed zoombox */
@@ -362,12 +377,12 @@ static void _fastcall move_row(int fromrow,int torow,int col)
 	    endcol += col; }
 	if (col > 0)
 	    startcol += col;
-	get_line(fromrow,startcol,endcol,&dstack[tocol]);
+	get_line(fromrow,startcol,endcol,(BYTE *)&dstack[tocol]);
 	}
-    put_line(torow,0,xdots-1,dstack);
+    put_line(torow,0,xdots-1,(BYTE *)dstack);
     }
 
-int init_pan_or_recalc(zoomout) /* decide to recalc, or to chg worklist & pan */
+int init_pan_or_recalc(int do_zoomout) /* decide to recalc, or to chg worklist & pan */
 {   int i,j,row,col,y,alignmask,listfull;
     if (zwidth == 0.0)
 	return(0); /* no zoombox, leave calc_status as is */
@@ -380,7 +395,7 @@ int init_pan_or_recalc(zoomout) /* decide to recalc, or to chg worklist & pan */
 	return(0); } /* box is full screen, leave calc_status as is */
     col = zbx*(dxsize+PIXELROUND); /* calc dest col,row of topleft pixel */
     row = zby*(dysize+PIXELROUND);
-    if (zoomout) { /* invert row and col */
+    if (do_zoomout) { /* invert row and col */
 	row = 0-row;
 	col = 0-col; }
     if ((row&alignmask) != 0 || (col&alignmask) != 0) {
@@ -445,7 +460,7 @@ static void _fastcall restart_window(int wknum)
     if ((xto = worklist[wknum].xxstop) >= xdots) xto = xdots - 1;
     memset(dstack,0,xdots); /* use dstack as a temp for the row; clear it */
     while (yfrom <= yto)
-	put_line(yfrom++,xfrom,xto,dstack);
+	put_line(yfrom++,xfrom,xto,(BYTE *)dstack);
     worklist[wknum].sym = worklist[wknum].pass = 0;
     worklist[wknum].yybegin = worklist[wknum].yystart;
 }

@@ -90,6 +90,7 @@ FUDGEFACTOR	equ	29		; default (non-potential) fudgefactor
 
 	extrn	fractype:word		; == 0 if Mandelbrot set, else Julia
 	extrn	inside:word		; "inside" color, normally 1 (blue)
+	extrn   outside:word            ; "outside" color, normally -1 (iter)
 	extrn	creal:dword, cimag:dword ; Julia Set Constant
 	extrn	delmin:dword		; min increment - precision required
 	extrn	maxit:word		; maximum iterations
@@ -471,20 +472,27 @@ noorbit2:
 	jge	short coloradjust1	;  (where abs(x) > 2 or abs(y) > 2)
 	mov	ax,1			;   to look like we ran through
 coloradjust1:				;    at least one loop.
-	mov	realcolor,ax		; result before adjustments
-	cmp	ax,maxit		; did we max out on iterations?
-	jne	short wedone		;  nope.
-	mov	oldcolor,ax		; set "oldcolor" to maximum
-	cmp	inside,0		; is "inside" >= 0?
-	jl	wedone			;  nope.  leave it at "maxit"
-	mov	ax,inside		; reset max-out color to default
-	cmp	periodicitycheck,0	; show periodicity matches?
-	jge	wedone			;  nope.
-	mov	al,period		;  reset color to periodicity flag
-wedone: 				;
-	mov	color,ax		; save the color result
-	UNFRAME <si,di> 		; pop stack frame
-	ret				; and return with color
+	mov     realcolor,ax            ; result before adjustments
+	cmp     ax,maxit                ; did we max out on iterations?
+	jne     short notmax            ;  nope.
+	mov     oldcolor,ax             ; set "oldcolor" to maximum
+	cmp     inside,0                ; is "inside" >= 0?
+	jl      wedone                  ;  nope.  leave it at "maxit"
+	mov     ax,inside               ; reset max-out color to default
+	cmp     periodicitycheck,0      ; show periodicity matches?
+	jge     wedone                  ;  nope.
+	mov     al,period               ;  reset color to periodicity flag
+	jmp     short wedone
+
+notmax:
+	cmp     outside,0               ; is "outside" >= 0?
+	jl      wedone                  ;   nope. leave as realcolor
+	mov     ax, outside             ; reset to "outside" color
+
+wedone:                                 ;
+	mov     color,ax                ; save the color result
+	UNFRAME <si,di>                 ; pop stack frame
+	ret                             ; and return with color
 
 calcmandasm endp
 
@@ -809,4 +817,3 @@ horbit: push	bx			; save my flags
 code32bit	endp
 
 	   end
-

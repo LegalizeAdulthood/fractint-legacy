@@ -56,6 +56,7 @@ DeltaLog(XAXIS) {; Mark Peterson
   }
 
 Newton4(XYAXIS) {; Mark Peterson
+  ; Note that floating-point is required to make this compute accurately
   z = pixel, Root = 1:
    z3 = z*z*z;
    z4 = z3 * z;
@@ -66,10 +67,10 @@ Newton4(XYAXIS) {; Mark Peterson
 comment {
    The following are from Chris Green:
    These fractals all use Newton's or Halley's formula for approximation
-   of a function.  In all of these fractals, p1 is the "relaxation
+   of a function.  In all of these fractals, p1 real is the "relaxation
    coefficient". A value of 1 gives the conventional newton or halley
    iteration. Values <1 will generally produce less chaos than values >1.
-   1-1.5 is probably a good range to try.  P2 is the imaginary component
+   1-1.5 is probably a good range to try.  P1 imag is the imaginary component
    of the relaxation coefficient, and should be zero but maybe a small
    non-zero value will produce something interesting. Who knows?
    For more information on Halley maps, see "Computers, Pattern, Chaos,
@@ -77,7 +78,7 @@ comment {
    }
 
 Halley (XYAXIS) {; Chris Green. Halley's formula applied to x^7-x=0.
-  ; P1 usually 1 to 1.5, P2 usually zero. Use floating point.
+  ; P1 real usually 1 to 1.5, P1 imag usually zero. Use floating point.
   ; Setting P1 to 1 creates the picture on page 277 of Pickover's book
   z=pixel:
    z5=z*z*z*z*z;
@@ -88,7 +89,7 @@ Halley (XYAXIS) {; Chris Green. Halley's formula applied to x^7-x=0.
   }
 
 CGhalley (XYAXIS) {; Chris Green -- Halley's formula
-  ; P1 usually 1 to 1.5, P2 usually zero. Use floating point.
+  ; P1 real usually 1 to 1.5, P1 imag usually zero. Use floating point.
   z=(1,1):
    z5=z*z*z*z*z;
    z6=z*z5;
@@ -99,7 +100,7 @@ CGhalley (XYAXIS) {; Chris Green -- Halley's formula
 
 halleySin (XYAXIS) {; Chris Green. Halley's formula applied to sin(x)=0.
   ; Use floating point.
-  ; P1 = 0.1 will create the picture from page 281 of Pickover's book.
+  ; P1 real = 0.1 will create the picture from page 281 of Pickover's book.
   z=pixel:
    s=sin(z), c=cos(z)
    z=z-p1*(s/(c-(s*s)/(c+c))),
@@ -642,15 +643,6 @@ ZZa(XAXIS) { ; Prof Jm using Newton-Raphson method
     .001 <= |solution-z1|
   }
 
-
-comment {
-  You should note that for the Transparent 3D fractals the x, y, z, and t
-  coordinates correspond to the 2D slices and not the final 3D True Color
-  image.  To relate the 2D slices to the 3D image, swap the x- and z-axis,
-  i.e. a 90 degree rotation about the y-axis.
-			    -Mark Peterson 6-2-91
-  }
-
 MandelXAxis(XAXIS) {	; for Transparent3D
   z = zt,		; Define Julia axes as depth/time and the
   c = xy:		;   Mandelbrot axes as width/height for each slice.
@@ -669,4 +661,3 @@ OldJulibrot(ORIGIN) {		    ; for Transparent3D
    z = Sqr(z) + c
     LastSqr <= 4;
   }
-

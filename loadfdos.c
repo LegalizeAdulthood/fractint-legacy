@@ -32,14 +32,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "fractint.h"
 #include "helpdefs.h"
+#include "prototyp.h"
 
 /* routines in this module	*/
 
-int get_video_mode(struct fractal_info *);
-
-static int    vidcompare(void const *,void const *);
+static int    vidcompare(VOIDCONSTPTR ,VOIDCONSTPTR );
 static void   format_vid_inf(int i,char *err,char *buf);
 static double vid_aspect(int tryxdots,int tryydots);
 static void   format_item(int,char *);
@@ -63,13 +63,7 @@ extern int    display3d;		/* 3D display flag: 0 = OFF */
 extern struct videoinfo far videotable[];
 extern struct videoinfo far *vidtbl;
 extern int    vidtbllen;
-
-int  fullscreen_choice(
-	     int options, char *hdg, char *hdg2, char *instr, int numchoices,
-	     char **choices, int *attributes, int boxwidth, int boxdepth,
-	     int colwidth, int current, void (*formatitem)(),
-	     char *speedstring, int (*speedprompt)(),
-	     int (*checkkey)());
+extern float  screenaspect;
 
 
 struct vidinf {
@@ -91,7 +85,7 @@ struct vidinf {
 #define VI_ASPECT    1	/* aspect ratio bad */
 
 
-static int vidcompare(void const *p1,void const *p2)
+static int vidcompare(VOIDCONSTPTR p1,VOIDCONSTPTR p2)
 {
    struct vidinf *ptr1,*ptr2;
    ptr1 = (struct vidinf *)p1;
@@ -121,7 +115,7 @@ static double vid_aspect(int tryxdots,int tryydots)
 {  /* calc resulting aspect ratio for specified dots in current mode */
    return (double)tryydots / (double)tryxdots
 	* (double)videoentry.xdots / (double)videoentry.ydots
-	* SCREENASPECT;
+	* screenaspect;
    }
 
 
@@ -129,6 +123,12 @@ static struct vidinf *vidptr;
 
 int get_video_mode(struct fractal_info *info)
 {
+   static char far hdg2[]={"key...name......................err..xdot.ydot.clr.comment.................."};
+   static char far warning[]={"\nWARNING: non-standard aspect ratio; loading will change your <v>iew settings"};
+   static char far select_msg[]={"\
+Select a video mode.  Use the cursor keypad to move the pointer.\n\
+Press ENTER for selected mode, or use a video mode function key.\n\
+Press F1 for help, "};
 
    struct vidinf vid[MAXVIDEOMODES];
    int i,j;
@@ -212,6 +212,7 @@ int get_video_mode(struct fractal_info *info)
       vid[i].flags  = tmpflags;
       }
 
+#ifndef XFRACT
    gotrealmode = 0;
    if (initmode < 0 || (askvideo && !initbatch)) {
       /* no exact match or (askvideo=yes and batch=no), talk to user */
@@ -255,25 +256,19 @@ int get_video_mode(struct fractal_info *info)
 	    format_vid_inf(initmode,"",temp1);
 	    strcat(dstack,temp1);
 	    }
-      if (fileaspectratio != 0 && fileaspectratio != SCREENASPECT)
-	 strcat(dstack,
- "\nWARNING: non-standard aspect ratio; loading will change your <v>iew settings");
+      if (fileaspectratio != 0 && fileaspectratio != screenaspect)
+	 far_strcat(dstack,warning);
       strcat(dstack,"\n");
       /* set up instructions */
-      strcpy(temp1,"\
-Select a video mode.  Use the cursor keypad to move the pointer.\n\
-Press ENTER for selected mode, or use a video mode function key.\n\
-Press F1 for help, ");
+      far_strcpy(temp1,select_msg);
       if (info->info_id[0] != 'G')
 	 strcat(temp1,"TAB for fractal information, ");
       strcat(temp1,"ESCAPE to back out.");
 
       oldhelpmode = helpmode;
       helpmode = HELPLOADFILE;
-      i = fullscreen_choice(0,dstack,
- "key...name......................err..xdot.ydot.clr.comment..................",
-		  temp1,vidtbllen,NULL,attributes,
-		  1,13,76,0,format_item,NULL,NULL,check_modekey);
+      i = fullscreen_choice(0,dstack,hdg2,temp1,vidtbllen,NULL,attributes,
+		             1,13,76,0,format_item,NULL,NULL,check_modekey);
       helpmode = oldhelpmode;
       if (i == -1)
 	 return(-1);
@@ -284,6 +279,11 @@ Press F1 for help, ");
       else
 	 initmode = vid[i].entnum;
       }
+#else
+      initmode = 0;
+      j = vidtbl[0].keynum;
+      gotrealmode = 0;
+#endif
 
    if (gotrealmode == 0) { /* translate from temp table to permanent */
       if ((j = vidtbl[i=initmode].keynum) != 0) {
@@ -341,9 +341,9 @@ Press F1 for help, ");
 
    if ((finalaspectratio = fileaspectratio) == 0) /* assume display correct */
       finalaspectratio = vid_aspect(filexdots,fileydots);
-   if (finalaspectratio >= SCREENASPECT-0.02
-     && finalaspectratio <= SCREENASPECT+0.02)
-      finalaspectratio = SCREENASPECT;
+   if (finalaspectratio >= screenaspect-0.02
+     && finalaspectratio <= screenaspect+0.02)
+      finalaspectratio = screenaspect;
    i = finalaspectratio * 1000.0 + 0.5;
    finalaspectratio = (double)i/1000.0; /* chop precision to 3 decimals */
 
@@ -354,8 +354,8 @@ Press F1 for help, ");
       viewwindow = 1;
       ftemp = finalaspectratio
 	    * (double)videoentry.ydots / (double)videoentry.xdots
-	    / SCREENASPECT;
-      if (finalaspectratio <= SCREENASPECT) {
+	    / screenaspect;
+      if (finalaspectratio <= screenaspect) {
 	 i = (double)videoentry.xdots / (double)filexdots * 20.0 + 0.5;
 	 tmpreduce = (double)i/20.0; /* chop precision to nearest .05 */
 	 i = (double)videoentry.xdots / tmpreduce + 0.5;
@@ -374,10 +374,10 @@ Press F1 for help, ");
       else
 	 viewreduction = tmpreduce; /* ok, this works */
       }
-   if (finalaspectratio != SCREENASPECT || viewxdots != 0) {
+   if (fabs(finalaspectratio - screenaspect) > .00001 || viewxdots != 0 ) {
       static char far msg[] = {"\
 Warning: <V>iew parameters are being set to non-standard values.\n\
-Remember to reset them when finished with this image."};
+Remember to reset them when finished with this image.1"};
       stopmsg(4,msg);
       }
 

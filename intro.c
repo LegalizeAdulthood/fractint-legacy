@@ -7,11 +7,15 @@
  *
  */
 
+#include <stdio.h>
+#include <time.h>
+#ifndef XFRACT
+#include <dos.h>
+#endif
+
 #include "fractint.h"
 #include "helpdefs.h"
-
-#include <time.h>
-#include <dos.h>
+#include "prototyp.h"
 
 /* stuff from fractint */
 
@@ -20,16 +24,10 @@ extern long timer_start;
 extern int  helpmode;
 extern int  extraseg;
 
-void putstring	     (int x, int y, int attr, unsigned char far * msg);
-int  putstringcenter (int x, int y, int width, int attr, char far * msg);
-void setattr	     (int x, int y, int attr, int width);
-void scrollup	     (int top, int bot);
-void movecursor      (int x, int y);
-void setclear	     (void);
-void helptitle	     (void);
-int  getakey	     (void);
-int  keypressed      (void);
-int  read_help_topic (int label, int off, int len, void far *buf);
+
+#ifdef XFRACT
+extern int slowdisplay;
+#endif
 
 
 void intro_overlay(void) { }
@@ -47,7 +45,7 @@ void intro(void)
 
    ENTER_OVLY(OVLY_INTRO);
 
-   timer_start -= clock();		/* "time out" during help */
+   timer_start -= clock_ticks();		/* "time out" during help */
    oldlookatmouse = lookatmouse;
    oldhelpmode = helpmode;
    lookatmouse = 0;			/* de-activate full mouse checking */
@@ -69,7 +67,13 @@ void intro(void)
 
    helptitle();
    toprow = 8;
+#ifndef XFRACT
    botrow = 21;
+#else
+   botrow = 20;
+   putstringcenter(21,0,80,C_TITLE,
+   "Unix/X port of fractint by Ken Shirriff [shirriff@sprite.Berkeley.EDU]");
+#endif
    putstringcenter(1,0,80,C_TITLE, "Press ENTER for main menu, F1 for help.");
    putstring(2,0,C_CONTRIB,screen_text);
    setattr(2,0,C_AUTHDIV1,80);
@@ -81,21 +85,31 @@ void intro(void)
       setattr(i,20,C_CONTRIB,60);
    setattr(toprow,0,C_CONTRIB,14*80);
    i = botrow - toprow;
+   srand(clock_ticks());
+   j = rand15()%(j-(botrow-toprow)); /* first to use */
+   i = j+botrow-toprow; /* last to use */
    oldchar = credits[authors[i+1]];
    credits[authors[i+1]] = 0;
-   putstring(toprow,0,C_CONTRIB,credits);
+   putstring(toprow,0,C_CONTRIB,credits+authors[j]);
    credits[authors[i+1]] = oldchar;
    delaymax = 10;
    movecursor(25,80); /* turn it off */
    helpmode = HELPMENU;
    while (! keypressed())
       {
+#ifdef XFRACT
+      if (slowdisplay) delaymax *= 15;
+#endif
       for (j = 0; j < delaymax && !(keypressed()); j++)
 	 delay(100);
       if (keypressed() == 32)
 	 {	/* spacebar pauses */
 	 getakey();
-	 while (!keypressed()) ;
+#ifndef XFRACT
+         while (!keypressed()) ;
+#else
+         waitkeypressed(0);
+#endif
 	 if (keypressed() == 32)
 	    getakey();
 	 }
@@ -117,6 +131,3 @@ void intro(void)
    EXIT_OVLY;
    return ;
    }
-
-
-

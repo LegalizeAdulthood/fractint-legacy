@@ -4,30 +4,21 @@ FRACTALS.C, i.e. which are non-fractal-specific fractal engine subroutines.
 */
 
 #include <stdio.h>
+#ifndef XFRACT
 #include <stdarg.h>
+#else
+#include <varargs.h>
+#endif
 #include <float.h>
-#include <sys\types.h>
-#include <sys\timeb.h>
+#include <sys/types.h>
+#include <sys/timeb.h>
+#include <stdlib.h>
 #include "fractint.h"
 #include "fractype.h"
 #include "mpmath.h"
+#include "prototyp.h"
 
 /* routines in this module	*/
-
-void calcfracinit(void);
-void adjust_corner(void);
-int  alloc_resume(int,int);
-int  put_resume(int,...);
-int  start_resume(void);
-int  get_resume(int,...);
-void end_resume(void);
-void iplot_orbit(long,long,int);
-void plot_orbit(double,double,int);
-void scrub_orbit(void);
-int  add_worklist(int,int,int,int,int,int,int);
-void tidy_worklist(void);
-int  ssg_blocksize(void);
-void get_julia_attractor(double,double);
 
 static long   _fastcall fudgetolong(double d);
 static double _fastcall fudgetodouble(long l);
@@ -65,10 +56,11 @@ extern double xxmin,xxmax,yymin,yymax,xx3rd,yy3rd; /* corners */
 extern long   xmin, xmax, ymin, ymax, x3rd, y3rd;  /* integer equivs */
 extern int    maxit;			/* try this many iterations */
 extern int    attractors;		/* number of finite attractors	*/
-extern struct complex  attr[];		/* finite attractor vals (f.p)	*/
-extern struct lcomplex lattr[]; 	/* finite attractor vals (int)	*/
-extern struct complex  old,new;
-extern struct lcomplex lold,lnew;
+extern _CMPLX  attr[];		/* finite attractor vals (f.p)	*/
+extern _LCMPLX lattr[]; 	/* finite attractor vals (int)	*/
+extern int    attrperiod[]; 		/* finite attractor period	*/
+extern _CMPLX  old,new;
+extern _LCMPLX lold,lnew;
 extern double tempsqrx,tempsqry;
 extern long   ltempsqrx,ltempsqry;
 extern int    xxstart,xxstop;		/* these are same as worklist, */
@@ -84,7 +76,7 @@ extern int    color;
 extern int    decomp[];
 extern double potparam[3];		/* three potential parameters*/
 extern int    distest;			/* non-zero if distance estimator */
-extern double param[4]; 		/* up to four parameters */
+extern double param[];  		/* parameters */
 extern int    invert;			/* non-zero if inversion active */
 extern int    biomorph,usr_biomorph;
 extern int    debugflag; /* internal use only - you didn't see this */
@@ -113,10 +105,9 @@ extern char   usr_floatflag;
 extern char   usr_stdcalcmode;
 extern int    usr_periodicitycheck;
 extern int    usr_distest;
+extern double zwidth;
 
-extern int StandardFractal(void);
-extern int calcmand(void);
-extern int calcmandfp(void);
+extern int neworbittype;
 
 #define FUDGEFACTOR	29	/* fudge all values up by 2**this */
 #define FUDGEFACTOR2	24	/* (or maybe this)		  */
@@ -133,6 +124,9 @@ void calcfracinit() /* initialize a *pile* of stuff for fractal calculation */
 	 floatflag = 0;
       else
 	 floatflag = 1;
+   /* if floating pt only, set floatflag for TAB screen */
+   if (!curfractalspecific->isinteger && curfractalspecific->tofloat == NOFRACTAL)
+      floatflag = 1;
 
 init_restart:
 
@@ -146,7 +140,7 @@ init_restart:
 
    potflag = 0;
    if (potparam[0] != 0.0
-     && colors >= 256
+     && colors >= 64
      && (curfractalspecific->calctype == StandardFractal
 	 || curfractalspecific->calctype == calcmand
 	 || curfractalspecific->calctype == calcmandfp)) {
@@ -167,13 +161,31 @@ init_restart:
 	&& curfractalspecific->tofloat != NOFRACTAL)
 	 fractype = curfractalspecific->tofloat;
       }
+   /* match Julibrot with integer mode of orbit */   
+   if(fractype == JULIBROTFP && fractalspecific[neworbittype].isinteger)
+   {
+      int i;
+      if((i=fractalspecific[neworbittype].tofloat) != NOFRACTAL)
+         neworbittype = i;
+      else
+         fractype = JULIBROT;   
+   }
+   else if(fractype == JULIBROT && fractalspecific[neworbittype].isinteger==0)
+   {
+      int i;
+      if((i=fractalspecific[neworbittype].tofloat) != NOFRACTAL)
+         neworbittype = i;
+      else
+         fractype = JULIBROTFP;   
+   }
+      
    curfractalspecific = &fractalspecific[fractype];
 
    integerfractal = curfractalspecific->isinteger;
 
-   if (fractype == JULIBROT)
+/*   if (fractype == JULIBROT)
       rqlim = 4;
-   else if (potflag && potparam[2] != 0.0)
+   else */ if (potflag && potparam[2] != 0.0)
       rqlim = potparam[2];
 /* else if (decomp[0] > 0 && decomp[1] > 0)
       rqlim = (double)decomp[1]; */
@@ -202,18 +214,17 @@ init_restart:
 	 if (fractalspecific[i].isinteger > 1) /* specific shift? */
 	    bitshift = fractalspecific[i].isinteger;
 
+/* We want this code if we're using the assembler calcmand */
    if (fractype == MANDEL || fractype == JULIA) { /* adust shift bits if.. */
       if (potflag == 0				  /* not using potential */
-	&& (fractype != MANDEL			  /* and not an int mandel */
-	    || (param[0] == 0.0 && param[1] == 0.0))  /* w/ "fudged" params */
+	&& (param[0] > -2.0 && param[0] < 2.0)  /* parameters not too large */
+	&& (param[1] > -2.0 && param[1] < 2.0)
 	&& !invert				  /* and not inverting */
 	&& biomorph == -1			  /* and not biomorphing */
 	&& rqlim <= 4.0 			  /* and bailout not too high */
 	&& (outside > -2 || outside < -5)	  /* and no funny outside stuff */
 	&& debugflag != 1234)			  /* and not debugging */
 	 bitshift = FUDGEFACTOR;		  /* use the larger bitshift */
-      if (param[0] < -1.99 || param[0] > 1.99) param[0] = 1.99;
-      if (param[1] < -1.99 || param[1] > 1.99) param[1] = 1.99;
       }
 
    fudge = 1L << bitshift;
@@ -230,6 +241,7 @@ init_restart:
    delxx2 = (xx3rd - xxmin) / dysize;
    delyy2 = (yy3rd - yymin) / dxsize;
 
+  if(fractype != CELLULAR) { /* fudgetolong fails w >10 digits in double */
    creal = fudgetolong(param[0]); /* integer equivs for it all */
    cimag = fudgetolong(param[1]);
    xmin  = fudgetolong(xxmin);
@@ -242,6 +254,7 @@ init_restart:
    dely  = fudgetolong(delyy);
    delx2 = fudgetolong(delxx2);
    dely2 = fudgetolong(delyy2);
+  }
 
    if (fractype != PLASMA) { /* skip this if plasma to avoid 3d problems */
       if (integerfractal && !invert) {
@@ -352,7 +365,11 @@ static double _fastcall fudgetodouble(long l)
    char buf[30];
    double d;
    sprintf(buf,"%.9g",(double)l / fudge);
+#ifndef XFRACT
    sscanf(buf,"%lg",&d);
+#else
+   sscanf(buf,"%lf",&d);
+#endif
    return d;
 }
 
@@ -438,7 +455,7 @@ static void _fastcall adjust_to_limits(double expand)
       if (cornery[i] < 0.0-limit && (ftemp = cornery[i] + limit) < adjy)
 	 adjy = ftemp;
       }
-   if (calc_status == 2 && (adjx != 0 || adjy != 0))
+   if (calc_status == 2 && (adjx != 0 || adjy != 0) && (zwidth == 1.0))
       calc_status = 0;
    xxmin = cornerx[0] - adjx;
    xxmax = cornerx[1] - adjx;
@@ -524,13 +541,27 @@ static int _fastcall ratio_bad(double actual, double desired)
 
    */
 
+#ifndef XFRACT
 int put_resume(int len, ...)
+#else
+int put_resume(va_alist)
+va_dcl
+#endif
 {
    va_list arg_marker;	/* variable arg list */
    char *source_ptr;
+#ifdef XFRACT
+   int len;
+#endif
+
    if (resume_info == NULL)
       return(-1);
+#ifndef XFRACT
    va_start(arg_marker,len);
+#else
+   va_start(arg_marker);
+   len = va_arg(arg_marker,int);
+#endif
    while (len)
    {
       source_ptr = va_arg(arg_marker,char *);
@@ -560,13 +591,27 @@ You will not be able to resume calculating this image."};
    return(0);
 }
 
+#ifndef XFRACT
 int get_resume(int len, ...)
+#else
+int get_resume(va_alist)
+va_dcl
+#endif
 {
    va_list arg_marker;	/* variable arg list */
    char *dest_ptr;
+#ifdef XFRACT
+   int len;
+#endif
+
    if (resume_info == NULL)
       return(-1);
+#ifndef XFRACT
    va_start(arg_marker,len);
+#else
+   va_start(arg_marker);
+   len = va_arg(arg_marker,int);
+#endif
    while (len)
    {
       dest_ptr = va_arg(arg_marker,char *);
@@ -694,7 +739,6 @@ sleepexit:
     tabmode  = savetabmode;
     helpmode = savehelpmode;
 }
-
 
 
 static void _fastcall plotdorbit(double dx, double dy, int color)
@@ -852,9 +896,10 @@ void tidy_worklist() /* combine mergeable entries, resort */
 
 void get_julia_attractor (double real, double imag)
 {
-   struct lcomplex lresult;
-   struct complex result;
+   _LCMPLX lresult;
+   _CMPLX result;
    int savper,savmaxit;
+   int i;
 
    if (attractors == 0 && finattract == 0) /* not magnet & not requested */
       return;
@@ -892,6 +937,7 @@ void get_julia_attractor (double real, double imag)
 	 lresult = lnew;
       else
 	 result =  new;
+     for (i=0;i<10;i++) {
       if(!curfractalspecific->orbitcalc()) /* if it stays in the lake */
       { 		       /* and doen't move far, probably */
 	 if (integerfractal)   /*   found a finite attractor	*/
@@ -900,7 +946,9 @@ void get_julia_attractor (double real, double imag)
 		&& labs(lresult.y-lnew.y) < lclosenuff)
 	    {
 	       lattr[attractors] = lnew;
+	       attrperiod[attractors] = i+1;
 	       attractors++;   /* another attractor - coloured lakes ! */
+	       break;
 	    }
 	 }
 	 else
@@ -909,10 +957,15 @@ void get_julia_attractor (double real, double imag)
 		&& fabs(result.y-new.y) < closenuff)
 	    {
 	       attr[attractors] = new;
+	       attrperiod[attractors] = i+1;
 	       attractors++;   /* another attractor - coloured lakes ! */
+	       break;
 	    }
 	 }
+      } else {
+	  break;
       }
+     }
    }
    if(attractors==0)
       periodicitycheck = savper;
@@ -1090,5 +1143,3 @@ int x, y, color ;
 void _fastcall noplot(int x,int y,int color)
 {
 }
-
-

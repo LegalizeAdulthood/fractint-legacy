@@ -51,7 +51,9 @@
 ; ---- Extended Memory Support
 ;
 ;	xmmquery()
+;	xmmlongest()
 ;	xmmallocate()
+;	xmmreallocate()
 ;	xmmdeallocate()
 ;	xmmmoveextended()
 ;
@@ -124,7 +126,9 @@ public		overflow		; Mul, Div overflow flag: 0 means none
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
 
+public		keybuffer			; needed for ungetakey
 public		prefix, suffix, dstack, decoderline ; for the Decoder
+public		tstack				; for the prompting routines
 public		strlocn, teststring, block	; used by the Encoder
 public		boxx, boxy, boxvalues		; zoom-box arrays
 public		olddacbox			; temporary DAC saves
@@ -165,11 +169,12 @@ block		label	byte		; encoder(266)
 suffix		dw	2048 dup(0)	; decoder(4k), vidswitch(256),
 					; savegraphics/restoregraphics(4k)
 
+tstack		label	byte		; prompts(4k), ifsload(4k),
+					; make_batch(4k)
 teststring	label	byte		; encoder(100)
 olddacbox	label	byte		; fractint(768), prompts(768)
 dstack		dw	2048 dup(0)	; decoder(4k), solidguess(4k), btm(2k)
-					;   zoom(2k), ifsload(2k), prompts(4k)
-					;   make_batch(4k), printer(2400)
+					;   zoom(2k), printer(2400)
 					;   loadfdos(2000)
 
 strlocn 	label	word		; encoder(10k), editpal(10k)
@@ -1773,8 +1778,8 @@ far_strcat proc uses ds es di si, toaddr:dword, fromaddr:dword
 	ret				; we done.
 far_strcat endp
 
-far_memset proc uses es di, toaddr:dword, fromvalue:byte, slength:word
-	mov	al,fromvalue		; get the value to store
+far_memset proc uses es di, toaddr:dword, fromvalue:word, slength:word
+	mov	ax,fromvalue		; get the value to store
 	mov	cx,slength		; get the store length
 	les	di,toaddr		; now move to here
 	rep	stosb			; store them
@@ -1977,8 +1982,12 @@ emmclearpage	endp
 ;
 ;	xmmquery()		; Query presence of XMM and initialize XMM code
 ;				; returns 0 if no XMM
+;	xmmlongest()		; return size of largest available
+;				; XMM block in Kbytes (or zero if none)
 ;	handle = xmmallocate(Kbytes)	; allocate XMM block in Kbytes
-;				; returns handle # if OK, or else 0
+;					; returns handle # if OK, or else 0
+;	xmmreallocate(handle, Kbytes)	; change size of handle's block
+;				; to size of Kbytes.  Returns 0 if failed
 ;	xmmdeallocate(handle)	; return XMM block to system - MUST BE CALLED
 ;				; or allocated XMM memory is not released.
 ;	xmmmoveextended(&MoveStruct)	; Moves a block of memory to or
@@ -2024,6 +2033,15 @@ xmmquerydone:
 	ret
 xmmquery	endp
 
+
+xmmlongest	proc			; query length of largest avail block
+	mov	ah, 08h			;
+	call	[xmscontrol]
+	mov	dx, 0
+	ret
+xmmlongest	endp
+
+
 xmmallocate	proc	ksize:word
 	mov	ah,09h			; Allocate extended memory block
 	mov	dx,ksize		; size of block in Kbytes
@@ -2037,6 +2055,20 @@ xmmallocatefail:
 xmmallocatedone:
 	ret
 xmmallocate	endp
+
+
+xmmreallocate	proc	handle:word, newsize:word
+	mov	ah, 0Fh			; Change size of extended mem block
+	mov	dx, handle		; handle of block to reallocate
+	mov	bx, newsize             ; new size for block
+	call	[xmscontrol]
+	cmp	ax, 0001h		; one indicates success
+	je	xmmreallocdone
+	mov	ax, 0			; we return zero for failure
+xmmreallocdone:
+	ret
+xmmreallocate	endp
+
 
 xmmdeallocate	proc	xmm_handle:word
 	mov	ah,0ah			; Deallocate extended memory block

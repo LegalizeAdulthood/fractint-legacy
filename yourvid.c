@@ -35,14 +35,14 @@ The four routines are:
 		 using the same coordinate logic as 'writevideo()'
 
  int readvideopalette() read the contents of the adapter's video
-		 palette into the 'unsigned char dacbox[256][3]' array
+		 palette into the 'BYTE dacbox[256][3]' array
 		 (up to 256 R/G/B triplets, each with values from 0 to 63).
 		 Set dacbox[0][0] = 255 if there is no such palette.
 		 Return a -1 if you want the normal internal EGA/VGA
 		 routines to handle this function.
 
  int writevideopalette() write the contents of the adapter's video
-		 palette from the 'unsigned char dacbox[256][3]' array
+		 palette from the 'BYTE dacbox[256][3]' array
 		 (up to 256 R/G/B triplets, each with values from 0 to 63).
 		 Return a -1 if you want the normal internal EGA/VGA
 		 routines to handle this function.
@@ -53,6 +53,10 @@ in assembler.
 
 */
 
+#include <dos.h>
+#include "port.h"
+#include "prototyp.h"
+
 /* external variables (set in the FRACTINT.CFG file, but findable here */
 
 extern	int	dotmode;		/* video access method (= 19)	   */
@@ -61,11 +65,9 @@ extern	int	colors; 		/* maximum colors available	   */
 
 /* the video-palette array (named after the VGA adapter's video-DAC) */
 
-extern unsigned char dacbox[256][3];
+extern BYTE dacbox[256][3];
 
 /* for demo purposes, these routines use VGA mode 13h - 320x200x256 */
-
-#include <dos.h>
 
 int startvideo()
 {
@@ -108,7 +110,7 @@ int86(0x10,&regs,&regs);
 
 }
 
-unsigned int readvideo(int x, int y)
+int readvideo(int x, int y)
 {
 
 union REGS regs;

@@ -8,13 +8,17 @@
 
 #include	<stdio.h>
 #include	<stdlib.h>
+#include	<string.h>
+#ifndef XFRACT
+#include	<conio.h>
+#endif
 #include	"targa.h"
 #include	"fractint.h"
+#include	"prototyp.h"
 
 
 /*************	****************/
 
-extern void	helptitle();
 extern char far *mapdacbox;
 
 /*************	****************/
@@ -218,7 +222,7 @@ void StartTGA()
 {
 int	i;
 static char far couldntfind[]={"Could not find Targa card"};
-static char far noenvvar[]={"TARGA enviroment variable missing"};
+static char far noenvvar[]={"TARGA environment variable missing"};
 static char far insuffmem[]={"Insufficient memory for Targa"};
 
 	/****************/
@@ -305,7 +309,7 @@ long color;
 	if( targa.boardType == 16 )
 		color = (12 << 10) | (12 << 5) | 12;
 	else
-		color = (80 << 16) | (80 << 8) | 80;
+		color = ((long)80 << 16) | (80 << 8) | 80;
 	SetBorderColor( color );
 }
 
@@ -631,7 +635,7 @@ unsigned switches, got_switches;
 	   ++envptr;
 	   }
 	if (got_switches == 0) { /* all blanks, use default */
-	   targa.memloc = 0xA000;
+	   targa.memloc = (signed int)0xA000;
 	   targa.iobase = 0x220;
 	   }
 	else {

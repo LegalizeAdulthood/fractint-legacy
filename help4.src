@@ -21,7 +21,7 @@
     { 3D Parameters }
 ;
 ;
-~Topic=Summary of all Parameters
+~Topic=Summary of all Parameters, Label=HELPCOMMANDS
 ; This topic is online only.
 ~Format-
 
@@ -60,6 +60,14 @@
   formulaname=name	   Formula name for 'type=formula' fractals
   lname=name		   Lsystem name for 'type=lsystem' fractals
   ifs=name		   IFS name for 'type=ifs' fractals
+  3dmode=monocular|left|right|red-blue  Sets the 3D mode used with Julibrot
+  julibrot3d=nn[/nn[/nn[/nn[/nn[/nn]]]]]")  Sets Julibrot 3D parameters zdots, 
+                           origin, depth, height, width, and distance
+  julibroteyes=nn          Distance between the virtual eyes for Julibrot
+  julibrotfromto=nn/nn[/nn/nn] "From-to" parameters used for Julibrot 
+  miim=[depth|breadth|walk]/[left|right]/[xxx/yyy[/zzz]] Params for MIIM
+                           julias.  xxx/yyy = julia constant, zzz = max hits.
+                           Eg. miim=depth/left/-.74543/.11301/3
 
 {Sound Parameters}
   sound=off|x|y|z          Nobody ever plays with fractals at work, do they?
@@ -67,7 +75,6 @@
                            fractals, the orbits command, and reading GIFs.
   hertz=nnn                Base frequency for attractor sound effects
 ~FF
-
 {Image Calculation Parameters}
   corners=xmin/xmax/ymin/ymax[/x3rd/y3rd]
 			   Begin with these Coordinates
@@ -101,6 +108,7 @@
   cyclelimit=nnn	   Color-cycler speed-limit (1 to 256, default = 55)
   textcolors=aa/bb/cc/...  Set text screen colors
   textcolors=mono	   Set text screen colors to simple black and white
+  shortmap=yes		   Uses the compact .map file format
 
 {Doodad Parameters}
   logmap=yes|old|nn	   Yes maps logarithm of iteration to color. Old uses
@@ -121,6 +129,7 @@
   savetime=nnn		   Autosave image every nnn minutes of calculation
   gif87a=yes		   Save GIF files in the older GIF87a format (with
 			   no FRACTINT extension blocks)
+  dither=yes		   Dither color GIFs read into a b/w display.
   parmfile=filename	   File for <@> and <b> commands, default FRACTINT.PAR
   formulafile=filename	   File for type=formula, default FRACTINT.FRM
   lfile=filename	   File for type=lsystem, default FRACTINT.L
@@ -136,10 +145,16 @@
                            Tseng3000|Tseng4000|AheadA|AheadB|Oaktech
                            Assume the named SuperVGA Chip set is present and
                            enable its non-standard SuperVGA modes.
+  afi=yes                  Disables the register-compatible 8514/A logic
+                           and forces the use of the 8514/A API (HDILOAD)
   textsafe=yes|no|bios|save  For use when images are not restored correctly on
 			   return from a text display
   exitmode=nn		   Sets the bios-supported videomode to use upon exit
 			   (if not mode 3) - nn is the mode in hexadecimal
+  viewwindows=xx[/xx[/yes|no[/nn[/nn]]]]
+			   Set the reduction factor, final media aspect ratio,
+			   crop starting coordinates (y/n), explicit x size,
+			   and explicit y size
 ~FF
 
 {Printer Parameters}
@@ -164,8 +179,11 @@
 			   options 7,8 | 1,2 | e,n,o (any order)
 			   Example: comport=1/9600/n71
   colorps=yes|no           Enable or Disable the color postscript extensions
+  rleps=yes|no             Enable or Disable the postscript rle encoding
 ~FF
 {3D Parameters}
+  3d=yes|overlay	   Resets 3D to defaults, starts 3D mode. If overlay
+			   specified, does not clear existing graphics screen
   preview=yes		   Turns on 3D 'preview' default mode
   showbox=yes		   Turns on 3D 'showbox' default mode
   sphere=yes		   Turns on 3D sphere mode
@@ -206,7 +224,7 @@
 ;
 ~Topic=Introduction to Parameters
 
-Fractint accepts command-line parameters that allow you start it with a
+Fractint accepts command-line parameters that allow you to start it with a
 particular video mode, fractal type, starting coordinates, and just about
 every other parameter and option.
 
@@ -231,7 +249,7 @@ command like:
     FRACTINT SOUND=OFF FILENAME=MYIMAGE.GIF
 
 The individual parameters are separated by one or more spaces (an
-individual parameter may not include spaces). Upper or lower case may be
+parameter itself may not include spaces). Upper or lower case may be
 used, and parameters can be in any order.
 
 Since DOS commands are limited to 128 characters, Fractint has a special
@@ -470,7 +488,6 @@ batch mode, as this is the only way to specify an IFS name in that case.
 ;
 ;
 ~Topic=Image Calculation Parameters
-
 MAXITER=nnn\
 Reset the iteration maximum (the number of iterations at which the program
 gives up and says 'OK, this point seems to be part of the set in question
@@ -558,24 +575,28 @@ fractals for showing you the calculation status.
 ;
 ~Topic=Color Parameters
 
-INSIDE=nnn|bof60|bof61|zmag|attractor|epscross|startrail\
+INSIDE=nnn|bof60|bof61|zmag|attractor|epscross|startrail|period\
 Set the color of the interior: for
 example, "inside=0" makes the M-set "lake" a stylish basic black. A setting of
 -1 makes inside=maxiter. Three more options reveal hidden structure inside the
 lake.  Inside=bof60 and inside=bof61, are named after the figures on pages 60
-and 61 of "Beauty of Fractals".  See {Inside=bof60|bof61|zmag} for a brilliant
-explanation of what these do!
+and 61 of "Beauty of Fractals".  See {Inside=bof60|bof61|zmag|period}
+for a brilliant explanation of what these do!
 
 Inside=zmag is a method of coloring based on the magnitude of Z after the
 maximum iterations have been reached.  The affect along the edges of the
 Mandelbrot is like thin-metal welded sculpture.
 
-The inside=attractor option uses yet another scheme - see {Finite Attractors}.
-
 Inside=epscross colors pixels green or yellow according to whether their 
 orbits swing close to the Y-axis or X-axis, respectively. Inside=starcross
 has a coloring scheme based on clusters of points in the orbits. Best with
 outside=<nnn>. For more information, see {Inside=epscross|startrail}.
+
+Inside=period colors pixels according to the period of their eventual orbit.
+
+Note that the "Look for finite attractor" option on the <Y> options screen
+will override the selected inside option if an attractor is found - see
+{Finite Attractors}.
 
 OUTSIDE=nnn|iter|real|imag|summ|mult\
 The classic method of coloring outside
@@ -644,7 +665,7 @@ Color values are:
     5 magenta	D light magenta
     6 brown	E yellow
     7 white	F bright white
-29 colors can be specified, their meanings are as follows:
+31 colors can be specified, their meanings are as follows:
   heading:
     1  Fractint version info
     2  heading line development info (not used in released version)
@@ -685,7 +706,7 @@ Color values are:
    31  contributing authors
 The default is
    textcolors=1F/1A/2E/70/28/71/31/78/70/17/
-	      1F/1E/2F/5F/07/0D/71/70/78/0F/
+	      1F/1E/2F/3F/5F/07/0D/71/70/78/0F/
 	      70/0E/0F/4F/20/17/20/28/0F/07
 (In a real command file, all values must be on one line.)
 ~Format+
@@ -765,6 +786,12 @@ permits storage of fractal information within the format. GIF87a=YES is
 only needed if you wish to view Fractint images with a GIF decoder that
 cannot accept the newer format.  See {GIF Save File Format}.
 
+DITHER=YES\
+Dither a color file into two colors for display on a b/w display.  This give
+a poor-quality display of gray levels.  Note that if you have a 2-color
+display, you can create a 256-color gif with disk video and then read it
+back in dithered.
+
 PARMFILE=[parmfilename]\
 Specifies the default parameter file to be used by the <@> and <B>
 commands.  If not specified, the default is FRACTINT.PAR.
@@ -831,6 +858,19 @@ not the name of the company that sold it to you.
 VESADETECT=yes|no\
 Specify no to bypass VESA video detection logic. Try this if you encounter
 video problems with a VESA compliant video adapter or driver.
+
+AFI=yes|8514|no\
+Normally, when you attempt to use an 8514/A-specific video mode, Fractint
+first attempts to detect the presence of an 8514/A register-compatible
+adapter.  If it fails to find one, it then attempts to detect the presence
+of an 8514/A-compatible API (IE, IBM's HDILOAD or its equivalent).  
+Fractint then uses either its register-compatible or its API-compatible
+video logic based on the results of those tests.  If you have an
+"8514/A-compatible" video adapter that passes Fractint's
+register-compatible detection logic but doesn't work correctly with
+Fractint's register-compatible video logic, setting "afi=yes" will
+force Fractint to bypass the register-compatible code and look only for
+the API interface.
 
 TEXTSAFE=yes|no|bios|save\
 When you switch from a graphics image to text mode (e.g. when you use <F1>
@@ -910,6 +950,10 @@ example, the 320x200 video resolution on the TARGA+ is actually the
 640x400 video mode with a pixel zoom of 1.  Using the 640x400 video mode
 with a zoom of 3 would lower the resolution by 8, which is 2 raised to the
 3rd power, for a full screen resolution of 80x50 pixels.
+
+VIEWWINDOWS=xx[/xx[/yes|no[/nn[/nn]]]]
+Set the reduction factor, final media aspect ratio, crop starting
+coordinates (y/n), explicit x size, and explicit y size, see {"View Window"}.
 ;
 ;
 ~Topic=Sound Parameters
@@ -1024,6 +1068,18 @@ free-for-all.
 
 COLORPS=YES|NO - Enable or disable the color extensions.
 
+RLEPS=YES|NO\
+Enable or disable run length encoding of the PostScript file.  Run length
+encoding will make the PostScript file much smaller, but it may take longer
+to print.  The run length encoding code is based on pnmtops, which is
+copyright (C) 1989 by Jef Poskanzer, and carries the following notice:
+"Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose and without fee is hereby granted, provided
+that the above copyright notice appear in all copies and that both that
+copyright notice and this permission notice appear in supporting
+documentation.  This software is provided "as is" without express or
+implied warranty."
+
 TRANSLATE=yes|-n|n\
 Translate=yes prints the negative image of the fractal.
 Translate=n reduces the image to that many colors. A negative value causes
@@ -1067,6 +1123,27 @@ Current halftone styles:
    15 Random
    16 Line (slightly different)
 ~Format+
+
+
+A note on device-resolution black and white printing\
+----------------------------------------------------\
+
+This mode of printing can now be done much more quickly, and takes a
+lot less file space. Just set EPSF=0 PRINTER=PSx/nnn COLORPS=NO
+RLEPS=YES TRANSLATE=m, where x is P or L for portrait/landscape, nnn is
+your printer's resolution, m is 2 or -2 for positive or negative
+printing respectively. This combination of parameters will print
+exactly one printer pixel per each image pixel and it will keep the
+proportions of the picture, if both your screen and printer have
+square pixels (or the same pixel-aspect). Choose a proper (read large)
+window size to fill as much of the paper as possible for the most
+spectacular results.  2048 by 2048 is barely enough to fill the width
+of a letter size page with 300 dpi printer resolution.  For higher
+resolution printers, you will wish fractint supported larger window
+sizes (hint, hint...). Bug reports and/or suggestions should be
+forwarded to Yavuz Onder (post to sci.fractals, no e-mail yet).
+;
+
 
 A word from the author (Scott Taylor)\
 -------------------------------------\
@@ -1165,10 +1242,15 @@ parameters is to use the <B> command on an image you like and then use an
 editor to modify the resulting parameter file.
 
 3D=Yes\
+3D=Overlay\
 Resets all 3d parameters to default values. If FILENAME= is given, forces
-a restore to be performed in 3D mode (handy when used with
-'batch=yes' for batch-mode 3D images). If specified, 3D=Yes should come before
-any other 3d parameters on the command line or in a parameter file entry.\
+a restore to be performed in 3D mode (handy when used with 'batch=yes' for 
+batch-mode 3D images). If specified, 3D=Yes should come before any other 
+3d parameters on the command line or in a parameter file entry. The form
+3D=Overlay is identical except that the previous graphics screen is not
+cleared, as with the <#> (<shift-3> on some keyboards) overlay command. 
+Useful for building parameter files that use the 3D overlay feature.\
+
 The options below override the 3D defaults:
 ~Format-
 PREVIEW=yes		   Turns on 3D 'preview' default mode
@@ -1197,7 +1279,7 @@ XYSHIFT=nn/nn		   Shift image in x and y directions with
 LIGHTSOURCE=nn/nn/nn	   Coordinates for light-source vector
 SMOOTHING=nn		   Smooths images in light-source fill modes
 TRANSPARENT=min/max	   Defines a range of colors to be treated as
-			    "transparent" when <O>verlaying 3D images.
+			    "transparent" when <#>Overlaying 3D images.
 XYADJUST=nn/nn		   This shifts the image in the x/y dir without
 			    perspective
 ~Format+
@@ -1291,10 +1373,16 @@ FRACTINT.TMP on your disk.
 
 If you want to spread a many-hour image over multiple bits of free machine
 time you could use a command like:\
-    fractint batch=yes filename=xxx savename=xxx savetime=60\
+    fractint batch=yes filename=xxx savename=xxx savetime=60 video=F3\
 While this batch is running, hit <S> (almost any key actually) to tell
-fractint to save what it has done so far and give your machine back.  Kick
-off the batch again when you have another time slice for it.
+fractint to save what it has done so far and give your machine back.  A status
+code of 2 is returned by fractint to the batch file.  Kick off the batch
+again when you have another time slice for it.
+
+While running a batch file, pressing any key will cause Fractint to exit
+with an errorlevel = 2.  Any error that interrupts an image save to disk
+will cause an exit with errorlevel = 2.  Any error that prevents an image
+from being generated will cause an exit with errorlevel = 1.
 
 The SAVETIME= parameter, and batch resumes of partial calculations, only
 work with fractal types which can be resumed.  See
@@ -1372,7 +1460,6 @@ took some twiddling of the vertical-size control).
 SUPER-EGA AND SUPER-VGA MODES
 ~Format+,Online+
 
-Since
 Since version 12.0, we've used both John Bridges' SuperVGA Autodetecting
 logic *and* VESA adapter detection, so that many brand-specific SuperVGA
 modes have been combined into single video mode selection entries.
@@ -1389,17 +1476,33 @@ of a specific SuperVGA Chipset - see {Video Parameters} for details.
 8514/A MODES
 ~Format+,Online+
 
-The IBM 8514/A modes use IBM's software interface, and require the pre-
-loading of IBM's HDIDLOAD TSR utility. There are two sets of 8514/A modes:
-full sets (640x480, 1024x768) which cover the entire screen and do NOT
-have a border color (so that you cannot tell when you are "paused" in a
-color-cycling mode), and partial sets (632x474, 1016x762) with small
-border areas which do turn white when you are paused in color-cycling
-mode. Also, while these modes are declared to be 256-color, if you do not
-have your 8514/A adapter loaded with its full complement of memory you
-will actually be in 16-color mode. Finally, because IBM's interface does
-not handle drawing single pixels very well (we have to draw a 1x1 pixel
-"box"), generating the zoom box is excruciatingly slow. Still, it works!
+The IBM 8514/A modes (640x480 and 1024x768) default to using the hardware
+registers.  If an error occurs when trying to open the adapter, an attempt
+will be made to use IBM's software interface, and requires the preloading
+of IBM's HDILOAD TSR utility.
+
+The Adex 1280x1024 modes were written for and tested on an Adex
+Corporation 8514/A using a Brooktree DAC.  The ATI GU 800x600x256 and
+1280x1024x16 modes require a ROM bios version of 1.3 or higher for 800x600
+and 1.4 or higher for 1280x1024.
+
+There are two sets of 8514/A modes: full sets (640x480, 800x600, 1024x768,
+1280x1024) which cover the entire screen and do NOT have a border color
+(so that you cannot tell when you are "paused" in a color-cycling mode),
+and partial sets (632x474, 792x594, 1016x762, 1272x1018) with small border
+areas which do turn white when you are paused in color-cycling mode. Also,
+while these modes are declared to be 256-color, if you do not have your
+8514/A adapter loaded with its full complement of memory you will actually
+be in 16-color mode. The hardware register 16-color modes have not been
+tested.
+
+If your 8514/A adapter is not truly register compatible and Fractint does
+not detect this, use of the adapter interface can be forced by using afi=y
+or afi=8514 in your SSTOOLS.INI file.
+
+Finally, because IBM's adapter interface does not handle drawing single
+pixels very well (we have to draw a 1x1 pixel "box"), generating the zoom
+box when using the interface is excruciatingly slow. Still, it works!
 ;
 ;
 ~Topic=XGA
@@ -1456,7 +1559,7 @@ in your SSTOOLS.INI file to modify Fractint's use of the adapter.
 
 These "video modes" do not involve a video adapter at all. They use (in
 order or preference) your expanded memory, your extended memory, or your
-disk drive (as file FRACTINT.DSK) to store the fractal image. These modes
+disk drive (as file FRACTINT.$$$) to store the fractal image. These modes
 are useful for creating images beyond the capacity of your video adapter
 right up to the current internal limit of 2048 x 2048 x 256,
 e.g. for subsequent printing.
@@ -1473,7 +1576,7 @@ memory free, and that performance will be less than optimum.  With a very
 low cache size such as 4 or 6k, performance gets considerably worse in
 cases using solid guessing, boundary tracing, plasma, or anything else
 which paints the screen non-linearly.  If you have this problem, all we
-can suggest is having less TSR utilities loaded before starting Fractint,
+can suggest is having fewer TSR utilities loaded before starting Fractint,
 or changing in your config.sys file, such as reducing a very high BUFFERS
 value.
 

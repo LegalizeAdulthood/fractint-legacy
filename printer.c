@@ -74,61 +74,87 @@
  * 16  Line*	       [Not much different]
  *
  *  *  Alternate style
+ *
+
  */
 
 #include <stdlib.h>
+
+#ifndef XFRACT
 #include <bios.h>
 #include <dos.h>
 #include <io.h>
+#endif
+
 #include <fcntl.h>
-#include <sys\types.h>
+#include <sys/types.h>
 #include <errno.h>
 #include <stdio.h>	/*** for vsprintf prototype ***/
+
+#ifndef XFRACT
 #include <conio.h>
-#include <string.h>
 #include <stdarg.h>
+#else
+#include <varargs.h>
+#endif
+
+#include <string.h>
 #include <float.h>	/* for pow() */
 #include <math.h>	/*  "    "   */
 #include "fractint.h"
 #include "fractype.h"
+#include "prototyp.h"
+
+/* macros for near-space-saving purposes */
+/* CAE 9211 changed these for BC++ */
+#define PRINTER_PRINTF2(X,Y) {\
+   static char far tmp[] = X;\
+   Printer_printf(tmp,(Y));\
+}
+#define PRINTER_PRINTF3(X,Y,Z) {\
+   static char far tmp[] = X;\
+   Printer_printf(tmp,(Y),(Z));\
+}
+#define PRINTER_PRINTF4(X,Y,Z,W) {\
+   static char far tmp[] = X;\
+   Printer_printf(tmp,(Y),(Z),(W));\
+}
 
 /********      PROTOTYPES     ********/
 
-       void printer_overlay(void);
-       void Print_Screen(void);
-static void Printer_printf(char *fmt,...);
+#ifndef XFRACT
+static void Printer_printf(char far *fmt,...);
+#else
+static void Printer_printf();
+#endif
 static int  _fastcall printer(int c);
 static void _fastcall print_title(int,int,char *);
 static void printer_reset();
-
-extern int keypressed (void);
-extern void updatesavename (char *);
-extern void showtrig (char *);
+static rleprolog(int x,int y);
+static void _fastcall graphics_init(int,int,char *);
 
 /********  EXTRN GLOBAL VARS  ********/
 
 extern int xdots,ydots, 	       /* size of screen		   */
 	   extraseg,		       /* used for buffering		   */
 	   fractype;		       /* used for title block		   */
-extern unsigned char dacbox[256][3];   /* for PostScript printing	   */
-extern unsigned char dstack[2][3][400];
+extern BYTE dacbox[256][3];   /* for PostScript printing	   */
+extern BYTE dstack[2][3][400];
 extern char FormName[]; 	       /* for Title block info		   */
 extern char LName[];		       /* for Title block info		   */
 extern char IFSName[];		       /* for Title block info		   */
 extern char PrintName[];	       /* Filename for print-to-file	   */
 extern float finalaspectratio;
 extern double xxmin,xxmax,xx3rd,
-	      yymin,yymax,yy3rd,param[4]; /* for Title block info	   */
+	      yymin,yymax,yy3rd,param[]; /* for Title block info	   */
 extern int colors;
 extern int dotmode;
 extern unsigned int debugflag;
 
 extern unsigned int  far pj_patterns[];
-extern unsigned char far pj_reds[];
-extern unsigned char far pj_blues[];
-extern unsigned char far pj_greens[];
-
-extern int thinking(int,char *);
+extern BYTE far pj_reds[];
+extern BYTE far pj_blues[];
+extern BYTE far pj_greens[];
 
 /********	GLOBALS       ********/
 
@@ -147,6 +173,7 @@ int Printer_Resolution,        /* 75,100,150,300 for HP;		   */
 					  ==5,6 PostScript,
 					  ==7 HP Plotter		   */
     Printer_Titleblock,       /* Print info about the fractal?		   */
+    Printer_Compress,	      /* PostScript only - rle encode output	   */
     Printer_ColorXlat,	      /* PostScript only - invert colors	   */
     Printer_SetScreen,	      /* PostScript only - reprogram halftone ?    */
     Printer_SFrequency,       /* PostScript only - Halftone Frequency K    */
@@ -168,6 +195,14 @@ int Printer_Resolution,        /* 75,100,150,300 for HP;		   */
 					       3 = not well behaved	   */
     Printer_CRLF,             /* (0) CRLF (1) CR (2) LF                    */
     ColorPS;                  /* (0) B&W  (1) Color                        */
+int pj_width;
+double ci,ck;
+
+static int repeat, item, count, repeatitem, itembuf[128], rlebitsperitem,
+    rlebitshift, bitspersample, rleitem, repeatcount, itemsperline, items,
+    bitsperitem, bitshift;
+    
+static void putitem(), rleputxelval(), rleflush(), rleputrest();
 
 static int LPTn;		   /* printer number we're gonna use */
 
@@ -176,21 +211,21 @@ static FILE *PRFILE;
 #define TONES 17		   /* Number of PostScript halftone styles */
 
 static char *HalfTone[TONES]=  {
-			 "dup mul exch dup mul add 1 exch sub",
-			 "abs exch abs 2 copy add 1 gt {1 sub dup mul exch 1 sub dup mul add 1 sub} {dup mul exch dup mul add 1 exch sub} ifelse",
-			 "dup mul exch dup mul add 1 sub",
-			 "dup mul exch dup mul add 0.6 exch sub abs -0.5 mul",
-			 "dup mul exch dup mul add 0.6 exch sub abs 0.5 mul",
+			 "D mul exch D mul add 1 exch sub",
+			 "abs exch abs 2 copy add 1 gt {1 sub D mul exch 1 sub D mul add 1 sub} {D mul exch D mul add 1 exch sub} ifelse",
+			 "D mul exch D mul add 1 sub",
+			 "D mul exch D mul add 0.6 exch sub abs -0.5 mul",
+			 "D mul exch D mul add 0.6 exch sub abs 0.5 mul",
 			 "add 2 div",
 			 "2 exch sub exch abs 2 mul sub 3 div",
 			 "2 copy abs exch abs gt {exch} if pop 2 mul 1 exch sub 3.5 div",
 			 "abs exch abs add 1 exch sub",
 			 "pop",
-			 "/wy exch def 180 mul cos 2 div wy dup dup dup mul mul sub mul wy add 180 mul cos",
-			 "dup 5 mul 8 div mul exch dup mul exch add sqrt 1 exch sub",
-			 "dup mul dup mul exch dup mul dup mul add 1 exch sub",
-			 "dup mul exch dup mul add sqrt 1 exch sub",
-			 "abs exch abs 2 copy gt {exch} if 1 sub dup 0 eq {0.01 add} if atan 360 div",
+			 "/wy exch def 180 mul cos 2 div wy D D D mul mul sub mul wy add 180 mul cos",
+			 "D 5 mul 8 div mul exch D mul exch add sqrt 1 exch sub",
+			 "D mul D mul exch D mul D mul add 1 exch sub",
+			 "D mul exch D mul add sqrt 1 exch sub",
+			 "abs exch abs 2 copy gt {exch} if 1 sub D 0 eq {0.01 add} if atan 360 div",
 			 "pop pop rand 1 add 10240 mod 5120 div 1 exch sub",
 			 "pop abs 2 mul 1 exch sub"
 			};
@@ -203,15 +238,17 @@ void printer_overlay() { }	/* for restore_active_ovly */
 #endif
 #endif
 
+static char EndOfLine[3];
+
 void Print_Screen()
 {
     int y,j;
     char buff[192];		/* buffer for 192 sets of pixels  */
 				/* This is very large so that we can*/
 				/* get reasonable times printing  */
-				/* from modes like 2048x2048 disk-*/
-				/* video.  When this was 24, a 2048*/
-				/* by 2048 pic took over 2 hours to*/
+				/* from modes like MAXPIXELSxMAXPIXELS disk-*/
+				/* video.  When this was 24, a MAXPIXELS*/
+				/* by MAXPIXELS pic took over 2 hours to*/
 				/* print.  It takes about 15 min now*/
     int BuffSiz;		/* how much of buff[] we'll use   */
     char far *es;		/* pointer to extraseg for buffer */
@@ -231,10 +268,7 @@ void Print_Screen()
 				/*	      4. HP PaintJet	  */
 				/*	      5. PostScript	  */
 				/************************************/
-    double ci,ck;
-    int pj_width;
     int pj_color_ptr[256];	/* Paintjet color translation */
-    char EndOfLine[3];
 
     ENTER_OVLY(OVLY_PRINTER);
 				/********   SETUP VARIABLES  ********/
@@ -255,6 +289,12 @@ void Print_Screen()
       if ((PRFILE = fopen(PrintName,"wb"))==NULL) Print_To_File = 0;
       }
 
+#ifdef XFRACT
+      putstring(3,0,0,"Printing to:");
+      putstring(4,0,0,PrintName);
+      putstring(5,0,0,"               ");
+#endif
+
     es=MK_FP(extraseg,0);
 
     LPTn=LPTNumber-1;
@@ -265,6 +305,7 @@ void Print_Screen()
     ptrid=Printer_Type;
     if ((ptrid<1)||(ptrid>7)) ptrid=2; /* default of IBM/EPSON		 */
     res=Printer_Resolution;
+#ifndef XFRACT
     if ((LPTn==20)||(LPTn==21))
 	{
 	k = (inp((LPTn==20) ? 0x37A : 0x27A)) & 0xF7;
@@ -280,6 +321,7 @@ void Print_Screen()
 	outp((LPTn==30) ? 0x3FC : 0x2FC,0x00);
 	outp((LPTn==30) ? 0x3FC : 0x2FC,0x03);
 	}
+#endif
 
     switch (ptrid) {
 
@@ -299,6 +341,7 @@ void Print_Screen()
 
 	case 4: /****** PaintJet  *****/
 	    {
+#ifndef XFRACT
 	    /* Pieter Branderhorst:
 	       My apologies if the numbers and approach here seem to be
 	       picked out of a hat.  They were.  They happen to result in
@@ -320,10 +363,10 @@ void Print_Screen()
 	    long ldist;
 	    int r,g,b;
 	    double gamma,gammadiv;
-	    unsigned char convert[256];
-	    unsigned char scale[64];
+	    BYTE convert[256];
+	    BYTE scale[64];
 
-	    unsigned char far *table_ptr;
+	    BYTE far *table_ptr;
 	    res = (res < 150) ? 90 : 180;   /* 90 or 180 dpi */
 	    if (Printer_SetScreen == 0) {
 		Printer_SFrequency = 21;  /* default red gamma */
@@ -418,6 +461,7 @@ void Print_Screen()
 		}
 	    }
 	    break;
+#endif
 	    }
 
 	case 5:
@@ -442,190 +486,8 @@ void Print_Screen()
     }
 
     /******  INITIALIZE GRAPHICS MODES	******/
-    switch (ptrid) {
 
-	case 1:
-	    print_title(ptrid,res,EndOfLine);
-	    Printer_printf("\x1B*t%iR\x1B*r0A",res);/* HP           */
-	    break;
-
-	case 2:
-	case 3:
-	    print_title(ptrid,res,EndOfLine);
-	    Printer_printf("\x1B\x33\x18");/* IBM                   */
-	    break;
-
-	case 4: /****** PaintJet *****/
-	    print_title(ptrid,res,EndOfLine);
-	    pj_width = ydots;
-	    if (res == 90) pj_width <<= 1;
-	    Printer_printf("\x1B*r0B\x1B*t180R\x1B*r3U\x1B*r%dS\x1B*b0M\x1B*r0A",
-		pj_width);
-	    pj_width >>= 3;
-	    break;
-
-	case 5:   /***** PostScript *****/
-	case 6:   /***** PostScript Landscape *****/
-	    if (!((EPSFileType > 0) && (ptrid==5)))
-		Printer_printf("%%!PS-Adobe%s",EndOfLine);
-	    if ((EPSFileType > 0) &&	 /* Only needed if saving to .EPS */
-		(ptrid == 5))
-		{
-		Printer_printf("%%!PS-Adobe-1.0 EPSF-2.0%s",EndOfLine);
-
-		if (EPSFileType==1)
-		    i=xdots+78;
-		else
-		    i=(int)((double)xdots * (72.0 / (double)res))+78;
-
-		if (Printer_Titleblock==0)
-		    {
-		    if (EPSFileType==1) { j = ydots + 78; }
-		    else { j = (int)(((double)ydots * (72.0 / (double)res) / (double)finalaspectratio)+78); }
-		    }
-		else
-		    {
-		    if (EPSFileType==1) { j = ydots + 123; }
-		    else { j = (int)(((double)ydots * (72.0 / (double)res))+123); }
-		    }
-		Printer_printf("%%%%TemplateBox: 12 12 %d %d%s",i,j,EndOfLine);
-		Printer_printf("%%%%BoundingBox: 12 12 %d %d%s",i,j,EndOfLine);
-		Printer_printf("%%%%PrinterRect: 12 12 %d %d%s",i,j,EndOfLine);
-		Printer_printf("%%%%Creator: Fractint PostScript%s",EndOfLine);
-		Printer_printf("%%%%Title: A %s fractal - %s - Fractint EPSF Type %d%s",
-				       curfractalspecific->name[0]=='*' ?
-				       &curfractalspecific->name[1] :
-				       curfractalspecific->name,
-				       PrintName,
-				       EPSFileType,
-				       EndOfLine);
-		if (Printer_Titleblock==1)
-		    Printer_printf("%%%%DocumentFonts: Helvetica%s",EndOfLine);
-		Printer_printf("%%%%EndComments%s",EndOfLine);
-		Printer_printf("/EPSFsave save def%s",EndOfLine);
-		Printer_printf("0 setgray 0 setlinecap 1 setlinewidth 0 setlinejoin%s",EndOfLine);
-		Printer_printf("10 setmiterlimit [] 0 setdash newpath%s",EndOfLine);
-		}
-
-	    /* Common code for all PostScript */
-	    Printer_printf("/dopic { gsave %d %d 8 [%d 0 0 %d 0 %d]%s",
-				     xdots, ydots, xdots, -ydots, ydots,
-				     EndOfLine);
-	    if (ColorPS)
-	    Printer_printf("{ currentfile %d string readhexstring pop } false 3 colorimage grestore } def%s", xdots*3, EndOfLine);
-	    else
-	    Printer_printf("{ currentfile %d string readhexstring pop } image grestore } def%s", xdots, EndOfLine);
-
-	    if (Printer_Titleblock==1)
-		{
-		Printer_printf("/Helvetica findfont 12 scalefont setfont%s",EndOfLine);
-		if (ptrid==5) Printer_printf("30 60 moveto ");
-		else	      Printer_printf("552 30 moveto 90 rotate ");
-		print_title(ptrid,res,EndOfLine);
-		}
-
-	    if (EPSFileType != 1) /* Do not use on a WELL BEHAVED .EPS */
-	      {
-	      if ((ptrid == 5)&&(EPSFileType==2)&&
-		  ((Printer_ColorXlat!=0)||(Printer_SetScreen!=0)))
-			Printer_printf("%%%%BeginFeature%s",EndOfLine);
-	      if (ColorPS)
-		{
-		if (Printer_ColorXlat==1)
-		    Printer_printf("{1 exch sub} dup dup dup setcolortransfer%s",EndOfLine);
-		if (Printer_ColorXlat>1)
-		    Printer_printf("{%d mul round %d div} dup dup dup setcolortransfer%s",
-				       Printer_ColorXlat,Printer_ColorXlat,EndOfLine);
-		if (Printer_ColorXlat<-1)
-		    Printer_printf("{%d mul round %d div 1 exch sub} dup dup dup setcolortransfer",
-				       Printer_ColorXlat,Printer_ColorXlat,EndOfLine);
-
-		if (Printer_SetScreen==1)
-		    {
-		    Printer_printf("%d %d {%s}%s",
-				       Printer_RFrequency,
-				       Printer_RAngle,
-				       HalfTone[Printer_RStyle],
-				       EndOfLine);
-		    Printer_printf("%d %d {%s}%s",
-				       Printer_GFrequency,
-				       Printer_GAngle,
-				       HalfTone[Printer_GStyle],
-				       EndOfLine);
-		    Printer_printf("%d %d {%s}%s",
-				       Printer_BFrequency,
-				       Printer_BAngle,
-				       HalfTone[Printer_BStyle],
-				       EndOfLine);
-		    Printer_printf("%d %d {%s}%s",
-				       Printer_SFrequency,
-				       Printer_SAngle,
-				       HalfTone[Printer_SStyle],
-				       EndOfLine);
-		    Printer_printf("setcolorscreen%s", EndOfLine);
-		    }
-		}
-	      else
-		{
-		if (Printer_ColorXlat==1)
-		    Printer_printf("{1 exch sub} settransfer%s",EndOfLine);
-		if (Printer_ColorXlat>1)
-		    Printer_printf("{%d mul round %d div} settransfer%s",
-				       Printer_ColorXlat,Printer_ColorXlat,EndOfLine);
-		if (Printer_ColorXlat<-1)
-		    Printer_printf("{%d mul round %d div 1 exch sub} settransfer",
-				       Printer_ColorXlat,Printer_ColorXlat,EndOfLine);
-
-		if (Printer_SetScreen==1)
-		    Printer_printf("%d %d {%s} setscreen%s",
-				       Printer_SFrequency,
-				       Printer_SAngle,
-				       HalfTone[Printer_SStyle],
-				       EndOfLine);
-		}
-
-	      if (ptrid == 5)
-		    {
-		    if ((EPSFileType==2)&&((Printer_ColorXlat!=0)||(Printer_SetScreen!=0)))
-			Printer_printf("%%%%EndFeature%s",EndOfLine);
-		    if (res == 0)
-			Printer_printf("30 191.5 translate 552 %4.1f",
-					(552.0*(double)finalaspectratio));
-		    else
-			Printer_printf("30 %d translate %f %f",
-				     75 - ((Printer_Titleblock==1) ? 0 : 45),
-				     ((double)xdots*(72.0/(double)res)),
-				     ((double)ydots*(72.0/(double)res)/(double)finalaspectratio));
-		    }
-		else			     /* For Horizontal PostScript */
-		    if (res == 0)
-			Printer_printf("582 30 translate 90 rotate 732 552");
-		    else
-			Printer_printf("%d 30 translate 90 rotate %f %f",
-				     537 + ((Printer_Titleblock==1) ? 0 : 45),
-				     ((double)xdots*(72.0/(double)res)),
-				     ((double)ydots*(72.0/(double)res)/(double)finalaspectratio));
-		Printer_printf(" scale%s",EndOfLine);
-	      }
-
-	    else if (ptrid == 5)       /* To be used on WELL-BEHAVED .EPS */
-		Printer_printf("30 %d translate %d %d scale%s",
-				    75 - ((Printer_Titleblock==1) ? 0 : 45),
-				    xdots,ydots,EndOfLine);
-
-	    Printer_printf("dopic%s",EndOfLine);
-	    break;
-
-	case 7: /* HP Plotter */
-	    if (res<1) res=1;
-	    if (res>10) res=10;
-	    ci = (((double)xdots*((double)res-1.0))/2.0);
-	    ck = (((double)ydots*((double)res-1.0))/2.0);
-	    Printer_printf(";IN;SP0;SC%d,%d,%d,%d;%s\0",
-		(int)(-ci),(int)((double)xdots+ci),
-		(int)((double)ydots+ck),(int)(-ck),EndOfLine);
-	    break;
-	}
+    graphics_init(ptrid,res,EndOfLine);
 
     if (keypressed()) { 	/* one last chance before we start...*/
 	EXIT_OVLY;
@@ -656,23 +518,23 @@ void Print_Screen()
 		    }
 		for (j=0;((j<BuffSiz)&&(!keypressed()));j++) {
 		    if ((x+j)<xdots) {
-			Printer_printf("\x1B*b%iW",imax+1);
+			PRINTER_PRINTF2("\033*b%iW",imax+1);
 			for (i=imax;((i>=0)&&(!keypressed()));i--) {
 			    printer(*(es+j+BuffSiz*i));
 			    }
 			}
 		    }
 		}
-	    if (!keypressed()) Printer_printf("\x1B*rB\x0C");
+	    if (!keypressed()) Printer_printf("\033*rB\014");
 	    break;
 
 	case 2: 		       /* IBM Graphics/Epson		 */
 	    for (x=0;((x<xdots)&&(!keypressed()));x+=8) {
 		switch (res) {
-		    case 60:  Printer_printf("\x1BK"); break;
-		    case 120: Printer_printf("\x1BL"); break;
-		    case 240: Printer_printf("\x1BZ"); break;
-			}
+		    case 60:  Printer_printf("\033K"); break;
+		    case 120: Printer_printf("\033L"); break;
+		    case 240: Printer_printf("\033Z"); break;
+		    }
 		high=ydots/256;
 		low=ydots-(high*256);
 		printer(low);
@@ -698,12 +560,12 @@ void Print_Screen()
 		{
 		for (k=0; k<8; k++)  /* colors */
 		    {
-		    Printer_printf("\x1Br%d",k); /* set printer color */
+		    Printer_printf("\033r%d",k); /* set printer color */
 		    switch (res)
 			{
-			case 60:  Printer_printf("\x1BK"); break;
-			case 120: Printer_printf("\x1BL"); break;
-			case 240: Printer_printf("\x1BZ"); break;
+			case 60:  Printer_printf("\033K"); break;
+			case 120: Printer_printf("\033L"); break;
+			case 240: Printer_printf("\033Z"); break;
 			}
 		    printer(low);
 		    printer(high);
@@ -730,7 +592,7 @@ void Print_Screen()
 	case 4: 		      /* HP PaintJet	   */
 	    {
 	    unsigned int fetchrows,fetched;
-	    unsigned char far *pixels, far *nextpixel;
+	    BYTE far *pixels, far *nextpixel;
 	    /* for reasonable speed when using disk video, try to fetch
 	       and store the info for 8 columns at a time instead of
 	       doing getcolor calls down each column in separate passes */
@@ -764,11 +626,11 @@ void Print_Screen()
 		--fetched;
 		if (res == 180) { /* high-res 8 color mode */
 		    int offset;
-		    unsigned char bitmask;
+		    BYTE bitmask;
 		    offset = -1;
 		    bitmask = 0;
 		    for (y = ydots - 1; y >= 0; --y) {
-			unsigned char color;
+			BYTE color;
 			if ((bitmask >>= 1) == 0) {
 			    ++offset;
 			    dstack[0][0][offset] = dstack[0][1][offset]
@@ -789,7 +651,7 @@ void Print_Screen()
 			unsigned int color;
 			color = pj_patterns[pj_color_ptr[*(nextpixel++)]];
 			for (i = 0; i < 3; ++i) {
-			    unsigned char *bufptr;
+			    BYTE *bufptr;
 			    bufptr = &dstack[0][i][offset];
 			    *bufptr <<= 2;
 			    if ((color & 0x1000)) *bufptr += 2;
@@ -808,8 +670,8 @@ void Print_Screen()
 		}
 		for (i = 0; i < ((res == 90) ? 2 : 1); ++i) {
 		    for (j = 0; j < 3; ++j) {
-			unsigned char *bufptr,*bufend;
-			Printer_printf((j < 2) ? "\x1B*b%dV" : "\x1B*b%dW",
+			BYTE *bufptr,*bufend;
+			Printer_printf((j < 2) ? "\033*b%dV" : "\033*b%dW",
 				       pj_width);
 			bufend = pj_width + (bufptr = dstack[i][j]);
 			do {
@@ -818,7 +680,7 @@ void Print_Screen()
 		    }
 		}
 	    }
-	    Printer_printf("\x1B*r0B"); /* end raster graphics */
+	    Printer_printf("\033*r0B"); /* end raster graphics */
 	    if (!keypressed())
 	       if (debugflag != 600)
 		  printer(12); /* form feed */
@@ -834,48 +696,115 @@ void Print_Screen()
 	    char convert[513];
 	    if (!ColorPS)
 	      for (i=0; i<256; ++i)
-		sprintf(&convert[2*i], "%02X",
-				  (int)((1.20 * (double)dacbox[i][0])+
-					(2.36 * (double)dacbox[i][1])+
-					(0.44 * (double)dacbox[i][2])));
+                if (Printer_Compress) {
+                    convert[i] = (int)((.3*255./63. * (double)dacbox[i][0])+
+                                        (.59*255./63. * (double)dacbox[i][1])+
+                                        (.11*255./63. * (double)dacbox[i][2]));
+                } else
+                {
+                    sprintf(&convert[2*i], "%02X",
+                              (int)((.3*255./63. * (double)dacbox[i][0])+
+                                    (.59*255./63. * (double)dacbox[i][1])+
+                                    (.11*255./63. * (double)dacbox[i][2])));
+                }
 	    i=0;
 	    j=0;
 	    for (y=0;((y<ydots)&&(!keypressed()));y++)
-	    {
-		for (x=0;x<xdots;x++)
+	    {   unsigned char bit8;
+		if (Printer_Compress) {
+		    if (ColorPS) {
+			for (x=0;x<xdots;x++) {
+			    k=getcolor(x,y);
+			    rleputxelval((int)dacbox[k][0]<<2);
+			}
+			rleflush();
+			for (x=0;x<xdots;x++) {
+			    k=getcolor(x,y);
+			    rleputxelval((int)dacbox[k][1]<<2);
+			}
+			rleflush();
+			for (x=0;x<xdots;x++) {
+			    k=getcolor(x,y);
+			    rleputxelval((int)dacbox[k][2]<<2);
+			}
+			rleflush();
+		     } else {
+			if (Printer_ColorXlat==-2 || Printer_ColorXlat==2) {
+			   for (x=0;x<xdots;x++) {
+			      k=getcolor(x,y);
+			      if (x % 8 == 0) {
+				 if (x) rleputxelval((int)bit8);
+                                 if (k == 0) bit8 = 0; else bit8 = 1;
+			      }
+			      else
+				 bit8 = (bit8 << 1) + ((k==0) ? 0 : 1);
+			   }
+			   if (xdots % 8) bit8 <<= (8 - (xdots % 8));
+        	           rleputxelval((int)bit8);
+			   rleflush();
+			} else {
+			   for (x=0;x<xdots;x++) {
+			      k=getcolor(x,y);
+			      rleputxelval((int)(unsigned char)convert[k]);
+			   }
+  			   rleflush();
+			}
+		     }
+		} else
 		{
-		    k=getcolor(x,y);
-		    if (ColorPS)
-		      {
-		      sprintf(&buff[i], "%02X%02X%02X", dacbox[k][0]<<2,
-							dacbox[k][1]<<2,
-							dacbox[k][2]<<2);
-		      i+=6;
-		      }
-		    else
-		      {
-		      k*=2;
-		      buff[i++]=convert[k];
-		      buff[i++]=convert[k+1];
-		      }
-		    if (i>=64)
+		    for (x=0;x<xdots;x++)
 		    {
-			strcpy(&buff[i],"  ");
-			Printer_printf("%s%s",buff,EndOfLine);
-			i=0;
-			j++;
-			if (j>9)
+			k=getcolor(x,y);
+			if (ColorPS)
+			  {
+			  sprintf(&buff[i], "%02X%02X%02X", dacbox[k][0]<<2,
+							    dacbox[k][1]<<2,
+							    dacbox[k][2]<<2);
+			  i+=6;
+			  }
+			else
+			  {
+			  k*=2;
+			  buff[i++]=convert[k];
+			  buff[i++]=convert[k+1];
+			  }
+			if (i>=64)
 			{
-			    j=0;
-			    Printer_printf(EndOfLine);
+			    strcpy(&buff[i],"  ");
+			    Printer_printf("%s%s",buff,EndOfLine);
+			    i=0;
+			    j++;
+			    if (j>9)
+			    {
+				j=0;
+				Printer_printf(EndOfLine);
+			    }
 			}
 		    }
 		}
 	    }
+	    if (Printer_Compress) {
+		rleputrest();
+	    } else {
+		strcpy(&buff[i],"  ");
+		Printer_printf("%s%s",buff,EndOfLine);
+		i=0;
+		j++;
+		if (j>9)
+		{
+		    j=0;
+		    Printer_printf(EndOfLine);
+		}
+	    }
 	    if ( (EPSFileType > 0) && (EPSFileType <3) )
-		Printer_printf("%s%%%%Trailer%sEPSFsave restore%s",EndOfLine,EndOfLine,EndOfLine);
+		Printer_printf("%s%%%%Trailer%sEPSFsave restore%s",EndOfLine,
+			EndOfLine,EndOfLine);
 	    else
-		Printer_printf("%sshowpage%s%c",EndOfLine,EndOfLine,4);
+#ifndef XFRACT
+		PRINTER_PRINTF4("%sshowpage%s%c",EndOfLine,EndOfLine,4);
+#else
+		PRINTER_PRINTF3("%sshowpage%s",EndOfLine,EndOfLine);
+#endif
 	    break;
 	    }
 
@@ -884,7 +813,7 @@ void Print_Screen()
 	    double parm1,parm2;
 	    for (i=0;i<3;i++)
 	    {
-	      Printer_printf("%sSP %d;%s\0",EndOfLine,(i+1),EndOfLine);
+	      PRINTER_PRINTF4("%sSP %d;%s\0",EndOfLine,(i+1),EndOfLine);
 	      for (y=0;(y<ydots)&&(!keypressed());y++)
 	      {
 		for (x=0;x<xdots;x++)
@@ -896,19 +825,19 @@ void Print_Screen()
 		    {
 		      case 0:
 			ci=0.004582144*(double)j;
-			ck=-.007936057*(double)j;
+			ck= -.007936057*(double)j;
 			parm1 = (double)x+.5+ci+(((double)i-1.0)/3);
 			parm2 = (double)y+.5+ck;
 			break;
 		      case 1:
-			ci=-.004582144*(double)j+(((double)i+1.0)/8.0);
-			ck=-.007936057*(double)j;
+			ci= -.004582144*(double)j+(((double)i+1.0)/8.0);
+			ck= -.007936057*(double)j;
 			parm1 = (double)x+.5+ci;
 			parm2 = (double)y+.5+ck;
 			break;
 		      case 2:
-			ci=-.0078125*(double)j+(((double)i+1.0)*.003906250);
-			ck=-.0078125*(double)j;
+			ci= -.0078125*(double)j+(((double)i+1.0)*.003906250);
+			ck= -.0078125*(double)j;
 			parm1 = (double)x+.5+ci;
 			parm2 = (double)y+.5+ck;
 			break;
@@ -919,21 +848,253 @@ void Print_Screen()
 		}
 	      }
 	    }
-	    Printer_printf("%s;SC;PA 0,0;SP0;%s\0",EndOfLine,EndOfLine);
-	    Printer_printf(";;SP 0;%s\0",EndOfLine);
+	    PRINTER_PRINTF3("%s;SC;PA 0,0;SP0;%s\0",EndOfLine,EndOfLine);
+	    PRINTER_PRINTF2(";;SP 0;%s\0",EndOfLine);
 	    break;
 	    }
     }
 
     if (Print_To_File > 0) fclose(PRFILE);
+#ifndef XFRACT
     if ((LPTn==30)||(LPTn==31))
 	{
 	for (x=0;x<2000;x++);
 	outp((LPTn==30) ? 0x3FC : 0x2FC,0x00);
 	outp((LPTn==30) ? 0x3F9 : 0x2F9,0x00);
 	}
+#else
+    putstring(5,0,0,"Printing done\n");
+#endif
     EXIT_OVLY;
 }
+
+
+static void _fastcall graphics_init(int ptrid,int res,char *EndOfLine)
+{
+    int i,j;
+
+    switch (ptrid) {
+
+	case 1:
+	    print_title(ptrid,res,EndOfLine);
+	    PRINTER_PRINTF2("\033*t%iR\033*r0A",res);/* HP           */
+	    break;
+
+	case 2:
+	case 3:
+	    print_title(ptrid,res,EndOfLine);
+	    Printer_printf("\033\063\030");/* IBM                   */
+	    break;
+
+	case 4: /****** PaintJet *****/
+	    print_title(ptrid,res,EndOfLine);
+	    pj_width = ydots;
+	    if (res == 90) pj_width <<= 1;
+	    PRINTER_PRINTF2("\033*r0B\033*t180R\033*r3U\033*r%dS\033*b0M\033*r0A",
+		pj_width);
+	    pj_width >>= 3;
+	    break;
+
+	case 5:   /***** PostScript *****/
+	case 6:   /***** PostScript Landscape *****/
+	    if (!((EPSFileType > 0) && (ptrid==5)))
+		PRINTER_PRINTF2("%%!PS-Adobe%s",EndOfLine);
+	    if ((EPSFileType > 0) &&	 /* Only needed if saving to .EPS */
+		(ptrid == 5))
+		{
+		PRINTER_PRINTF2("%%!PS-Adobe-1.0 EPSF-2.0%s",EndOfLine);
+
+		if (EPSFileType==1)
+		    i=xdots+78;
+		else
+		    i=(int)((double)xdots * (72.0 / (double)res))+78;
+
+		if (Printer_Titleblock==0)
+		    {
+		    if (EPSFileType==1) { j = ydots + 78; }
+		    else { j = (int)(((double)ydots * (72.0 / (double)res) / (double)finalaspectratio)+78); }
+		    }
+		else
+		    {
+		    if (EPSFileType==1) { j = ydots + 123; }
+		    else { j = (int)(((double)ydots * (72.0 / (double)res))+123); }
+		    }
+		PRINTER_PRINTF4("%%%%TemplateBox: 12 12 %d %d%s",i,j,EndOfLine);
+		PRINTER_PRINTF4("%%%%BoundingBox: 12 12 %d %d%s",i,j,EndOfLine);
+		PRINTER_PRINTF4("%%%%PrinterRect: 12 12 %d %d%s",i,j,EndOfLine);
+		PRINTER_PRINTF2("%%%%Creator: Fractint PostScript%s",EndOfLine);
+		Printer_printf("%%%%Title: A %s fractal - %s - Fractint EPSF Type %d%s",
+				       curfractalspecific->name[0]=='*' ?
+				       &curfractalspecific->name[1] :
+				       curfractalspecific->name,
+				       PrintName,
+				       EPSFileType,
+				       EndOfLine);
+		if (Printer_Titleblock==1)
+		    PRINTER_PRINTF2("%%%%DocumentFonts: Helvetica%s",EndOfLine);
+		PRINTER_PRINTF2("%%%%EndComments%s",EndOfLine);
+		PRINTER_PRINTF2("/EPSFsave save def%s",EndOfLine);
+		PRINTER_PRINTF2("0 setgray 0 setlinecap 1 setlinewidth 0 setlinejoin%s",EndOfLine);
+		PRINTER_PRINTF2("10 setmiterlimit [] 0 setdash newpath%s",EndOfLine);
+		}
+
+	    /* Common code for all PostScript */
+	    PRINTER_PRINTF2("/Tr {translate} def%s",EndOfLine);
+	    PRINTER_PRINTF2("/Mv {moveto} def%s",EndOfLine);
+	    PRINTER_PRINTF2("/D {dup} def%s",EndOfLine);
+	    PRINTER_PRINTF2("/Rh {readhexstring} def%s",EndOfLine);
+	    PRINTER_PRINTF2("/Cf {currentfile} def%s",EndOfLine);
+	    PRINTER_PRINTF2("/Rs {readstring} def%s",EndOfLine);
+
+	    if (Printer_Compress) {
+		rleprolog(xdots,ydots);
+	    } else 
+	    {
+		PRINTER_PRINTF3("/picstr %d string def%s",
+			ColorPS?xdots*3:xdots,EndOfLine);
+		Printer_printf("/dopic { gsave %d %d 8 [%d 0 0 %d 0 %d]%s",
+					 xdots, ydots, xdots, -ydots, ydots,
+					 EndOfLine);
+		PRINTER_PRINTF2("{ Cf picstr Rh pop }%s", EndOfLine);
+		if (ColorPS)
+		{
+		    PRINTER_PRINTF2(" false 3 colorimage grestore } def%s",
+		     EndOfLine);
+		}
+		else
+		{
+		    PRINTER_PRINTF2(" image grestore } def%s", EndOfLine);
+		}
+            }
+	    if (Printer_Titleblock==1)
+		{
+		PRINTER_PRINTF2("/Helvetica findfont 8 scalefont setfont%s",EndOfLine);
+		if (ptrid==5) Printer_printf("30 60 Mv ");
+		else	      Printer_printf("552 30 Mv 90 rotate ");
+		print_title(ptrid,res,EndOfLine);
+		if (ptrid==6) Printer_printf("-90 rotate ");
+		}
+
+	    if (EPSFileType != 1) /* Do not use on a WELL BEHAVED .EPS */
+	      {
+	      if ((ptrid == 5)&&(EPSFileType==2)&&
+		  ((Printer_ColorXlat!=0)||(Printer_SetScreen!=0)))
+			PRINTER_PRINTF2("%%%%BeginFeature%s",EndOfLine);
+	      if (ColorPS)
+		{
+		if (Printer_ColorXlat==1)
+		    PRINTER_PRINTF2("{1 exch sub} D D D setcolortransfer%s",EndOfLine);
+		if (Printer_ColorXlat>1)
+		    PRINTER_PRINTF4("{%d mul round %d div} D D D setcolortransfer%s",
+				       Printer_ColorXlat,Printer_ColorXlat,EndOfLine);
+		if (Printer_ColorXlat<-1)
+		    PRINTER_PRINTF4("{%d mul round %d div 1 exch sub} D D D setcolortransfer",
+				       Printer_ColorXlat,Printer_ColorXlat,EndOfLine);
+
+		if (Printer_SetScreen==1)
+		    {
+		    Printer_printf("%d %d {%s}%s",
+				       Printer_RFrequency,
+				       Printer_RAngle,
+				       HalfTone[Printer_RStyle],
+				       EndOfLine);
+		    Printer_printf("%d %d {%s}%s",
+				       Printer_GFrequency,
+				       Printer_GAngle,
+				       HalfTone[Printer_GStyle],
+				       EndOfLine);
+		    Printer_printf("%d %d {%s}%s",
+				       Printer_BFrequency,
+				       Printer_BAngle,
+				       HalfTone[Printer_BStyle],
+				       EndOfLine);
+		    Printer_printf("%d %d {%s}%s",
+				       Printer_SFrequency,
+				       Printer_SAngle,
+				       HalfTone[Printer_SStyle],
+				       EndOfLine);
+		    PRINTER_PRINTF2("setcolorscreen%s", EndOfLine);
+		    }
+	        }
+	      else
+	      {
+		 if (Printer_ColorXlat==-2 || Printer_ColorXlat==2) {
+		    /* b&w case requires no mask building */
+		}
+		else {
+		   if (Printer_ColorXlat==1)
+		      PRINTER_PRINTF2("{1 exch sub} settransfer%s",EndOfLine);
+		   if (Printer_ColorXlat>1)
+		      PRINTER_PRINTF4("{%d mul round %d div} settransfer%s",
+				      Printer_ColorXlat,Printer_ColorXlat,EndOfLine);
+		   if (Printer_ColorXlat<-1)
+		      PRINTER_PRINTF4("{%d mul round %d div 1 exch sub} settransfer",
+				      Printer_ColorXlat,Printer_ColorXlat,EndOfLine);
+		
+		   if (Printer_SetScreen==1)
+		      Printer_printf("%d %d {%s} setscreen%s",
+				     Printer_SFrequency,
+				     Printer_SAngle,
+				     HalfTone[Printer_SStyle],
+				     EndOfLine);
+		}
+	      }
+
+	      if (ptrid == 5)
+		 {
+		    if ((EPSFileType==2)&&((Printer_ColorXlat!=0)||(Printer_SetScreen!=0)))
+			PRINTER_PRINTF2("%%%%EndFeature%s",EndOfLine);
+		    if (res == 0)
+		    {
+			PRINTER_PRINTF2("30 191.5 Tr 552 %4.1f",
+					(552.0*(double)finalaspectratio));
+		    }
+		    else
+		    {
+			PRINTER_PRINTF4("30 %d Tr %f %f",
+				     75 - ((Printer_Titleblock==1) ? 0 : 45),
+				     ((double)xdots*(72.0/(double)res)),
+				     ((double)xdots*(72.0/(double)res)*(double)finalaspectratio));
+		    }
+		  }
+		else			     /* For Horizontal PostScript */
+		{
+		    if (res == 0)
+		    {
+			PRINTER_PRINTF2("582 30 Tr 90 rotate 732 %4.1f",
+					(732.0*(double)finalaspectratio));
+		    }
+		    else
+		    {
+			PRINTER_PRINTF4("%d 30 Tr 90 rotate %f %f",
+				     537 + ((Printer_Titleblock==1) ? 0 : 45),
+				     ((double)xdots*(72.0/(double)res)),
+				     ((double)xdots*(72.0/(double)res)*(double)finalaspectratio));
+		    }
+		}
+		PRINTER_PRINTF2(" scale%s",EndOfLine);
+	      }
+
+	    else if (ptrid == 5)       /* To be used on WELL-BEHAVED .EPS */
+		Printer_printf("30 %d Tr %d %d scale%s",
+				    75 - ((Printer_Titleblock==1) ? 0 : 45),
+				    xdots,ydots,EndOfLine);
+
+	    PRINTER_PRINTF2("dopic%s",EndOfLine);
+	    break;
+
+	case 7: /* HP Plotter */
+	    if (res<1) res=1;
+	    if (res>10) res=10;
+	    ci = (((double)xdots*((double)res-1.0))/2.0);
+	    ck = (((double)ydots*((double)res-1.0))/2.0);
+	    Printer_printf(";IN;SP0;SC%d,%d,%d,%d;%s\0",
+		(int)(-ci),(int)((double)xdots+ci),
+		(int)((double)ydots+ck),(int)(-ck),EndOfLine);
+	    break;
+	}
+}
+
 
 static void _fastcall print_title(int ptrid,int res,char *EndOfLine)
 {
@@ -960,10 +1121,10 @@ static void _fastcall print_title(int ptrid,int res,char *EndOfLine)
 	Printer_printf(EndOfLine);
     else {
 	Printer_printf(") show%s",EndOfLine);
-	if (ptrid==5) Printer_printf("30 45 moveto (");
-	else	      Printer_printf("-90 rotate 567 30 moveto 90 rotate (");
+	if (ptrid==5) Printer_printf("30 50 moveto (");
+	else	      Printer_printf("-90 rotate 562 30 moveto 90 rotate (");
 	}
-    Printer_printf("Corners: Top-Left=%4.4f/%4.4f Bottom-Right=%4.4f/%4.4f",
+    Printer_printf("Corners: Top-Left=%.16g/%.16g Bottom-Right=%.16g/%.16g",
 		   xxmin,yymax,xxmax,yymin);
     if (xx3rd != xxmin || yy3rd != yymin) {
 	if (!postscript)
@@ -974,8 +1135,8 @@ static void _fastcall print_title(int ptrid,int res,char *EndOfLine)
 	Printer_printf(EndOfLine);
     else {
 	Printer_printf(") show%s",EndOfLine);
-	if (ptrid==5) Printer_printf("30 30 moveto (");
-	else	      Printer_printf("-90 rotate 582 30 moveto 90 rotate (");
+	if (ptrid==5) Printer_printf("30 40 moveto (");
+	else	      Printer_printf("-90 rotate 572 30 moveto 90 rotate (");
 	}
     showtrig(buff);
     Printer_printf("Parameters: %4.4f/%4.4f/%4.4f/%4.4f %s",
@@ -988,14 +1149,37 @@ static void _fastcall print_title(int ptrid,int res,char *EndOfLine)
 
 /* This function prints a string to the the printer with BIOS calls. */
 
-static void Printer_printf(char *fmt,...)
+#ifndef XFRACT
+static void Printer_printf(char far *fmt,...)
+#else
+static void Printer_printf(va_alist)
+va_dcl
+#endif
 {
+int i;
 char s[500];
 int x=0;
 va_list arg;
 
+#ifndef XFRACT
 va_start(arg,fmt);
-vsprintf(s,fmt,arg);
+#else
+char far *fmt;
+va_start(arg);
+fmt = va_arg(arg,char far *);
+#endif
+
+{
+   /* copy far to near string */
+   char fmt1[100];
+   i=0;
+   while(fmt[i]) {
+     fmt1[i] = fmt[i];
+     i++;
+   }
+   fmt1[i] = '\0';
+   vsprintf(s,fmt1,arg);
+}   
 
 if (Print_To_File>0)	/* This is for printing to file */
     fprintf(PRFILE,"%s",s);
@@ -1013,6 +1197,7 @@ else			/* And this is for printing to printer */
 static int _fastcall printer(int c)
 {
     if (Print_To_File>0) return ((fprintf(PRFILE,"%c",c))<1);
+#ifndef XFRACT
     if (LPTn<9)  return (((_bios_printer(0,LPTn,c))+0x0010)&0x0010);
     if (LPTn<19) return ((_bios_serialcom(1,(LPTn-10),c))&0x9E00);
     if ((LPTn==20)||(LPTn==21))
@@ -1035,6 +1220,7 @@ static int _fastcall printer(int c)
 	outp((LPTn==30) ? 0x3F8 : 0x2F8,c);
 	return(0);
 	}
+#endif
 
     /* MCP 7-7-91, If we made it down to here, we may as well error out. */
     return(-1);
@@ -1048,9 +1234,11 @@ static int _fastcall printer(int c)
 
 static void printer_reset()
 {
+#ifndef XFRACT
     if (Print_To_File < 1)
 	if (LPTn<9)	  _bios_printer(1,LPTn,0);
 	else if (LPTn<19) _bios_serialcom(3,(LPTn-10),0);
+#endif
 }
 
 
@@ -1088,3 +1276,235 @@ color_test()
 }
 **/
 
+
+/*
+ * The following code for compressed PostScript is based on pnmtops.c.  It is
+ * copyright (C) 1989 by Jef Poskanzer, and carries the following notice:
+ * "Permission to use, copy, modify, and distribute this software and its
+ *  documentation for any purpose and without fee is hereby granted, provided
+ *  that the above copyright notice appear in all copies and that both that
+ *  copyright notice and this permission notice appear in supporting
+ *  documentation.  This software is provided "as is" without express or
+ *  implied warranty."
+ */
+ 
+
+static rleprolog(x,y)
+int x,y;
+{
+    itemsperline = 0;
+    items = 0;
+    bitspersample = 8;
+    repeat = 1;
+    rlebitsperitem = 0;
+    rlebitshift = 0;
+    count = 0;
+
+    PRINTER_PRINTF2( "/rlestr1 1 string def%s", EndOfLine );
+    PRINTER_PRINTF2( "/rdrlestr {%s", EndOfLine );	/* s -- nr */
+    PRINTER_PRINTF2( "  /rlestr exch def%s", EndOfLine );    /* - */
+    PRINTER_PRINTF2( "  Cf rlestr1 Rh pop%s", EndOfLine );  /* s1 */
+    PRINTER_PRINTF2( "  0 get%s", EndOfLine );                     /* c */
+    PRINTER_PRINTF2( "  D 127 le {%s", EndOfLine );		 /* c */
+    PRINTER_PRINTF2( "    Cf rlestr 0%s", EndOfLine );	  /* c f s 0 */
+    PRINTER_PRINTF2( "    4 3 roll%s", EndOfLine );                /* f s 0 c */
+    PRINTER_PRINTF2( "    1 add  getinterval%s", EndOfLine );      /* f s */
+    PRINTER_PRINTF2( "    Rh pop%s", EndOfLine );	/* s */
+    PRINTER_PRINTF2( "    length%s", EndOfLine );                  /* nr */
+    PRINTER_PRINTF2( "  } {%s", EndOfLine );                       /* c */
+    PRINTER_PRINTF2( "    256 exch sub D%s", EndOfLine );	 /* n n */
+    PRINTER_PRINTF2( "    Cf rlestr1 Rh pop%s", EndOfLine );/* n n s1 */
+    PRINTER_PRINTF2( "    0 get%s", EndOfLine );                   /* n n c */
+    PRINTER_PRINTF2( "    exch 0 exch 1 exch 1 sub {%s", EndOfLine );           /* n c 0 1 n-1*/
+    PRINTER_PRINTF2( "      rlestr exch 2 index put%s", EndOfLine );
+    PRINTER_PRINTF2( "    } for%s", EndOfLine );                   /* n c */
+    PRINTER_PRINTF2( "    pop%s", EndOfLine );                     /* nr */
+    PRINTER_PRINTF2( "  } ifelse%s", EndOfLine );                  /* nr */
+    PRINTER_PRINTF2( "} bind def%s", EndOfLine );
+    PRINTER_PRINTF2( "/Rs {%s", EndOfLine );		   /* s -- s */
+    PRINTER_PRINTF2( "  D length 0 {%s", EndOfLine );		 /* s l 0 */
+    PRINTER_PRINTF2( "    3 copy exch%s", EndOfLine );          /* s l n s n l*/
+    PRINTER_PRINTF2( "    1 index sub%s", EndOfLine );          /* s l n s n r*/
+    PRINTER_PRINTF2( "    getinterval%s", EndOfLine );          /* s l n ss */
+    PRINTER_PRINTF2( "    rdrlestr%s", EndOfLine );	   /* s l n nr */
+    PRINTER_PRINTF2( "    add%s", EndOfLine );                     /* s l n */
+    PRINTER_PRINTF2( "    2 copy le { exit } if%s", EndOfLine );   /* s l n */
+    PRINTER_PRINTF2( "  } loop%s", EndOfLine );                    /* s l l */
+    PRINTER_PRINTF2( "  pop pop%s", EndOfLine );                   /* s */
+    PRINTER_PRINTF2( "} bind def%s", EndOfLine );
+    if (ColorPS) {
+	PRINTER_PRINTF3( "/rpicstr %d string def%s", x,EndOfLine );
+	PRINTER_PRINTF3( "/gpicstr %d string def%s", x,EndOfLine );
+	PRINTER_PRINTF3( "/bpicstr %d string def%s", x,EndOfLine );
+    } else {
+	PRINTER_PRINTF3( "/picstr %d string def%s", x,EndOfLine );
+    }
+    PRINTER_PRINTF2( "/dopic {%s", EndOfLine);
+    PRINTER_PRINTF2( "/gsave%s", EndOfLine);
+    if (ColorPS) {
+       PRINTER_PRINTF4( "%d %d 8%s", x, y, EndOfLine);
+    } else { /* b&w */
+       if (Printer_ColorXlat==-2) {
+          PRINTER_PRINTF4( "%d %d true%s", x, y, EndOfLine);
+       } else if (Printer_ColorXlat==2) {
+          PRINTER_PRINTF4( "%d %d false%s", x, y, EndOfLine);
+       } else {
+	  PRINTER_PRINTF4( "%d %d 8%s", x, y, EndOfLine);
+       }
+    }
+    Printer_printf( "[%d 0 0 %d 0 %d]%s", x, -y, y, EndOfLine);
+    if (ColorPS) {
+	PRINTER_PRINTF2( "{rpicstr Rs}%s", EndOfLine);
+	PRINTER_PRINTF2( "{gpicstr Rs}%s", EndOfLine);
+	PRINTER_PRINTF2( "{bpicstr Rs}%s", EndOfLine);
+	PRINTER_PRINTF2( "true 3 colorimage%s", EndOfLine);
+    } else {
+       if (Printer_ColorXlat==-2 || Printer_ColorXlat==2) {
+	  /* save file space and printing time (if scaling is right) */
+	  PRINTER_PRINTF2( "{picstr Rs} imagemask%s", EndOfLine);
+       } else {
+	  PRINTER_PRINTF2( "{picstr Rs} image%s", EndOfLine);
+       }
+    }
+    PRINTER_PRINTF2( "} def%s", EndOfLine);
+}
+
+static void
+rleputbuffer()
+    {
+    int i;
+
+    if ( repeat )
+	{
+	item = 256 - count;
+	putitem();
+	item = repeatitem;
+	putitem();
+	}
+    else
+	{
+	item = count - 1;
+	putitem();
+	for ( i = 0; i < count; ++i )
+	    {
+	    item = itembuf[i];
+	    putitem();
+	    }
+	}
+    repeat = 1;
+    count = 0;
+    }
+
+static void
+rleputitem()
+    {
+    int i;
+
+    if ( count == 128 )
+	rleputbuffer();
+
+    if ( repeat && count == 0 )
+	{ /* Still initializing a repeat buf. */
+	itembuf[count] = repeatitem = rleitem;
+	++count;
+	}
+    else if ( repeat )
+	{ /* Repeating - watch for end of run. */
+	if ( rleitem == repeatitem )
+	    { /* Run continues. */
+	    itembuf[count] = rleitem;
+	    ++count;
+	    }
+	else
+	    { /* Run ended - is it long enough to dump? */
+	    if ( count > 2 )
+		{ /* Yes, dump a repeat-mode buffer and start a new one. */
+		rleputbuffer();
+		itembuf[count] = repeatitem = rleitem;
+		++count;
+		}
+	    else
+		{ /* Not long enough - convert to non-repeat mode. */
+		repeat = 0;
+		itembuf[count] = repeatitem = rleitem;
+		++count;
+		repeatcount = 1;
+		}
+	    }
+	}
+    else
+	{ /* Not repeating - watch for a run worth repeating. */
+	if ( rleitem == repeatitem )
+	    { /* Possible run continues. */
+	    ++repeatcount;
+	    if ( repeatcount > 3 )
+		{ /* Long enough - dump non-repeat part and start repeat. */
+		count = count - ( repeatcount - 1 );
+		rleputbuffer();
+		count = repeatcount;
+		for ( i = 0; i < count; ++i )
+		    itembuf[i] = rleitem;
+		}
+	    else
+		{ /* Not long enough yet - continue as non-repeat buf. */
+		itembuf[count] = rleitem;
+		++count;
+		}
+	    }
+	else
+	    { /* Broken run. */
+	    itembuf[count] = repeatitem = rleitem;
+	    ++count;
+	    repeatcount = 1;
+	    }
+	}
+
+    rleitem = 0;
+    rlebitsperitem = 0;
+    }
+
+static void
+putitem()
+    {
+    char* hexits = "0123456789abcdef";
+
+    if ( itemsperline == 30 )
+        {
+	Printer_printf("%s",EndOfLine);
+        itemsperline = 0;
+        }
+    Printer_printf("%c%c", hexits[item >> 4], hexits[item & 15] );
+    ++itemsperline;
+    ++items;
+    item = 0;
+    bitsperitem = 0;
+    bitshift = 8 - bitspersample;
+    }
+
+static void
+rleputxelval( xv )
+    int xv;
+    {
+    if ( rlebitsperitem == 8 )
+	rleputitem();
+    rleitem += xv<<bitshift;
+    rlebitsperitem += bitspersample;
+    rlebitshift -= bitspersample;
+    }
+
+static void
+rleflush()
+    {
+    if ( rlebitsperitem > 0 )
+	rleputitem();
+    if ( count > 0 )
+	rleputbuffer();
+    }
+
+static void
+rleputrest()
+    {
+    rleflush();
+    Printer_printf( "%s",EndOfLine );
+    Printer_printf( "grestore%s",EndOfLine );
+    }

@@ -65,34 +65,48 @@ SUMMARY OF FRACTAL TYPES
 	 + i * (2*real(z((n)) * imag(z((n))) else
       z(n+1) = (real(z(n))^2 - imag(z(n))^2 - 1 + real(c) * real(z(n))
 	 + i * (2*real(z((n)) * imag(z((n)) + imag(c) * real(z(n))
-    Parameters are pertubations of z(0)
+    Parameters are perturbations of z(0)
 ~OnlineFF
 
 {=HT_BIF bifurcation}
 ~Label=HF_BIFURCATION
-    Pictoral representation of a population growth model.
+    Pictorial representation of a population growth model.
       Let P = new population, p = oldpopulation, r = growth rate
-      The model is: P = p +  r*p*(1-p).
-    Two parameters: Filter Cycles and Seed Population.
+      The model is: P = p + r*fn(p)*(1-fn(p)).
+    Three parameters: Filter Cycles, Seed Population, and Function.
 {=HT_BIF bif+sinpi}
 ~Label=HF_BIFPLUSSINPI
-    Bifurcation variation: model is: P = p + r*sin(PI*p).
-    Two parameters: Filter Cycles and Seed Population.
+    Bifurcation variation: model is: P = p + r*fn(PI*p).
+    Three parameters: Filter Cycles, Seed Population, and Function.
 {=HT_BIF bif=sinpi}
 ~Label=HF_BIFEQSINPI
-    Bifurcation variation: model is: P = r*sin(PI*p).
-    Two parameters: Filter Cycles and Seed Population.
+    Bifurcation variation: model is: P = r*fn(PI*p).
+    Three parameters: Filter Cycles, Seed Population, and Function.
 {=HT_BIF biflambda}
 ~Label=HF_BIFLAMBDA
-    Bifurcation variation: model is: P = r*p*(1-p)P.
-    Two parameters: Filter Cycles and Seed Population.
+    Bifurcation variation: model is: P = r*fn(p)*(1-fn(p)).
+    Three parameters: Filter Cycles, Seed Population, and Function.
 {=HT_BIF bifstewart}
 ~Label=HF_BIFSTEWART
-    Bifurcation variation: model is: P = (r*p*p) - 1.
-    Two parameters: Filter Cycles and Seed Population.
+    Bifurcation variation: model is: P = (r*fn(p)*fn(p)) - 1.
+    Three parameters: Filter Cycles, Seed Population, and Function.
+{=HT_BIF bifmay}
+~Label=HF_BIFMAY
+    Bifurcation variation: model is: P = r*p / ((1+p)^beta).
+    Three parameters: Filter Cycles, Seed Population, and Beta.
 ~OnlineFF
 
-{=HT_CIRCLE Circle}
+{=HT_CELLULAR cellular}
+~Label=HF_CELLULAR
+    One-dimensional cellular automata or line automata.  The type of CA
+    is given by kr, where k is the number of different states of the
+    automata and r is the radius of the neighborhood.  The next generation
+    is determined by the sum of the neighborhood and the specified rule.
+    Four parameters: Initial String, Rule, Type, and Starting Row Number.
+    For Type = 21, 31, 41, 51, 61, 22, 32, 42, 23, 33, 24, 25, 26, 27
+        Rule =  4,  7, 10, 13, 16,  6, 11, 16,  8, 15, 10, 12, 14, 16 digits
+
+{=HT_CIRCLE circle}
 ~Label=HF_CIRCLE
     Circle pattern by John Connett
       x + iy = pixel
@@ -104,17 +118,17 @@ SUMMARY OF FRACTAL TYPES
 ~Label=HF_CMPLXMARKSJUL
     A generalization of the marksjulia fractal.
       z(0) = pixel;
-      z(n+1) = (c^exp)*z(n) + c.
+      z(n+1) = (c^exp)*z(n)^2 + c.
     Four parameters: real and imaginary parts of c and exp.
+~OnlineFF
 
 {=HT_MARKS cmplxmarksmand}
 ~Label=HF_CMPLXMARKSMAND
     A generalization of the marksmandel fractal.
       z(0) = c = pixel;
-      z(n+1) = (c^exp)*z(n) + c.
+      z(n+1) = (c^exp)*z(n)^2 + c.
     Four parameters: real and imaginary parts of
     perturbation of z(0) and exp.
-~OnlineFF
 
 {=HT_NEWTCMPLX complexnewton\, complexbasin}
 ~Label=HF_COMPLEXNEWT
@@ -130,7 +144,18 @@ SUMMARY OF FRACTAL TYPES
 {=HT_DIFFUS diffusion}
 ~Label=HF_DIFFUS
     Diffusion Limited Aggregation.  Randomly moving points
-    accumulate.  One parameter: border width (default 10)
+    accumulate.  Two parameters: border width (default 10), type
+~OnlineFF
+
+{=HT_DYNAM dynamic}
+~Label=HF_DYNAM
+    Time-discrete dynamic system.
+      x(0) = y(0) = start position.
+      y(n+1) = y(n) + f( x(n) )
+      x(n+1) = x(n) - f( y(n) )
+      f(k) = sin(k + a*fn1(b*k))
+    For implicit Euler approximation: x(n+1) = x(n) - f( y(n+1) )
+    Five parameters: start position step, dt, a, b, and the function fn1.
 
 {=HT_SCOTSKIN fn+fn(pix)}
 ~Label=HF_FNPLUSFNPIX
@@ -138,13 +163,13 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = fn1(z) + p*fn2(c)
     Six parameters: real and imaginary parts of the perturbation
     of z(0) and factor p, and the functions fn1, and fn2.
-~OnlineFF
 
 {=HT_SCOTSKIN fn(z*z)}
 ~Label=HF_FNZTIMESZ
       z(0) = pixel;
       z(n+1) = fn(z(n)*z(n))
     One parameter: the function fn.
+~OnlineFF
 
 {=HT_SCOTSKIN fn*fn}
 ~Label=HF_FNTIMESFN
@@ -154,8 +179,8 @@ SUMMARY OF FRACTAL TYPES
 {=HT_SCOTSKIN fn*z+z}
 ~Label=HF_FNXZPLUSZ
       z(0) = pixel; z(n+1) = p1*fn(z(n))*z(n) + p2*z(n)
-    Six parameters: the real and imaginary components of
-    p1 and p2, and the functions fn1 and fn2.
+    Five parameters: the real and imaginary components of
+    p1 and p2, and the function fn.
 
 {=HT_SCOTSKIN fn+fn}
 ~Label=HF_FNPLUSFN
@@ -163,10 +188,18 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = p1*fn1(z(n))+p2*fn2(z(n))
     Six parameters: The real and imaginary components of
     p1 and p2, and the functions fn1 and fn2.
-~OnlineFF
 
 {=HT_FORMULA formula}
     Formula interpreter - write your own formulas as text files!
+~OnlineFF
+
+{=HT_FROTH frothybasin}
+~Label=HF_FROTH
+    Pixel color is determined by which attractor captures the orbit.  The
+    shade of color is determined by the number of iterations required to
+    capture the orbit.
+      z(0) = pixel;  z(n+1) = z(n)^2 - c*conj(z(n))
+      where c = 1 + ai,  and  a = 1.02871376822...
 
 {=HT_GINGER gingerbread}
 ~Label=HF_GINGER
@@ -175,6 +208,15 @@ SUMMARY OF FRACTAL TYPES
       y(n+1) = x(n)
     Two parameters: initial values of x(0) and y(0).
 
+{=HT_HALLEY halley}
+~Label=HF_HALLEY
+      Halley map for the function: F = z(z^a - 1) = 0
+      z(0) = pixel;
+      z(n+1) = z(n) - R * F / [F' - (F" * F / 2 * F')]
+      bailout when: abs(mod(z(n+1)) - mod(z(n)) < epsilon
+    Three parameters: order of z (a), relaxation coefficient (R),
+                      small number for bailout (epsilon).
+~OnlineFF
 {=HT_HENON henon}
 ~Label=HF_HENON
     Orbit in two dimensions defined by:
@@ -182,17 +224,17 @@ SUMMARY OF FRACTAL TYPES
       y(n+1) = b*x(n)
     Two parameters: a and b
 
-{=HT_MARTIN Hopalong}
+{=HT_MARTIN hopalong}
 ~Label=HF_HOPALONG
     Hopalong attractor by Barry Martin - orbit in two dimensions.
       z(0) = y(0) = 0;
       x(n+1) = y(n) - sign(x(n))*sqrt(abs(b*x(n)-c))
       y(n+1) = a - x(n)
     Parameters are a, b, and c.
-~OnlineFF
 
-{=HT_IFS Barnsley IFS}
-    Barnsley IFS fractals.
+{=HT_IFS IFS}
+    Barnsley IFS (Iterated Function System) fractals. Apply
+    contractive affine mappings.
 
 {=HT_PICKMJ julfn+exp}
 ~Label=HF_JULFNPLUSEXP
@@ -200,6 +242,7 @@ SUMMARY OF FRACTAL TYPES
       z(0) = pixel;
       z(n+1) = fn(z(n)) + e^z(n) + c.
     Three parameters: real & imaginary parts of c, and fn
+~OnlineFF
 
 {=HT_PICKMJ julfn+zsqrd}
 ~Label=HF_JULFNPLUSZSQRD
@@ -212,6 +255,19 @@ SUMMARY OF FRACTAL TYPES
     Classic Julia set fractal.
       z(0) = pixel; z(n+1) = z(n)^2 + c.
     Two parameters: real and imaginary parts of c.
+
+{=HT_INVERSE julia_inverse}
+~Label=HF_INVERSE
+    Inverse Julia function - "orbit" traces Julia set in two dimensions.
+      z(0) = a point on the Julia Set boundary; z(n+1) = +- sqrt(z(n) - c)
+    Parameters: Real and Imaginary parts of c
+           Maximum Hits per Pixel (similar to max iters)
+           Breadth First, Depth First or Random Walk Tree Traversal
+           Left or Right First Branching (in Depth First mode only)
+        Try each traversal method, keeping everything else the same.
+        Notice the differences in the way the image evolves.  Start with
+        a fairly low Maximum Hit limit, then increase it.  The hit limit
+        cannot be higher than the maximum colors in your video mode.
 ~OnlineFF
 
 {=HT_MANDJUL4 julia4}
@@ -253,7 +309,7 @@ SUMMARY OF FRACTAL TYPES
 ~Label=HF_LAMBDA
     Classic Lambda fractal. 'Julia' variant of Mandellambda.
       z(0) = pixel;
-      z(n+1) = lambda*z(n)*(1 - z(n)^2).
+      z(n+1) = lambda*z(n)*(1 - z(n)).
     Two parameters: real and imaginary parts of lambda.
 
 {=HT_LAMBDAFN lambdafn}
@@ -261,6 +317,48 @@ SUMMARY OF FRACTAL TYPES
       z(0) = pixel;
       z(n+1) = lambda * fn(z(n)).
     Three parameters: real, imag portions of lambda, and fn
+~OnlineFF
+
+{=HT_FNORFN lambda(fn||fn)}
+~Label=HF_LAMBDAFNFN
+      z(0) = pixel;
+      if modulus(z(n)) < shift value, then
+         z(n+1) = lambda * fn1(z(n)),
+      else
+         z(n+1) = lambda * fn2(z(n)).
+    Five parameters: real, imaginary portions of lambda, shift value,
+                     fn1 and fn2.
+
+{=HT_FNORFN manlam(fn||fn)}
+~Label=HF_MANLAMFNFN
+      c = pixel;
+      z(0) = p1
+      if modulus(z(n)) < shift value, then
+         z(n+1) = fn1(z(n)) * c, else
+         z(n+1) = fn2(z(n)) * c.
+    Five parameters: real, imaginary parts of p1, shift value, fn1, fn2.
+~OnlineFF
+
+{=HT_FNORFN julia(fn||fn)}
+~Label=HF_JULIAFNFN
+      z(0) = pixel;
+      if modulus(z(n)) < shift value, then
+         z(n+1) = fn1(z(n)) + c,
+      else
+         z(n+1) = fn2(z(n)) + c.
+    Five parameters: real, imaginary portions of c, shift value,
+                     fn1 and fn2.
+
+{=HT_FNORFN mandel(fn||fn)}
+~Label=HF_MANDELFNFN
+      c = pixel;
+      z(0) = p1
+      if modulus(z(n)) < shift value, then
+         z(n+1) = fn1(z(n)) + c,
+      else
+         z(n+1) = fn2(z(n)) + c.
+    Five parameters: real, imaginary portions of p1, shift value,
+                     fn1 and fn2.
 ~OnlineFF
 
 {=HT_LORENZ lorenz, lorenz3d}
@@ -272,6 +370,15 @@ SUMMARY OF FRACTAL TYPES
       y(n+1) = y(n) + ( b*x(n)*dt) - (	   y(n)*dt) - (z(n)*x(n)*dt)
       z(n+1) = z(n) + (-c*z(n)*dt) + (x(n)*y(n)*dt)
     Parameters are dt, a, b, and c.
+
+{=HT_ICON icon, icon3d}
+~Label=HF_ICON
+    Orbit in three dimensions defined by:
+      p = lambda + alpha * magnitude + beta * (x(n)*zreal - y(n)*zimag)
+      x(n+1) = p * x(n) + gamma * zreal - omega * y(n)
+      y(n+1) = p * y(n) - gamma * zimag + omega * x(n)
+      (3D version uses magnitude for z)
+      Parameters:  Lambda, Alpha, Beta, Gamma, Omega, and Degree
 
 {=HT_LORENZ lorenz3d1}
 ~Label=HF_LORENZ3D1
@@ -316,6 +423,7 @@ SUMMARY OF FRACTAL TYPES
     Parameters are dt, a, b, and c.
 ~OnlineFF
 
+
 {=HT_LSYS lsystem}
     Using a turtle-graphics control language and starting with
     an initial axiom string, carries out string substitutions the
@@ -329,41 +437,47 @@ SUMMARY OF FRACTAL TYPES
 {=HT_MAGNET magnet1j}
 ~Label=HF_MAGJ1
       z(0) = pixel;
-		/ z(n)^2 + (c-1) \\
-      z(n+1) = | ---------------- | ^ 2
-		\\ 2*z(n) + (c-2) /
+		[  z(n)^2 + (c-1)  ] 2
+      z(n+1) =	| ---------------- | 
+		[  2*z(n) + (c-2)  ]
     Parameters: the real and imaginary parts of c
 ~OnlineFF
 
 {=HT_MAGNET magnet1m}
 ~Label=HF_MAGM1
       z(0) = 0; c = pixel;
-		/ z(n)^2 + (c-1) \\
-      z(n+1) = | ---------------- | ^ 2
-		\\ 2*z(n) + (c-2) /
+		[  z(n)^2 + (c-1)  ] 2
+      z(n+1) =	| ---------------- | 
+		[  2*z(n) + (c-2)  ]
     Parameters: the real & imaginary parts of perturbation of z(0)
 {=HT_MAGNET magnet2j}
 ~Label=HF_MAGJ2
       z(0) = pixel;
-		/ z(n)^3 + 3*(C-1)*z(n) + (C-1)*(C-2)	      \\
-      z(n+1) = |  -------------------------------------------- | ^ 2
-		\\ 3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) - 1 /
+		[  z(n)^3 + 3*(C-1)*z(n) + (C-1)*(C-2)	       ] 2
+      z(n+1) =	|  -------------------------------------------- |
+		[  3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) + 1 ]
     Parameters: the real and imaginary parts of c
 {=HT_MAGNET magnet2m}
 ~Label=HF_MAGM2
       z(0) = 0; c = pixel;
-		/ z(n)^3 + 3*(C-1)*z(n) + (C-1)*(C-2)	      \\
-      z(n+1) = |  -------------------------------------------- | ^ 2
-		\\ 3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) - 1 /
+		[  z(n)^3 + 3*(C-1)*z(n) + (C-1)*(C-2)	       ] 2
+      z(n+1) =	|  -------------------------------------------- |
+		[  3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) + 1 ]
     Parameters: the real and imaginary parts of perturbation of z(0)
 ~OnlineFF
-
 {=HT_MANDEL mandel}
 ~Label=HF_MANDEL
     Classic Mandelbrot set fractal.
       z(0) = c = pixel;
       z(n+1) = z(n)^2 + c.
     Two parameters: real & imaginary perturbations of z(0)
+
+{=HT_MANDELCLOUD mandelcloud}
+~Label=HF_MANDELCLOUD
+    Displays orbits of Mandelbrot set:
+      z(0) = c = pixel;
+      z(n+1) = z(n)^2 + c.
+    One parameter: number of intervals
 
 {=HT_MANDJUL4 mandel4}
 ~Label=HF_MANDEL4
@@ -390,7 +504,7 @@ SUMMARY OF FRACTAL TYPES
 {=HT_MLAMBDA mandellambda}
 ~Label=HF_MLAMBDA
       z(0) = .5; lambda = pixel;
-      z(n+1) = lambda*z(n)*(1 - z(n)^2).
+      z(n+1) = lambda*z(n)*(1 - z(n)).
     Parameters: real & imaginary perturbations of z(0)
 
 {=HT_PICKMJ manfn+exp}
@@ -418,7 +532,7 @@ SUMMARY OF FRACTAL TYPES
       z1(0) = z(0) = pixel;
       z(n+1) = z(n)^2 + z1(n) + c;
       z1(n+1) = z(n);
-    Parameters: real & imaginary perturbations of z(0)
+    Parameters: real & imaginary perturbations of c
 {=HT_PICKMJ manzpower}
 ~Label=HF_MANZPOWER
     'Mandelbrot-Equivalent' for julzpower.
@@ -439,13 +553,13 @@ SUMMARY OF FRACTAL TYPES
 ~Label=HF_MARKSJULIA
     A variant of the julia-lambda fractal.
       z(0) = pixel;
-      z(n+1) = (c^exp)*z(n) + c.
+      z(n+1) = (c^exp)*z(n)^2 + c.
     Parameters: real & imaginary parts of c, and exponent
 {=HT_MARKS marksmandel}
 ~Label=HF_MARKSMAND
     A variant of the mandel-lambda fractal.
       z(0) = c = pixel;
-      z(n+1) = (c^exp)*z(n) + c.
+      z(n+1) = (c^exp)*z(n)^2 + c.
     Parameters: real & imaginary perturbations of z(0), and exponent
 
 ~OnlineFF
@@ -455,7 +569,7 @@ SUMMARY OF FRACTAL TYPES
     had fn=sqr hard coded).
       z(0) = pixel, c = z(0) ^ (z(0) - 1):
       z(n+1) = c * fn(z(n)) + pixel,
-    Parameters: real and imaginary pertubations of z(0), and fn
+    Parameters: real and imaginary perturbations of z(0), and fn
 
 {=HT_NEWTBAS newtbasin}
 ~Label=HF_NEWTBAS
@@ -474,6 +588,28 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = ((p-1)*z(n)^p + 1)/(p*z(n)^(p - 1)).
     One parameter: the polynomial degree p.
 
+{=HT_PHOENIX phoenix}
+~Label=HF_PHOENIX
+      z(0) = pixel, y(0) = 0;
+      For degree of Z = 0: z(n+1) = z(n)^2 + p + qy(n), y(n+1) = z(n)
+      For degree of Z >= 2:
+        z(n+1) = z(n)^degree + pz(n)^(degree-1) + qy(n), y(n+1) = z(n)
+      For degree of Z <= -3:
+        z(n+1) = z(n)^|degree| + pz(n)^(|degree|-2) + qy(n), y(n+1) = z(n)
+    Three parameters: real p, real q, and the degree of Z.
+
+{=HT_PHOENIX mandphoenix}
+~Label=HF_MANDPHOENIX
+      z(0) = p1, y(0) = 0;
+      For degree of Z = 0:
+        z(n+1) = z(n)^2 + pixel.x + (pixel.y)y(n), y(n+1) = z(n)
+      For degree of Z >= 2:
+        z(n+1) = z(n)^degree + pz(n)^(degree-1) + qy(n), y(n+1) = z(n)
+      For degree of Z <= -3:
+        z(n+1) = z(n)^|degree| + pz(n)^(|degree|-2) + qy(n), y(n+1) = z(n)
+    Three parameters: real part of z(0), imaginary part of z(0), and the
+      degree of Z.
+
 ~OnlineFF
 {=HT_PICK pickover}
 ~Label=HF_PICKOVER
@@ -489,8 +625,8 @@ SUMMARY OF FRACTAL TYPES
     A recursive algorithm repeatedly subdivides the screen and
     colors pixels according to an average of surrounding pixels
     and a random color, less random as the grid size decreases.
-    Three parameters: 'graininess' (.5 to 50, default = 2), old/new
-    algorithm, seed value used.
+    Four parameters: 'graininess' (.5 to 50, default = 2), old/new
+    algorithm, seed value used, 16-bit out output selection.
 
 {=HT_POPCORN popcorn}
 ~Label=HF_POPCORN
@@ -501,7 +637,6 @@ SUMMARY OF FRACTAL TYPES
     are plotted for each screen pixel and superimposed.
     One parameter: step size h.
 ~OnlineFF
-
 {=HT_POPCORN popcornjul}
 ~Label=HF_POPCJUL
     Conventional Julia using the popcorn formula:
@@ -509,6 +644,40 @@ SUMMARY OF FRACTAL TYPES
       x(n+1) = x(n) - h*sin(y(n) + tan(3*y(n))
       y(n+1) = y(n) - h*sin(x(n) + tan(3*x(n))
     One parameter: step size h.
+
+{=HT_HYPERC hypercomplexj}
+~Label=HF_HYPERCJ
+    HyperComplex Julia set.
+      h(0)   = (xpixel,ypixel,zj,zk)
+      h(n+1) = fn(h(n)) + c.
+      where "fn" is sin, cos, log, sqr etc.
+    Six parameters: c1, ci, cj, ck
+    c = (c1,ci,cj,ck)
+
+{=HT_HYPERC hypercomplex}
+~Label=HF_HYPERC
+    HyperComplex Mandelbrot set.
+      h(0)   = (0,0,0,0)
+      h(n+1) = fn(h(n)) + C.
+      where "fn" is sin, cos, log, sqr etc.
+    Two parameters: cj, ck
+    C = (xpixel,ypixel,cj,ck)
+
+{=HT_QUAT quatjul}
+~Label=HF_QUATJ
+    Quaternion Julia set.
+      q(0)   = (xpixel,ypixel,zj,zk)
+      q(n+1) = q(n)*q(n) + c.
+    Four parameters: c, ci, cj, ck
+    c = (c1,ci,cj,ck)
+
+{=HT_QUAT quat}
+~Label=HF_QUAT
+    Quaternion Mandelbrot set.
+      q(0)   = (0,0,0,0)
+      q(n+1) = q(n)*q(n) + c.
+    Two parameters: cj,ck
+    c = (xpixel,ypixel,cj,ck)
 
 {=HT_ROSS rossler3D}
 ~Label=HF_ROSS
@@ -518,7 +687,7 @@ SUMMARY OF FRACTAL TYPES
       y(n+1) = y(n) + x(n)*dt + a*y(n)*dt
       z(n+1) = z(n) + b*dt + x(n)*z(n)*dt - c*z(n)*dt
     Parameters are dt, a, b, and c.
-
+~OnlineFF
 {=HT_SIER sierpinski}
 ~Label=HF_SIER
     Sierpinski gasket - Julia set producing a 'Swiss cheese triangle'
@@ -526,7 +695,6 @@ SUMMARY OF FRACTAL TYPES
 	  else (2*x-1,2*y) if x > .5;
 	  else (2*x,2*y)
     No parameters.
-~OnlineFF
 
 {=HT_SCOTSKIN spider}
 ~Label=HF_SPIDER
@@ -569,7 +737,7 @@ SUMMARY OF FRACTAL TYPES
       real(tmp) = real(tmp) * real(c) - imag(tmp) * imag(c);
       imag(tmp) = real(tmp) * imag(c) - imag(tmp) * real(c);
       z(n+1) = tmp + pixel;
-    Parameters: real & imaginary pertubations of z(0) and function fn
+    Parameters: real & imaginary perturbations of z(0) and function fn
 ~OnlineFF
 
 {=HT_UNITY unity}
@@ -608,6 +776,7 @@ Select a fractal type:
 ~Table=40 2 0
 { The Mandelbrot Set }
 { Julia Sets }
+{ Inverse Julias }
 { Newton domains of attraction }
 { Newton }
 { Complex Newton }
@@ -623,6 +792,8 @@ Select a fractal type:
 { Distance Estimator }
 { Pickover Mandelbrot/Julia Types }
 { Pickover Popcorn }
+{ Dynamic System }
+{ Quaternion }
 { Peterson Variations }
 { Unity }
 { Circle }
@@ -643,6 +814,11 @@ Select a fractal type:
 { Magnetic Fractals }
 { L-Systems }
 { Lyapunov Fractals }
+{ fn||fn Fractals }
+{ Halley }
+{ Cellular Automata }
+{ Phoenix }
+{ Frothy Basins }
 ~EndTable
 ~Doc+
 ;
@@ -773,7 +949,7 @@ the discussion of {=HT_MLAMBDA Mandellambda Sets}.
 This approach may or may not be the
 "standard" way to create "Mandelbrot" sets out of "Julia" sets.
 
-Some equations have additional parameters.  These values is entered as the
+Some equations have additional parameters.  These values are entered as the
 third for fourth params= value for both Julia and Mandelbrot sets. The
 variables x and y refer to the real and imaginary parts of z; similarly,
 cx and cy are the real and imaginary parts of the parameter c and fx(z)
@@ -783,6 +959,104 @@ sometimes called lambda for historical reasons.
 NOTE: if you use the "PARAMS=" argument to warp the M-set by starting with
 an initial value of Z other than 0, the M-set/J-sets correspondence breaks
 down and the spacebar toggle no longer works.
+;
+;
+~Topic=Julia Toggle Spacebar Commands, Label=HELP_JIIM
+The spacebar toggle has been enhanced for the classic Mandelbrot and Julia 
+types. When viewing the Mandelbrot, the spacebar turns on a window mode that 
+displays the Inverse Julia corresponding to the cursor position in a window. 
+Pressing the spacebar then causes the regular Julia escape time fractal 
+corresponding to the cursor position to be generated. The following keys 
+take effect in Inverse Julia mode. 
+
+<Space>     Generate the escape-time Julia Set corresponding to the cursor\
+            position. Only works if fractal is a "Mandelbrot" type.\
+<n>         Numbers toggle - shows coordinates of the cursor on the\ 
+            screen. Press <n> again to turn off numbers.\
+<p>         Enter new pixel coordinates directly\ 
+<h>         Hide fractal toggle. Works only if View Windows is turned on\ 
+            and set for a small window (such as the default size.) Hides \ 
+            the fractal, allowing the orbit to take up the whole screen. \
+            Press <h> again to uncover the fractal.\
+<s>         Saves the fractal, cursor, orbits, and numbers.\
+<<> or <,>  Zoom inverse julia image smaller.\
+<>> or <.>  Zoom inverse julia image larger.\
+<z>         Restore default zoom.\
+
+The Julia Inverse window is only implemented for the classic Mandelbrot
+(type=mandel). For other "Mandelbrot" types <space> turns on the cursor 
+without the Julia window, and allows you to select coordinates of the
+matching Julia set in a way similar to the use of the zoom box with the 
+Mandelbrot/Julia toggle in previous Fractint versions.
+;
+;
+~Topic=Inverse Julias, Label=HT_INVERSE
+(type=julia_inverse)
+
+Pick a function, such as the familiar Z(n) = Z(n-1) squared plus C
+(the defining function of the Mandelbrot Set).  If you pick a point Z(0)
+at random from the complex plane, and repeatedly apply the function to it,
+you get a sequence of new points called an orbit, which usually either 
+zips out toward infinity or zooms in toward one or more "attractor" points
+near the middle of the plane.  The set of all points that are "attracted"
+to infinity is called the "Basin of Attraction" of infinity.  Each of the
+other attractors also has its own Basin of Attraction.  Why is it called
+a Basin?  Imagine a lake, and all the water in it "draining" into the
+attractor.  The boundary between these basins is called the Julia Set of
+the function.
+
+The boundary between the basins of attraction is sort of like a 
+repeller; all orbits move away from it, toward one of the attractors.
+But if we define a new function as the inverse of the old one, as for
+instance Z(n) = sqrt(Z(n-1) minus C), then the old attractors become
+repellers, and the former boundary itself becomes the attractor!  Now,
+starting from any point, all orbits are drawn irresistibly to the Julia
+Set!  In fact, once an orbit reaches the boundary, it will continue to
+hop about until it traces the entire Julia Set!  This method for drawing
+Julia Sets is called the Inverse Iteration Method, or IIM for short.
+
+Unfortunately, some parts of each Julia Set boundary are far more 
+attractive to inverse orbits than others are, so that as an orbit 
+traces out the set, it keeps coming back to these attractive parts
+again and again, only occasionally visiting the less attractive parts.
+Thus it may take an infinite length of time to draw the entire set.
+To hasten the process, we can keep track of how many times each pixel
+on our computer screen is visited by an orbit, and whenever an orbit
+reaches a pixel that has already been visited more than a certain number
+of times, we can consider that orbit finished and move on to another one.
+This "hit limit" thus becomes similar to the iteration limit used in the
+traditional escape-time fractal algorithm.  This is called the Modified
+Inverse Iteration Method, or MIIM, and is much faster than the IIM.
+
+Now, the inverse of Mandelbrot's classic function is a square root, and
+the square root actually has two solutions; one positive, one negative.
+Therefore at each step of each orbit of the inverse function there is
+a decision; whether to use the positive or the negative square root.  
+Each one gives rise to a new point on the Julia Set, so each is a good
+choice.  This series of choices defines a binary decision tree, each
+point on the Julia Set giving rise to two potential child points.  
+There are many interesting ways to traverse a binary tree, among them
+Breadth first, Depth first (left or negative first), Depth first (right
+or positive first), and completely at random.  It turns out that most 
+traversal methods lead to the same or similar pictures, but that how the
+image evolves as the orbits trace it out differs wildly depending on the
+traversal method chosen.  As far as I know, this fact is an original 
+discovery, and this version of FRACTINT is its first publication.
+
+Pick a Julia constant such as Z(0) = (-.74543, .11301), the popular
+Seahorse Julia, and try drawing it first Breadth first, then Depth first
+(right first), Depth first (left first), and finally with Random Walk.
+
+Caveats: the video memory is used in the algorithm, to keep track of 
+how many times each pixel has been visited (by changing it's color). 
+Therefore the algorithm will not work well if you zoom in far enough that
+part of the Julia Set is off the screen.
+
+Bugs:   Not working with Disk Video.
+        Not resumeable.
+
+The <J> key toggles between the Inverse Julia orbit and the 
+corresponding Julia escape time fractal.
 ;
 ;
 ~Topic=Newton domains of attraction, Label=HT_NEWTBAS
@@ -837,9 +1111,7 @@ color #7, but NEWTON will color it using color #23.
 If you have a 256-color mode, use it: the effects can be much livelier
 than those you get with type=newtbasin, and color cycling becomes, like,
 downright cosmic. If your "corners" choice is symmetrical, Fractint
-exploits the symmetry for faster display. There is symmetry in newtbasin,
-too, but the current version of the software isn't smart enough to exploit
-it.
+exploits the symmetry for faster display.
 
 The applicable "params=" values are the same as newtbasin. Try "params=4."
 Other values are 3 through 10. 8 has twice the symmetry and is faster. As
@@ -952,7 +1224,7 @@ user's vulnerable state; their content varies with your bank balance,
 politics, gender, accessibility to a Fractint programmer, and so on. A
 free copy of Microsoft C to the first person who spots them.
 
-This type accepts three parameters.
+This type accepts four parameters.
 
 The first determines how abruptly the colors change. A value of .5 yields
 bland clouds, while 50 yields very grainy ones. The default value is 2.
@@ -961,28 +1233,29 @@ The second determines whether to use the original algorithm (0) or a
 modified one (1). The new one gives the same type of images but draws
 the dots in a different order. It will let you see
 what the final image will look like much sooner than the old one.
-It will also let you regenerate a plasma cloud at a different
-resolution if the original was done with the new algorithm.
 
 The third determines whether to use a new seed for generating the
 next plasma cloud (0) or to use the previous seed (1).
 
-With parameter two and three set to ones, the next plasma cloud
-generated will be identical to the previous but at whatever new
-resolution was desired.
+The fourth parameter turns on 16-bit .POT output which provides much
+smoother height gradations. This is especially useful for creating 
+mountain landscapes when using the plasma output with a ray tracer
+such as POV-Ray.
+
+With parameter three set to 1, the next plasma cloud generated will be 
+identical to the previous but at whatever new resolution is desired.
 
 Zooming is ignored, as each plasma-cloud screen is generated randomly.
 
 The random number seed used for each plasma image is displayed on the
 <tab> information screen, and can be entered with the command line
-parameter "rseed=" to recreate a particular image. If parameter 2 is set 
-to 0 the image will only be recreatable at the original resolution. If
-parameter 2 is set to 1 it will be recreatable at any resolution.
+parameter "rseed=" to recreate a particular image. 
 
 The algorithm is based on the Pascal program distributed by Bret Mulvey as
 PLASMA.ARC. We have ported it to C and integrated it with Fractint's
 graphics and animation facilities. This implementation does not use
-floating-point math.
+floating-point math. The algorithm was modified starting with version 18 
+so that the plasma effect is independent of screen resolution.
 
 Saved plasma-cloud screens are EXCELLENT starting images for fractal
 "landscapes" created with the {\"3D\" commands}.
@@ -1006,14 +1279,96 @@ values for the imaginary part ranging from 0.1 to 0.4 (hint: values near
 the tongues and blobs of LambdaExponents, try a real part of 0.379 and an
 imaginary part of 0.479.
 
-A co-processor used to be almost mandatory: each LambdaSine/Cosine
+A coprocessor used to be almost mandatory: each LambdaSine/Cosine
 iteration calculates a hyperbolic sine, hyperbolic cosine, a sine, and a
 cosine (the LambdaExponent iteration "only" requires an exponent, sine,
 and cosine operation)!	However, Fractint now computes these
 transcendental functions with fast integer math. In a few cases the fast
 math is less accurate, so we have kept the old slow floating point code.
 To use the old code, invoke with the float=yes option, and, if you DON'T
-have a co-processor, go on a LONG vacation!
+have a coprocessor, go on a LONG vacation!
+;
+;
+~Topic=Halley, Label=HT_HALLEY
+(type=halley)
+
+The Halley map is an algorithm used to find the roots of polynomial
+equations by successive "guesses" that converge on the correct value as
+you feed the results of each approximation back into the formula. It works
+very well -- unless you are unlucky enough to pick a value that is on a
+line BETWEEN two actual roots. In that case, the sequence explodes into
+chaos, with results that diverge more and more wildly as you continue the
+iteration.
+
+This fractal type shows the results for the polynomial Z(Z^a - 1), which
+has a+1 roots in the complex plane. Use the <T>ype command and enter
+"halley" in response to the prompt. You will be asked for a parameter, the
+"order" of the equation (an integer from 2 through 10 -- 2 for Z(Z^2 - 1),
+7 for Z(Z^7 - 1), etc.). A second parameter is the relaxation coefficient,
+and is used to control the convergence stability. A number greater than
+one increases the chaotic behavior and a number less than one decreases the
+chaotic behavior. The third parameter is the value used to determine when
+the formula has converged. The test for convergence is
+||Z(n+1)|^2 - |Z(n)|^2| < epsilon. This convergence test produces the
+whisker-like projections which generally point to a root.
+;
+;
+~Topic=Phoenix, Label=HT_PHOENIX
+(type=phoenix, mandphoenix)
+
+The phoenix type defaults to the original phoenix curve discovered by
+Shigehiro Ushiki, "Phoenix", IEEE Transactions on Circuits and Systems,
+Vol. 35, No. 7, July 1988, pp. 788-789.  These images do not have the
+X and Y axis swapped as is normal for this type.
+
+The mandphoenix type is the corresponding Mandelbrot set image of the
+phoenix type.  The spacebar toggles between the two as long as the
+mandphoenix type has an initial Z(0) of (0,0).  The mandphoenix is not
+an effective index to the phoenix type, so explore the wild blue yonder.
+
+To reproduce the Mandelbrot set image of the phoenix type as shown in
+Stevens' book, "Fractal Programming in C", set initorbit=0/0 on the
+command line or with the <g> key.  The colors need to be rotated one
+position because Stevens uses the values from the previous calculation
+instead of the current calculation to determine when to bailout.
+;
+;
+~Topic=fn||fn Fractals, Label=HT_FNORFN
+(type=lambda(fn||fn), manlam(fn||fn), julia(fn||fn), mandel(fn||fn))
+
+Two functions=[sin|cos|sinh|cosh|exp|log|sqr|...]) are specified with
+these types.  The two functions are alternately used in the calculation
+based on a comparison between the modulus of the current Z and the
+shift value.  The first function is used if the modulus of Z is less
+than the shift value and the second function is used otherwise.
+
+The lambda(fn||fn) type calculates the Julia set of the formula
+lambda*fn(Z), for various values of the function "fn", where lambda
+and Z are both complex.  Two values, the real and imaginary parts of
+lambda, should be given in the "params=" option.  The third value is
+the shift value.  The space bar will generate the corresponding
+"psuedo Mandelbrot" set, manlam(fn||fn).
+
+The manlam(fn||fn) type calculates the "psuedo Mandelbrot" set of the
+formula fn(Z)*C, for various values of the function "fn", where C
+and Z are both complex.  Two values, the real and imaginary parts of
+Z(0), should be given in the "params=" option.  The third value is
+the shift value.  The space bar will generate the corresponding
+julia set, lamda(fn||fn).
+
+The julia(fn||fn) type calculates the Julia set of the formula
+fn(Z)+C, for various values of the function "fn", where C
+and Z are both complex.  Two values, the real and imaginary parts of
+C, should be given in the "params=" option.  The third value is
+the shift value.  The space bar will generate the corresponding
+mandelbrot set, mandel(fn||fn).
+
+The mandel(fn||fn) type calculates the Mandelbrot set of the formula
+fn(Z)+C, for various values of the function "fn", where C
+and Z are both complex.  Two values, the real and imaginary parts of
+Z(0), should be given in the "params=" option.  The third value is
+the shift value.  The space bar will generate the corresponding
+julia set, julia(fn||fn).
 ;
 ;
 ~Topic=Mandelfn, Label=HT_MANDFN
@@ -1042,7 +1397,7 @@ was released.
 Note: If you created images using the lambda or mandel "fn" types prior to
 version 14, and you wish to update the fractal information in the "*.fra"
 file, simply read the files and save again. You can do this in batch mode
-via a command line like:
+via a command line such as:
 
      "fractint oldfile.fra savename=newfile.gif batch=yes"
 
@@ -1173,7 +1528,7 @@ The program FDESIGN can be used to design IFS fractals - see
 
 You can save the points in your IFS fractal in the file ORBITS.RAW which is
 overwritten each time a fractal is generated. The program Acrospin can
-read this file and will let you view the fractal from in any angle using
+read this file and will let you view the fractal from any angle using
 the cursor keys. See {=@ACROSPIN Acrospin}.
 ;
 ;
@@ -1274,6 +1629,62 @@ orbits and arbitrary use of color. Just for fun we added type popcornjul,
 which is the plain old Julia set calculated from the same formula.
 ;
 ;
+~Topic=Dynamic System, Label=HT_DYNAM
+(type=dynamic, dynamic2)
+
+These fractals are based on a cyclic system of differential equations:
+	 x'(t) = -f(y(t))\
+	 y'(t) = f(x(t))\
+These equations are approximated by using a small time step dt, forming
+a time-discrete dynamic system:
+	 x(n+1) = x(n) - dt*f(y(n))\
+	 y(n+1) = y(n) + dt*f(x(n))\
+The initial values x(0) and y(0) are set to various points in the plane, 
+the dynamic system is iterated, and the resulting orbit points are plotted.
+
+In fractint, the function f is restricted to:
+      f(k) = sin(k + a*fn1(b*k))
+The parameters are the spacing of the initial points, the time step dt,
+and the parameters (a,b,fn1) that affect the function f.
+Normally the orbit points are plotted individually, but for a negative
+spacing the points are connected.
+
+This fractal is similar to the {=HT_POPCORN Pickover Popcorn}.
+
+A variant is the implicit Euler approximation:
+	 y(n+1) = y(n) + dt*f(x(n))\
+	 x(n+1) = x(n) - dt*f(y(n+1))\
+This variant results in complex orbits.  The implicit Euler approximation
+is selected by entering dt<0.
+
+There are two options that have unusual effects on these fractals.  The
+Orbit Delay value controls how many initial points are computed before
+the orbits are displayed on the screen.  This allows the orbit to settle
+down.  The outside=summ option causes each pixel to increment color every
+time an orbit touches it; the resulting display is a 2-d histogram.
+
+These fractals are discussed in Chapter 14 of Pickover's "Computers,
+Pattern, Chaos, and Beauty".
+
+;
+;
+~Topic=Mandelcloud, Label=HT_MANDELCLOUD
+(type=mandelcloud)
+
+This fractal computes the Mandelbrot function, but displays it differently.
+It starts with regularly spaced initial pixels and displays the resulting
+orbits.  This idea is somewhat similar to the {=HT_DYNAM Dynamic System}.
+
+There are two options that have unusual effects on this fractal.  The
+Orbit Delay value controls how many initial points are computed before
+the orbits are displayed on the screen.  This allows the orbit to settle
+down.  The outside=summ option causes each pixel to increment color every
+time an orbit touches it; the resulting display is a 2-d histogram.
+
+This fractal was invented by Noel Giffin.
+
+;
+;
 ~Topic=Peterson Variations, Label=HT_MARKS
 (type=marksmandel, marksjulia, cmplxmarksmand, cmplxmarksjul, marksmandelpwr,
 tim's_error)
@@ -1283,7 +1694,7 @@ MarksJulia are two families of fractal types that are linked in the same
 manner as the classic Mandelbrot/Julia sets: each MarksMandel set can be
 considered as a mapping into the MarksJulia sets, and is linked with the
 spacebar toggle. The basic equation for these sets is:
-      Z(n+1) = ((lambda^n) * Z(n)^2) + lambda
+      Z(n+1) = ((lambda^exp) * Z(n)^2) + lambda
 where Z(0) = 0.0 and lambda is (x + iy) for MarksMandel. For MarksJulia,
 Z(0) = (x + iy) and lambda is a constant (taken from the MarksMandel
 spacebar toggle, if that method is used). The exponent is a positive
@@ -1334,11 +1745,20 @@ types, but there were just too many! So we defined the types with variable
 functions and let you, the, overwhelmed user, specify what the functions
 should be! Thus Scott Taylor's "z = sin(z) + z^2" formula type is now the
 "fn+fn" regular type, and EITHER function can be one of sin, cos, tan, cotan,
-sinh, cosh, tanh, cotanh, exp, log, sqr, recip, ident, or cosxx.
+sinh, cosh, tanh, cotanh, exp, log, sqr, recip, ident, conj, flip, or cosxx.
 Plus we give you 4 parameters to set, the complex
 coefficients of the two functions!  Thus the innocent-looking "fn+fn" type
-is really 66 different types in disguise, not counting the damage
+is really 256 different types in disguise, not counting the damage
 done by the parameters!
+
+ Some functions that require further explanation:
+
+ conj()   - returns the complex conjugate of the argument. That is, changes
+            sign of the imaginary component of argument: (x,y) becomes (x,-y)
+ ident()  - identity function. Leaves the value of the argument unchanged,
+            acting like a "z" term in a formula.
+ flip()   - Swap the real and imaginary components of the complex number.
+            e.g. (4,5) would become (5,4)
 
 Lee informs us that you should not judge fractals by their "outer"
 appearance. For example, the images produced by z = sin(z) + z^2 and z =
@@ -1402,7 +1822,8 @@ bands where there is a small, odd number of stable values. It turns out
 that the geometry of this branching is fractal; zoom in where changing
 pixel colors look suspicious, and see for yourself.
 
-Two parameters apply to bifurcations: Filter Cycles and Seed Population.
+Three parameters apply to bifurcations: Filter Cycles, Seed Population,
+and Function or Beta.
 
 Filter Cycles (default 1000) is the number of iterations to be done before
 plotting maxiter population values. This gives the iteration time to settle
@@ -1414,11 +1835,24 @@ Seed Population (default 0.66) is the initial population value from which
 all others are calculated. For filtered maps the final image is independent
 of Seed Population value in the valid range (0.0 < Seed Population < 1.0).
 ~OnlineFF
-
 Seed Population becomes effective in unfiltered maps - try setting Filter
 Cycles to 1 (unfiltered) and Seed Population to 0.001 ("PARAMS=1/.001" on
 the command line). This results in a map overlaid with nice curves. Each
 Seed Population value results in a different set of curves.
+
+Function (default "ident") is the function applied to the old population
+before the new population is determined. The "ident" function calculates
+the same bifurcation fractal that was generated before these formulae
+were generalized.
+
+Beta is used in the bifmay bifurcations and is the power to which the
+denominator is raised.
+
+Note that fractint normally uses periodicity checking to speed up
+bifurcation computation.  However, in some cases a better quality image
+will be obtained if you turn off periodicity checking with "periodicity=no";
+for instance, if you use a high number of iterations and a smooth
+colormap.
 
 Many formulae can be used to produce bifurcations.  Mitchel Feigenbaum
 studied lots of bifurcations in the mid-70's, using a HP-65 calculator
@@ -1440,7 +1874,7 @@ to tell other scientists.  The rest is History...
 used it to study bifurcations, he may never have found his Number, as it
 only became obvious from long perusal of hand-written lists of values,
 without the distraction of wild color-cycling effects !).
-
+~OnlineFF
 We now know that this number is as universal as PI or E. It appears in
 situations ranging from fluid-flow turbulence, electronic oscillators,
 chemical reactions, and even the Mandelbrot Set - yup, fraid so:
@@ -1452,11 +1886,12 @@ However, it does now reflect the fact that there is a whole sub-species of
 Bifurcation-type fractals.  Those implemented to date, and the related
 formulae, (writing P for pop[n+1] and p for pop[n]) are :
 
-  bifurcation	P =  p + r*p*(1-p)	Verhulst Bifurcations.\
-  biflambda	P =	 r*p*(1-p)	Real equivalent of Lambda Sets.\
-  bif+sinpi	P =  p + r*sin(PI*p)	Population scenario based on...\
-  bif=sinpi	P =	 r*sin(PI*p)	...Feigenbaum's second formula.\
-  bifstewart    P =      r*p*p - 1      Stewart Map.\
+  bifurcation  P =  p + r*fn(p)*(1-fn(p))  Verhulst Bifurcations.\
+  biflambda    P =      r*fn(p)*(1-fn(p))  Real equivalent of Lambda Sets.\
+  bif+sinpi    P =  p + r*fn(PI*p)         Population scenario based on...\
+  bif=sinpi    P =      r*fn(PI*p)         ...Feigenbaum's second formula.\
+  bifstewart   P =      r*fn(p)*fn(p) - 1  Stewart Map.\
+  bifmay       P =      r*p / ((1+p)^b)    May Map.\
 
 It took a while for bifurcations to appear here, despite them being over a
 century old, and intimately related to chaotic systems. However, they are
@@ -1621,7 +2056,7 @@ The initial x and y values are set by parameters, defaults x=-.1, y = 0.
 
 These fractal types are from A. K. Dewdney's "Computer Recreations" column
 in "Scientific American". They are attributed to Barry Martin of Aston 
-University in Birmingham, Alabama. 
+University in Birmingham, England. 
 
 Hopalong is an "orbit" type fractal like lorenz. The image is obtained by 
 iterating this formula after setting z(0) = y(0) = 0:
@@ -1635,8 +2070,158 @@ This fractal continues to develop in surprising ways after many iterations.
 Another Martin fractal is simpler. The iterated formula is:
       x(n+1) = y(n) - sin(x(n))
       y(n+1) = a - x(n)
-The paramneter is "a". Try values near the number pi.
+The parameter is "a". Try values near the number pi.
 ;
+;
+;
+~Topic=Icon, Label=HT_ICON
+(type=icon/icon3d)
+
+  This fractal type was inspired by the book "Symmetry in Chaos"
+  by Michael Field and Martin Golubitsky (ISBN 0-19-853689-5, Oxford Press)
+
+  To quote from the book's jacket,
+
+    "Field and Golubitsky describe how a chaotic process eventually can
+    lead to symmetric patterns (in a river, for instance, photographs of
+    the turbulent movement of eddies, taken over time, often reveal
+    patterns on the average."
+
+  The Icon type implemented here maps the classic population logistic
+  map of bifurcation fractals onto the complex plane in Dn symmetry.
+
+  The initial points plotted are the more chaotic initial orbits, but
+  as you wait, delicate webs will begin to form as the orbits settle
+  into a more periodic pattern.  Since pixels are colored by the number
+  of times they are hit, the more periodic paths will become clarified
+  with time.  These fractals run continuously.
+
+There are 6 parameters:  Lambda, Alpha, Beta, Gamma, Omega, and Degree
+    Omega  0 = Dn, or dihedral (rotation + reflectional) symmetry
+          !0 = Zn, or cyclic (rotational) symmetry
+    Degree = n, or Degree of symmetry
+;
+;
+;
+~Topic=Quaternion, Label=HT_QUAT
+(type=quat,quatjul)
+
+These fractals are based on quaternions.  Quaternions are an extension of
+complex numbers, with 4 parts instead of 2.  That is, a quaternion Q
+equals a+ib+jc+kd, where a,b,c,d are reals.  Quaternions have rules for
+addition and multiplication.  The normal Mandelbrot and Julia formulas
+can be generalized to use quaternions instead of complex numbers.
+
+There is one complication.  Complex numbers have 2 parts, so they can
+be displayed on a plane.  Quaternions have 4 parts, so they require 4
+dimensions to view.  That is, the quaternion Mandelbrot set is actually a
+4-dimensional object.  Each quaternion C generates a 4-dimensional Julia set.
+
+One method of displaying the 4-dimensional object is to take a 3-dimensional
+slice and render the resulting object in 3-dimensional perspective.
+Fractint isn't that sophisticated, so it merely displays a 2-dimensional
+slice of the resulting object. (Note: Now Fractint is that sophisticated! 
+See the Julibrot type!)
+
+In fractint, for the Julia set, you can specify the four parameters
+of the quaternion constant: c=(c1,ci,cj,ck), but the 2-dimensional slice 
+of the z-plane Julia set is fixed to (xpixel,ypixel,0,0).
+
+For the Mandelbrot set, you can specify the position of the c-plane slice:
+(xpixel,ypixel,cj,ck).
+
+These fractals are discussed in Chapter 10 of Pickover's "Computers,
+Pattern, Chaos, and Beauty".
+;
+;
+~Topic=HyperComplex, Label=HT_HYPERC
+(type=hypercomplex,hypercomplexj)
+
+These fractals are based on hypercomplex numbers, which like quaternions
+are a four dimensional generalization of complex numbers. It is not 
+possible to fully generalize the complex numbers to four dimensions without
+sacrificing some of the algebraic properties shared by real and complex 
+numbers. Quaternions violate the commutative law of multiplication, which 
+says z1*z2 = z2*z1. Hypercomplex numbers fail the rule that says all non-zero
+elements have multiplicative inverses - that is, if z is not 0, there
+should be a number 1/z such that (1/z)*(z) = 1. This law holds most of the
+time but not all the time for hypercomplex numbers. 
+
+However hypercomplex numbers have a wonderful property for fractal purposes.
+Every function defined for complex numbers has a simple generalization 
+to hypercomplex numbers. Fractint's implementation takes advantage of this
+by using "fn" variables - the iteration formula is\
+    h(n+1) = fn(h(n)) + C.\
+where "fn" is the hypercomplex generalization of sin, cos, log, sqr etc.
+
+You can see 3D versions of these fractals using fractal type Julibrot.
+Hypercomplex numbers were brought to our attention by Clyde Davenport,
+author of "A Hypercomplex Calculus with Applications to Relativity",
+ISBN 0-9623837-0-8. 
+;
+;
+
+~Topic=Cellular Automata, Label=HT_CELLULAR
+(type=cellular)
+
+These fractals are generated by 1-dimensional cellular automata.  Consider
+a 1-dimensional line of cells, where each cell can have the value 0 or 1.
+In each time step, the new value of a cell is computed from the old value
+of the cell and the values of its neighbors.  On the screen, each horizontal
+row shows the value of the cells at any one time.  The time axis proceeds
+down the screen, with each row computed from the row above.
+
+Different classes of cellular automata can be described by how many different
+states a cell can have (k), and how many neighbors on each side are examined
+(r).  Fractint implements the binary nearest neighbor cellular automata
+(k=2,r=1), the binary next-nearest neighbor cellular automata (k=2,r=2),
+and the ternary nearest neighbor cellular automata (k=3,r=1) and several
+others.
+
+The rules used here determine the next state of a given cell by using the
+sum of the states in the cell's neighborhood.  The sum of the cells in the
+neighborhood are mapped by rule to the new value of the cell.  For the
+binary nearest neighbor cellular automata, only the closest neighbor on
+each side is used.  This results in a 4 digit rule controlling the
+generation of each new line:  if each of the cells in the neighborhood is
+1, the maximum sum is 1+1+1 = 3 and the sum can range from 0 to 3, or 4
+values.  This results in a 4 digit rule.  For instance, in the rule 1010,
+starting from the right we have 0->0, 1->1, 2->0, 3->1.  If the cell's
+neighborhood sums to 2, the new cell value would be 0.
+
+For the next-nearest cellular automata (kr = 22), each pixel is determined
+from the pixel value and the two neighbors on each side.  This results in
+a 6 digit rule.
+
+For the ternary nearest neighbor cellular automata (kr = 31), each cell
+can have the value 0, 1, or 2.  A single neighbor on each side is examined,
+resulting in a 7 digit rule.
+
+  kr  #'s in rule  example rule     | kr  #'s in rule  example rule\
+  21      4        1010             | 42     16        2300331230331001\
+  31      7        1211001          | 23      8        10011001\
+  41     10        3311100320       | 33     15        021110101210010\
+  51     13        2114220444030    | 24     10        0101001110\
+  61     16        3452355321541340 | 25     12        110101011001\
+  22      6        011010           | 26     14        00001100000110\
+  32     11        21212002010      | 27     16        0010000000000110\
+
+The starting row of cells can be set to a pattern of up to 16 digits or to a
+random pattern.  The borders are set to zeros if a pattern is entered or are
+set randomly if the starting row is set randomly.
+
+A zero rule will randomly generate the rule to use.
+
+Hitting the space bar toggles between continuously generating the cellular
+automata and stopping at the end of the current screen.
+
+Recommended reading:
+"Computer Software in Science and Mathematics", Stephen Wolfram, Scientific
+American, September, 1984.
+"Abstract Mathematical Art", Kenneth E. Perry, BYTE, December, 1986.
+"The Armchair Universe", A. K. Dewdney, W. H. Freeman and Company, 1988.
+"Complex Patterns Generated by Next Nearest Neighbors Cellular Automata",
+Wentian Li, Computers & Graphics, Volume 13, Number 4.
 ;
 ;
 ~Topic=Test, Label=HT_TEST
@@ -1745,7 +2330,7 @@ floating point.
 The 'rand' predefined variable is changed with each iteration to a new
 random number with the real and imaginary components containing a value
 between zero and 1. Use the srand() function to initialize the random
-numbers to a consistant random number sequence.  If a formula does not
+numbers to a consistent random number sequence.  If a formula does not
 contain the srand() function, then the formula compiler will use the system
 time to initialize the sequence.  This could cause a different fractal to be
 generated each time the formula is used depending on how the formula is
@@ -1758,87 +2343,118 @@ many orders of magnitude greater than our puny 32 bit mathematics!  Always
 verify with the floating point <F> toggle.
 ;
 ;
+~Topic=Frothy Basins, Label=HT_FROTH
+(type=frothybasin)
+
+Frothy Basins, or Riddled Basins, were discovered by James C. Alexander of
+the University of Maryland.  The discussion below is derived from a two page
+article entitled "Basins of Froth" in Science News, November 14, 1992 and
+from correspondence with others, including Dr. Alexander.
+
+The equations that generate this fractal are not very different from those
+that generate many other orbit fractals.
+
+~Format-
+      z(0) = pixel;  z(n+1) = z(n)^2 - c*conj(z(n))
+      where c = 1 + ai,  and  a = 1.02871376822...
+~Format+
+
+One of the things that makes this fractal so interesting is the shape of
+the dynamical system's attractors.  It is not at all uncommon for a
+dynamical system to have non-point attractors.  Shapes such as circles are
+very common.  Strange attractors are attractors which are themselves
+fractal.  What is unusual about this system, however, is that the
+attractors intersect.  This is the first case in which such a phenomenon
+has been observed.  The three attractors for this system are made up of
+line segments which overlap to form an equilateral triangle.  This
+attractor triangle can be seen by pressing the 'o' key while the fractal
+is being generated to turn on the "show orbits" option.
+
+An interesting variation on this fractal can be generated by applying the
+above mapping twice per each iteration.  The result is that each of the
+three attractors is split into two parts, giving the system six
+attractors.
+
+These are also called "Riddled Basins" because each basin is riddled with
+holes.  Which attractor a point is eventually pulled into is extremely
+sensitive to its initial position.  A very slight change in any direction
+may cause it to end up on a different attractor.  As a result, the basins
+are thoroughly intermingled. The effect appears to be a frothy mixture that
+has been subjected to lots of stirring and folding.
+
+Pixel color is determined by which attractor captures the orbit.  The shade
+of color is determined by the number of iterations required to capture the
+orbit.  In Fractint, the actual shade of color used depends on how many
+colors are available in the video mode being used.  If 256 colors are
+available, the default coloring scheme is determined by the number of
+iterations that were required to capture the orbit.  An alternative
+coloring scheme can be used where the shade is determined by the
+iterations required divided by the maximum iterations.  This method is
+especially useful on deeply zoomed images.  If only 16 colors are
+available, then only the alternative coloring scheme is used.  If fewer
+than 16 colors are available, then Fractint just colors the basins without
+any shading.
+;
+;
 ~Topic=Julibrots, Label=HT_JULIBROT
 (type=julibrot)
 
-The following documentation is supplied by Mark Peterson, who "invented"
-the Julibrot algorithm.
+The Julibrot fractal type uses a general-purpose renderer for visualizing 
+three dimensional solid fractals. Originally Mark Peterson developed
+this rendering mechanism to view a 3-D sections of a 4-D structure he
+called a "Julibrot".  This structure, also called "layered Julia set" in 
+the fractal literature, hinges on the relationship between the Mandelbrot 
+and Julia sets. Each Julia set is created using a fixed value c in the 
+iterated formula z^2 + c. The Julibrot is created by layering Julia sets 
+in the x-y plane and continuously varying c, creating new Julia sets as z is
+incremented. The solid shape thus created is rendered by shading the surface 
+using a brightness inversely proportional to the virtual viewer's eye. 
 
-There is a very close relationship between the Mandelbrot set and Julia
-sets of the same equation.  To draw a Julia set you take the basic
-equation and vary the initial value according to the two dimensions of
-screen leaving the constant untouched.	This method diagrams two
-dimensions of the equation, 'x' and 'iy', which I refer to as the Julia x
-and y.
+Starting with Fractint version 18, the Julibrot engine can be used
+with other Julia formulas besides the classic z^2 + c. The first field on 
+the Julibrot parameter screen lets you select which orbit formula to use.
 
-     z(0) = screen coordinate (x + iy)\
-     z(1) = (z(0) * z(0)) + c, where c = (a + ib)\
-     z(2) = (z(1) * z(0)) + c\
-     z(3) = . . . .\
+You can also use the Julibrot renderer to visualize 3D cross sections of
+true four dimensional Quaternion and Hypercomplex fractals. 
 
-The Mandelbrot set is a composite of all the Julia sets.  If you take the
-center pixel of each Julia set and plot it on the screen coordinate
-corresponding to the value of c, a + ib, then you have the Mandelbrot set.
+The Julibrot Parameter Screens
 
-     z(0) = 0\
-     z(1) = (z(0) * z(0)) + c, where c = screen coordinate (a + ib)\
-     z(2) = (z(1) * z(1)) + c\
-     z(3) = . . . .\
+Orbit Algorithm - select the orbit algorithm to use. The available 
+   possibilities include 2-D Julia and both mandelbrot and Julia variants
+   of the 4-D Quaternion and Hypercomplex fractals.
 
-I refer to the 'a' and 'ib' components of 'c' as the Mandelbrot 'x' and
-'y'.
+Orbit parameters - the next screen lets you fill in any parameters 
+   belonging to the orbit algorithm. This list of parameters is not
+   necessarily the same as the list normally presented for the orbit
+   algorithm, because some of these parameters are used in the Julibrot
+   layering process. 
 
-All the 2 dimensional Julia sets correspond to a single point on the 2
-dimensional Mandelbrot set, making a total of 4 dimensions associated with
-our equation.  Visualizing 4 dimensional objects is not as difficult as it
-may sound at first if you consider we live in a 4 dimensional world.  The
-room around you is three dimensions and as you read this text you are
-moving through the fourth dimension of time. You and everything around
-your are 4 dimensional objects - which is to say 3 dimensional objects
-moving through time.  We can think of the 4 dimensions of our equation in
-the same manner, this is as a 3 dimensional object evolving over time -
-sort of a 3 dimensional fractal movie.	The fun part of it is you get to
-pick the dimension representing time!
+   From/To Parameters
+   These parameters allow you to specify the "Mandelbrot" values used to
+   generate the layered Julias. The parameter c in the Julia formulas will
+   be incremented in steps ranging from the "from" x and y values to the
+   "to" x and y values. If the orbit formula is one of the "true" four 
+   dimensional fractal types quat, quatj, hypercomplex, or hypercomplexj, 
+   then these numbers are used with the 3rd and 4th dimensional values.
 
-To construct the 4 dimensional object into something you can view on the
-computer screen you start with the simple 2 dimensions of the Julia set.
-I'll treat the two Julia dimensions as the spatial dimensions of height
-and width, and the Mandelbrot 'y' dimension as the third spatial dimension
-of depth.  This leaves the Mandelbrot 'x' dimension as time.  Draw the
-Julia set associated with the Mandelbrot coordinate (-.83, -.25), but
-instead of setting the color according to the iteration level it bailed
-out on, make it a two color drawing where the pixels are black for
-iteration levels less than 30, and another color for iteration levels
-greater than or equal to 30.  Now increment the Mandelbrot 'y' coordinate
-by a little bit, say (-.83, -.2485), and draw another Julia set in the
-same manner using a different color for bailout values of 30 or greater.
-Continue doing this until you reach (-.83, .25).  You now have a three
-dimensional representation of the equation at time -.83.  If you make the
-same drawings for points in time before and after -.83 you can construct a
-3 dimensional movie of the equation which essentially is a full 4
-dimensional representation.
+   The "from/to" variables are different for the different kinds of orbit
+   algorithm.
 
-In the Julibrot fractal available with this release of Fractint the
-spatial dimensions of height and width are always the Julia dimensions.
-The dimension of depth is determined by the Mandelbrot coordinates.  The
-program will consider the dimension of depth as the line between the two
-Mandelbrot points.  To draw the image in our previous example you would
-set the 'From Mandelbrot' to (-.83, .25) and the 'To Mandelbrot' as (-.83,
--.25).	If you set the number of 'z' pixels to 128 then the program will
-draw the 128 Julia sets found between Mandelbrot points (-.83, .25) and (-
-.83, -.25).  To speed things up the program doesn't actually calculate ALL
-the coordinates of the Julia sets.  It starts with the a pixel a the Julia
-set closest to the observer and moves into the screen until it either
-reaches the required bailout or the limit to the range of depth.  Zooming
-can be done in the same manner as with other fractals.	The visual effect
-(with other values unchanged) is similar to putting the boxed section
-under a pair of magnifying glasses.
+      2D Julia sets - complex number formula z' = f(z) + c\
+         The "from/to" parameters change the values of c.\
+      4D Julia sets - Quaternion or Hypercomplex formula z' = f(z) + c\
+         The four dimensions of c are set by the orbit parameters.\
+         The first two dimensions of z are determined by the corners values.\
+         The third and fourth dimensions of z are the "to/from" variables.\
+      4D Mandelbrot sets - Quaternion or Hypercomplex formula z' = f(z) + c\
+         The first two dimensions of c are determined by the corners values.\
+         The third and fourth dimensions of c are the "to/from" variables.\
 
-The variable associated with penetration level is the level of bailout
-there you decide to make the fractal solid.  In other words all bailout
-levels less than the penetration level are considered to be transparent,
-and those equal or greater to be opaque.  The farther away the apparent
-pixel is the dimmer the color.
+Distance between the eyes - set this to 2.5 if you want a red/blue
+   anaglyph image, 0 for a normal greyscale image.
+
+Number of z pixels - this sets how many layers are rendered in the screen
+   z-axis. Use a higher value with higher resolution video modes.
 
 The remainder of the parameters are needed to construct the red/blue
 picture so that the fractal appears with the desired depth and proper 'z'
@@ -1848,13 +2464,6 @@ at 4 inches beyond the screen and extend to 12 inches if your eyeballs are
 2.5 inches apart and located at a distance of 24 inches from the screen.
 The screen dimensions provide the reference frame.
 
-To the human eye blue appears brighter than red.  The Blue:Red ratio is
-used to compensate for this fact.  If the image appears reddish through
-the glasses raise this value until the image appears to be in shades of
-gray.  If it appears bluish lower the ratio.  Julibrots can only be shown
-in 256 red/blue colors for viewing in either stereo-graphic (red/blue
-funny glasses) or gray-scaled.	Fractint automatically loads either
-GLASSES1.MAP or ALTERN.MAP as appropriate.
 ;
 ;
 ~Topic=Diffusion Limited Aggregation, Label=HT_DIFFUS
@@ -1878,7 +2487,7 @@ back which includes actual pictures of real physical phenomena that behave
 like this.
 
 Thanks to Adrian Mariano for providing the diffusion code and
-documentation.
+documentation. Juan J. Buhler added the additional options.
 ;
 ;
 ~Topic=Lyapunov Fractals, Label=HT_LYAPUNOV
@@ -1890,23 +2499,24 @@ into two dimensions by letting the growth rate vary in a periodic fashion
 between two values.  Each pair of growth rates is run through a logistic
 population model and a value called the Lyapunov Exponent is calculated for
 each pair and is plotted. The Lyapunov Exponent is calculated by adding up
-log | r -2*r*x| over many cycles of the population model and dividing by the
-number of cycles. Negative Lyapunov exponents indicate a stable periodic
+log | r - 2*r*x| over many cycles of the population model and dividing by the
+number of cycles. Negative Lyapunov exponents indicate a stable, periodic
 behavior and are plotted in color. Positive Lyapunov exponents indicate
-chaos and are colored black.
+chaos (or a diverging model) and are colored black.
 
 Order parameter.
 Each possible periodic sequence yields a two dimensional space to explore.
-The Order parameter selects a sequence.  The default value 0
-represents the sequence ab which alternates between the two values of the
-growth parameter.  Here is how to calculate the space parameter for any
-desired sequence.  Take your sequence of a's and b's and arrange it so that
-it starts with at least 2 a's and ends with a b. It may be necessary to
-rotate the sequence or swap a's and b's. Strike the first a and the last b
-off the list and replace each remaining a with a 1 and each remaining b with
-a zero. Interpret this as a binary number and convert it into decimal.
+The Order parameter selects a sequence.  The default value 0 represents the
+sequence ab which alternates between the two values of the growth parameter.
+On the screen, the a values run vertically and the b values run
+horizontally. Here is how to calculate the space parameter for any desired
+sequence.  Take your sequence of a's and b's and arrange it so that it starts
+with at least 2 a's and ends with a b. It may be necessary to rotate the
+sequence or swap a's and b's. Strike the first a and the last b off the list
+and replace each remaining a with a 1 and each remaining b with a zero.
+Interpret this as a binary number and convert it into decimal.
 
-An Example
+An Example.
 I like sonnets.  A sonnet is a poem with fourteen lines that has the
 following rhyming sequence: abba abba abab cc.  Ignoring the rhyming couplet
 at the end, let's calculate the Order parameter for this pattern.
@@ -1917,16 +2527,25 @@ at the end, let's calculate the Order parameter for this pattern.
   512+64+32+8+2 = 618
 
 An Order parameter of 618 gives the Lyapunov equivalent of a sonnet.  "How do
-I make thee, let me count the ways..."
+I make thee? Let me count the ways..."
 
-Population Seed
+Population Seed.
 When two parts of a Lyapunov overlap, which spike overlaps which is strongly
-dependant on the initial value of the population model.  Any changes from
-using a different starting value between 0 and 1 may be subtle.
- 
-Reference:
+dependent on the initial value of the population model.  Any changes from
+using a different starting value between 0 and 1 may be subtle. The values 0
+and 1 are interpreted in a special manner. A Seed of 1 will choose a random
+number between 0 and 1 at the start of each pixel. A Seed of 0 will suppress
+resetting the seed value between pixels unless the population model diverges
+in which case a random seed will be used on the next pixel.
 
-A.K. Dewdney Mathematical Recreations Scientific American Sept. 1991
+Filter Cycles.
+Like the Bifurcation model, the Lyapunov allow you to set the number of
+cycles that will be run to allow the model to approach equilibrium before
+the lyapunov exponent calculation is begun. The default value of 0 uses one
+half of the iterations before beginning the calculation of the exponent.
+ 
+Reference.
+A.K. Dewdney, Mathematical Recreations, Scientific American, Sept. 1991
 ;
 ;
 ~Topic=Magnetic Fractals, Label=HT_MAGNET
@@ -1947,7 +2566,7 @@ temperatures are (surprise!) fractals.
 
 And that's all the technical (?) background you're getting here!  For more
 details (are you SERIOUS ?!) read "The Beauty of Fractals".  When you
-understand it all, you might like to re-write this section, before you
+understand it all, you might like to rewrite this section, before you
 start your new job as a professor of theoretical physics...
 
 In Fractint terms, the important bits of the above are "Fractals",
@@ -1959,19 +2578,17 @@ The formulae are a bit more complicated than the Z^2+C used for the
 Mandelbrot Set, that's all.  They are :
 
 ~Format-
-; Use this for the document...
-~Online-
-		   /  Z^2 + (C-1)  \\
-	MAGNET1 : |  -------------  | ^ 2
-		   \\  2*Z + (C-2)  /
+		  [		  ] 2
+		  |  Z^2 + (C-1)  |
+	MAGNET1 : | ------------- | 
+		  |  2*Z + (C-2)  |
+		  [		  ]
 
-		   /	  Z^3 + 3*(C-1)*Z + (C-1)*(C-2)      \\
-	MAGNET2 : |  ---------------------------------------  | ^ 2
-		   \\  3*(Z^2) + 3*(C-2)*Z + (C-1)*(C-2) - 1  /
-~Online+,Doc-
-; And this for online...
-~Include help2a.src
-~Doc+
+		  [					    ] 2
+		  |	 Z^3 + 3*(C-1)*Z + (C-1)*(C-2)	    |
+	MAGNET2 : | --------------------------------------- | 
+		  |  3*(Z^2) + 3*(C-2)*Z + (C-1)*(C-2) + 1  |
+		  [					    ]
 ~Format+
 
 These aren't quite as horrific as they look (oh yeah ?!) as they only
@@ -2092,4 +2709,3 @@ for drawing purposes, but can be used to achieve complex translations.
 ;
 ;
 ;
-

@@ -3,16 +3,17 @@
 
 #include	<stdio.h>
 #include	<stdlib.h>
+#ifndef XFRACT
 #include	<dos.h>
+#endif
 #include	<string.h>
 #include	"fractint.h"
-
-typedef unsigned char uchar;
+#include	"prototyp.h"
 
 typedef struct palett {
-   uchar red;
-   uchar green;
-   uchar blue;
+   BYTE red;
+   BYTE green;
+   BYTE blue;
 } Palettetype;
 
 extern Palettetype	dacbox[ 256 ];
@@ -40,8 +41,8 @@ int ValidateLuts( char * fn )
 {
 FILE * f;
 unsigned	r, g, b, index;
-unsigned char	line[160];
-unsigned char	temp[81];
+CHAR	line[160];
+CHAR	temp[81];
 	strcpy (temp,fn);
 	if (strchr(temp,'.') == NULL) /* Did name have an extension? */
 		strcat(temp,".map");  /* No? Then add .map */
@@ -55,11 +56,11 @@ unsigned char	temp[81];
 	for( index = 0; index < 256; index++ ) {
 		if (fgets(line,100,f) == NULL)
 			break;
-		sscanf( line, "%d %d %d", &r, &g, &b );
+		sscanf( line, "%u %u %u", &r, &g, &b );
 		/** load global dac values **/
-		dacbox[index].red   = r >> 2;	/* maps default to 8 bits */
-		dacbox[index].green = g >> 2;	/* DAC wants 6 bits */
-		dacbox[index].blue  = b >> 2;
+		dacbox[index].red   = (r%256) >> 2;	/* maps default to 8 bits */
+		dacbox[index].green = (g%256) >> 2;	/* DAC wants 6 bits */
+		dacbox[index].blue  = (b%256) >> 2;
 	}
 	fclose( f );
 	while (index < 256)  { /* zap unset entries */

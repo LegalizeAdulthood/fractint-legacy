@@ -25,10 +25,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "port.h"
 #include "targa_lc.h"
+#include "prototyp.h"
 
+#ifndef XFRACT
 extern char rlebuf[258];    /* RLE-state variables */
+#else
+char rlebuf[258];    /* RLE-state variables */
+#endif
 static int state, count, bufp;
 
 /**************************************

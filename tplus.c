@@ -12,13 +12,19 @@
 
 */
 
+#include <stdio.h>
+#ifndef XFRACT
 #include <conio.h>
 #include <string.h>
-#include "tplus.h"
-
 #ifdef __TURBOC__
-   #include <dos.h>
+#include <dos.h>
 #endif
+#include "port.h"
+#else
+#include "fractint.h"
+#endif
+#include "tplus.h"
+#include "prototyp.h"
 
 struct TPWrite far WriteOffsets = {
       0,       1,	2,	 3,	  0x400,   0x401,      0x402,
@@ -35,6 +41,8 @@ struct TPRead far ReadOffsets = {
 struct _BOARD far TPlus;
 int TPlusErr = 0;
 
+#ifndef XFRACT
+
 void WriteTPWord(unsigned Register, unsigned Number) {
    OUTPORTB(TPlus.Write.INDIRECT, Register);
    OUTPORTW(TPlus.Write.WBL, Number);
@@ -50,9 +58,9 @@ unsigned ReadTPWord(unsigned Register) {
    return(INPORTW(TPlus.Read.RBL));
 }
 
-unsigned char ReadTPByte(unsigned Register) {
+BYTE ReadTPByte(unsigned Register) {
    OUTPORTB(TPlus.Write.INDIRECT, Register);
-   return((unsigned char)INPORTB(TPlus.Read.RBL));
+   return((BYTE)INPORTB(TPlus.Read.RBL));
 }
 
 void DisableMemory(void) {
@@ -131,9 +139,7 @@ int _SetBoard(int BoardNumber) {
 
 #include <stdio.h>
 
-extern void findpath(char*, char*);
-
-int TPlusLUT(unsigned char far *LUTData, unsigned Index, unsigned Number,
+int TPlusLUT(BYTE far *LUTData, unsigned Index, unsigned Number,
              unsigned DosFlag)
 {
    struct TPLUS_IO far *IOPtr;
@@ -162,7 +168,7 @@ int TPlusLUT(unsigned char far *LUTData, unsigned Index, unsigned Number,
 int SetVGA_LUT(void) {
    char PathName[80];
    FILE *Data;
-   unsigned char LUTData[256 * 3];
+   BYTE LUTData[256 * 3];
 
    findpath("tplus.dat", PathName);
    if(PathName[0]) {
@@ -276,7 +282,7 @@ int SetBoard(int BoardNumber) {
 
    MemBase	  = TPlus.Reg[MEM_BASE];
    MemBase += (TPlus.Reg[MEM_MAP] != 3) ? 8 : 0;
-   TPlus.Screen = (unsigned char far *)(MemBase << 28);
+   TPlus.Screen = (BYTE far *)(MemBase << 28);
 
    if(!TargapSys(IOBASE, DOS_READ))
       return(0);
@@ -495,3 +501,5 @@ void TPlusZoom(int Zoom) {
    Mode2 |= (Zoom << 2);
    OUTPORTB(TPlus.Write.MODE2, Mode2);
 }
+
+#endif

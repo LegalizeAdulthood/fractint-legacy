@@ -6,14 +6,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#ifdef XFRACT
+#include <unistd.h>
+#endif
 #include "fractint.h"
 #include "fractype.h"
 #include "targa_lc.h"
+#include "prototyp.h"
 
 /* routines in this module	*/
-
-void loadfile_overlay(void);
-int  read_overlay(void);
 
 static int  find_fractal_info(char *,struct fractal_info *);
 static void load_ext_blk(char far *loadptr,int loadlen);
@@ -23,6 +24,7 @@ static void backwardscompat();
 int filetype;
 int loaded3d;
 
+extern char   maxfn;                    /* num trig functions if formula */
 extern int    showfile; 		/* has file been displayed yet? */
 extern char   readname[];		/* name of fractal input file */
 extern char   far *resume_info; 	/* pointer to resume info if alloc'd */
@@ -39,7 +41,7 @@ extern int    fractype; 		/* fractal type 	    */
 extern double xxmin,xxmax;		/* corner values	    */
 extern double yymin,yymax;		/* corner values	    */
 extern double xx3rd,yy3rd;		/* corner values	    */
-extern double param[4]; 		/* parameters		    */
+extern double param[]; 		    /* parameters		    */
 extern int    fillcolor;		/* fill color: -1 = normal  */
 extern int    inside;			/* inside color: 1=blue     */
 extern int    outside;			/* outside color, if set    */
@@ -49,7 +51,7 @@ extern int    LogFlag;			/* non-zero if logarithmic palettes */
 extern int    rflag, rseed;
 extern int    usr_periodicitycheck;
 extern char   useinitorbit;
-extern struct complex initorbit;
+extern _CMPLX initorbit;
 extern int    potflag;			/* continuous potential flag */
 extern int    pot16bit;
 extern double potparam[3];		/* three potential parameters*/
@@ -93,6 +95,23 @@ extern int    rotate_lo,rotate_hi;
 extern int far *ranges;
 extern int    rangeslen;
 extern int    invert;
+extern int    num_fractal_types;
+extern float  screenaspect;
+extern     double mxmaxfp;
+extern     double mxminfp;
+extern     double mymaxfp;
+extern     double myminfp;
+extern     int   zdots;
+extern     float originfp;
+extern     float depthfp;
+extern     float heightfp;
+extern     float widthfp;
+extern     float distfp;
+extern     float eyesfp;
+extern     int   neworbittype;
+extern     short juli3Dmode;
+extern     int   major_method;  /* inverse julia method */
+extern     int   minor_method;
 
 static FILE *fp;
 
@@ -104,6 +123,9 @@ int skipxdots,skipydots;	/* for decoder, when reducing image */
 
 void loadfile_overlay() { }	/* for restore_active_ovly */
 
+#ifdef XFRACT
+extern int decode_fractal_info();
+#endif
 
 int read_overlay()	/* read overlay/3D files, if reqr'd */
 {
@@ -130,6 +152,10 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
 
    maxit	= read_info.iterations;
    fractype	= read_info.fractal_type;
+   if (fractype < 0 || fractype >= num_fractal_types) {
+      sprintf(msg,"Warning: %s has a bad fractal type; using 0",readname);
+      fractype = 0;
+   }
    curfractalspecific = &fractalspecific[fractype];
    xxmin	= read_info.xmin;
    xxmax	= read_info.xmax;
@@ -226,7 +252,7 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
 	 filexdots >>= 1;
       fileaspectratio = read_info.faspectratio;
       if (fileaspectratio < 0.01)	/* fix files produced in early v14.1 */
-	 fileaspectratio = SCREENASPECT;
+	 fileaspectratio = screenaspect;
       save_system  = read_info.system;
       save_release = read_info.release; /* from fmt 5 on we know real number */
       if (read_info.version == 5	/* except a few early fmt 5 cases: */
@@ -261,6 +287,31 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
       fillcolor		= read_info.fillcolor;
       }
 
+   if(read_info.version > 8) {
+   mxmaxfp   =  read_info.mxmaxfp        ;
+   mxminfp   =  read_info.mxminfp        ;
+   mymaxfp   =  read_info.mymaxfp        ;
+   myminfp   =  read_info.myminfp        ;
+   zdots     =  read_info.zdots          ;		
+   originfp  =  read_info.originfp       ;
+   depthfp   =  read_info.depthfp        ;	
+   heightfp  =  read_info.heightfp       ;
+   widthfp   =  read_info.widthfp        ;	
+   distfp    =  read_info.distfp         ;	
+   eyesfp    =  read_info.eyesfp         ;	
+   neworbittype = read_info.orbittype    ;
+   juli3Dmode   = read_info.juli3Dmode   ;
+   maxfn    =   read_info.maxfn          ;
+   major_method = read_info.inversejulia >> 8;
+   minor_method = read_info.inversejulia & 255;
+   param[4] = read_info.dparm5;
+   param[5] = read_info.dparm6;
+   param[6] = read_info.dparm7;
+   param[7] = read_info.dparm8;
+   param[8] = read_info.dparm9;
+   param[9] = read_info.dparm10;
+      }
+
    if(read_info.version < 4) { /* pre-version 14.0? */
       backwardscompat(&read_info); /* translate obsolete types */
       if(LogFlag)
@@ -278,6 +329,17 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
       if(read_info.version == 6 || read_info.version == 7)
          LogFlag = 0;
    set_trig_pointers(-1);
+
+   if(read_info.version < 9) { /* pre-version 18.0? */
+      /* forcesymmetry==1000 means we want to force symmetry but don't
+         know which symmetry yet, will find out in setsymmetry() */
+      if(outside==REAL || outside==IMAG || outside==MULT || outside==SUM)
+         if(forcesymmetry == 999)
+            forcesymmetry = 1000;
+      }
+   if(save_release < 1725) { /* pre-version 17.25 */
+      set_if_old_bif(); /* translate bifurcation types */
+   }
 
    if (display3d)		    /* PB - a klooge till the meaning of */
       usr_floatflag = oldfloatflag; /*	floatflag in line3d is clarified */
@@ -332,7 +394,7 @@ static int find_fractal_info(gif_file,info)
 char *gif_file;
 struct fractal_info *info;
 {
-   unsigned char gifstart[18];
+   BYTE gifstart[18];
    char temp1[81];
    int scan_extend, block_type, block_len, data_len;
    int fractinf_len;
@@ -342,14 +404,18 @@ struct fractal_info *info;
       return(-1);
 
    fread(gifstart,18,1,fp);
+#ifndef XFRACT
    if (strncmp(gifstart,"GIF",3)!=0) { /* not GIF, maybe old .tga? */
-      if(fread(info,sizeof(struct fractal_info),1,fp)==1 &&
+#else
+   if (strncmp((char *)gifstart,"GIF",3)!=0) { /* not GIF, maybe old .tga? */
+#endif
+      if(fread(info,FRACTAL_INFO_SIZE,1,fp)==1 &&
 		 strncmp(info->info_id,"Fractal",8)==0) {
 	 filetype = 1; /* Targa 16 */
-	 fileydots = *(int *)&gifstart[O_VSIZE];
-	 filexdots = *(int *)&gifstart[O_HSIZE];
+	 GET16(gifstart[O_VSIZE],fileydots);
+	 GET16(gifstart[O_HSIZE],filexdots);
 	 filecolors = info->colors;
-	 fileaspectratio = SCREENASPECT;
+	 fileaspectratio = screenaspect;
 	 if(fileydots == info->ydots && filexdots == info->xdots) {
 	    fclose(fp);
 	    return(0);
@@ -360,20 +426,20 @@ struct fractal_info *info;
       }
 
    filetype = 0; /* GIF */
-   filexdots = gifstart[7]*256+gifstart[6];
-   fileydots = gifstart[9]*256+gifstart[8];
+   GET16(gifstart[6],filexdots);
+   GET16(gifstart[8],fileydots);
    filecolors = 2 << (gifstart[10] & 7);
    fileaspectratio = 0; /* unknown */
    if (gifstart[12]) { /* calc reasonably close value from gif header */
       fileaspectratio = (64.0 / ((double)(gifstart[12]) + 15.0))
 		      * (double)fileydots / (double)filexdots;
-      if ( fileaspectratio > SCREENASPECT-0.03
-	&& fileaspectratio < SCREENASPECT+0.03)
-	 fileaspectratio = SCREENASPECT;
+      if ( fileaspectratio > screenaspect-0.03
+	&& fileaspectratio < screenaspect+0.03)
+	 fileaspectratio = screenaspect;
       }
    else
       if (fileydots * 4 == filexdots * 3) /* assume the common square pixels */
-	 fileaspectratio = SCREENASPECT;
+	 fileaspectratio = screenaspect;
 
    if (resume_info != NULL) { /* free the prior area if there is one */
       farmemfree(resume_info);
@@ -408,13 +474,16 @@ struct fractal_info *info;
 	fractint004	ranges info
    */
 
-   memset(info,0,sizeof(FRACTAL_INFO));
-   fractinf_len = sizeof(FRACTAL_INFO) + (sizeof(FRACTAL_INFO)+254)/255;
+   memset(info,0,FRACTAL_INFO_SIZE);
+   fractinf_len = FRACTAL_INFO_SIZE + (FRACTAL_INFO_SIZE+254)/255;
    fseek(fp,(long)(-1-fractinf_len),SEEK_END);
-   fread(info,1,sizeof(FRACTAL_INFO),fp);
-   if (strcmp(INFO_ID,info->info_id) == 0)
+   fread(info,1,FRACTAL_INFO_SIZE,fp);
+   if (strcmp(INFO_ID,info->info_id) == 0) {
+#ifdef XFRACT
+       decode_fractal_info(info,1);
+#endif
       hdr_offset = -1-fractinf_len;
-   else {
+   } else {
       /* didn't work 1st try, maybe an older vsn, maybe junk at eof, scan: */
       int offset,i;
       char tmpbuf[110];
@@ -428,7 +497,10 @@ struct fractal_info *info;
 	    if (!strcmp(INFO_ID,&tmpbuf[i])) { /* found header? */
 	       strcpy(info->info_id,INFO_ID);
 	       fseek(fp,(long)(hdr_offset=i-offset),SEEK_END);
-	       fread(info,1,sizeof(FRACTAL_INFO),fp);
+	       fread(info,1,FRACTAL_INFO_SIZE,fp);
+#ifdef XFRACT
+	       decode_fractal_info(info,1);
+#endif
 	       offset = 10000; /* force exit from outer loop */
 	       break;
 	       }
@@ -457,7 +529,10 @@ struct fractal_info *info;
 		     scan_extend = 0;
 		     break;
 		     }
-		  load_ext_blk((char far *)info,sizeof(FRACTAL_INFO));
+		  load_ext_blk((char far *)info,FRACTAL_INFO_SIZE);
+#ifdef XFRACT
+		  decode_fractal_info(info,1);
+#endif
 		  scan_extend = 2;
 		  /* now we know total extension len, back up to first block */
 		  fseek(fp,0L-info->tot_extend_len,SEEK_CUR);
@@ -501,6 +576,9 @@ struct fractal_info *info;
 		     fseek(fp,(long)(0-block_len),SEEK_CUR);
 		     load_ext_blk((char far *)ranges,data_len);
 		     rangeslen = data_len/2;
+#ifdef XFRACTINT
+		     fix_ranges(ranges,rangeslen,1);
+#endif
 		     }
 		  break;
 	       default:
@@ -510,7 +588,7 @@ struct fractal_info *info;
 	 }
 
       fclose(fp);
-      fileaspectratio = SCREENASPECT; /* if not >= v15, this is correct */
+      fileaspectratio = screenaspect; /* if not >= v15, this is correct */
       return(0);
       }
 
@@ -663,4 +741,31 @@ static void backwardscompat(struct fractal_info *info)
 	 break;
       }
    curfractalspecific = &fractalspecific[fractype];
+}
+
+/* switch old bifurcation fractal types to new generalizations */
+void set_if_old_bif(void)
+{
+/* set functions if not set already, may need to check 'functionpreloaded'
+   before calling this routine.  JCO 7/5/92 */
+
+   ENTER_OVLY(OVLY_LOADFILE);
+   switch(fractype) {
+      case BIFURCATION:
+      case LBIFURCATION:
+      case BIFSTEWART:
+      case LBIFSTEWART:
+      case BIFLAMBDA:
+      case LBIFLAMBDA:
+        set_trig_array(0,"ident");
+        break;
+
+      case BIFEQSINPI:
+      case LBIFEQSINPI:
+      case BIFADSINPI:
+      case LBIFADSINPI:
+        set_trig_array(0,"sin");
+        break;
+   }
+   EXIT_OVLY;
 }

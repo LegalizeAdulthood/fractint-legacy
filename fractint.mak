@@ -4,20 +4,34 @@
 # available for the compiler.  NMK would not trigger subsequent recompiles
 # due to a rebuild of helpdefs.h file if we used a single step.
 
+# the following klooge lets us define an alternate link/def file for 
+# the new overlay structure available under MSC7
+
+!ifdef C7
+DEFFILE  = fractint.def
+LINKFILE = fractint.ln7
+LINKER="link /dynamic:1024 $(LINKER)"
+!else
+DEFFILE  = 
+LINKFILE = fractint.lnk
+!endif
+
 # Next is a pseudo-target for nmake/nmk.  It just generates harmless
 # warnings with make.
 
 all : fractint.exe
 
 .asm.obj:
-	$(AS) /ML $*;
+	$(AS) $*;
 # for Quick Assembler
-#       $(AS) /c $*.asm
+#       $(AS) $*.asm
 
 .c.obj:
 	  $(CC) /AM /W1 /FPi /c $(OptT) $*.c
 
 Optsize = $(CC) /AM /W1 /FPi /c $(OptS) $*.c
+
+Optnoalias = $(CC) /AM /W1 /FPi /c $(OptN) $*.c
 
 lorenz.obj : lorenz.c fractint.h fractype.h
 
@@ -35,19 +49,33 @@ fractalp.obj : fractalp.c fractint.h fractype.h mpmath.h helpdefs.h
 
 calcfrac.obj : calcfrac.c fractint.h mpmath.h
 
+miscfrac.obj : miscfrac.c fractint.h mpmath.h
+
 fracsubr.obj : fracsubr.c fractint.h
+
+jiim.obj : jiim.c
 
 fracsuba.obj : fracsuba.asm
 
 parser.obj : parser.c fractint.h mpmath.h
+	$(Optnoalias)
+
+parserfp.obj : parserfp.c fractint.h mpmath.h
+	$(Optnoalias)
+
+parsera.obj: parsera.asm
+# for MASM
+	$(AS) /e parsera;
+# for QuickAssembler
+#   $(AS) /FPi parsera.asm
 
 calcmand.obj : calcmand.asm
 
 calmanfp.obj : calmanfp.asm
 # for MASM
-	$(AS) /e /ML calmanfp;
+	$(AS) /e calmanfp;
 # for QuickAssembler
-#   $(AS) /FPi /c calmanfp.asm
+#   $(AS) /FPi calmanfp.asm
 
 cmdfiles.obj : cmdfiles.c fractint.h
 	$(Optsize)
@@ -88,14 +116,17 @@ intro.obj : intro.c fractint.h helpdefs.h
 line3d.obj : line3d.c fractint.h
 
 newton.obj : newton.asm
-	$(AS) /e /ML newton;
+	$(AS) /e newton;
 
 printer.obj : printer.c fractint.h
 	$(Optsize)
 
 printera.obj : printera.asm
 
-prompts.obj : prompts.c fractint.h fractype.h helpdefs.h
+prompts1.obj : prompts1.c fractint.h fractype.h helpdefs.h
+	$(Optsize)
+
+prompts2.obj : prompts2.c fractint.h fractype.h helpdefs.h
 	$(Optsize)
 
 rotate.obj : rotate.c fractint.h helpdefs.h
@@ -116,11 +147,13 @@ yourvid.obj : yourvid.c
 fpu387.obj : fpu387.asm
 
 fpu087.obj : fpu087.asm
-	$(AS) /e /ML fpu087;
+	$(AS) /e fpu087;
 
 f16.obj : f16.c targa_lc.h
 
 mpmath_c.obj : mpmath_c.c mpmath.h
+
+hcmplx.obj : hcmplx.c fractint.h
 
 mpmath_a.obj : mpmath_a.asm
 
@@ -142,6 +175,9 @@ tplus.obj : tplus.c tplus.h
 
 tplus_a.obj : tplus_a.asm
 
+lyapunov.obj : lyapunov.asm
+	$(AS) /e lyapunov;
+
 tp3d.obj : tp3d.c fractint.h
 
 slideshw.obj : slideshw.c
@@ -149,15 +185,20 @@ slideshw.obj : slideshw.c
 
 fractint.exe : fractint.obj help.obj loadfile.obj encoder.obj gifview.obj \
      general.obj calcmand.obj calmanfp.obj fractals.obj fractalp.obj calcfrac.obj \
-     testpt.obj decoder.obj rotate.obj yourvid.obj prompts.obj parser.obj \
-     diskvid.obj line3d.obj 3d.obj newton.obj cmdfiles.obj \
-     intro.obj slideshw.obj \
+     testpt.obj decoder.obj rotate.obj yourvid.obj prompts1.obj prompts2.obj parser.obj \
+     parserfp.obj parsera.obj diskvid.obj line3d.obj 3d.obj newton.obj cmdfiles.obj \
+     intro.obj slideshw.obj jiim.obj miscfrac.obj \
      targa.obj loadmap.obj printer.obj printera.obj fracsubr.obj fracsuba.obj \
      video.obj tgaview.obj f16.obj fr8514a.obj loadfdos.obj \
      hgcfra.obj fpu087.obj fpu387.obj mpmath_c.obj mpmath_a.obj \
      lorenz.obj plot3d.obj jb.obj zoom.obj miscres.obj miscovl.obj \
      realdos.obj lsys.obj lsysa.obj editpal.obj tplus.obj tplus_a.obj tp3d.obj \
-     fractint.hlp
-#       $(LINKER) /ST:4096 /CO /NOE /SE:200 /PACKC /F /EXEPACK @fractint.lnk
-	$(LINKER) /ST:4096 /SE:200 /PACKC /F /EXEPACK /NOE @fractint.lnk
+     lyapunov.obj fractint.hlp hcmplx.obj $(DEFFILE) $(LINKFILE)
+	$(LINKER) /ST:4096 /SE:200 /PACKC /F /NOE @$(LINKFILE) > foo
+!ifdef C7
+        @echo (Any overlay_thunks (L4059) warnings from the linker are harmless) >> foo
+!endif
+	type foo
+!ifndef DEBUG
 	hc /a
+!endif

@@ -4,18 +4,47 @@ set CL=
 set MASM=
 set LINK=
 
-rem ** Use next two for C6.00A
-nmk "CC=cl" "AS=masm" "LINKER=link" "OptT=/Oecilgtaz /Gs" frachelp.mak
+rem ** now un-comment out the goto that applies to you...
+rem goto msc7debug
+    goto msc7
+rem goto msc6
+rem goto msc5
+rem goto quickc
+
+:msc7debug
+rem ** Microsoft C7.00 with CodeView Debugging
+echo Building Fractint using MSC 7 using Debug
+nmake "CC=cl /Zi" "AS=masm /ML /Zi" "LINKER=link /CO " "OptT= " "C7=YES" frachelp.mak
 if errorlevel 1 goto exit
-nmk "CC=cl" "AS=masm" "LINKER=link" "OptT=/DC6 /Oecilgtaz /Gs" "OptS=/DC6 /Osleazcg /Gs" fractint.mak
+nmake "CC=cl /Zi" "AS=masm /ML /Zi" "LINKER=link /CO" "OptT= " "OptS= " "OptN= " "DEBUG=YES" "C7=YES" fractint.mak
+goto exit
 
-rem ** Use next two for C5.1
-rem make "CC=cl" "AS=masm" "LINKER=link" "OptT=/Oait" frachelp.mak
-rem if errorlevel 1 goto exit
-rem make "CC=cl" "AS=masm" "LINKER=link" "OptT=/Oait /Gs" "OptS=/Oais /Gs" fractint.mak
+:msc7
+rem ** Microsoft C7.00 or Visual C++ (normal case)
+echo Building Fractint using MSC 7 or Visual C++
+nmake "CC=cl /Gs" "AS=masm /ML" "LINKER=link" "OptT=/Oilg" "C7=YES" frachelp.mak
+if errorlevel 1 goto exit
+nmake "CC=cl /Gs /DC6" "AS=masm /ML" "LINKER=link" "OptT=/Oecilgtaz" "OptS=/Osleazcg" "OptN=/Oilg" "C7=YES" fractint.mak
+goto exit
 
-rem ** Use for QuickC 2.51 where qcl is both the C compiler and the assembler
-rem nmake "CC=qcl" "AS=qcl" "LINKER=qlink" "OptT=" frachelp.mak
-rem if errorlevel 1 goto exit
-rem nmake "CC=qcl" "AS=qcl" "LINKER=qlink" "OptT=/Olt /Gs" "OptS=/Ols /Gs" fractint.mak
+:msc6
+rem ** Microsoft C6.00A
+nmk "CC=cl /Gs" "AS=masm /ML" "LINKER=link" "OptT=/Oecilgtaz" frachelp.mak
+if errorlevel 1 goto exit
+nmk "CC=cl /Gs /DC6 /qc" "AS=masm /ML" "LINKER=link" "OptT=/Oecilgtaz" "OptS=/Osleazcg" "OptN=/Oeilg" fractint.mak
+goto exit
+
+:msc5
+rem ** Microsoft C5.1
+make "CC=cl" "AS=masm /ML" "LINKER=link" "OptT=/Oait" frachelp.mak
+if errorlevel 1 goto exit
+make "CC=cl /Gs" "AS=masm /ML" "LINKER=link" "OptT=/Oait" "OptS=/Oais"  "OptN=/Oais" fractint.mak
+goto exit
+
+:quickc
+rem ** Use for QuickC 2.50
+nmake "CC=qcl" "AS=masm /c /ML" "LINKER=link" "OptT=" frachelp.mak
+if errorlevel 1 goto exit
+nmake "CC=qcl /Gs" "AS=masm /c /ML" "LINKER=link" "OptT=/Olt" "OptS=/Ols" "OptN=/Ols" fractint.mak
+
 :exit

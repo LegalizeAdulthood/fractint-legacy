@@ -1,3 +1,6 @@
+#ifndef FRACTYPE_H
+#define FRACTYPE_H
+
 #define SIN		0
 #define COS		1
 #define SINH		2
@@ -157,4 +160,50 @@
 #define FPLORENZ3D1            124
 #define FPLORENZ3D3            125
 #define FPLORENZ3D4            126
+#define LLAMBDAFNFN            127
+#define FPLAMBDAFNFN           128
+#define LJULFNFN               129
+#define FPJULFNFN              130
+#define LMANLAMFNFN            131
+#define FPMANLAMFNFN           132
+#define LMANFNFN               133
+#define FPMANFNFN              134
+#define LBIFMAY                135
+#define BIFMAY                 136
+#define MPHALLEY               137
+#define HALLEY                 138
+#define DYNAMICFP              139
+#define QUATFP                 140
+#define QUATJULFP              141
+#define CELLULAR               142
+#define JULIBROTFP             143
+#define INVERSEJULIA           144
+#define INVERSEJULIAFP         145
+#define MANDELCLOUD            146
+#define PHOENIX                147
+#define PHOENIXFP              148
+#define MANDPHOENIX            149
+#define MANDPHOENIXFP          150
+#define HYPERCMPLXFP	       151	
+#define HYPERCMPLXJFP	       152
+#define FROTH                  153
+#define FROTHFP                154
+#define MANDEL4FP              155
+#define JULIA4FP               156
+#define MARKSMANDELFP          157
+#define MARKSJULIAFP           158
+#define ICON                   159
+#define ICON3D                 160
 
+/* demonstration Mandelbrot and Julia fractals
+
+#define DEMOWALK            161
+#define DEMOMANDEL          160
+#define DEMOJULIA           161
+#define DEMOMANDELFP        162
+#define DEMOJULIAFP         163
+
+*/
+
+
+#endif

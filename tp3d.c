@@ -1,5 +1,7 @@
+#include <stdio.h>
 #include "mpmath.h"
 #include "fractint.h"
+#include "prototyp.h"
 
 /* 3D Transparency Variables, MCP 5-30-91 */
 extern double xxmin, xxmax, yymin, yymax, zzmin, zzmax, ttmin, ttmax;
@@ -7,18 +9,14 @@ extern int Transparent3D, SolidCore, NumFrames;
 extern unsigned CoreRed, CoreGreen, CoreBlue;
 extern int tpdepth, tptime, symmetry, AntiAliasing;
 
-extern void (*StkAdd)(void);
-
 extern int xdots, ydots, colors, bitshift;
 extern int row, col, inside, ShadowColors;
 extern int TPlusFlag, MaxColorRes, NonInterlaced;
 
-typedef unsigned char uchar;
-
 typedef struct palett {
-   uchar red;
-   uchar green;
-   uchar blue;
+   BYTE red;
+   BYTE green;
+   BYTE blue;
 } Palettetype;
 
 extern Palettetype	dacbox[ 256 ];
@@ -32,17 +30,17 @@ static long lxxmin, lxxmax, lyymin, lyymax, lzzmin, lzzmax, lttmin, lttmax;
 int TranspSymmetry = 0;
 
 /* TARGA+ prototypes */
-void WriteTPlusBankedPixel(int, int, unsigned long);
-unsigned long ReadTPlusBankedPixel(int, int);
 int MatchTPlusMode(unsigned xdots, unsigned ydots, unsigned MaxColorRes,
 		   unsigned PixelZoom, unsigned NonInterlaced);
 int CheckForTPlus(void);
 
+#ifndef XFRACT
 void (*PutTC)(int col, int row, unsigned long color) = WriteTPlusBankedPixel;
 unsigned long (*GetTC)(int col, int row) = ReadTPlusBankedPixel;
-
-/* Fractint prototypes (I don't like warning messages! MCP) */
-int calcfract(void);
+#else
+void (*PutTC)(int , int , unsigned long ) = WriteTPlusBankedPixel;
+unsigned long (*GetTC)(int , int ) = ReadTPlusBankedPixel;
+#endif
 
 
 char far * far TCError[] =
@@ -121,6 +119,7 @@ void TranspPerPixel(int MathType, union Arg far *xy, union Arg far *zt)
            zt->d.x = zzmin + (dz * tpdepth);
            zt->d.y = ttmin + (dt * tptime);
            break;
+#ifndef XFRACT
       case M_MATH:
            xy->m.x = *d2MP(xxmin + (dx * col));
            xy->m.y = *d2MP(yymax + (dy * row));
@@ -132,6 +131,7 @@ void TranspPerPixel(int MathType, union Arg far *xy, union Arg far *zt)
            xy->l.y = lyymax + (ldy * row);
            zt->l.x = lzzmin + (ldz * tpdepth);
            zt->l.y = lttmin + (ldt * tptime);
+#endif
    }
 }
 

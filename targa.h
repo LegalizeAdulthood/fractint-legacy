@@ -1,10 +1,12 @@
 /* targa.h */
 
 
-#ifndef TARGA
-#define TARGA
+#ifndef TARGA_H
+#define TARGA_H
 
+#ifndef XFRACT
 #include	<dos.h>
+#endif
 
 
 extern unsigned int _dataseg_xx;

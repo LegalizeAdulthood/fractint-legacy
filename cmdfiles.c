@@ -8,22 +8,31 @@
 #include <string.h>
 #include <float.h>
 #include <ctype.h>
+#include <time.h>
+#ifndef XFRACT
+#include <bios.h>
+#endif
 #include "fractint.h"
+#include "fractype.h"
 #ifdef __TURBOC__
 #include <dir.h>
 #endif
+#include "prototyp.h"
 
-/* routines in this module	*/
-
-void cmdfiles_overlay(void);
-int  cmdfiles(int argc, char *argv[]);
-int  load_commands(FILE *);
-void set_3d_defaults(void);
+#ifdef XFRACT
+#define DEFAULT_PRINTER 5	/* Assume a Postscript printer */
+#define PRT_RESOLUTION  100	/* Assume medium resolution    */
+#define INIT_GIF87      0	/* Turn on GIF 89a processing  */
+#else
+#define DEFAULT_PRINTER 2	/* Assume an IBM/Epson printer */
+#define PRT_RESOLUTION  60	/* Assume low resolution       */
+#define INIT_GIF87      0	/* Turn on GIF 89a processing  */
+#endif
 
 static int  cmdfile(FILE *,int);
 static int  next_command(char *,int,FILE *,char *,int *,int);
 static int  next_line(FILE *,char *,int);
-static int  cmdarg(char *,int);
+int  cmdarg(char *,int);
 static void argerror(char *);
 static void initvars_run(void);
 static void initvars_restart(void);
@@ -33,8 +42,6 @@ static void reset_ifs_defn(void);
 static void parse_textcolors(char *value);
 static int  parse_colors(char *value);
 static int  parse_printer(char *value);
-
-extern int  makedoc_msg_func(int,int);
 
 /* variables defined by the command line/files processor */
 int		showdot;	/* color to show crawling graphics cursor */
@@ -47,6 +54,7 @@ char	autoname[80]={"auto.key"};      /* record auto keystrokes here */
 int	potflag=0;		/* continuous potential enabled? */
 int	pot16bit;		/* store 16 bit continuous potential values */
 int	gif87a_flag;		/* 1 if GIF87a format, 0 otherwise */
+int     dither_flag;		/* 1 if want to dither GIFs */
 int	askvideo;		/* flag for video prompting */
 char	floatflag;
 int	biomorph;		/* flag for biomorph */
@@ -76,7 +84,7 @@ double	initorbit[2];		/* initial orbitvalue */
 char	useinitorbit;		/* flag for initorbit */
 int	initmode;		/* initial video mode	    */
 int	initcyclelimit; 	/* initial cycle limit	    */
-unsigned char usemag;		/* use center-mag corners   */
+BYTE usemag;		/* use center-mag corners   */
 int	bailout;		/* user input bailout value */
 double	inversion[3];		/* radius, xcenter, ycenter */
 int	rotate_lo,rotate_hi;	/* cycling color range	    */
@@ -87,9 +95,14 @@ int	colorstate;		/* 0, dacbox matches default (bios or map=) */
 				/* 1, dacbox matches no known defined map   */
 				/* 2, dacbox matches the colorfile map	    */
 int	colorpreloaded; 	/* if dacbox preloaded for next mode select */
+int 	save_release;		/* release creating PAR file*/
+
+extern int calc_status;
 extern int Targa_Overlay;
 int Targa_Out = 0;
 char	colorfile[80];		/* from last <l> <s> or colors=@filename    */
+int functionpreloaded; /* if function loaded for new bifs, JCO 7/5/92 */
+float	screenaspect = DEFAULTASPECT;	/* aspect ratio of the screen */
 
 /* TARGA+ variables */
 int	TPlusFlag;		/* Use the TARGA+ if found  */
@@ -108,11 +121,25 @@ unsigned CoreRed, CoreGreen, CoreBlue, NumFrames;
 /* AntiAliasing variables, MCP 6-6-91 */
 int AntiAliasing, Shadowing;
 
+/* Julibrot variables TIW 1/24/93 */
+extern double mxmaxfp, mxminfp, mymaxfp, myminfp, originfp;
+extern double depthfp, heightfp, widthfp, distfp, eyesfp;
+extern int zdots; 
+
+extern int lastorbittype, neworbittype;
+extern char *juli3Doptions[];
+extern int juli3Dmode;
+extern struct moreparams far moreparams[];
+
+/* inverse julia methods. MVS 3/15/93 */
+extern int major_method;
+extern int minor_method;
+
 int	orbitsave = 0;		/* for IFS and LORENZ to output acrospin file */
 int orbit_delay;                /* clock ticks delating orbit release */
 extern	int invert;
 extern int fractype;		/* fractal type 	    */
-extern double param[4]; 	/* initial parameters	    */
+extern double param[]; 	    /* initial parameters	    */
 extern double xxmin,xxmax;	/* initial corner values    */
 extern double yymin,yymax;	/* initial corner values    */
 extern double xx3rd,yy3rd;	/* initial corner values    */
@@ -128,9 +155,10 @@ extern int Ambient;
 extern char light_name[];
 extern int BRIEF;
 extern int RAY;
+extern int release;
 
-extern unsigned char back_color[];
-extern unsigned char dacbox[256][3];
+extern BYTE back_color[];
+extern BYTE dacbox[256][3];
 extern struct videoinfo far videotable[];
 extern int fpu;
 extern int iit;
@@ -143,19 +171,21 @@ extern int Printer_Resolution, LPTNumber,
 	   Printer_RFrequency, Printer_RAngle, Printer_RStyle,
 	   Printer_GFrequency, Printer_GAngle, Printer_GStyle,
 	   Printer_BFrequency, Printer_BAngle, Printer_BStyle,
+	   Printer_Compress,
 	   EPSFileType, ColorPS,
 	   Print_To_File,Printer_CRLF;		/* for printer functions */
 
 int	transparent[2]; 	/* transparency min/max values */
 int	LogFlag;		/* Logarithmic palette flag: 0 = no */
 
-unsigned char exitmode = 3;	/* video mode on exit */
+BYTE exitmode = 3;	/* video mode on exit */
 
 extern int video_type;
 extern int svga_type;           /* for forcing a specific SVGA adapter */
 extern int mode7text;
 extern int textsafe;
 extern int vesa_detect;
+char	ai_8514;	/* Flag for using 8514a afi JCO 4/11/92 */
 
 int        bios_palette;        /* set to 1 to force BIOS palette updates */
 int        escape_exit;         /* set to 1 to avoid the "are you sure?" screen */
@@ -192,8 +222,10 @@ char LFileName[80];		/* file to find (type=)L-System's in */
 char LName[ITEMNAMELEN+1];	/* Name of L-System */
 char CommandFile[80];		/* file to find command sets in */
 char CommandName[ITEMNAMELEN+1];/* Name of Command set */
-char CommandComment1[57];	/* comments for command set */
-char CommandComment2[57];
+char far CommandComment1[57];	/* comments for command set */
+char far CommandComment2[57];
+char far CommandComment3[57];
+char far CommandComment4[57];
 char IFSFileName[80];		/* file to find (type=)IFS in */
 char IFSName[ITEMNAMELEN+1];	/* Name of the IFS def'n (if not null) */
 float far *ifs_defn = NULL;	/* ifs parameters */
@@ -201,7 +233,7 @@ int  ifs_changed;		/* nonzero if parameters have been edited */
 int  ifs_type;			/* 0=2d, 1=3d */
 int  slides = 0;		/* 1 autokey=play, 2 autokey=record */
 
-unsigned char txtcolor[]={
+BYTE txtcolor[]={
       BLUE*16+L_WHITE,	  /* C_TITLE	       title background */
       BLUE*16+L_GREEN,	  /* C_TITLE_DEV       development vsn foreground */
       GREEN*16+YELLOW,	  /* C_HELP_HDG        help page title line */
@@ -246,9 +278,10 @@ char s_zmag[]    = "zmag";
 char s_bof60[]   = "bof60";
 char s_bof61[]   = "bof61";
 char s_maxiter[] =  "maxiter";
-char s_epscross[] =  "epsilon cross";
-char s_startrail[] =  "star trail";
+char s_epscross[] =  "epsiloncross";
+char s_startrail[] =  "startrail";
 char s_normal[] =  "normal";
+char s_period[] = "period";
 
 
 void cmdfiles_overlay() { }	/* for restore_active_ovly */
@@ -259,7 +292,7 @@ void cmdfiles_overlay() { }	/* for restore_active_ovly */
 		indirect files ('fractint @myfile')
 */
 
-int cmdfiles(int argc,char *argv[])
+int cmdfiles(int argc,char **argv)
 {
    int	   i;
    char    curarg[141];
@@ -279,6 +312,10 @@ int cmdfiles(int argc,char *argv[])
 	 cmdfile(initfile,1);		/* process it */
 
    for (i = 1; i < argc; i++) { 	/* cycle through args */
+#ifdef XFRACT
+      /* Let the xfract code take a look at the argument */
+      if (unixarg(argc,argv,&i)) continue;
+#endif
       strcpy(curarg,argv[i]);
       if (curarg[0] == ';')             /* start of comments? */
 	 break;
@@ -322,7 +359,8 @@ int cmdfiles(int argc,char *argv[])
       showfile = 1;  /* nor startup image file		    */
       }
 
-   first_init = 0;
+   if(debugflag != 110)
+       first_init = 0;
    EXIT_OVLY;
    return(0);
 }
@@ -348,7 +386,9 @@ static void initvars_run()		/* once per run init */
 
 static void initvars_restart()		/* <ins> key init */
 {
-   gif87a_flag = 0;			/* turn on GIF89a processing */
+   save_release = release;              /* this release number */
+   gif87a_flag = INIT_GIF87;            /* turn on GIF89a processing */
+   dither_flag = 0;			/* no dithering */
    askvideo = 1;			/* turn on video-prompt flag */
    overwrite = 0;			/* don't overwrite           */
    soundflag = -1;			/* sound is on		     */
@@ -359,7 +399,8 @@ static void initvars_restart()		/* <ins> key init */
    viewwindow = 0;			/* no view window	     */
    viewreduction = 4.2;
    viewcrop = 1;
-   finalaspectratio = SCREENASPECT;
+   ai_8514 = 0;                         /* no need for the 8514 API  */
+   finalaspectratio = screenaspect;
    viewxdots = viewydots = 0;
    orbit_delay = 0;                     /* full speed orbits */
    debugflag = 0;			/* debugging flag(s) are off */
@@ -370,12 +411,13 @@ static void initvars_restart()		/* <ins> key init */
    LName[0] = 0;
    strcpy(CommandFile,"fractint.par");
    CommandName[0] = CommandComment1[0] = CommandComment2[0] = 0;
+   CommandComment3[0] = CommandComment4[0] = 0;
    strcpy(IFSFileName,"fractint.ifs");
    IFSName[0] = 0;
    reset_ifs_defn();
    rflag = 0;				/* not a fixed srand() seed */
    rseed = init_rseed;
-   strcpy(readname,".\\");              /* initially current directory */
+   strcpy(readname,DOTSLASH);           /* initially current directory */
    showfile = 1;
    /* next should perhaps be fractal re-init, not just <ins> ? */
    initcyclelimit=55;			/* spin-DAC default speed limit */
@@ -404,8 +446,8 @@ static void initvars_restart()		/* <ins> key init */
    AntiAliasing = 0;
    Shadowing = 0;
 
-   Printer_Type = 2;			/* assume an IBM/EPSON	  */
-   Printer_Resolution = 60;		/* assume low resolution  */
+   Printer_Type = DEFAULT_PRINTER;      /* assume an IBM/EPSON    */
+   Printer_Resolution = PRT_RESOLUTION; /* assume low resolution  */
    Printer_Titleblock = 0;		/* assume no title block  */
    Printer_ColorXlat = 0;		/* assume positive image  */
    Printer_SetScreen = 0;               /* assume default screen  */
@@ -421,12 +463,18 @@ static void initvars_restart()		/* <ins> key init */
    Printer_BFrequency = 45;             /* New screen frequency B */
    Printer_BAngle = 0;                  /* New screen angle     B */
    Printer_BStyle = 1;                  /* New screen style     B */
-   Print_To_File = 0;			/* No print-to-file	  */
-   Printer_CRLF = 0;			/* Assume CR+LF 	  */
+#ifndef XFRACT
+   Print_To_File = 0;                   /* No print-to-file       */
+   Printer_CRLF = 0;                    /* Assume CR+LF           */
+#else
+   Print_To_File = 1;                   /* Print-to-file          */
+   Printer_CRLF = 2;                    /* Assume LF              */
+   Printer_Compress = 0;                /* Assume NO PostScript compression */
+#endif
    EPSFileType = 0;			/* Assume no save to .EPS */
    LPTNumber = 1;			/* assume LPT1 */
    ColorPS = 0;                         /* Assume NO Color PostScr*/
-
+   major_method = minor_method = 0;	/* default inverse julia methods */
 }
 
 static void initvars_fractal()		/* init vars affecting calculation */
@@ -441,14 +489,18 @@ static void initvars_fractal()		/* init vars affecting calculation */
    outside = -1;			/* outside color = -1 (not used) */
    maxit = 150; 			/* initial maxiter	  */
    usr_stdcalcmode = 'g';               /* initial solid-guessing */
+#ifndef XFRACT
    usr_floatflag = 0;			/* turn off the float flag */
+#else
+   usr_floatflag = 1;			/* turn on the float flag */
+#endif
    finattract = 0;			/* disable finite attractor logic */
    fractype = 0;			/* initial type Set flag  */
    curfractalspecific = &fractalspecific[0];
    initcorners = initparams = 0;
    bailout = 0; 			/* no user-entered bailout */
    useinitorbit = 0;
-   for (i = 0; i < 4; i++) param[i] = 0.0;     /* initial parameter values */
+   for (i = 0; i < MAXPARAMS; i++) param[i] = 0.0;     /* initial parameter values */
    for (i = 0; i < 3; i++) potparam[i]	= 0.0; /* initial potential values */
    for (i = 0; i < 3; i++) inversion[i] = 0.0;	/* initial invert values */
    initorbit[0] = initorbit[1] = 0.0;	/* initial orbit values */
@@ -477,6 +529,20 @@ static void initvars_fractal()		/* init vars affecting calculation */
    display3d = 0;			/* 3D display is off	    */
    overlay3d = 0;			/* 3D overlay is off	    */
 
+   functionpreloaded = 0; /* for old bifs  JCO 7/5/92 */
+   mxminfp = -.83;
+   myminfp = -.25;
+   mxmaxfp = -.83;
+   mymaxfp =  .25;
+   originfp = 8;
+   heightfp = 7;
+   widthfp = 10;
+   distfp = 24;
+   eyesfp = 2.5;
+   depthfp = 8;
+   lastorbittype = -1;
+   neworbittype = JULIA;
+   zdots = 128;
    initvars_3d();
 }
 
@@ -526,6 +592,7 @@ static int cmdfile(FILE *handle,int mode)
    if (mode == 2 || mode == 3) {
       while ((i = getc(handle)) != '{' && i != EOF) { }
       CommandComment1[0] = CommandComment2[0] = 0;
+      CommandComment3[0] = CommandComment4[0] = 0;
       }
    linebuf[0] = 0;
    while (next_command(cmdbuf,1000,handle,linebuf,&lineoffset,mode) > 0) {
@@ -534,6 +601,9 @@ static int cmdfile(FILE *handle,int mode)
       changeflag |= i;
       }
    fclose(handle);
+#ifdef XFRACT
+   initmode = 0;		/* Skip credits if @file is used. */
+#endif
    return changeflag;
 }
 
@@ -555,7 +625,8 @@ static int next_command(char *cmdbuf,int maxlen,
 	 if (*lineptr == ';' || *lineptr == 0) {
 	    if (*lineptr == ';'
 	      && (mode == 2 || mode == 3)
-	      && (CommandComment1[0] == 0 || CommandComment2[0] == 0)) {
+	      && (CommandComment1[0] == 0 || CommandComment2[0] == 0 ||
+	          CommandComment3[0] == 0 || CommandComment4[0] == 0)) {
 	       /* save comment */
 	       while (*(++lineptr)
 		 && (*lineptr == ' ' || *lineptr == '\t')) { }
@@ -563,9 +634,13 @@ static int next_command(char *cmdbuf,int maxlen,
 		  if (strlen(lineptr) > 56)
 		     *(lineptr+56) = 0;
 		  if (CommandComment1[0] == 0)
-		     strcpy(CommandComment1,lineptr);
+		     far_strcpy(CommandComment1,lineptr);
+		  else if (CommandComment2[0] == 0)
+		     far_strcpy(CommandComment2,lineptr);
+		  else if (CommandComment3[0] == 0)
+		     far_strcpy(CommandComment3,lineptr);
 		  else
-		     strcpy(CommandComment2,lineptr);
+		     far_strcpy(CommandComment4,lineptr);
 		  }
 	       }
 	    if (next_line(handle,linebuf,mode) != 0)
@@ -610,7 +685,6 @@ static int next_line(FILE *handle,char *linebuf,int mode)
    return(-1);
 }
 
-
 /*
   cmdarg(string,mode) processes a single command-line/command-file argument
     return:
@@ -622,7 +696,7 @@ static int next_line(FILE *handle,char *linebuf,int mode)
 	| 8 means reset specified
 */
 
-static int cmdarg(char *curarg,int mode) /* process a single argument */
+int cmdarg(char *curarg,int mode) /* process a single argument */
 {
    char    variable[21];		/* variable name goes here   */
    char    *value;			/* pointer to variable value */
@@ -669,6 +743,7 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
    argptr = value;
    numval = totparms = intparms = floatparms = 0;
    while (*argptr) {			/* count and pre-parse parms */
+      long ll;
       lastarg = 0;
       if ((argptr2 = strchr(argptr,'/')) == NULL) {     /* find next '/' */
 	 argptr2 = argptr + strlen(argptr);
@@ -677,14 +752,29 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	 }
       if (totparms == 0) numval = NONNUMERIC;
       i = -1;
-      if (sscanf(argptr,"%d%c",&j,&tmpc) > 0            /* got an integer */
-	&& tmpc == '/') {
+      charval = *argptr;			/* first letter of value  */
+      if (charval == 'n') yesnoval = 0;	/* allows only ONE y/n param */
+      if (charval == 'y') yesnoval = 1;
+      if (sscanf(argptr,"%c%c",&j,&tmpc) > 0    /* NULL entry */
+      && (j == '/' || j == '=') && tmpc == '/') {
+	 j = 0;
 	 ++floatparms; ++intparms;
 	 if (totparms < 16) floatval[totparms] = j;
 	 if (totparms < 64) intval[totparms] = j;
 	 if (totparms == 0) numval = j;
 	 }
+      else if (sscanf(argptr,"%ld%c",&ll,&tmpc) > 0       /* got an integer */
+	&& tmpc == '/') {        /* needs a long int, ll, here for lyapunov */
+	 ++floatparms; ++intparms;
+	 if (totparms < 16) floatval[totparms] = ll;
+	 if (totparms < 64) intval[totparms] = (int)ll;
+	 if (totparms == 0) numval = (int)ll;
+	 }
+#ifndef XFRACT
       else if (sscanf(argptr,"%lg%c",&ftemp,&tmpc) > 0  /* got a float */
+#else
+      else if (sscanf(argptr,"%lf%c",&ftemp,&tmpc) > 0  /* got a float */
+#endif
 	     && tmpc == '/') {
 	 ++floatparms;
 	 if (totparms < 16) floatval[totparms] = ftemp;
@@ -697,30 +787,41 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	 ++argptr;
       }
 
-   if (mode != 2) {	/* these commands are allowed only at startup */
+   if (mode != 2 || debugflag==110) {
+      /* these commands are allowed only at startup */
 
       if (strcmp(variable,"batch") == 0 ) {     /* batch=?      */
 	 if (yesnoval < 0) goto badarg;
+#ifdef XFRACT
+         initmode = yesnoval?0:-1; /* skip credits for batch mode */
+#endif
 	 initbatch = yesnoval;
 	 return 3;
 	 }
 
+#ifndef XFRACT
       if (strcmp(variable,"adapter") == 0 ) {   /* adapter==?     */
-
-         if (strncmp(value,"aheada",6) == 0) svga_type = 1;
-         if (strncmp(value,"ati"   ,3) == 0) svga_type = 2;
-         if (strncmp(value,"chi"   ,3) == 0) svga_type = 3;
-         if (strncmp(value,"eve"   ,3) == 0) svga_type = 4;
-         if (strncmp(value,"gen"   ,3) == 0) svga_type = 5;
-         if (strncmp(value,"ncr"   ,3) == 0) svga_type = 6;
-         if (strncmp(value,"oak"   ,3) == 0) svga_type = 7;
-         if (strncmp(value,"par"   ,3) == 0) svga_type = 8;
-         if (strncmp(value,"tri"   ,3) == 0) svga_type = 9;
-         if (strncmp(value,"tseng3",6) == 0) svga_type = 10;
-         if (strncmp(value,"tseng4",6) == 0) svga_type = 11;
-         if (strncmp(value,"vid"   ,3) == 0) svga_type = 12;
-         if (strncmp(value,"aheadb",6) == 0) svga_type = 13;
-         if (strncmp(value,"null"  ,4) == 0) svga_type = 14; /* for testing only */
+         int i, j;
+         extern char supervga_list;	/* from the list in VIDEO.ASM */
+         char adapter_name[8];  	/* entry lenth from VIDEO.ASM */
+         char *adapter_ptr;
+         
+         adapter_ptr = &supervga_list;
+         
+         for(i = 0 ; ; i++) {		/* find the SuperVGA entry */
+             memcpy(adapter_name , adapter_ptr, 8);
+             adapter_name[6] = ' ';
+             for (j = 0; j < 8; j++)
+                 if(adapter_name[j] == ' ')
+                     adapter_name[j] = 0;
+             if (adapter_name[0] == 0) break;  /* end-of-the-list */
+             if (strncmp(value,adapter_name,strlen(adapter_name)) == 0) {
+                svga_type = i+1;
+                adapter_ptr[6] = 1;
+                break;
+                }
+             adapter_ptr += 8;
+             }
          if (svga_type != 0) return 3;
 
 	 video_type = 5;			/* assume video=vga */
@@ -728,22 +829,28 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	    video_type = 3;
 	    mode7text = 1;
 	    }
-	 else if (strcmp(value,"hgc")) {             /* video = hgc */
+	 else if (strcmp(value,"hgc") == 0) {   /* video = hgc */
 	    video_type = 1;
 	    mode7text = 1;
 	    }
-	 else if (strcmp(value,"ega"))               /* video = ega */
+	 else if (strcmp(value,"ega") == 0)     /* video = ega */
 	    video_type = 3;
-	 else if (strcmp(value,"cga"))               /* video = cga */
+	 else if (strcmp(value,"cga") == 0)     /* video = cga */
 	    video_type = 2;
-	 else if (strcmp(value,"mcga"))              /* video = mcga */
+	 else if (strcmp(value,"mcga") == 0)    /* video = mcga */
 	    video_type = 4;
-	 else if (strcmp(value,"vga"))               /* video = vga */
+	 else if (strcmp(value,"vga") == 0)     /* video = vga */
 	    video_type = 5;
 	 else
 	    goto badarg;
 	 return 3;
 	 }
+
+      if (strcmp(variable,"afi") == 0) {
+       if (strncmp(value,"8514"  ,4) == 0
+           || charval == 'y') ai_8514 = 1; /* set afi flag JCO 4/11/92 */
+       return 3;
+	}
 
       if (strcmp(variable,"textsafe") == 0 ) {  /* textsafe==? */
 	 if (first_init) {
@@ -757,7 +864,7 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	       textsafe = 4;
 	    else
 	       goto badarg;
-	    }
+	    }   
 	 return 3;
 	 }
 
@@ -770,12 +877,6 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       if (strcmp(variable, "biospalette") == 0) {
          if (yesnoval < 0) goto badarg;
          bios_palette = yesnoval;
-         return 3;
-         }
-
-      if (strcmp(variable, "exitnoask") == 0) {
-         if (yesnoval < 0) goto badarg;
-         escape_exit = yesnoval;
          return 3;
          }
 
@@ -796,16 +897,29 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	    }
 	 goto badarg;
 	 }
+#endif
+
+      if (strcmp(variable, "exitnoask") == 0) {
+         if (yesnoval < 0) goto badarg;
+         escape_exit = yesnoval;
+         return 3;
+         }
 
       if (strcmp(variable,"makedoc") == 0) {
 	 print_document(*value ? value : "fractint.doc", makedoc_msg_func, 0);
+#ifndef WINFRACT
 	 goodbye();
+#endif
 	 }
 
       } /* end of commands allowed only at startup */
 
    if (strcmp(variable,"reset") == 0) {
       initvars_fractal();
+
+      /* PAR release unknown unless specified */
+      if (numval>=0) save_release = numval;
+      else goto badarg;
       return 9;
       }
 
@@ -897,6 +1011,12 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       return 0;
       }
 
+   if (strcmp(variable,"dither") == 0 ) {       /* dither=? */
+      if (yesnoval < 0) goto badarg;
+      dither_flag = yesnoval;
+      return 0;
+      }
+
    if (strcmp(variable,"savetime") == 0) {      /* savetime=? */
       initsavetime = numval;
       return 0;
@@ -916,14 +1036,14 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       SolidCore = yesnoval;
       return(0);
       }
-
+/* (nuked until antialiasing become an option)
    if(strcmp(variable, "antialias") == 0) {
       if(numval < 0 || numval > 8)
 	 goto badarg;
       AntiAliasing = numval;
       return(0);
       }
-
+*/
    if(strcmp(variable, "transparent3d") == 0) {
       Transparent3D = yesnoval;
       return(0);
@@ -977,14 +1097,22 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	 yy3rd = yymin = curfractalspecific->ymin;
 	 yymax	       = curfractalspecific->ymax;
 	 }
-      if (initparams == 0)
+      if (initparams == 0) {
 	 for (k = 0; k < 4; ++k) {
 	    param[k] = curfractalspecific->paramvalue[k];
-	    roundfloatd(&param[k]);
-	    }
+	    if(fractype != CELLULAR) /* don't round cellular */
+	       roundfloatd(&param[k]);
+	  }
+         if(curfractalspecific->flags&MORE) {
+            int extra;
+            if((extra=find_extra_param(fractype)) > -1)
+            for(i=0;i<MAXPARAMS-4;i++) {
+               param[i+4] = moreparams[extra].paramvalue[i];
+           }
+         }
+      }   
       return 1;
       }
-
    if (strcmp(variable,"inside") == 0 ) {       /* inside=? */
       if(strcmp(value,s_zmag)==0)
 	 inside = -59;
@@ -996,6 +1124,8 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	 inside = -100;
       else if(strncmp(value,s_startrail,4)==0)
 	 inside = -101;
+      else if(strncmp(value,s_period,3)==0)
+	 inside = -102;
       else if(strcmp(value,s_maxiter)==0)
 	 inside = -1;
       else if(numval == NONNUMERIC)
@@ -1027,6 +1157,7 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	 if ((value = strchr(value,'/')) == NULL) break;
 	 ++value;
 	 }
+       functionpreloaded = 1; /* for old bifs  JCO 7/5/92 */
       return 1;
       }
 
@@ -1072,6 +1203,17 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       initcyclelimit = numval;
       return 0;
       }
+
+   if (strcmp(variable,"makemig") == 0) {
+       int xmult, ymult;
+       if (totparms < 2) goto badarg;
+       xmult = intval[0];
+       ymult = intval[1];
+       make_mig(xmult, ymult);
+#ifndef WINFRACT
+       exit(0);
+#endif
+       }
 
    if (strcmp(variable,"cyclerange") == 0) {
       if (totparms < 2) intval[1] = 255;
@@ -1132,8 +1274,12 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
    if (strcmp(variable,"potential") == 0) {     /* potential=? */
       k = 0;
       while (k < 3 && *value) {
-	 potparam[k++] = atoi(value);
-	 if ((value = strchr(value,'/')) == NULL) k = 99;
+         if(k==1)
+	    potparam[k] = atof(value);
+	 else
+	    potparam[k] = atoi(value);
+	 k++;
+       if ((value = strchr(value,'/')) == NULL) k = 99;
 	 ++value;
 	 }
       pot16bit = 0;
@@ -1145,13 +1291,40 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       }
 
    if (strcmp(variable,"params") == 0) {        /* params=?,? */
-      if (totparms != floatparms || totparms > 4)
+      if (totparms != floatparms || totparms > MAXPARAMS)
 	 goto badarg;
-      for (k = 0; k < 4; ++k)
+      for (k = 0; k < MAXPARAMS; ++k)
 	 param[k] = (k < totparms) ? floatval[k] : 0.0;
       initparams = 1;
       return 1;
       }
+
+   if (strcmp(variable, "miim") == 0) {		/* miim=?[/?[/?[/?]]] */
+      k = 0;
+      do {
+	 if (isdigit(*value) ||
+	     *value == '.' || *value == '-' || *value == '+') {
+	    if (k >= 4)
+	       goto badarg;
+	    param[k++] = atof(value);
+	 }
+	 else if (strncmp(value, "breadth", 7) == 0)
+	    major_method = 0;
+	 else if (strncmp(value, "depth",   5) == 0)
+	    major_method = 1;
+	 else if (strncmp(value, "walk",    4) == 0)
+	    major_method = 2;
+	 else if (strncmp(value, "run",     3) == 0)
+	    major_method = 3;
+	 else if (strncmp(value, "left",    4) == 0)
+	    minor_method = 0;
+	 else if (strncmp(value, "right",   5) == 0)
+	    minor_method = 1;
+	 else goto badarg;
+	 value = strchr(value, '/');
+      } while (value++);
+      return 1;
+   }
 
    if (strcmp(variable,"initorbit") == 0) {     /* initorbit=?,? */
       if(strcmp(value,"pixel")==0)
@@ -1165,7 +1338,62 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       return 1;
       }
 
+   if (strcmp(variable,"orbitname") == 0 ) {         /* orbitname=? */
+      if(check_orbit_name(value))
+         goto badarg;
+      return 1;
+      }
+   if (strcmp(variable,"3dmode") == 0 ) {         /* orbitname=? */
+      int i,j;
+      j = -1;
+      for(i=0;i<4;i++)
+         if(strcmp(value,juli3Doptions[i])==0)
+            j = i; 
+      if(j < 0)
+         goto badarg;
+      else
+         juli3Dmode = j;
+      return 1;
+      }
+
+   if (strcmp(variable,"julibrot3d") == 0) {       /* julibrot3d=?,?,?,? */
+      if (floatparms != totparms)
+	 goto badarg;
+      if(totparms > 0)
+         zdots = floatval[0];
+      if (totparms > 1)
+         originfp = floatval[1];
+      if (totparms > 2)
+         depthfp = floatval[2];
+      if (totparms > 3)
+         heightfp = floatval[3];
+      if (totparms > 4)
+         widthfp = floatval[4];
+      if (totparms > 5)
+         distfp = floatval[5];
+      return 1;
+      }
+
+   if (strcmp(variable,"julibroteyes") == 0) {       /* julibroteyes=?,?,?,? */
+      if (floatparms != totparms || totparms != 1)
+	 goto badarg;
+      eyesfp =  floatval[0];
+      return 1;
+      }
+
+   if (strcmp(variable,"julibrotfromto") == 0) {       /* julibrotfromto=?,?,?,? */
+      if (floatparms != totparms || totparms != 4)
+	 goto badarg;
+      mxmaxfp = floatval[0];
+      mxminfp = floatval[1];
+      mymaxfp = floatval[2];
+      myminfp = floatval[3];
+      return 1;
+      }
+
    if (strcmp(variable,"corners") == 0) {       /* corners=?,?,?,? */
+      if (fractype == CELLULAR)
+          return 1; /* skip setting the corners */
       if (floatparms != totparms || (totparms != 4 && totparms != 6))
 	 goto badarg;
       usemag = 0;
@@ -1178,6 +1406,28 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	 xx3rd =      floatval[4];
 	 yy3rd =      floatval[5];
 	 }
+      return 1;
+      }
+
+   if (strcmp(variable,"viewwindows") == 0) {  /* viewwindows=?,?,?,?,? */
+      if (totparms > 5 || floatparms-intparms > 2 || intparms > 4)
+	 goto badarg;
+      viewwindow = 1;
+      viewreduction = 4.2;  /* reset default values */
+      finalaspectratio = screenaspect;
+      viewcrop = 1; /* yes */
+      viewxdots = viewydots = 0;
+
+      if((totparms > 0) && (floatval[0] > 0.001))
+        viewreduction = floatval[0];
+      if((totparms > 1) && (floatval[1] > 0.001))
+        finalaspectratio = floatval[1];
+      if((totparms > 2) && (yesnoval == 0))
+        viewcrop = yesnoval;
+      if((totparms > 3) && (intval[3] > 0))
+        viewxdots = intval[3];
+      if((totparms == 5) && (intval[4] > 0))
+        viewydots = intval[4];
       return 1;
       }
 
@@ -1270,7 +1520,10 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       strcpy(PrintName,value);
       return 0;
       }
-
+   if(strcmp(variable, "rleps") == 0) {
+      Printer_Compress = yesnoval;
+      return(0);
+      }
    if(strcmp(variable, "colorps") == 0) {
       ColorPS = yesnoval;
       return(0);
@@ -1366,16 +1619,20 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	    case '2':  l |= 4;  break;
 	    }
 	 }
+#ifndef XFRACT
 #ifndef WINFRACT
       _bios_serialcom(0,numval-1,l);
+#endif
 #endif
       return 0;
       }
 
    if (strcmp(variable,"sound") == 0 ) {        /* sound=? */
       soundflag = 0;
-      if (strncmp(value,"ye",2) == 0)
+      if (strncmp(value,"ye",2) == 0) {
 	 soundflag = -1;
+	 return(0);
+	 }
       if (charval == 'x')
 	 soundflag = 1;
       if (charval == 'y')
@@ -1393,12 +1650,12 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 
    if (strcmp(variable,"periodicity") == 0 ) {  /* periodicity=? */
       usr_periodicitycheck=1;
-      if (charval == 'n')
+      if ((charval == 'n') || (numval == 0))
 	 usr_periodicitycheck=0;
       else if (charval == 'y')
 	 usr_periodicitycheck=1;
       else if (charval == 's')   /* 's' for 'show' */
-	 usr_periodicitycheck=-1;
+	 usr_periodicitycheck= -1;
       else if(numval == NONNUMERIC)
 	 goto badarg;
       else if(numval != 0)
@@ -1573,7 +1830,12 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       }
 
    if (strcmp(variable,"3d") == 0) {            /* 3d=?/?/..    */
-      if (yesnoval < 0) goto badarg;
+      if(strcmp(value,"overlay")==0) {
+         yesnoval=1;
+         if(calc_status > -1) /* if no image, treat same as 3D=yes */
+            overlay3d=1;
+      }      
+      else if (yesnoval < 0) goto badarg;
       display3d = yesnoval;
       initvars_3d();
       return (display3d) ? 6 : 2;
@@ -1732,6 +1994,13 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
    if (strcmp(variable,"brief") == 0) {         /* BRIEF? */
       if (yesnoval < 0) goto badarg;
       BRIEF = yesnoval;
+      return 2;
+      }
+
+   if (strcmp(variable,"release") == 0) {       /* release */
+      if (numval < 0) goto badarg;
+
+      save_release = numval;
       return 2;
       }
 
@@ -1907,9 +2176,15 @@ Oops. I couldn't understand the argument:\n  "};
    if (strlen(badarg) > 70) badarg[70] = 0;
    if (active_system == 0 /* DOS */
      && first_init)	  /* & this is 1st call to cmdfiles */
+#ifndef XFRACT
       sprintf(msg,"%Fs%s%Fs",argerrmsg1,badarg,argerrmsg2);
    else
       sprintf(msg,"%Fs%s",argerrmsg1,badarg);
+#else
+      sprintf(msg,"%s%s%s",argerrmsg1,badarg,argerrmsg2);
+   else
+      sprintf(msg,"%s%s",argerrmsg1,badarg);
+#endif
    stopmsg(0,msg);
 }
 

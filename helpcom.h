@@ -7,9 +7,14 @@
  *
  */
 
+#ifndef HELPCOM_H
+#define HELPCOM_H
+
+#include "port.h"
 
 /*
  * help file signature
+ * If you get a syntax error, remove the LU from the end of the number.
  */
 
 #define HELP_SIG	   (0xAFBC1823LU)
@@ -149,13 +154,13 @@ enum  PD_COMMANDS
    } ;
 
 
-typedef int (*PD_FUNC)(int cmd, PD_INFO *pd, void *info);
+typedef int (*PD_FUNC)(int cmd, PD_INFO *pd, VOIDPTR info);
 
 
 int _find_token_length(char far *curr, unsigned len, int *size, int *width);
 int find_token_length(int mode, char far *curr, unsigned len, int *size, int *width);
 int find_line_width(int mode, char far *curr, unsigned len);
-int process_document(PD_FUNC get_info, PD_FUNC output, void *info);
+int process_document(PD_FUNC get_info, PD_FUNC output, VOIDPTR info);
 
 
 /*
@@ -164,7 +169,34 @@ int process_document(PD_FUNC get_info, PD_FUNC output, void *info);
  */
 
 
+#endif
 #ifdef INCLUDE_COMMON
+
+
+#ifndef XFRACT
+#define getint(ptr) (*(int far *)(ptr))
+#define setint(ptr,n) (*(int far *)(ptr)) = n
+#else
+/* Get an int from an unaligned pointer
+ * This routine is needed because this program uses unaligned 2 byte
+ * pointers all over the place.
+ */
+getint(ptr)
+char *ptr;
+{
+    int s;
+    bcopy(ptr,&s,sizeof(int));
+    return s;
+}
+
+/* Set an int to an unaligned pointer */
+void setint(ptr, n)
+int n;
+char *ptr;
+{
+    bcopy(&n,ptr,sizeof(int));
+}
+#endif
 
 
 static int is_hyphen(char far *ptr)   /* true if ptr points to a real hyphen */
@@ -212,8 +244,8 @@ int _find_token_length(register char far *curr, unsigned len, int *size, int *wi
 
 	 case CMD_LINK:
 	    tok = TOK_LINK;
-	    _size += 7;     /* skip CMD_LINK + topic_num + topic_off + page_num */
-	    curr += 7;
+            _size += 1+3*sizeof(int); /* skip CMD_LINK + topic_num + topic_off + page_num */
+            curr += 1+3*sizeof(int);
 
 	    while ( *curr != CMD_LINK )
 	       {
@@ -395,7 +427,7 @@ int find_line_width(int mode, char far *curr, unsigned len)
 #define DO_PRINT(str,n)  ( pd.s = (str), pd.i = (n), output(PD_PRINT, &pd, info) )
 
 
-int process_document(PD_FUNC get_info, PD_FUNC output, void *info)
+int process_document(PD_FUNC get_info, PD_FUNC output, VOIDPTR info)
    {
    int	     skip_blanks;
    int	     tok;
@@ -617,8 +649,8 @@ int process_document(PD_FUNC get_info, PD_FUNC output, void *info)
 			   in_link = 3;
 			holdcurr = pd.curr + size;
 			holdlen = pd.len - size;
-			pd.len = size - 8;
-			pd.curr += 7;
+                        pd.len = size - 2 - 3*sizeof(int);
+                        pd.curr += 1 + 3*sizeof(int);
 			continue;
 			}
 
@@ -720,7 +752,8 @@ int process_document(PD_FUNC get_info, PD_FUNC output, void *info)
 
 	       case TOK_LINK:
 		  skip_blanks = 0;
-		  if ( !DO_PRINT(pd.curr+7, size-8) )
+		  if ( !DO_PRINT(pd.curr+1+3*sizeof(int),
+			  size-3*sizeof(int)-2) )
 		     return (0);
 		  pd.s = pd.curr+1;
 		  if ( get_info(PD_GET_LINK_PAGE, &pd, info) )
@@ -775,6 +808,5 @@ int process_document(PD_FUNC get_info, PD_FUNC output, void *info)
 #undef DO_PRINTN
 
 
+#undef INCLUDE_COMMON
 #endif	 /* #ifdef INCLUDE_COMMON */
-
-

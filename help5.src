@@ -68,8 +68,8 @@ Other video problems:
   adapter.
 ~OnlineFF
 
-Other Hangs and Strange Behaviour:\
-  We've had some problems (hanges and solid beeps) on an FPU equipped
+Other Hangs and Strange Behavior:\
+  We've had some problems (hangs and solid beeps) on an FPU equipped
   machine when running under Windows 3's enhanced mode.  The only ways
   around the problem we can find are to either run the Fractint image
   involved outside Windows, or to use the DOS command "SET NO87=nofpu"
@@ -141,7 +141,7 @@ Disk video mode performance:\
 
     A Little Math:
        { Summary of Fractal Types }
-       { Inside=bof60|bof61|zmag }
+       { Inside=bof60|bof61|zmag|period }
        { Inside=epscross|startrail }
        { Finite Attractors }
        { Trig Identities }
@@ -222,7 +222,7 @@ tangled motions of fluid turbulence.
 
 In 1958 he joined IBM, where he began a mathematical analysis of
 electronic "noise" -- and began to perceive a structure in it, a hierarchy
-of fluctuations of all sizes, that could not be explained by exiting
+of fluctuations of all sizes, that could not be explained by existing
 statistical methods. Through the years that followed, one seemingly
 unrelated problem after another was drawn into the growing body of ideas
 he would come to call fractal geometry.
@@ -415,10 +415,10 @@ this document, and another containing complete source code (including a
 ;
 ;
 ;
-~Topic=Inside=bof60|bof61|zmag
+~Topic=Inside=bof60|bof61|zmag|period
 ~Format-,Online-
 
-INSIDE=BOF60|BOF61|ZMAG
+INSIDE=BOF60|BOF61|ZMAG|PERIOD
 ~Format+,Online+
 
 Here is an *ATTEMPTED* explanation of what the inside=bof60 and
@@ -450,6 +450,12 @@ accepted for the next edition!
 inside=zmag is similar. This option colors inside pixels according to
 the magnitude of the orbit point when maxiter was reached, using the formula
 color = (x^2 + y^2) * maxiter/2 + 1.
+
+inside=period colors pixels according to the length of their eventual cycle.
+For example, points that approach a fixed point have color=1.  Points that
+approach a 2-cycle have color=2.  Points that do not approach a cycle during
+the iterations performed have color=maxit.  This option works best with a
+fairly large number of iterations.
 ;
 ;
 ;
@@ -518,14 +524,14 @@ product of the implementation of the MAGNETic fractal types, which always
 have at least one Finite Attractor.
 
 This option can be invoked by setting the "Look for finite attractor"
-option on the <Y> options screen, or by using the "inside=attractor"
-parameter.
+option on the <Y> options screen, or by giving the "finattract=yes"
+command-line option.
 
 Most Julia-types that have a "lake" (normally colored blue by default)
 have a Finite Attractor within this lake, and the lake turns out to be,
 quite appropriately, the Basin of Attraction of this Attractor.
 
-The "inside=attractor" option (command-line or <Y> options screen)
+The "finattract=yes" option (command-line or <Y> options screen)
 instructs Fractint to seek out and identify a possible Finite Attractor
 and, if found, to display the Level Sets of its Basin of Attraction, in
 addition to those of the Basin of Attraction of Infinity.  In many cases
@@ -534,7 +540,8 @@ may be little change in the lake's appearance.
 
 For a quick demonstration, select a fractal type of LAMBDA, with a
 parameter of 0.5 + 0.5i.  You will obtain an image with a large blue lake.
-Now set "inside=attractors" with the "X" menu. The image will be re-drawn
+Now set "Look for finite attractor" to 1 with the "Y" menu.
+The image will be re-drawn
 with a much more colorful lake.  A Finite Attractor lives in the center of
 one of the resulting "ripple" patterns in the lake - turn the <O>rbits
 display on to see where it is - the orbits of all initial points that are
@@ -552,7 +559,7 @@ the number of iterations performed.  Result - a nicely colored-in lake
 that displays the Level Sets of the Basin of Attraction of the Finite
 Attractor.  Sometimes !
 
-First exception : This does not work for the lakes of Mandel-types.  Every
+First exception: This does not work for the lakes of Mandel-types.  Every
 point in a Mandel-type is, in effect, a single point plucked from one of
 its related Julia-types.  A Mandel-type's lake has an infinite number of
 points, and thus an infinite number of related Julia-type sets, and
@@ -582,12 +589,33 @@ Thirdly, the initial implementation only works for Julia-types that use
 the "Standard" fractal engine in Fractint.  Fractals with their own
 special algorithms are not affected by Finite Attractor logic, as yet.
 
+Finally, the finite attractor code will not work if it fails to detect
+a finite attractor.  If the number of iterations is set too low, the finite
+attractor may be missed.
+
 Despite these restrictions, the Finite Attractor logic can produce
 interesting results.  Just bear in mind that it is principally a bonus
 off-shoot from the development of the MAGNETic fractal types, and is not
 specifically tuned for optimal performance for other Julia types.
 
 (Thanks to Kevin Allen for the above).
+
+There is a second type of finite attractor coloring, which is selected
+by setting "Look for Finite Attractor" to a negative value.  This colors
+points by the phase of the convergence to the finite attractor,
+instead of by the speed of convergence.
+
+For example, consider the Julia set for -0.1 + 0.7i, which is the three-lobed
+"rabbit" set.  The Finite Attractor is an orbit of length three; call these
+values a, b, and c.  Then, the Julia set iteration can converge to one of
+three sequences: a,b,c,a,b,c,..., or b,c,a,b,c,..., or c,a,b,c,a,b,...  
+The Finite Attractor phase option colors the interior of the Julia set with
+three colors, depending on which of the three sequences the orbit converges
+to.  Internally, the code determines one point of the orbit, say "a", and
+the length of the orbit cycle, say 3.  It then iterates until the sequence
+converges to a, and then uses the iteration number modulo 3 to determine the
+color.
+
 ;
 ;
 ~Topic=Trig Identities
@@ -674,7 +702,7 @@ to .GIF.
 There is one significant advantage to the new GIF89a format compared to
 the old GIF87a-based .FRA format for Fractint purposes:  the new .GIF
 files may be uploaded to the Compuserve graphics forums (such as
-Fractint's home forum, COMART) with fractal information intact.  Therefore
+Fractint's home forum, GRAPHDEV) with fractal information intact.  Therefore
 anyone downloading a Fractint image from Compuserve will also be
 downloading all the information needed to regenerate the image.
 
@@ -750,8 +778,8 @@ their way to other systems from that point.  FRACTINT is available as
 two self-extracting archive files - FRAINT.EXE (executable & documentation)
 and FRASRC.EXE (source code).
 
-The latest version can always be found on CompuServe in the "Fractals"
-library of the COMART forum.  If you're not a Compuserve subscriber, but
+The latest version can always be found on CompuServe in the "Fractal Sources"
+library of the GRAPHDEV forum.  If you're not a Compuserve subscriber, but
 wish to get more information about Compuserve and its graphics forums,
 feel free to call their 800 number (800-848-8199) and ask for operator
 number 229.
@@ -779,10 +807,19 @@ the latest versions of Fractint for a nominal fee that basically covers
 their cost of packaging and a small profit that we don't mind them making.
 One in particular is the Public (Software) Library, PO Box 35705,
 Houston, TX 77235-5705, USA.  Their phone number is 800-242-4775 (outside
-the US, dial 713-524-6398).  Ask for item #9112 for five 5.25" disks, #9113
+the US, dial 713-524-6394).  Ask for item #9112 for five 5.25" disks, #9113
 for three 3.5" disks.  Cost is $6.99 plus $4 S&H in the U.S./Canada, $11
 S&H overseas.
 
+In Europe, the latest versions are available from another Fractint freak,
+Jon Horner - Editor of FRAC'Cetera, a disk-based fractal/chaos resource.
+Disk prices for UK/Europe are: 5.25" HD BP4.50/5.00  : 3.5" HD BP (British
+Pounds) 5.00/5.50.  Prices include p&p (airmail to Europe).  Contact:
+Jon Horner, FRAC'Cetera, Le Mont Ardaine, Rue des Ardaines, St. Peters,
+Guernsey, CI, UK.  Phone (44) 0481 63689.  CIS 100112,1700
+
+The X Windows port of Fractint maintained by Ken Shirriff is available
+via FTP from sprite.berkeley.edu. 
 
 ;
 ;
@@ -793,18 +830,18 @@ CONTACTING THE AUTHORS
 ~Format+,Online+
 
 Communication between the authors for development of the next version of
-Fractint takes place in COMART (Computer Art) Section 15 (Fractals) of
-CompuServe (CIS).
+Fractint takes place in GRAPHDEV (Graphics Developers) Section 4 (Fractal
+Sources) of CompuServe (CIS).
 
 Most of the authors have never met except on Compuserve.
-Access to the COMART forum is open to any and all interested
+Access to the GRAPHDEV forum is open to any and all interested
 in computer generated fractals.
 New members are always welcome!
 Stop on by if you have any questions or
 just want to take a peek at what's getting tossed into the soup.
 
 Also, you'll find many GIF image files generated by fellow Fractint fans
-and many fractal programs as well in the COMART forum's data library 15.
+and many fractal programs as well in the GRAPHDEV forum's data library 5.
 
 If you're not a Compuserve subscriber, but wish to get more information
 about Compuserve and its graphics forums, feel free to call their 800
@@ -829,8 +866,8 @@ Villanova, PA 19085
 (215) 525-5478
 
 Timothy Wegner		[71320,675] on CIS
-4714 Rockwood		nmittiw@mwvm.mitre.org on Internet
-Houston, TX 77004	twegner@mwunix.mitre.org on Internet
+4714 Rockwood		twegner@.mitre.org on Internet
+Houston, TX 77004
 (713) 747-7543
 
 Mark Peterson		[70441,3353] on CIS
@@ -841,9 +878,10 @@ Southington, CT 06489
 
 Pieter Branderhorst	[72611,2257] on CIS
 Amthor Computer Consultants
-645 Radcliffe Lane
-Victoria, B.C., Canada V8S 5B8
-(604) 598-1299
+270 Moss St.
+Victoria, BC
+Canada, V8V 4M4
+(604) 381-7164
 
 Contributing authors (in alphabetic order);
 
@@ -852,12 +890,12 @@ Joseph A Albrecht
 Bloomington, Mn 55425
 (612) 884-3286
 
-Kevin C Allen		kevin@brahman.syd.bull.oz.au on Internet
-PO Box 652
+Kevin C Allen		kevina@microsoft.com on Internet
+9 Bowen Place
 Seven Hills
 NSW 2147
 Australia
-(02) 887-9187 (Work)
++61-2-870-2297 (Work)
 (02) 831-4821 (Home)
 
 Rob Beyer		[71021,2074] on CIS
@@ -874,25 +912,22 @@ Michael D. Burkey	burkey@sun9.math.utk.edu on Internet
 6600 Crossgate Rd.
 Knoxville, TN 37912
 
+Robin Bussell
+13 Bayswater Rd
+Horfield
+Bristol
+Avon, England
+(044)-0272-514451
+
 Lee Daniel Crocker	[73407,2030] on CIS
-5506 Camden Ave #D3	lee@mport.com (Microport)
-San Jose, CA  95124	...!uunet!mport!lee
+5506 Camden Ave #D3	leecr@microsoft.com
+San Jose, CA  95124
 (408) 267-2926
 
 Monte Davis		[71450,3542] on CIS
 31 Washington St
 Brooklyn, NY 11201
 (718) 625-4610
-
-Lutz Glagau		glagau@hrz.uni-siegen.dbp.de on INTERNET
-Computer Center of the University of Siegen
-Hoelderlinstrasse 3
-D 5900 Siegen
-Germany
-Tel: (+)271/740-3283 (adm.)
-     (+)271/79840   (priv.)
-(Lutz has volunteered to act as a contact point in Germany for info
-about latest version)
 
 David Guenther		[70531,3525] on CIS
 50 Rockview Drive
@@ -903,7 +938,7 @@ Michael L. Kaufman	kaufman@eecs.nwu.edu on INTERNET
 Evanston, IL, 60201
 (708) 864-7916
 
-Wesley Loewer
+Wesley Loewer		loewer@largo.star.harc.edu on INTERNET
 78 S. Circlewood Glen
 The Woodlands, TX  77381
 (713) 292-3449
@@ -928,10 +963,14 @@ Roy Murphy		[76376,721] on CIS
 9050 Ewing Ave.
 Evanston, IL 60203
 
-Ethan Nagel		[70022,2552] on CIS
-PO Box 7
-Yarnell, Arizona 85362
-(602)427-3233
+Ethan Nagel		[71062,3677] on CIS
+4209 San Pedro NE #308
+Albuquerque, NM 87109
+(505) 884-7442
+
+Jonathan Osuch		[73277,1432] on CIS
+2110 Northview Drive
+Marion, IA  52302
 
 Marc Reinig		[72410,77] on CIS
 3415 Merrill Rd.	marco@sun.com!daver!cypress on Usenet
@@ -941,9 +980,10 @@ Aptos, CA. 95003
 Prof. JM Richard-Collard mpi@frmop53.bitnet on BitNet
 			 mpi@cnuvx1.cnusc.fr on Internet
 
-Lee H. Skinner
+Lee H. Skinner		[75450,3631] on CIS
 P.O. Box 14944
 Albuquerque, NM  87191
+(505) 293-5723
 
 Dean Souleles		[75115,1671] on CIS
 8840 Collett Ave.
@@ -956,8 +996,8 @@ Newbury, England
 Tel 011 44 635 33270
 
 Scott Taylor		      [72401,410] on CIS
-1901 South County Road 23E    DGWM18A on Prodigy
-Berthoud, CO 80513
+1901 South County Road 23E    scott@bohemia.metronet.org on Internet
+Berthoud, CO 80513            DGWM18A on Prodigy
 (303) 651-6692
 
 Paul Varner		[73237,441] on CIS
@@ -1109,30 +1149,69 @@ applications.  He has worked as a free-lance computer consultant (whatever
 that means) since 1983.
 ;
 ;
-~Topic=A Plug for "Fractal Creations"
+~Topic=Other Fractal Products
 
-Two of Fractint's primary authors, Timothy Wegner and Mark Peterson, have
-written a book about fractals and Fractint.
+(Forgive us, but we just *have* to begin this section with a plug for
+*our* fractal products...)
 
-The book is The Waite Group's Fractal Creations (Copyright (C) 1991 Waite
-Group Press).
+Fractint's primary authors have written several books about fractals,
+Fractint, and Winfract (the Windows version of Fractint).
+
+The book about Fractint is The Waite Group's Fractal Creations (Copyright
+(C) 1991 Waite Group Press, ISBN # 1-878739-05-0).  The original book was
+based on Fractint version 15 - the second edition (which should hit
+your favorite local bookstore sometime in the fall of 1993) is based
+on version 18.  The book about Winfract is The Waite Group's Fractals
+for Windows (Copyright (C) 1992 Waite Group Press, ISBN # 1-878739-25-5).
 
 ~Format-
-Fractal Creations includes:
- o A guided tour of Fractint.
+Fractal Creations and Fractals for Windows include:
+ o A guided tour of Fractint/Winfract.
  o A detailed manual and reference section of commands.
  o A tutorial on fractals.
  o A reference containing tips, explanations, and examples of parameters
-   for all the Fractals generated by Fractint.
- o Secrets on how the program works internally.
+   for all the Fractals generated by Fractint/Winfract.
+ o Secrets on how the programs work internally.
  o 3-D red/blue glasses.
  o A fold-out color poster of the most spectacular fractals.
- o A disk containing Fractint version 15.11 and demonstration files.
+ o A disk containing either Fractint or Winfract and demonstration files.
+ o (Fractals for Windows and the second edition of Fractal Creations only)
+   A complete copy of the source code with a chapter explaining how the
+   program works.
 ~Format+
 
 If you enjoy Fractint, you're sure to enjoy Fractal Creations. The book
-includes Fractint version 15.11 but is also an excellent companion to
-later versions of Fractint.
+includes Fractint and is an excellent companion to the program.  If you
+use the Windows environment, be sure to pick up a copy of Fractals for
+Windows as well.
+;
+;
+~OnlineFF
+
+A great fractals newsletter is "Amygdala" published by Rollo Silver. 
+You'll find equal parts fractal algorithms, humor, reviews, and ideas.
+Write to: 
+   Amygdala\
+   Box 219\
+   San Cristobal, NM 87564\
+   USA\
+   Email:rsilver@lanl.gov\
+   Phone: 505-586-0197\
+
+
+Another great fractals newsletter (this one based in the UK) is
+"FRAC'Cetera", a disk-based fractal/chaos resource published by
+Jon Horner.  Contact:
+
+   Jon Horner\
+   FRAC'Ceters\
+   Le Mont Ardane\
+   Rue des Ardanes\
+   ST Peters\
+   Guernsey, CI, UK\
+   Email: 100112.1700@compuserve.com\
+   PH: (44) 0481 63639\
+ 
 ;
 ;
 ~Topic=Bibliography
@@ -1174,9 +1253,14 @@ PEITGEN, Heinz-Otto & SAUPE, Ditmar: "The Science of Fractal Images,"
    *equations*!!!
 
 WEGNER, Timothy & PETERSON, Mark: "Fractal Creations", Waite Group Press,
-   1991.\
+   1991 (second edition, by Wegner and Tyler, due in the fall of 1993).\
    If we tell you how *wonderful* this book is you might think we were
    bragging, so let's just call it:  THE definitive companion to Fractint!
+
+WEGNER, Timothy & PETERSON, Mark & TYLER, Bert, & Branderhorst, Pieter:
+   "Fractals for Windows", Waite Group Press, 1992.\
+   This book is to Winfract (the Windows version of Fractint) what
+   "Fractals for Windows" is to Fractint.
 ;
 ;
 ~Topic=Other Programs
@@ -1186,7 +1270,7 @@ underlying code is used, with a Windows user interface.  Winfract has
 almost all the functionality of Fractint - the biggest difference is the
 absence of a zillion weird video modes.  Fractint for DOS will continue to
 be the definitive version.  Winfract is available from CompuServe in
-COMART Lib 15, as WINFRA.ZIP (executable) and WINSRC.ZIP (source).
+GRAPHDEV Lib 4, as WINFRA.ZIP (executable) and WINSRC.ZIP (source).
 
 
 PICLAB, by Lee Crocker - a freeware image manipulation utility available
@@ -1199,7 +1283,7 @@ can be used to reduce 24 bit TGA files generated with the Fractint
 
 ~Label=@FDESIGN
 FDESIGN, by Doug Nelson (CIS ID 70431,3374) - a freeware IFS fractal
-generator available from Compuserve in COMART Lib 15, and probably on your
+generator available from Compuserve in GRAPHDEV Lib 4, and probably on your
 local BBS.  This program requires a VGA adapter and a Microsoft-compatible
 mouse, and a floating point coprocessor is highly recommended.	It
 generates IFS fractals in a *much* more intuitive fashion than Fractint.
@@ -1220,6 +1304,8 @@ this program can read for orbit-type fractals and IFS fractals. Contact:
 
   Please select one of:
 
+      {Version 17}
+
       {Version 16}
 
       {Version 15}
@@ -1228,6 +1314,153 @@ this program can read for orbit-type fractals and IFS fractals. Contact:
 
       {Versions  1 through 11}
 ;
+~Topic=Version 17
+
+Version 17.2, 3/92
+
+ - Fixed a bug which caused Fractint to hang when a Continuous Potential\
+   Bailout value was set (using the 'Y') screen and then the 'Z' screen\
+   was activated.\
+ - fixed a bug which caused "batch=yes" runs to abort whenever any\
+   key was pressed.\
+ - bug-fixes in the Stereo3D/Targa logic from Marc Reinig.\
+ - Fractint now works correctly again on FPU-less 8088s when\
+   zoomed deeply into the Mandelbrot/Julia sets\
+ - The current image is no longer marked as "not resumable" on a\
+   Shell-To-Dos ("D") command.\
+ - fixed a bug which prevented the "help" functions from working\
+   properly during fractal-type selection for some fractal types.\
+
+Version 17.1, 3/92
+
+ - fixed a bug which caused PCs with no FPU to lock up when they attempted\
+   to use some fractal types.\
+ - fixed a color-cycling bug which caused the palette to single-step \
+   when you pressed ESCAPE to exit color-cycling.\
+ - fixed the action of the '<' and '>' keys during color-cycling.\
+
+Version 17.0, 2/92
+
+- New fractal types (but of course!): 
+
+Lyapunov Fractals from Roy Murphy (see {Lyapunov Fractals} for details)
+
+'BifStewart' (Stewart Map bifurcation) fractal type and new bifurcation
+parameters (filter cycles, seed population) from Kevin Allen.
+
+Lorenz3d1, Lorenz3d2, and Lorenz3d3 fractal types from Scott Taylor.
+Note that a bug in the Lorenz3d1 fractal prevents zooming-out from
+working with it at the moment.
+
+Martin, Circle, and Hopalong (culled from Dewdney's Scientific American
+Article)
+
+Lots of new entries in fractint.par.
+
+New ".L" files (TILING.L, PENROSE.L)
+
+New 'rand()' function added to the 'type=formula' parser
+
+- New fractal generation options:
+
+New 'Tesseral' calculation algorithm (use the 'X' option list to
+select it) from  Chris Lusby Taylor.
+
+New 'Fillcolor=' option shows off Boundary Tracing and Tesseral structure
+
+inside=epscross and inside=startrail options taken from a paper by
+Kenneth Hooper, with credit also to Clifford Pickover
+
+New Color Postscript Printer support from Scott Taylor.
+
+Sound= command now works with <O>rbits and <R>ead commands.
+
+New 'orbitdelay' option in X-screen and command-line interface
+
+New "showdot=nn" command-line option that displays the pixel currently
+being worked on using the specified color value (useful for those lloooonngg
+images being calculated using solid guessing - "where is it now?").
+
+New 'exitnoask=yes' commandline/SSTOOLS.INI option to avoid the final
+"are you sure?" screen
+
+New plasma-cloud options.  The interface at the moment (documented here and
+  here only because it might change later) lets you:\
+  - use an alternate drawing algorithm that gives you an earlier preview\
+    of the finished image.
+  - re-generate your favorite plasma cloud (say, at a higher resolution)
+    by forcing a re-select of the random seed.\
+
+New 'N' (negative palette) option from Scott Taylor - the documentation at
+this point is:	Pressing 'N' while in the palette editor will invert
+each color. It will convert only the current color if it is in 'x' mode,
+a range if in 'y' mode, and every color if not in either the 'x' or 'y' mode.
+
+- Speedups:
+
+New, faster floating-point Mandelbrot/Julia set code from Wesley Loewer,
+Frank Fussenegger and Chris Lusby Taylor (in separate contributions).
+
+Faster non-386 integer Mandelbrot code from Chris Lusby Taylor, Mike Gelvin
+and Bill Townsend (in separate contributions)
+
+New integer Lsystems logic from Nicholas Wilt
+
+Finite-Attractor fixups and Lambda/mandellambda speedups from Kevin Allen.
+
+GIF Decoder speedups from Mike Gelvin
+
+- Bug-fixes and other enhancements:
+
+Fractint now works with 8088-based AMSTRAD computers.
+
+The video logic is improved so that (we think) fewer video boards will need
+"textsafe=save" for correct operation.
+
+Fixed a bug in the VESA interface which effectively messed up adapters
+with unusual VESA-style access, such as STB's S3 chipset.
+
+Fixed a color-cycling bug that would at times restore the wrong colors
+to your image if you exited out of color-cycling, displayed a 'help'
+screen, and then returned to the image.
+
+Fixed the XGA video logic so that its 256-color modes use the same 
+default 256 colors as the VGA adapter's 320x200x256 mode.
+
+Fixed the 3D bug that caused bright spots on surfaces
+to show as black blotches of color 0 when using a light source.
+
+Fixed an image-generation bug that sometimes caused image regeneration
+to restart even if not required if the image had been zoomed in
+to the point that floating-point had been automatically activated.
+
+Added autodetection and 640x480x256 support for the Compaq Advanced VGA
+Systems board - I wonder if it works?
+
+Added VGA register-compatible 320x240x256 video mode.
+
+Fixed the "logmap=yes" option to (again) take effect for continuous potential
+images.  This was broken in version 15.x.
+
+The colors for the floating-point algorithm of the Julia fractal
+now match the colors for the integer algorithm.
+
+If the GIF Encoder (the "Save" command) runs out of disk space, it now
+tells you about it.
+
+If you select both the boundary-tracing algorithm and either "inside=0"
+or "outside=0", the algorithm will now give you an error message instead
+of silently failing.
+
+Updated 3D logic from Marc Reinig.
+
+Minor changes to permit IFS3D fractal types to be handled properly
+using the "B" command.
+
+Minor changes to the "Obtaining the latest Source" section to refer
+to BBS access (Peter Longo's) and mailed diskettes (the Public (Software)
+Library).
+
 ~Topic=Version 16
 
 Version 16.12, 8/91
@@ -1259,19 +1492,6 @@ Version 16.11, 7/91
   Improved IIT Math Coprocessor support.\
 
   New color-cycling single-step options, '<' and '>'.\
-;
-;Transparent 3D and Antialiasing stuff, not documented yet, some initial
-;notes:
-;  new command line parms:\
-;    solidcore=y|n		 y\
-;    antialias=0...8		 0\
-;    transparent3d=n|y		 n\
-;    corecolor=nnn/nnn/nnn	 128/128/128\
-;    mdcorners=nnn/nnn/nnn/nnn	 -1.5/1.5/0/0\
-;    numframes=nnn		 1\
-;  antialiasing can be modified on X screen
-;  new keywords "xy" and "dt" in formulas
-;
 
 Version 16.0, 6/91
 
@@ -1651,7 +1871,7 @@ Version 11.0, 1/90
     manzzprw/julzzpwr		 manzpower/julzpower\
     lorenz (from Rob Beyer)	 lorenz3d\
     complexnewton		 complexbasin\
-    popcorn\
+    dynamic			 popcorn\
   Most fractal types given an integer and a floating point algorithm.
     "Float=yes" option now determines whether integer or floating-point
     algorithms are used for most fractal types.  "F" command toggles the use
@@ -1972,7 +2192,7 @@ TETRATE PARAMS=nnn	TETRATE BAILOUT=nnn+3
 ;
  Primary Authors
  Bert Tyler	      CompuServe (CIS) ID: [73477,433]
- Timothy Wegner       CIS ID: [71320,675]   Internet: twegner@mwunix.mitre.org
+ Timothy Wegner       CIS ID: [71320,675]   Internet: twegner@mitre.org
  Mark Peterson	      CIS ID: [70441,3353]
  Pieter Branderhorst  CIS ID: [72611,2257]
  Contributing Authors
@@ -1992,7 +2212,7 @@ TETRATE PARAMS=nnn	TETRATE BAILOUT=nnn+3
 
 
  SPACEBAR toggles scrolling off/on
-   Copyright (C) 1990-92 The Stone Soup Group.  Fractint may be freely copied
+   Copyright (C) 1990-93 The Stone Soup Group.  Fractint may be freely copied
    and distributed but may not be sold.  See help for more information.
 ;
 ;
@@ -2004,16 +2224,20 @@ TETRATE PARAMS=nnn	TETRATE BAILOUT=nnn+3
 		  ...
  Michael Abrash   360x480x256, 320x400x256 VGA video modes
  Joseph Albrecht  Tandy video, CGA video speedup
- Kevin Allen	  Finite attractor and bifurcation engine
+ Kevin Allen	  kevina@microsoft.com Finite attractor, bifurcation engine
  Steve Bennett	  restore-from-disk logic
  Rob Beyer	  [71021,2074] Barnsley IFS, Lorenz fractals
  Francois Blais	  [70700,446] Lyapunov Fractals, LYAPUNOV.MAP
+ Dennis Bragg     [75300,2456] DXF Raytracing output option
+ Juan J. Buhler   jbuhler@gidef.edu.ar Diffusion options, inverse Julia type 
  Mike Burkey	  376x564x256, 400x564x256, and 832x612x256 VGA video modes
+ Robin Bussell	  Palette-editor "freestyle" option
  John Bridges	  [75300,2137] superVGA support, 360x480x256 mode
  Brian Corbino	  [71611,702] Tandy 1000 640x200x16 video mode
  Lee Crocker	  [73407,2030] Fast Newton, Inversion, Decomposition..
  Monte Davis	  [71450,3542] Documentation
  Chuck Ebbert	  [76306,1226] cmprsd & sqrt logmap, fpu speedups
+ Dan Farmer	  [70703,1632] orbits enhancements
  Richard Finegold [76701,153] 8/16/../256-Way Decomposition option
  Frank Fussenegger Mandelbrot speedups
  Mike Gelvin	  [73337,520] Mandelbrot speedups
@@ -2022,7 +2246,7 @@ TETRATE PARAMS=nnn	TETRATE BAILOUT=nnn+3
  Norman Hills	  [71621,1352] Ranges option
  Richard Hughes   [70461,3272] "inside=", "outside=" coloring options
  Mike Kaufman	  [kaufman@eecs.nwu.edu] mouse support, other features
- Wesley Loewer	  fast floating-point Mandelbrot/Julia logic
+ Wesley Loewer    fast fp Mandel/Julia/Lyapunov, boundary trace, frothybasin
  Adrian Mariano   [adrian@u.washington.edu] Diffusion & L-Systems
  Charles Marslett [75300,1636] VESA video and IIT math chip support
  Joe McLain	  [75066,1257] TARGA Support, color-map files
@@ -2030,27 +2254,30 @@ TETRATE PARAMS=nnn	TETRATE BAILOUT=nnn+3
  Bret Mulvey	  plasma clouds
  Roy Murphy	  [76376,721] Lyapunov Fractals
  Ethan Nagel	  [70022,2552] Palette editor, integrated help/doc system
- Jonathan Osuch   [73277,1432] IIT detect
+ Jonathan Osuch   [73277,1432] IIT detect, register-compatible 8514/A code
  Marc Reinig	  [72410,77] Lots of 3D options
  Kyle Powell	  [76704,12] 8514/A Support
  Matt Saucier	  [72371,3101] Printer Support
  Herb Savage	  [71640,455] 'inside=bof60', 'inside=bof61' options
- Lee Skinner	  Tetrate, Spider, Mandelglass fractal types and more
+ Ken Shirriff     shirriff@sprite.berkeley.edu Quaternions, CA, Xfract port
+ Lee Skinner	  [75450,3631] Tetrate fractal types and more
  Dean Souleles	  [75115,1671] Hercules Support
  Kurt Sowa	  [73467,2013] Color Printer Support
  Hugh Steele	  cyclerange feature
+ John Swenson	  [75300,2136] Postscript printer features
  Chris Taylor	  Floating&Fixed-point algorithm speedups, Tesseral Option
- Scott Taylor	  [72401,410] (DGWM18A) PostScript, Kam Torus, many fn types.
+ Scott Taylor	  [72401,410] PostScript, Kam Torus, many fn types.
  Bill Townsend	  Mandelbrot Speedups
  Paul Varner	  [73237,441] Extended Memory support for Disk Video
  Dave Warker	  Integer Mandelbrot Fractals concept
+ Aaron Williams   Register-compatible 8514/A code
  Phil Wilson	  [76247,3145] Distance Estimator, Bifurcation fractals
  Nicholas Wilt	  Lsystem speedups
  Richard Wilton   Tweaked VGA Video modes
 		  ...
- Byte Magazine	  Tweaked VGA Modes
- MS-Kermit	  Keyboard Routines
- PC Magazine	  Sound Routines
- PC Tech Journal  CPU, FPU Detectors
+; Byte Magazine	  Tweaked VGA Modes
+; MS-Kermit	  Keyboard Routines
+; PC Magazine	  Sound Routines
+; PC Tech Journal  CPU, FPU Detectors
 ;
 ;

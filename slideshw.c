@@ -7,12 +7,12 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <time.h>
+#include <string.h>
+#ifndef XFRACT
+#include <conio.h>
+#endif
 #include "fractint.h"
-
-int slideshw(void);
-int startslideshow(void);
-void stopslideshow(void);
-void recordshw(int key);
+#include "prototyp.h"
 
 static void sleep(int);
 static int  showtempmsg_txt(int,int,int,int,char *);
@@ -145,13 +145,13 @@ int slideshw()
 
    if(ticks) /* if waiting, see if waited long enough */
    {
-      if(clock() - starttick < ticks) /* haven't waited long enough */
+      if(clock_ticks() - starttick < ticks) /* haven't waited long enough */
 	 return(0);
       ticks = 0;
    }
    if (++slowcount <= 18)
    {
-      starttick = clock();
+      starttick = clock_ticks();
       ticks = CLK_TCK/5; /* a slight delay so keystrokes are visible */
       if (slowcount > 10)
 	 ticks /= 2;
@@ -264,7 +264,7 @@ start:
 	 if(err==1)
 	 {
 	    ticks = fticks;
-	    starttick = clock();	/* start timing */
+	    starttick = clock_ticks();	/* start timing */
 	 }
 	 else
 	 {
@@ -315,7 +315,7 @@ void recordshw(int key)
    char far *mn;
    float dt;
    dt = ticks;	   /* save time of last call */
-   ticks=clock();  /* current time */
+   ticks=clock_ticks();  /* current time */
    if(fp==NULL)
       if((fp=fopen(autoname,"w"))==NULL)
 	 return;
@@ -347,7 +347,11 @@ void recordshw(int key)
 	 quotes=0;
       }
       if((mn=get_mnemonic(key)) != NULL)
+#ifndef XFRACT
 	  fprintf(fp,"%Fs",mn);
+#else
+          fprintf(fp,"%s",mn);
+#endif
       else if (check_vidmode_key(0,key) >= 0)
 	 {
 	    char buf[10];
@@ -364,8 +368,8 @@ void recordshw(int key)
 static void sleep(int secs)
 {
    long stop;
-   stop = clock() + (long)secs*CLK_TCK;
-   while(clock() < stop && kbhit() == 0) { } /* bailout if key hit */
+   stop = clock_ticks() + (long)secs*CLK_TCK;
+   while(clock_ticks() < stop && kbhit() == 0) { } /* bailout if key hit */
 }
 
 static void slideshowerr(char far *msg)
@@ -377,4 +381,3 @@ static void slideshowerr(char far *msg)
    far_strcat(msgbuf,msg);
    stopmsg(0,msgbuf);
 }
-

@@ -4,10 +4,12 @@
 #include <math.h>
 #ifdef __TURBOC__
 #include <alloc.h>
-#else
+#elif !defined(__386BSD__)
 #include <malloc.h>
 #endif
 #include "fractint.h"
+#include "prototyp.h"
+
 #define size	ssize
 /* Needed for use of asm -- helps decide which pointer to function
  * to put into the struct lsys_cmds.
@@ -21,9 +23,7 @@ extern char LFileName[];
 extern char LName[];
 extern double param[];
 extern int overflow;
-
-int Lsystem();
-extern int thinking(int,char *);
+extern float  screenaspect;
 
 struct lsys_cmd {
   char ch;
@@ -91,9 +91,8 @@ static int ispow2(long n)
   return (n == (n & -n));
 }
 
-extern void lsys_doplus(long n);
 
-#if 0
+#ifdef XFRACT
 static void lsys_doplus(long n)
 {
   if (reverse) {
@@ -109,8 +108,8 @@ static void lsys_doplus(long n)
 }
 #endif
 
-extern void lsys_doplus_pow2(long n);
-#if 0
+
+#ifdef XFRACT
 /* This is the same as lsys_doplus, except maxangle is a power of 2. */
 static void lsys_doplus_pow2(long n)
 {
@@ -125,8 +124,8 @@ static void lsys_doplus_pow2(long n)
 }
 #endif
 
-extern void lsys_dominus(long n);
-#if 0
+
+#ifdef XFRACT
 static void lsys_dominus(long n)
 {
   if (reverse) {
@@ -142,8 +141,8 @@ static void lsys_dominus(long n)
 }
 #endif
 
-extern void lsys_dominus_pow2(long n);
-#if 0
+
+#ifdef XFRACT
 static void lsys_dominus_pow2(long n)
 {
   if (reverse) {
@@ -164,7 +163,9 @@ static void lsys_doslash(long n)
   else
     realangle += n;
 }
-extern void lsys_doslash_386(long n);
+#ifdef XFRACT
+#define lsys_doslash_386 lsys_doslash
+#endif
 
 static void lsys_dobslash(long n)
 {
@@ -173,13 +174,19 @@ static void lsys_dobslash(long n)
   else
     realangle -= n;
 }
-extern void lsys_dobslash_386(long n);
+
+#ifdef XFRACT
+#define lsys_dobslash_386 lsys_dobslash
+#endif
 
 static void lsys_doat(long n)
 {
   size = multiply(size, n, 19);
 }
-extern void lsys_doat_386(long n);
+
+#ifdef XFRACT
+#define lsys_doat_386 lsys_doat
+#endif
 
 static void lsys_dopipe(long n)
 {
@@ -187,9 +194,8 @@ static void lsys_dopipe(long n)
   angle %= maxangle;
 }
 
-extern void lsys_dopipe_pow2(long n);
 
-#if 0
+#ifdef XFRACT
 static void lsys_dopipe_pow2(long n)
 {
   angle += maxangle >> 1;
@@ -197,8 +203,8 @@ static void lsys_dopipe_pow2(long n)
 }
 #endif
 
-extern void lsys_dobang(long n);
-#if 0
+
+#ifdef XFRACT
 static void lsys_dobang(long n)
 {
   reverse = ! reverse;
@@ -217,8 +223,8 @@ static void lsys_dosizedm(long n)
   xpos += multiply(multiply(size, aspect, 19), fixedcos, 29);
   ypos += multiply(size, fixedsin, 29);
 
-//xpos+=size*aspect*cos(realangle*PI/180);
-//ypos+=size*sin(realangle*PI/180);
+/* xpos+=size*aspect*cos(realangle*PI/180);  */
+/* ypos+=size*sin(realangle*PI/180);         */
   if (xpos>lsys_Xmax) lsys_Xmax=xpos;
   if (ypos>lsys_Ymax) lsys_Ymax=ypos;
   if (xpos<lsys_Xmin) lsys_Xmin=xpos;
@@ -229,14 +235,17 @@ static void lsys_dosizegf(long n)
 {
   xpos += multiply(size, (long) coss[angle], 29);
   ypos += multiply(size, (long) sins[angle], 29);
-//xpos+=size*coss[angle];
-//ypos+=size*sins[angle];
+/* xpos+=size*coss[angle];                   */
+/* ypos+=size*sins[angle];                   */
   if (xpos>lsys_Xmax) lsys_Xmax=xpos;
   if (ypos>lsys_Ymax) lsys_Ymax=ypos;
   if (xpos<lsys_Xmin) lsys_Xmin=xpos;
   if (ypos<lsys_Ymin) lsys_Ymin=ypos;
 }
-extern void lsys_dosizegf_386(long n);
+
+#ifdef XFRACT
+#define lsys_dosizegf_386 lsys_dosizegf
+#endif
 
 static void lsys_dodrawd(long n)
 {
@@ -252,8 +261,8 @@ static void lsys_dodrawd(long n)
   lasty=(int) (ypos >> 19);
   xpos += multiply(multiply(size, aspect, 19), fixedcos, 29);
   ypos += multiply(size, fixedsin, 29);
-//xpos+=size*aspect*cos(realangle*PI/180);
-//ypos+=size*sin(realangle*PI/180);
+/* xpos+=size*aspect*cos(realangle*PI/180);   */
+/* ypos+=size*sin(realangle*PI/180);          */
   draw_line(lastx,lasty,(int)(xpos >> 19),(int)(ypos>>19),curcolor);
 }
 
@@ -266,8 +275,8 @@ static void lsys_dodrawm(long n)
   fixedsin = (long) (s * FIXEDLT1);
   fixedcos = (long) (c * FIXEDLT1);
 
-//xpos+=size*aspect*cos(realangle*PI/180);
-//ypos+=size*sin(realangle*PI/180);
+/* xpos+=size*aspect*cos(realangle*PI/180);   */
+/* ypos+=size*sin(realangle*PI/180);          */
   xpos += multiply(multiply(size, aspect, 19), fixedcos, 29);
   ypos += multiply(size, fixedsin, 29);
 }
@@ -276,10 +285,13 @@ static void lsys_dodrawg(long n)
 {
   xpos += multiply(size, (long) coss[angle], 29);
   ypos += multiply(size, (long) sins[angle], 29);
-//xpos+=size*coss[angle];
-//ypos+=size*sins[angle];
+/* xpos+=size*coss[angle];                    */
+/* ypos+=size*sins[angle];                    */
 }
-extern void lsys_dodrawg_386(long n);
+
+#ifdef XFRACT
+#define  lsys_dodrawg_386 lsys_dodrawg
+#endif
 
 static void lsys_dodrawf(long n)
 {
@@ -287,8 +299,8 @@ static void lsys_dodrawf(long n)
   int lasty = (int) (ypos >> 19);
   xpos += multiply(size, (long) coss[angle], 29);
   ypos += multiply(size, (long) sins[angle], 29);
-//xpos+=size*coss[angle];
-//ypos+=size*sins[angle];
+/* xpos+=size*coss[angle];                    */
+/* ypos+=size*sins[angle];                    */
   draw_line(lastx,lasty,(int)(xpos>>19),(int)(ypos>>19),curcolor);
 }
 
@@ -346,7 +358,7 @@ static double _fastcall getnumber(char far **str)
    i=0;
    while (**str<='9' && **str>='0' || **str=='.')
    {
-      numstr[i++]=**str;
+      numstr[i++]= **str;
       (*str)++;
    }
    (*str)--;
@@ -428,7 +440,7 @@ static int _fastcall findscale(struct lsys_cmd far *command, struct lsys_cmd far
    double locaspect;
    int i;
    struct lsys_cmd far *fsret;
-   locaspect=SCREENASPECT*xdots/ydots;
+   locaspect=screenaspect*xdots/ydots;
    aspect = FIXEDPT(locaspect);
    for(i=0;i<maxangle;i++) {
       sins[i]=(long) ((sin(2*i*PI/maxangle)) * FIXEDLT1);
@@ -550,7 +562,7 @@ static int _fastcall readLSystemFile(char *str)
 
    maxangle=0;
    for(linenum=0;linenum<MAXRULES;++linenum) ruleptrs[linenum]=NULL;
-   rulind=&ruleptrs[1];
+   rulind= &ruleptrs[1];
    msgbuf[0]=linenum=0;
 
    while(fgets(inline,160,infile))  /* Max line length 160 chars */
@@ -578,8 +590,13 @@ static int _fastcall readLSystemFile(char *str)
 	    break;
 	 else if (strlen(word)==1)
 	 {
-	    strcat(strcpy(fixed,word),strtok(NULL," \t\n"));
-	    save_rule(fixed,rulind++);
+	    char *tok;
+	    tok = strtok(NULL, " \t\n");
+	    strcpy(fixed, word);
+	    if (tok != NULL) {     /* Some strcat's die if they cat with NULL */
+		strcat(fixed, tok);
+	    }
+	    save_rule(fixed, rulind++);
 	    check=1;
 	 }
 	 else
@@ -707,7 +724,7 @@ static int _fastcall save_rule(char *rule,char far **saveptr)
        return -1;
        }
    *saveptr=tmpfar;
-   while(--i>=0) *(tmpfar++)=*(rule++);
+   while(--i>=0) *(tmpfar++)= *(rule++);
    return 0;
 }
 
@@ -715,7 +732,7 @@ static struct lsys_cmd far *SizeTransform(char far *s)
 {
   struct lsys_cmd far *ret;
   struct lsys_cmd far *doub;
-  int max = 10;
+  int maxval = 10;
   int n = 0;
   void (*f)(long);
   long num;
@@ -729,7 +746,7 @@ static struct lsys_cmd far *SizeTransform(char far *s)
   void (*at)(long) =     (cpu == 386) ? lsys_doat_386 : lsys_doat;
   void (*dogf)(long) =   (cpu == 386) ? lsys_dosizegf_386 : lsys_dosizegf;
 
-  ret = (struct lsys_cmd far *) farmemalloc((long) max * sizeof(struct lsys_cmd));
+  ret = (struct lsys_cmd far *) farmemalloc((long) maxval * sizeof(struct lsys_cmd));
   if (ret == NULL) {
        stackoflow = 1;
        return NULL;
@@ -758,17 +775,17 @@ static struct lsys_cmd far *SizeTransform(char far *s)
     }
     ret[n].f = f;
     ret[n].n = num;
-    if (++n == max) {
-      doub = (struct lsys_cmd far *) farmemalloc((long) max*2*sizeof(struct lsys_cmd));
+    if (++n == maxval) {
+      doub = (struct lsys_cmd far *) farmemalloc((long) maxval*2*sizeof(struct lsys_cmd));
       if (doub == NULL) {
          farmemfree(ret);
          stackoflow = 1;
          return NULL;
          }
-      far_memcpy(doub, ret, max*sizeof(struct lsys_cmd));
+      far_memcpy(doub, ret, maxval*sizeof(struct lsys_cmd));
       farmemfree(ret);
       ret = doub;
-      max <<= 1;
+      maxval <<= 1;
     }
     s++;
   }
@@ -792,7 +809,7 @@ static struct lsys_cmd far *DrawTransform(char far *s)
 {
   struct lsys_cmd far *ret;
   struct lsys_cmd far *doub;
-  int max = 10;
+  int maxval = 10;
   int n = 0;
   void (*f)(long);
   long num;
@@ -806,7 +823,7 @@ static struct lsys_cmd far *DrawTransform(char far *s)
   void (*at)(long) =     (cpu == 386) ? lsys_doat_386 : lsys_doat;
   void (*drawg)(long) =  (cpu == 386) ? lsys_dodrawg_386 : lsys_dodrawg;
 
-  ret = (struct lsys_cmd far *) farmemalloc((long) max * sizeof(struct lsys_cmd));
+  ret = (struct lsys_cmd far *) farmemalloc((long) maxval * sizeof(struct lsys_cmd));
   if (ret == NULL) {
        stackoflow = 1;
        return NULL;
@@ -838,17 +855,17 @@ static struct lsys_cmd far *DrawTransform(char far *s)
     }
     ret[n].f = f;
     ret[n].n = num;
-    if (++n == max) {
-      doub = (struct lsys_cmd far *) farmemalloc((long) max*2*sizeof(struct lsys_cmd));
+    if (++n == maxval) {
+      doub = (struct lsys_cmd far *) farmemalloc((long) maxval*2*sizeof(struct lsys_cmd));
       if (doub == NULL) {
            farmemfree(ret);
            stackoflow = 1;
            return NULL;
            }
-      far_memcpy(doub, ret, max*sizeof(struct lsys_cmd));
+      far_memcpy(doub, ret, maxval*sizeof(struct lsys_cmd));
       farmemfree(ret);
       ret = doub;
-      max <<= 1;
+      maxval <<= 1;
     }
     s++;
   }

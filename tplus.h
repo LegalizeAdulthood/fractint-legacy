@@ -15,6 +15,10 @@
 #ifndef TPLUS_H
 #define TPLUS_H
 
+#ifdef CTL
+#undef CTL
+#endif
+
 #ifdef __TURBOC__
 #define		OUTPORTB	outportb
 #define		INPORTB 	inportb
@@ -79,35 +83,22 @@ struct TPRead {
 
 struct _BOARD {
    int ThisBoard, ClearScreen;
-   unsigned char far *Screen;
+   BYTE far *Screen;
    unsigned VerPan, HorPan, Top, Bottom;
    unsigned xdots, ydots, Bank64k, RowBytes, RowsPerBank;
    unsigned Reg[128];
-   void (*Plot)(unsigned x, unsigned y, unsigned long Color);
-   unsigned long (*GetColor)(unsigned x, unsigned y);
+#ifndef XFRACT
+   void (*Plot)(int x, int y, unsigned long Color);
+   unsigned long (*GetColor)(int x, int y);
+#else
+   void (*Plot)();
+   unsigned long (*GetColor)();
+#endif
 
    struct TPRead Read;
    struct TPWrite Write;
 };
 
 extern struct _BOARD far TPlus;
-
-int
-   CheckForTPlus(void),
-   FillTPlusRegion(unsigned fx, unsigned fy, unsigned xdots, unsigned ydots,
-                   unsigned long Color),
-   SetBoard(int BoardNumber),
-   SetColorDepth(int Depth),
-   SetTPlusMode(int TMode, int NotIntFlag, int Depth, int Zoom),
-   SetVGA_LUT(void),
-   TPlusLUT(unsigned char far *LUTData, unsigned Index, unsigned Number,
-            unsigned DosFlag);
-
-void ClearTPlusScreen(void);
-void SetTPlusModeLinear(void);
-unsigned long ReadTPlusBankedPixel(unsigned x, unsigned y);
-void WriteTPlusBankedPixel(unsigned x, unsigned y, unsigned long Color);
-void TPlusZoom(int Zoom);
-
 
 #endif

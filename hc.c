@@ -52,9 +52,14 @@
 
 
 #include <stdio.h>
+#ifndef XFRACT
 #include <io.h>
-#include <fcntl.h>
 #include <stdarg.h>
+#else
+#include <varargs.h>
+#define strupr strlwr
+#endif
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -82,13 +87,15 @@
  * generated a error or warning.
  */
 
+#ifndef XFRACT
 #define SHOW_ERROR_LINE
+#endif
 
 
-#define DEFAULT_SRC_FNAME "HELP.SRC"
-#define DEFAULT_HLP_FNAME "FRACTINT.HLP"
-#define DEFAULT_EXE_FNAME "FRACTINT.EXE"
-#define DEFAULT_DOC_FNAME "FRACTINT.DOC"
+#define DEFAULT_SRC_FNAME "help.src"
+#define DEFAULT_HLP_FNAME "fractint.hlp"
+#define DEFAULT_EXE_FNAME "fractint.exe"
+#define DEFAULT_DOC_FNAME "fractint.doc"
 
 #define TEMP_FNAME	  "HC.$$$"
 #define SWAP_FNAME	  "HCSWAP.$$$"
@@ -199,7 +206,7 @@ int	 num_plabel	  = 0;	  /* private labels */
 LABEL   *plabel;
 
 int	 num_link	  = 0;	  /* all links */
-LINK    *link;
+LINK    *a_link		  = 0;
 
 int	 num_contents	  = 0;	  /* the table-of-contents */
 CONTENT *contents;
@@ -250,6 +257,13 @@ int include_stack_top = -1;
 
 #define CHK_BUFFER(off) { if ((unsigned)(curr+(off)) - (unsigned)buffer >= (BUFFER_SIZE-1024)) fatal(0,"Buffer overflowed -- Help topic too large."); }
 
+#ifdef __WATCOMC__
+#define putw( x1, x2 )  fprintf( x2, "%c%c", x1&0xFF, x1>>8 );
+#endif
+
+#ifdef XFRACT
+#define putw( x1, x2 )  fwrite( &(x1), 1, sizeof(int), x2);
+#endif
 
 /*
  * error/warning/message reporting functions.
@@ -279,11 +293,25 @@ void print_msg(char *type, int lnum, char *format, va_list arg)
    }
 
 
+#ifndef XFRACT
 void fatal(int diff, char *format, ...)
+#else
+void fatal(va_alist)
+    va_dcl
+#endif
    {
    va_list arg;
 
+#ifndef XFRACT
    va_start(arg, format);
+#else
+   int diff;
+   char *format;
+   va_start(arg);
+   diff = va_arg(arg,int);
+   format = va_arg(arg,char *);
+#endif
+
    print_msg("Fatal", srcline-diff, format, arg);
    va_end(arg);
 
@@ -294,11 +322,24 @@ void fatal(int diff, char *format, ...)
    }
 
 
+#ifndef XFRACT
 void error(int diff, char *format, ...)
+#else
+void error(va_alist)
+    va_dcl
+#endif
    {
    va_list arg;
 
+#ifndef XFRACT
    va_start(arg, format);
+#else
+   int diff;
+   char *format;
+   va_start(arg);
+   diff = va_arg(arg,int);
+   format = va_arg(arg,char *);
+#endif
    print_msg("Error", srcline-diff, format, arg);
    va_end(arg);
 
@@ -307,11 +348,23 @@ void error(int diff, char *format, ...)
    }
 
 
+#ifndef XFRACT
 void warn(int diff, char *format, ...)
+#else
+void warn(va_alist)
+   va_dcl
+#endif
    {
    va_list arg;
-
+#ifndef XFRACT
    va_start(arg, format);
+#else
+   int diff;
+   char *format;
+   va_start(arg);
+   diff = va_arg(arg, int);
+   format = va_arg(arg, char *);
+#endif
    print_msg("Warning", srcline-diff, format, arg);
    va_end(arg);
 
@@ -320,23 +373,47 @@ void warn(int diff, char *format, ...)
    }
 
 
+#ifndef XFRACT
 void notice(char *format, ...)
+#else
+void notice(va_alist)
+    va_dcl
+#endif
    {
    va_list arg;
-
+#ifndef XFRACT
    va_start(arg, format);
+#else
+   char *format;
+
+   va_start(arg);
+   format = va_arg(arg,char *);
+#endif
    print_msg("Note", srcline, format, arg);
    va_end(arg);
    }
 
 
+#ifndef XFRACT
 void msg(char *format, ...)
+#else
+void msg(va_alist)
+va_dcl
+#endif
    {
    va_list arg;
+#ifdef XFRACT
+   char *format;
+#endif
 
    if (quiet_mode)
       return;
+#ifndef XFRACT
    va_start(arg, format);
+#else
+   va_start(arg);
+   format = va_arg(arg,char *);
+#endif
    print_msg(NULL, 0, format, arg);
    va_end(arg);
    }
@@ -393,9 +470,9 @@ void release_topic_text(TOPIC *t, int save)
 #define delete(item) free(item)
 
 
-void *newx(unsigned size)
+VOIDPTR newx(unsigned size)
    {
-   void *ptr;
+   VOIDPTR ptr;
 
    ptr = malloc(size);
 
@@ -406,7 +483,7 @@ void *newx(unsigned size)
    }
 
 
-void *renewx(void *ptr, unsigned size)
+VOIDPTR renewx(VOIDPTR ptr, unsigned size)
    {
    ptr = realloc(ptr, size);
 
@@ -438,12 +515,12 @@ char *dupstr(char *s, unsigned len)
 int add_link(LINK *l)
    {
    if (num_link == 0)
-      link = newx( sizeof(LINK)*LINK_ALLOC_SIZE );
+      a_link = newx( sizeof(LINK)*LINK_ALLOC_SIZE );
 
    else if (num_link%LINK_ALLOC_SIZE == 0)
-      link = renewx(link, sizeof(LINK) * (num_link+LINK_ALLOC_SIZE) );
+      a_link = renewx(a_link, sizeof(LINK) * (num_link+LINK_ALLOC_SIZE) );
 
-   link[num_link] = *l;
+   a_link[num_link] = *l;
 
    return( num_link++ );
    }
@@ -688,6 +765,12 @@ int read_char(void)
 	 ch = atoi(buff);
 	 }
 
+#ifdef XFRACT
+   /* Convert graphics arrows into keyboard chars */
+       if (ch>=24 && ch<=27) {
+	   ch = "KJHL"[ch-24];
+       }
+#endif
       ch |= 0x100;
       }
 
@@ -847,7 +930,7 @@ void put_spaces(int how_many)
 	 }
 
       *curr++ = CMD_SPACE;
-      *curr++ = (unsigned char)how_many;
+      *curr++ = (BYTE)how_many;
       }
    else
       {
@@ -1094,11 +1177,11 @@ int parse_link(void)   /* returns length of link or 0 on error */
 
    if ( !bad )
       {
-      CHK_BUFFER(1+6+len+1)
+      CHK_BUFFER(1+3*sizeof(int)+len+1)
       lnum = add_link(&l);
       *curr++ = CMD_LINK;
-      *((int *)curr) = lnum;
-      curr += 6;
+      setint(curr,lnum);
+      curr += 3*sizeof(int);
       memcpy(curr, ptr, len);
       curr += len;
       *curr++ = CMD_LINK;
@@ -1179,7 +1262,7 @@ int create_table(void)
 	       fatal(0,"Table is too large.");
 	    len = parse_link();
 	    curr = table_start;   /* reset to the start... */
-	    title[count] = dupstr(curr+7, len+1);
+            title[count] = dupstr(curr+3*sizeof(int)+1, len+1);
 	    if (len >= width)
 	       {
 	       warn(1,"Link is too long; truncating.");
@@ -1248,8 +1331,8 @@ int create_table(void)
 
 	 len = strlen(title[lnum]);
 	 *curr++ = CMD_LINK;
-	 *(int *)curr = first_link+lnum;
-	 curr += 6;
+         setint(curr,first_link+lnum);
+         curr += 3*sizeof(int);
 	 memcpy(curr, title[lnum], len);
 	 curr += len;
 	 *curr++ = CMD_LINK;
@@ -2436,7 +2519,7 @@ void make_hot_links(void)
     * links which will (probably) appear in the document.
     */
 
-   for (lctr=0, l=link; lctr<num_link; l++, lctr++)
+   for (lctr=0, l=a_link; lctr<num_link; l++, lctr++)
       {
       switch ( l->type )
 	 {
@@ -2750,7 +2833,7 @@ void set_hot_link_doc_page(void)
    int	  lctr;
    int	  t;
 
-   for (lctr=0, l=link; lctr<num_link; l++, lctr++)
+   for (lctr=0, l=a_link; lctr<num_link; l++, lctr++)
       {
       switch ( l->type )
 	 {
@@ -2844,18 +2927,18 @@ int pd_get_info(int cmd, PD_INFO *pd, int *info)
 	 return (1);
 
       case PD_GET_LINK_PAGE:
-	 if ( link[*(int *)pd->s].doc_page == -1 )
+         if ( a_link[getint(pd->s)].doc_page == -1 )
 	    {
 	    if ( info[LINK_DEST_WARN] )
 	       {
-	       src_cfname = link[*(int *)pd->s].srcfile;
-	       srcline	  = link[*(int *)pd->s].srcline;
+               src_cfname = a_link[getint(pd->s)].srcfile;
+               srcline    = a_link[getint(pd->s)].srcline;
 	       warn(0,"Hot-link destination is not in the document.");
 	       srcline = -1;
 	       }
 	    return (0);
 	    }
-	 pd->i = link[*(int *)pd->s].doc_page;
+         pd->i = a_link[getint(pd->s)].doc_page;
 	 return (1);
 
       case PD_RELEASE_TOPIC:
@@ -2938,7 +3021,7 @@ void paginate_document(void)
  */
 
 
-int fcmp_LABEL(const void *a, const void *b)
+int fcmp_LABEL(VOIDCONSTPTR a, VOIDCONSTPTR b)
    {
    char *an = ((LABEL *)a)->name,
         *bn = ((LABEL *)b)->name;
@@ -2991,18 +3074,10 @@ void _write_hdr(char *fname, FILE *file)
         next[MAXEXT];
 
    FNSPLIT(fname, NULL, NULL, nfile, next);
-   fprintf(file, "\n"
-		 "/*\n"
-		 " * %s%s\n", nfile, next);
+   fprintf(file, "\n/*\n * %s%s\n", nfile, next);
    FNSPLIT(src_fname, NULL, NULL, nfile, next);
-   fprintf(file, " *\n"
-		 " * Contains #defines for help.\n"
-		 " *\n"
-		 " * Generated by HC from: %s%s\n"
-		 " *\n"
-		 " */\n"
-		 "\n"
-		 "\n", nfile, next);
+   fprintf(file, " *\n * Contains #defines for help.\n *\n");
+   fprintf(file, " * Generated by HC from: %s%s\n *\n */\n\n\n", nfile, next);
 
    fprintf(file, "/* current help file version */\n");
    fprintf(file, "\n");
@@ -3086,34 +3161,34 @@ void calc_offsets(void)    /* calc file offset to each topic */
 
    /* NOTE: offsets do NOT include 6 bytes for signature & version! */
 
-   offset = 2 + 	    /* max_pages */
-	    2 + 	    /* max_links */
-	    2 + 	    /* num_topic */
-	    2 + 	    /* num_label */
-	    2 + 	    /* num_contents */
-	    2 + 	    /* num_doc_pages */
-	    num_topic*4 +   /* offsets to each topic */
-	    num_label*4;    /* topic_num/topic_off for all public labels */
+   offset = sizeof(int) +           /* max_pages */
+            sizeof(int) +           /* max_links */
+            sizeof(int) +           /* num_topic */
+            sizeof(int) +           /* num_label */
+            sizeof(int) +           /* num_contents */
+            sizeof(int) +           /* num_doc_pages */
+            num_topic*sizeof(long) +/* offsets to each topic */
+            num_label*2*sizeof(int);/* topic_num/topic_off for all public labels */
 
    for (c=0, cp=contents; c<num_contents; c++, cp++)
-      offset += 2 +		    /* flags */
+      offset += sizeof(int) +       /* flags */
 	        1 +		    /* id length */
 	        strlen(cp->id) +    /* id text */
 	        1 +		    /* name length */
 	        strlen(cp->name) +  /* name text */
 	        1 +		    /* number of topics */
-	        cp->num_topic*2;    /* topic numbers */
+                cp->num_topic*sizeof(int);    /* topic numbers */
 
    for (t=0, tp=topic; t<num_topic; t++, tp++)
       {
       tp->offset = offset;
-      offset += 2L +		   /* topic flags */
-	        2 +		   /* number of pages */
-	        tp->num_page*6 +   /* page offset, length & starting margin */
-	        1 +		   /* length of title */
-	        tp->title_len +    /* title */
-	        2 +		   /* length of text */
-	        tp->text_len;	   /* text */
+      offset += (long)sizeof(int) + /* topic flags */
+                sizeof(int) +       /* number of pages */
+                tp->num_page*3*sizeof(int) +   /* page offset, length & starting margin */
+	        1 +		    /* length of title */
+	        tp->title_len +     /* title */
+                sizeof(int) +       /* length of text */
+	        tp->text_len;	    /* text */
       }
 
    }
@@ -3135,10 +3210,10 @@ void insert_real_link_info(char *curr, unsigned len)
 
       if ( tok == TOK_LINK )
 	 {
-	 l = &link[ *(int *)(curr+1) ];
-	 *(int	    *)(curr+1) = l->topic_num;
-	 *(unsigned *)(curr+3) = l->topic_off;
-	 *(int	    *)(curr+5) = l->doc_page;
+         l = &a_link[ getint(curr+1) ];
+         setint(curr+1,l->topic_num);
+         setint(curr+1+sizeof(int),l->topic_off);
+         setint(curr+1+2*sizeof(int),l->doc_page);
 	 }
 
       len -= size;
@@ -3157,10 +3232,10 @@ void _write_help(FILE *file)
 
    /* write the signature and version */
 
-   hs.sig = HELP_SIG;
+   hs.sig = HELP_SIG; /* Edit line 17 of helpcom.h if this is a syntax error */
    hs.version = version;
 
-   fwrite(&hs, 6, 1, file);
+   fwrite(&hs, sizeof(long)+sizeof(int), 1, file);
 
    /* write max_pages & max_links */
 
@@ -3179,8 +3254,8 @@ void _write_help(FILE *file)
 
    /* write the offsets to each topic */
 
-   for (t=0; t<num_topic; t++)
-      fwrite(&topic[t].offset, 4, 1, file);
+   for (t=0; t<num_topic; t++) 
+      fwrite(&topic[t].offset, sizeof(long), 1, file);
 
    /* write all public labels */
 
@@ -3197,15 +3272,15 @@ void _write_help(FILE *file)
       putw(cp->flags, file);
 
       t = strlen(cp->id);
-      putc((unsigned char)t, file);
+      putc((BYTE)t, file);
       fwrite(cp->id, 1, t, file);
 
       t = strlen(cp->name);
-      putc((unsigned char)t, file);
+      putc((BYTE)t, file);
       fwrite(cp->name, 1, t, file);
 
-      putc((unsigned char)cp->num_topic, file);
-      fwrite(cp->topic_num, 2, cp->num_topic, file);
+      putc((BYTE)cp->num_topic, file);
+      fwrite(cp->topic_num, sizeof(int), cp->num_topic, file);
       }
 
    /* write topics */
@@ -3228,7 +3303,7 @@ void _write_help(FILE *file)
 
       /* write the help title */
 
-      putc((unsigned char)tp->title_len, file);
+      putc((BYTE)tp->title_len, file);
       fwrite(tp->title, 1, tp->title_len, file);
 
       /* insert hot-link info & write the help text */
@@ -3446,7 +3521,7 @@ void report_memory(void)
    for (ctr=0; ctr<num_link; ctr++)
       {
       data += sizeof(LINK);
-      string += strlen(link[ctr].name);
+      string += strlen(a_link[ctr].name);
       }
 
    if (num_link > 0)
@@ -3557,7 +3632,7 @@ void add_hlp_to_exe(char *hlp_fname, char *exe_fname)
 
    /* now, let's see if their help file is for real (and get the version) */
 
-   read(hlp, (char *)&hs, 6);
+   read(hlp, (char *)&hs, sizeof(long)+sizeof(int));
 
    if (hs.sig != HELP_SIG )
       fatal(0,"Help signature not found in %s", hlp_fname);
@@ -3568,7 +3643,7 @@ void add_hlp_to_exe(char *hlp_fname, char *exe_fname)
 
    lseek(exe, hs.base, SEEK_SET);
 
-   len = filelength(hlp) - 6;  /* -6 for the file signature & version */
+   len = filelength(hlp) - sizeof(long) - sizeof(int); /* adjust for the file signature & version */
 
    for (count=0; count<len; )
       {
@@ -3582,7 +3657,7 @@ void add_hlp_to_exe(char *hlp_fname, char *exe_fname)
 
    write(exe, (char *)&hs, 10);
 
-   chsize(exe, tell(exe));   /* truncate in case old help was longer */
+   chsize(exe, lseek(exe,0L,SEEK_CUR));/* truncate if old help was longer */
 
    close(exe);
    close(hlp);
@@ -3601,9 +3676,13 @@ void delete_hlp_from_exe(char *exe_fname)
 
    /* see if any help is currently installed */
 
+#ifndef XFRACT
    lseek(exe, filelength(exe) - 10, SEEK_SET);
-
    read(exe, (char *)&hs, 10);
+#else
+   lseek(exe, filelength(exe) - 12, SEEK_SET);
+   read(exe, (char *)&hs, 12);
+#endif
 
    if ( hs.sig == HELP_SIG )
       {
@@ -3649,7 +3728,7 @@ int main(int argc, char *argv[])
    if (buffer == NULL)
       fatal(0,"Not enough memory to allocate buffer.");
 
-   for (arg=&argv[1]; argc>1; argc--, arg++)
+   for (arg= &argv[1]; argc>1; argc--, arg++)
       {
       switch ( (*arg)[0] )
 	 {
@@ -3734,33 +3813,27 @@ int main(int argc, char *argv[])
    switch (mode)
       {
       case 0:
-	 printf(
-	    "To compile a .SRC file:\n"
-	    "      HC /c [/s] [/m] [/r[path]] [src_file]\n"
-	    "         /s       = report statistics.\n"
-	    "         /m       = report memory usage.\n"
-	    "         /r[path] = set swap file path.\n"
-	    "         src_file = .SRC file.  Default is \"" DEFAULT_SRC_FNAME "\"\n");
-	 printf(
-	    "To print a .SRC file:\n"
-	    "      HC /p [/r[path]] [src_file] [out_file]\n"
-	    "         /r[path] = set swap file path.\n"
-	    "         src_file = .SRC file.  Default is \"" DEFAULT_SRC_FNAME "\"\n"
-	    "         out_file = Filename to print to. Default is \"" DEFAULT_DOC_FNAME "\"\n");
-	 printf(
-	    "To append a .HLP file to an .EXE file:\n"
-	    "      HC /a [hlp_file] [exe_file]\n"
-	    "         hlp_file = .HLP file.  Default is \"" DEFAULT_HLP_FNAME "\"\n"
-	    "         exe_file = .EXE file.  Default is \"" DEFAULT_EXE_FNAME "\"\n");
-        printf(
-	    "To delete help info from an .EXE file:\n"
-	    "      HC /d [exe_file]\n"
-	    "         exe_file = .EXE file.  Default is \"" DEFAULT_EXE_FNAME "\"\n");
-	 printf
-	    (
-	    "\n"
-	    "Use \"/q\" for quiet mode. (No status messages.)\n"
-	    );
+         printf( "To compile a .SRC file:\n");
+         printf( "      HC /c [/s] [/m] [/r[path]] [src_file]\n");
+         printf( "         /s       = report statistics.\n");
+         printf( "         /m       = report memory usage.\n");
+         printf( "         /r[path] = set swap file path.\n");
+         printf( "         src_file = .SRC file.  Default is \"%s\"\n", DEFAULT_SRC_FNAME);
+         printf( "To print a .SRC file:\n");
+         printf( "      HC /p [/r[path]] [src_file] [out_file]\n");
+         printf( "         /r[path] = set swap file path.\n");
+         printf( "         src_file = .SRC file.  Default is \"%s\"\n", DEFAULT_SRC_FNAME);
+         printf( "         out_file = Filename to print to. Default is \"%s\"\n",
+         DEFAULT_DOC_FNAME);
+         printf( "To append a .HLP file to an .EXE file:\n");
+         printf( "      HC /a [hlp_file] [exe_file]\n");
+         printf( "         hlp_file = .HLP file.  Default is \"%s\"\n", DEFAULT_HLP_FNAME);
+         printf( "         exe_file = .EXE file.  Default is \"%s\"\n", DEFAULT_EXE_FNAME);
+         printf( "To delete help info from an .EXE file:\n");
+         printf( "      HC /d [exe_file]\n");
+         printf( "         exe_file = .EXE file.  Default is \"%s\"\n", DEFAULT_EXE_FNAME);
+         printf( "\n");
+         printf( "Use \"/q\" for quiet mode. (No status messages.)\n");
 	 break;
 
       case MODE_COMPILE:

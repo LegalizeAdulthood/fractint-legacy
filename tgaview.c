@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include "fractint.h"
 #include "targa_lc.h"
-#include "port.h"
+#include "prototyp.h"
 
 extern char readname[]; 		/* file name		  */
 extern unsigned int boxx[];		/* write-line routines use this */
@@ -30,7 +30,7 @@ tgaview()
    struct fractal_info info;
    FILE *t16_open();
 
-   if((fptarga = t16_open(readname, &width, &height, &cs, (int *)&info))==NULL)
+   if((fptarga = t16_open(readname, (int *)&width, (int *)&height, &cs, (U8 *)&info))==NULL)
       return(-1);
 
    rowcount = 0;
@@ -55,12 +55,14 @@ tgaview()
    return(0);
 }
 /* Outline function for 16 bit data with 8 bit fudge */
-outlin16(unsigned int *buffer,int linelen)
+outlin16(BYTE *buffer,int linelen)
 {
     extern int rowcount;
+    U16 *buf;
     int i;
+    buf = (U16 *)buffer;
     for(i=0;i<linelen;i++)
-       putcolor(i,rowcount,buffer[i]>>8);
+       putcolor(i,rowcount,buf[i]>>8); 
     rowcount++;
     return(0);
 }

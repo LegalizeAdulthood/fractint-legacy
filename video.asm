@@ -74,15 +74,25 @@ ENDIF
 	extrn	ReadTPlusBankedPixel:far
 	extrn	TPlusLUT:far
 
-; 8514/A routines
-	extrn	open8514  :far	    ; start 8514a
-	extrn	reopen8514:far	    ; restart 8514a
-	extrn	close8514 :far	    ; stop 8514a
-	extrn	fr85wdot  :far	    ; 8514a write dot
-	extrn	fr85wbox  :far	    ; 8514a write box
-	extrn	fr85rdot  :far	    ; 8514a read dot
-	extrn	fr85rbox  :far	    ; 8514a read box
-	extrn	w8514pal  :far	    ; 8514a pallete update
+; 8514/A routines		; changed 8514/A routines to near JCO 4/11/92
+	extrn	open8514  :near	    ; start 8514a
+	extrn	reopen8514:near	    ; restart 8514a
+	extrn	close8514 :near	    ; stop 8514a
+	extrn	fr85wdot  :near	    ; 8514a write dot
+	extrn	fr85wbox  :near	    ; 8514a write box
+	extrn	fr85rdot  :near	    ; 8514a read dot
+	extrn	fr85rbox  :near	    ; 8514a read box
+	extrn	w8514pal  :near	    ; 8514a pallete update
+
+; HW Compatible 8514/A routines    ; AW, made near JCO 4/11/92
+	extrn	open8514hw  :near      ; start 8514a
+	extrn	reopen8514hw:near      ; restart 8514a
+	extrn	close8514hw :near      ; stop 8514a
+	extrn	fr85hwwdot  :near      ; 8514a write dot
+	extrn	fr85hwwbox  :near      ; 8514a write box
+	extrn	fr85hwrdot  :near      ; 8514a read dot
+	extrn	fr85hwrbox  :near      ; 8514a read box
+	extrn	w8514hwpal  :near      ; 8514a pallete update
 
 ; Hercules Routines
 	extrn	inithgc   :far	    ; Initialize Hercules card graphics mode
@@ -140,6 +150,7 @@ ENDIF
 	extrn	PixelZoom:word
 	extrn	MaxColorRes:word
 	extrn	TPlusFlag:WORD		; TARGA+ Mark Peterson 2-12-91
+	extrn	ai_8514:byte		;flag for 8514a afi JCO 4/11/92
 
 ; ************************ Public variables *****************************
 
@@ -173,7 +184,7 @@ public		swapsetup		; for savegraphics/restoregraphics
 
 public		TPlusInstalled
 
-public		vesa_detect		; set to 1 to disable VESA-detection
+public		vesa_detect		; set to 0 to disable VESA-detection
 
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
@@ -597,27 +608,27 @@ videotable	label	byte	; video table actually starts on the NEXT byte
 	db	"VESA Standard interface  ",0,"OK: Andy Fu - Chips&Tech ",0
 	dw 1091,4f02h,106h,   0,   0,  28,1280,1024,  16
 	db	"VESA Standard interface  ",0,"OK: Andy Fu - Chips&Tech ",0
-	dw 1092,4f02h,107h,   0,   0,  28,1280,1024, 256
-	db	"8514/A Low  Res          ",0,"Requires IBM's HDILOAD   ",0
-	dw 1093,   3h,	 0,   0,   1,  12, 640, 480, 256
-	db	"8514/A High Res          ",0,"Requires IBM's HDILOAD   ",0
-	dw 1094,   3h,	 0,   0,   1,  12,1024, 768, 256
-	db	"8514/A Low  W/Border     ",0,"Requires IBM's HDILOAD   ",0
-	dw 1095,   3h,	 0,   0,   1,  12, 632, 474, 256
-	db	"8514/A High W/Border     ",0,"Requires IBM's HDILOAD   ",0
-	dw 1096,   3h,	 0,   0,   1,  12,1016, 762, 256
-	db	"IBM Med-Rez EGA          ",0,"(Silly but it's there!)  ",0
-	dw 1097,  0eh,	 0,   0,   0,	2, 640, 200,  16
-	db	"IBM VGA (non-std)        ",0,"Register Compatibles ONLY",0
-	dw 1098,   0h,	 0,   0,  18,	7, 320, 480, 256
-	db	"Hercules Graphics        ",0,"OK: Timothy Wegner       ",0
-	dw 1099,   8h,	 0,   0,   0,  10, 720, 348,   2
-	db	"Tandy 1000               ",0,"OK: Joseph Albrecht      ",0
-	dw 1100,   9h,	 0,   0,   0,  14, 320, 200,  16
-	db	"Pdise/AST/COMPAQ VGA     ",0,"OK: Phil Wilson          ",0
-	dw 1101,  59h,	 0,   0,   0,	1, 800, 600,   2
-	db	140	dup(0)	; 2 unused slots here default table
-	db	"Disk/RAM 'Video'         ",0,"Full-Page L-Jet @  75DPI ",0
+        dw 1092,4f02h,107h,   0,   0,  28,1280,1024, 256
+        db      "8514/A Low  Res          ",0,"HW/AI (AI Reqs HDILOAD)  ",0
+        dw 1093,   3h,   0,   0,   1,  12, 640, 480, 256
+        db      "8514/A High Res          ",0,"HW/AI (AI Reqs HDILOAD)  ",0
+        dw 1094,   3h,   0,   0,   1,  12,1024, 768, 256
+        db      "8514/A Low  W/Border     ",0,"HW/AI (AI Reqs HDILOAD)  ",0
+        dw 1095,   3h,   0,   0,   1,  12, 632, 474, 256
+        db      "8514/A High W/Border     ",0,"HW/AI (AI Reqs HDILOAD)  ",0
+        dw 1096,   3h,   0,   0,   1,  12,1016, 762, 256
+        db      "IBM Med-Rez EGA          ",0,"(Silly but it's there!)  ",0
+        dw 1097,  0eh,   0,   0,   0,   2, 640, 200,  16
+        db      "IBM VGA (non-std)        ",0,"Register Compatibles ONLY",0
+        dw 1098,   0h,   0,   0,  18,   7, 320, 480, 256
+        db      "Hercules Graphics        ",0,"OK: Timothy Wegner       ",0
+        dw 1099,   8h,   0,   0,   0,  10, 720, 348,   2
+        db      "Tandy 1000               ",0,"OK: Joseph Albrecht      ",0
+        dw 1100,   9h,   0,   0,   0,  14, 320, 200,  16
+        db      "Pdise/AST/COMPAQ VGA     ",0,"OK: Phil Wilson          ",0
+        dw 1101,  59h,   0,   0,   0,   1, 800, 600,   2
+        db      140     dup(0)  ; 2 unused slots here default table
+        db      "Disk/RAM 'Video'         ",0,"Full-Page L-Jet @  75DPI ",0
 	dw 1104,   3h,	 0,   0,   0,  11, 800, 600,   2
 	db	"Disk/RAM 'Video'         ",0,"Full-Page L-Jet @ 150DPI ",0
 	dw 1105,   3h,	 0,   0,   0,  11,1600,1200,   2
@@ -890,7 +901,35 @@ xga_sk1:cmp	xga_reg_base,-1 	; have we already found the XGA?
 	je	xga_loc 		; e = no
 	jmp	xga_found		; yes, process it
 
-xga_loc:mov	ah,35h			; DOS get interrupt vector
+xga_loc:push	bp			; save around int 10H calls
+	mov	ax,1f00h		; XGA-2 detect:
+	int	10h			;  get DMQS length
+	pop	bp			; restore BP
+	cmp	al,1fh			; did this work?
+	jne	xga_man			;  nope - try the older, manual approach
+	cmp	bx,768			; room for the results?
+	ja	xga_man			;  no?!?  try the older approach
+	mov	ax,1f01h		; get DMQS info
+	push	ds			;  into here
+	pop	es			;  ...
+	mov	di, offset dacbox	;  ...
+	int	10h			;  ...
+	cmp	al,1fh			; safety first
+	jne	xga_man			; ?? try the older approach
+	mov	bx, word ptr dacbox+09h	; get the register base
+	mov	xga_reg_base,bx		; save the results
+	mov	xga_result,1		; say we found an adapter
+	cmp	byte ptr dacbox+15h,4	; do we have 1MB of adapter RAM?
+	jb	@F			;  nope
+	or	xga_result,8h		;  yup - say so.
+@@:	mov	bx, word ptr dacbox+13h	; get the composite monitor ID
+	and	bx,0f00h		; high-rez-monitor?
+	cmp	bx,0f00h		;  ..
+	je	@F			;  nope
+	or	xga_result,4		;  yup
+@@:	jmp	xga_found		; say we found the adapter
+
+xga_man:mov	ah,35h			; DOS get interrupt vector
 	mov	al,15h			; Int 15h
 	int	21h			; returns vector in es:bx
 	mov	ax,es			; segment part
@@ -907,7 +946,6 @@ xga_sk3:mov	xga_pos_base,dx 	; save pos_base_address
 	cmp	dx,-1			; do we have a good POS?
 	jne	xga_lp1 		; ne = yes, proceed with MCA checks
 	jmp	xga_notfound		; no, fail
-
 xga_lp1:cli				; no interrupts, please
 	cmp	cx,0			; treat the motherboard differently?
 	jne	xga_sk4 		; ne = yes
@@ -2135,36 +2173,50 @@ vesa_granularity	db	0	; BDT VESA Granularity value
 		align	2
 curbk	dw	0
 
-	public	vga512, vga1024
-
 vga512	dw	0
 vga1024 dw	0
 
 
-	public	cirrus,everex,paradise,tseng,trident,t8900
-	public	ativga,aheada,aheadb,oaktech,video7
-	public	chipstech,tseng4,genoa,ncr,compaq,vesa
+	public	supervga_list	; pointer to head of the SuperVGA list
 
-	public	vesa		; Bert
-vesa	dw	0		; Bert
-
-cirrus	dw	0
-video7	dw	0
-tseng	dw	0
-tseng4	dw	0
-paradise dw	0
-chipstech dw	0
-trident dw	0
-ativga	dw	0
-everex	dw	0
+supervga_list	db	"aheada"
 aheada	dw	0
-aheadb	dw	0
-oaktech dw	0
-t8900	dw	0
+	db	"ati   "
+ativga	dw	0
+	db	"chi   "
+chipstech dw	0
+	db	"eve   "
+everex	dw	0
+	db	"gen   "
 genoa	dw	0
+	db	"ncr   "
 ncr	dw	0
+	db	"oak   "
+oaktech dw	0
+	db	"par   "
+paradise dw	0
+	db	"tri   "
+trident dw	0
+	db	"tseng3"
+tseng	dw	0
+	db	"tseng4"
+tseng4	dw	0
+	db	"vid   "
+video7	dw	0
+	db	"aheadb"
+aheadb	dw	0
+	db	"vesa  "
+vesa	dw	0
+	db	"cirrus"
+cirrus	dw	0
+	db	"t8900 "
+t8900	dw	0
+	db	"compaq"
 compaq	dw	0
+	db	"xga   "
 xga	dw	0
+	db	"      "	; end-of-the-list
+	dw	0
 
 done_detect dw	0		;flag to call adapter_detect & whichvga once
 
@@ -2191,6 +2243,7 @@ ahead_entries	dw	0
 ati_entries	dw	0
 	dw	 800, 600, 16, 054h,0
 	dw	1024, 768, 16, 065h,0ffh	; (non-standard mode flag)
+;	dw	1024, 768, 16, 055h,0
 	dw	 640, 400,256, 061h,0
 	dw	 640, 480,256, 062h,0
 	dw	 800, 600,256, 063h,0
@@ -2214,6 +2267,7 @@ everex_entries	dw	0
 	dw	1024, 768, 16, 070h,20h
 	dw	 640, 480,256, 070h,30h
 	dw	 800, 600,256, 070h,31h
+	dw	1024, 768,256, 070h,32h
 genoa_entries	dw	0
 	dw	1024, 768,  4, 07fh,0
 	dw	 720, 512, 16, 059h,0
@@ -2231,13 +2285,15 @@ ncr_entries	 dw	0
 	dw	 640, 400,256, 5eh,0
 	dw	 640, 480,256, 5fh,0
 	dw	 800, 600,256, 5ch,0
-	dw	0
+;	dw	0	; this appears to be extra! JCO
 oaktech_entries dw	0
 	dw	 800, 600, 16, 52h,0
 	dw	 640, 480,256, 53h,0
 	dw	 800, 600,256, 54h,0
 	dw	1024, 768, 16, 56h,0
-	dw	0
+	dw	1024, 768,256, 59h,0
+	dw	1280,1024, 16, 58h,0
+;	dw	0
 paradise_entries	dw	0
 	dw	 800, 600,  2, 059h,0
 	dw	 800, 600, 16, 058h,0
@@ -2246,13 +2302,14 @@ paradise_entries	dw	0
 	dw	1024, 768, 16, 05dh,0
 	dw	 800, 600,256, 05ch,0	; Chuck Ebbert, 910524
 trident_entries dw     0
-	dw     1024, 768,  4, 060h,0
-	dw	800, 600, 16, 05bh,0
-	dw     1024, 768, 16, 05fh,0
-	dw	640, 400,256, 05ch,0
-	dw	640, 480,256, 05dh,0
-	dw	800, 600,256, 05eh,0
-	dw     1024, 768,256, 062h,0
+	dw	1024, 768,  4, 060h,0
+	dw	 800, 600, 16, 05bh,0
+	dw	1024, 768, 16, 05fh,0
+	dw	 640, 400,256, 05ch,0
+	dw	 640, 480,256, 05dh,0
+	dw	 800, 600,256, 05eh,0
+	dw	1024, 768, 16, 05fh,0
+	dw	1024, 768,256, 062h,0
 tseng_entries	dw	0
 	dw	 800, 600, 16, 029h,0
 	dw	1024, 768, 16, 037h,0
@@ -2281,6 +2338,7 @@ video7_entries	dw	0
 	dw	 640, 480,256, 6f05h,67h
 	dw	 720, 540,256, 6f05h,68h
 	dw	 800, 600,256, 6f05h,69h
+	dw	1024, 768,256, 6f05h,6ah
 xga_entries	dw	0
 	dw	1024, 768,256,0ffffh,02h
 	dw	1024, 768, 16,0ffffh,03h
@@ -2311,9 +2369,9 @@ $tseng	proc		;Tseng
 	push	dx
 	and	al,7
 	mov	ah,al
-	shl	ah,1
-	shl	ah,1
-	shl	ah,1
+	shl	al,1
+	shl	al,1
+	shl	al,1
 	or	al,ah
 	or	al,01000000b
 	mov	dx,3cdh
@@ -2840,16 +2898,35 @@ notxga:
 	cmp	word ptr es:[40h],'13'
 	jnz	noati
 	bkadr	ativga,$ativga,ati_entries		; Bert
+	mov	dx,es:[10h]		; Get value of ATI extended register
+	mov	bl,es:[43h]		; Get value of ATI chip version
+	cmp	bl,'3'
+	jae	v6up			; Use different method to determine
+	mov	al,0bbh 		; memory size of chip version is 3 or higher
 	cli
-	mov	dx,1ceh
-	mov	al,0bbh
 	out	dx,al
-	inc	dl
-	in	al,dx
+	inc	dx
+	in	al,dx			; Get ramsize byte for chip versions 1 & 2
 	sti
-	and	al,20h
+	test	al,20h
 	jz	no512
 	mov	[vga512],1
+	jmp	short no512
+
+v6up:	mov	al,0b0h			; Method used for newer ATI chip versions
+	cli
+	out	dx,al
+	inc	dx
+	in	al,dx			; Get ramsize byte for versions 3-5
+	sti
+	test	al,10h			; Check if ramsize byte indicates 256K or 512K bytes
+	jz	v7up
+	mov	[vga512],1
+v7up:	cmp	bl,'4'			; Check for ramsize for ATI chip versions 4 & 5
+	jb	no512
+	test	al,8			; Check if version 5 ATI chip has 1024K
+	jz	no512
+	mov	[vga1024],1
 no512:	jmp	fini
 
 noati:	mov	ax,7000h		;Test for Everex
@@ -2907,6 +2984,7 @@ noncr:	mov	dx,3c4h 		;Test for Trident
 	out	dx,al
 	inc	dl
 	in	al,dx
+	and	al,0fh
 	cmp	al,06h
 	ja	notri
 	cmp	al,2
@@ -2915,7 +2993,7 @@ noncr:	mov	dx,3c4h 		;Test for Trident
 	cmp	al,3
 	jb	no89
 	mov	[t8900],1
-	mov	dx,3d5h
+	mov	dx,3d4h		; (was 3d5h in version 17.2)
 	mov	al,1fh
 	out	dx,al
 	inc	dx
@@ -2945,14 +3023,48 @@ notri:	mov	ax,6f00h		;Test for Video 7
 	cmp	ah,1
 	jbe	temp_3
 	mov	[vga512],1
-temp_3: jmp	fini
+temp_3:	cmp	ah,3
+	jbe	temp_4
+	mov	[vga1024],1
+temp_4:	jmp	fini
 
 nov7:	mov	dx,3d4h 		;Test for GENOA GVGA
+	mov	al,2eh			;check for Herchi Register top 6 bits
+	out	dx,al
+	inc	dx
+	in	al,dx
+	dec	dx
+	test	al,11111100b		;top 6 bits should be zero
+	jnz	nogn
 	mov	ax,032eh		;check for Herchi Register
+	call	$isport2
+	jnz	nogn
+	mov	dx,3c4h
+	mov	al,7
+	out	dx,al
+	inc	dx
+	in	al,dx
+	dec	dx
+	test	al,10001000b
+	jnz	nogn
+	mov	al,10h
+	out	dx,al
+	inc	dx
+	in	al,dx
+	dec	dx
+	and	al,00110000b
+	cmp	al,00100000b
+	jnz	nogn
+	mov	dx,3ceh
+	mov	ax,0ff0bh
 	call	$isport2
 	jnz	nogn
 	mov	dx,3c4h 		;check for memory segment register
 	mov	ax,3f06h
+	call	$isport2
+	jnz	nogn
+	mov	dx,3ceh
+	mov	ax,0ff0ah
 	call	$isport2
 	jnz	nogn
 	bkadr	genoa,$genoa, genoa_entries		; Bert
@@ -2987,6 +3099,11 @@ noci:	mov	dx,3ceh 		;Test for Paradise
 	in	al,dx
 	test	al,80h			;if top bit set then 512k
 	jz	nop512
+	test	al,40h
+	jz	nop1024
+	mov	[vga1024],1
+	jmp	fini
+nop1024:
 	mov	[vga512],1
 nop512: jmp	fini
 
@@ -3004,10 +3121,29 @@ temp_5:
 	jmp	fini
 
 noct:	mov	ch,0
+	mov	dx,3dah			;Test for Tseng 4000 & 3000
+	in	al,dx			;bit 8 is opposite of bit 4
+	mov	ah,al			;(vertical retrace bit)
+	shr	ah,1
+	shr	ah,1
+	shr	ah,1
+	shr	ah,1
+	xor	al,ah
+	test	al,00001000b
+;	jz	nots
+	jnz	@F
+	jmp	nots
+@@:
 	mov	dx,3d4h 		;check for Tseng 4000 series
 	mov	ax,0f33h
 	call	$isport2
 	jnz	not4
+	mov	ax,0ff33h		;top 4 bits should not be there
+	call	$isport2
+;	jz	nots
+	jnz	@F
+	jmp	nots
+@@:
 	mov	ch,1
 
 	mov	dx,3bfh 		;Enable access to extended registers
@@ -3031,7 +3167,8 @@ yes3:	mov	dx,3cdh 		;test bank switch register
 	bkadr	tseng,$tseng, tseng_entries		; Bert
 	cmp	ch,0
 	jnz	t4mem
-	mov	[vga512],1
+;	mov	[vga512],1
+	call	$t3memchk
 	jmp	fini
 
 t4mem:	mov	dx,3d4h 		;Tseng 4000 memory detect 1meg
@@ -3053,6 +3190,9 @@ nomem:	bkadr	tseng4,$tseng4, tseng4_entries		; Bert
 
 nots:
 	mov	dx,3ceh 	;Test for Above A or B chipsets
+	mov	ax,0ff0fh		;register should not be fully available
+	call	$isport2
+	jz	noab
 	mov	ax,200fh
 	out	dx,ax
 	inc	dx
@@ -3080,9 +3220,12 @@ noab:	mov	dx,3deh 		;Test for Oak Technology
 	inc	dx
 	nojmp
 	in	al,dx
-	test	al,80h
+	test	al,11000000b
 	jz	no4ram
 	mov	[vga512],1
+	test	al,01000000b
+	jz	no4ram
+	mov	[vga1024],1
 no4ram: jmp	short fini
 
 nooak:	mov	si,0
@@ -3091,6 +3234,52 @@ fini:	mov	ax,si
 	pop	bp
 	ret
 whichvga endp
+
+
+;Segment to access video buffer (based on GR[6])
+buftbl	dw	0A000h,0A000h,0B000h,0B800h
+
+$t3memchk proc near			;[Charles Marslett -- ET3000 memory ck]
+	mov	dx,3dah
+	in	al,dx			;Reset the attribute flop (read 0x3DA)
+	mov	dx,03c0h
+	mov	al,36h
+	out	dx,al
+	inc	dx
+	in	al,dx			;Save contents of ATTR[0x16]
+	push	ax
+	or	al,10h
+	dec	dx
+	out	dx,al
+	mov	dx,3ceh			;Find the RAM buffer...
+	mov	al,6
+	out	dx,al
+	inc	dx
+	in	al,dx
+	and	ax,000Ch
+	shr	ax,1
+
+	mov	bx,ax
+	push	es
+	mov	es,cs:buftbl[bx]
+	mov	ax,09C65h
+	mov	bx,1
+	mov	es:[bx],ax
+	mov	es:[bx+2],ax
+	inc	bx
+	mov	ax,es:[bx]
+	pop	es
+	cmp	ax,0659Ch
+	jne	et3k_256
+	mov	[vga512],1
+et3k_256:
+	mov	dx,3c0h
+	mov	al,36h
+	out	dx,al
+	pop	ax
+	out	dx,al			;Restore ATTR[16h]
+	ret
+$t3memchk endp
 
 
 $cirrus proc	near
@@ -3342,26 +3531,26 @@ TPlusRead      PROC    NEAR
 	ret
 TPlusRead      ENDP
 
+; 8514/a afi routines JCO, not needed, 4/11/92
+;f85start    proc    near
+;	call   far ptr open8514
+;	ret
+;f85start    endp
 
-f85start    proc    near
-	call   far ptr open8514
-	ret
-f85start    endp
+;f85end	proc	near
+;	call   far ptr close8514
+;	ret
+;f85end	endp
 
-f85end	proc	near
-	call   far ptr close8514
-	ret
-f85end	endp
+;f85write    proc    near
+;	call   far ptr fr85wdot
+;	ret
+;f85write    endp
 
-f85write    proc    near
-	call   far ptr fr85wdot
-	ret
-f85write    endp
-
-f85read proc	near
-	call   far ptr fr85rdot
-	ret
-f85read endp
+;f85read proc	near
+;	call   far ptr fr85rdot
+;	ret
+;f85read endp
 
 hgcwrite proc near
 	mov	ah,0			; clear the high-order color byte
@@ -3406,7 +3595,7 @@ adapter_init	proc	far		; initialize the video adapter (to VGA)
 	mov	trident,bx		;  ...
 	mov	video7,bx		;  ...
 	mov	paradise,bx		;  ...
-	mov	chipstech,bx		;  ...
+	mov	chipstech,bx	;  ...
 	mov	ativga,bx		;  ...
 	mov	everex,bx		;  ...
 	mov	cirrus,bx		;  ...
@@ -4066,15 +4255,15 @@ notlastplane:
 tweak256readline	endp
 
 
-f85line proc	near
-	call	fr85wbox	;put out the box
-	ret
-f85line endp
+;f85line proc	near
+;	call	fr85wbox	;put out the box
+;	ret
+;f85line endp
 
-f85readline proc    near
-	call	fr85rbox	;read the box
-	ret
-f85readline endp
+;f85readline proc    near
+;	call	fr85rbox	;read the box
+;	ret
+;f85readline endp
 
 ; ******************** Function videocleanup() **************************
 
@@ -4238,7 +4427,14 @@ noxga:
 
 	cmp	f85flag, 1		; was the last video 8514?
 	jne	no8514			; nope.
-	call	f85end
+	cmp	ai_8514, 0		;check afi flag, JCO 4/11/92
+	jne	f85endafi
+	call	close8514hw		;use registers, JCO 4/11/92
+	jmp	f85enddone
+f85endafi:
+	call	close8514		;use near afi, JCO 4/11/92
+;	call	f85end		;use afi
+f85enddone:
 	mov	f85flag, 0
 no8514:
 	cmp	HGCflag, 1		; was last video Hercules
@@ -4540,8 +4736,15 @@ targaMode:				; TARGA MODIFIED 2 June 89 - j mclain
 	mov	tgaflag,1		;
 	jmp	videomode		; return to common code
 f8514mode:				; 8514 modes
-	call	open8514		; start the 8514a
+	cmp	ai_8514, 0		; check if afi flag is set, JCO 4/11/92
+	jne	f85afi		; yes, try afi
+	call	open8514hw		; start the 8514a, try registers first JCO
 	jnc	f85ok
+	mov	ai_8514, 1		; set afi flag
+f85afi:
+	call	open8514		; start the 8514a, try afi
+	jnc	f85ok
+	mov	ai_8514, 0		; clear afi flag, JCO 4/11/92
 	mov	goodmode,0		; oops - problems.
 	mov	dotmode, 0		; if problem starting use normal mode
 	jmp	dullnormalmode
@@ -4556,15 +4759,25 @@ hgcmode:
 	mov	HGCflag,1		; flag "HGC-end" needed.
 	jmp	videomode		; return to common code
 f85ok:
-	mov	ax,offset f85write	;
-	mov	bx,offset f85read	;
-	mov	cx,offset f85line	;
-	mov	dx,offset f85readline	;
+	cmp	ai_8514, 0
+	jne	f85okafi			; afi flag is set JCO 4/11/92
+	mov	ax,offset fr85hwwdot	;use register routines
+	mov	bx,offset fr85hwrdot	;changed to near calls
+	mov	cx,offset fr85hwwbox	;
+	mov	dx,offset fr85hwrbox	;
 	mov	si,offset swapnormread	; set up the normal swap routine
 	mov	f85flag,1		;
 	mov	oktoprint,0		; NOT OK to printf() in this mode
 	jmp	videomode		; return to common code
-
+f85okafi:
+	mov	ax,offset fr85wdot	;use afi routines, JCO 4/11/92
+	mov	bx,offset fr85rdot	;changed to near calls
+	mov	cx,offset fr85wbox	;
+	mov	dx,offset fr85rbox	;
+	mov	si,offset swapnormread	; set up the normal swap routine
+	mov	f85flag,1		;
+	mov	oktoprint,0		; NOT OK to printf() in this mode
+	jmp	videomode		; return to common code
 TrueColorAuto:
 	cmp	TPlusInstalled, 1
 	jne	NoTPlus
@@ -5103,7 +5316,13 @@ setfortext	proc	uses es si di
 	jne	tnot8514
 	cmp	f85flag, 0		;check 8514 active flag
 	je	go_dosettext
-	call	close8514		;close adapter if not
+	cmp	ai_8514, 0		;using registers? JCO 4/11/92
+	jne	not85reg
+	call	close8514hw		;close adapter if not, with registers
+	jmp	done85close
+not85reg:
+	call	close8514		;close adapter if not, with afi
+done85close:
 	mov	f85flag, 0
 go_dosettext:
 	jmp	dosettext		; safe to go to mode 3
@@ -5355,7 +5574,13 @@ setforgraphics	proc	uses es si di
 	jne	gnot8514
 	cmp	f85flag, 0
 	jne	go_graphicsreturn
-	call	reopen8514
+	cmp	ai_8514, 0		;check afi flag JCO 4/11/92
+	jne	reopenafi
+	call	reopen8514hw	;use registers
+	jmp	reopen85done
+reopenafi:
+	call	reopen8514		;use afi
+reopen85done:
 	mov	f85flag, 1
 go_graphicsreturn:
 	jmp	setforgraphicsreturn
@@ -7063,7 +7288,12 @@ nolearn:
 	jmp	dacupdate		;  yup.  do it.
 
 spin8514:
-	call	w8514pal
+	cmp	ai_8514, 0		;check afi flag JCO 4/11/92
+	jne	spin85afi
+	call	w8514hwpal		; AW
+	jmp	spindacreturn
+spin85afi:
+	call	w8514pal		;use afi
 
 spindacreturn:
 	ret

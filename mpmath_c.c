@@ -17,7 +17,11 @@
      (203) 276-9721
 */
 
+#include <stdlib.h>
 #include "mpmath.h"
+#include "prototyp.h"
+
+#ifndef XFRACT
 
 int MPaccuracy = 32;
 
@@ -128,15 +132,15 @@ int MPCcmp(struct MPC x, struct MPC y) {
       return(0);
 }
 
-struct complex MPC2cmplx(struct MPC x) {
-   struct complex z;
+_CMPLX MPC2cmplx(struct MPC x) {
+   _CMPLX z;
 
         z.x = *pMP2d(x.x);
         z.y = *pMP2d(x.y);
    return(z);
 }
 
-struct MPC cmplx2MPC(struct complex z) {
+struct MPC cmplx2MPC(_CMPLX z) {
    struct MPC x;
 
         x.x = *pd2MP(z.x);
@@ -147,12 +151,12 @@ struct MPC cmplx2MPC(struct complex z) {
 /* function pointer versions added by Tim Wegner 12/07/89 */
 int        (*ppMPcmp)() = MPcmp086;
 int        (*pMPcmp)(struct MP x, struct MP y) = MPcmp086;
-struct MP  *(*pMPmul)(struct MP x, struct MP y) = MPmul086;
-struct MP  *(*pMPdiv)(struct MP x, struct MP y) = MPdiv086;
-struct MP  *(*pMPadd)(struct MP x, struct MP y) = MPadd086;
-struct MP  *(*pMPsub)(struct MP x, struct MP y) = MPsub086;
+struct MP  *(*pMPmul)(struct MP x, struct MP y)= MPmul086;
+struct MP  *(*pMPdiv)(struct MP x, struct MP y)= MPdiv086;
+struct MP  *(*pMPadd)(struct MP x, struct MP y)= MPadd086;
+struct MP  *(*pMPsub)(struct MP x, struct MP y)= MPsub086;
 struct MP  *(*pd2MP)(double x)                 = d2MP086 ;
-double *(*pMP2d)(struct MP m)          = MP2d086 ;
+double *(*pMP2d)(struct MP m)                  = MP2d086 ;
 struct MP  *(*pfg2MP)(long x, int fg)          = fg2MP086;
 
 void setMPfunctions(void) {
@@ -180,21 +184,28 @@ void setMPfunctions(void) {
    }
 }
 
-#define sqr(x) ((x) * (x))
+#endif /* XFRACT */
+
+#ifndef sqr
+#define sqr(x) ((x)*(x))
+#endif
 
 extern int debugflag, fpu;
 
-struct complex ComplexPower(struct complex x, struct complex y) {
-   struct complex z, cLog, t;
+_CMPLX ComplexPower(_CMPLX xx, _CMPLX yy) {
+   _CMPLX z, cLog, t;
    double e2x, siny, cosy;
 
-   FPUcplxlog(&x, &cLog);
-   FPUcplxmul(&cLog, &y, &t);
+   FPUcplxlog(&xx, &cLog);
+   FPUcplxmul(&cLog, &yy, &t);
 
    if(fpu == 387)
       FPUcplxexp387(&t, &z);
    else {
-      e2x = exp(t.x);
+      if(t.x < -690)
+         e2x = 0;
+      else
+         e2x = exp(t.x);
       FPUsincos(&t.y, &siny, &cosy);
       z.x = e2x * cosy;
       z.y = e2x * siny;
@@ -202,27 +213,27 @@ struct complex ComplexPower(struct complex x, struct complex y) {
    return(z);
 }
 
-
 /***** FRACTINT specific routines and variables *****/
 
 #ifndef TESTING_MATH
 
+#include <stdlib.h>
+
 #include "fractint.h"
 
 extern double param[];
-extern struct complex old, new, init;
+extern _CMPLX old, new, init;
 extern double threshold, roverd, d1overd, dx0[], dy0[];
 extern int periodicitycheck, row, col, debugflag;
 
 
-#include <float.h>
 #include <stdlib.h>
 
 extern int  xdots, ydots;     /* coordinates of dots on the screen  */
 extern int  colors;           /* maximum colors available */
 extern int  maxit;
 
-unsigned char far *LogTable = (unsigned char far *)0;
+BYTE far *LogTable = (BYTE far *)0;
 extern int LogFlag;
    /* LogFlag == 1  -- standard log palettes
       LogFlag == -1 -- 'old' log palettes
@@ -281,21 +292,21 @@ void SetupLogTable(void) {
             LogTable[n] = LogTable[n-1]+1;
 }
 
-long far ExpFloat14(long x) {
+long far ExpFloat14(long xx) {
    static float fLogTwo = (float)0.6931472;
    int f;
    long Ans;
 
-   f = 23 - (int)RegFloat2Fg(RegDivFloat(x, *(long*)&fLogTwo), 0);
-   Ans = ExpFudged(RegFloat2Fg(x, 16), f);
+   f = 23 - (int)RegFloat2Fg(RegDivFloat(xx, *(long*)&fLogTwo), 0);
+   Ans = ExpFudged(RegFloat2Fg(xx, 16), f);
    return(RegFg2Float(Ans, (char)f));
 }
 
-extern struct complex tmp;
+extern _CMPLX tmp;
 extern int color, colors;
 double TwoPi;
-struct complex temp, t2, BaseLog;
-struct complex cdegree = { 3.0, 0.0 },
+_CMPLX temp, t2, BaseLog;
+_CMPLX cdegree = { 3.0, 0.0 },
                croot   = { 1.0, 0.0 };
 
 int ComplexNewtonSetup(void) {
@@ -314,8 +325,7 @@ int ComplexNewtonSetup(void) {
 }
 
 int ComplexNewton(void) {
-   struct complex cd1;
-
+   _CMPLX cd1;
 
    /* new = ((cdegree-1) * old**cdegree) + croot
             ----------------------------------
@@ -338,12 +348,17 @@ int ComplexNewton(void) {
 
    FPUcplxmul(&temp, &cdegree, &t2);
    FPUcplxdiv(&tmp, &t2, &old);
+   if(DivideOverflow)
+   {
+      DivideOverflow = 0;
+      return(1);
+   }
    new = old;
    return(0);
 }
 
 int ComplexBasin(void) {
-   struct complex cd1;
+   _CMPLX cd1;
    double mod;
 
    /* new = ((cdegree-1) * old**cdegree) + croot
@@ -383,6 +398,11 @@ int ComplexBasin(void) {
 
    FPUcplxmul(&temp, &cdegree, &t2);
    FPUcplxdiv(&tmp, &t2, &old);
+   if(DivideOverflow)
+   {
+      DivideOverflow = 0;
+      return(1);
+   }
    new = old;
    return(0);
 }
@@ -410,6 +430,17 @@ int Starfield(void) {
 }
   ***/
 
+/*
+ * Generate a gaussian distributed number.
+ * The right half of the distribution is folded onto the lower half.
+ * That is, the curve slopes up to the peak and then drops to 0.
+ * The larger slope is, the smaller the standard deviation.
+ * The values vary from 0+offset to range+offset, with the peak
+ * at range+offset.
+ * To make this more complicated, you only have a
+ * 1 in Distribution*(1-Probability/Range*con)+1 chance of getting a
+ * Gaussian; otherwise you just get offset.
+ */
 int GausianNumber(int Probability, int Range) {
    int n, r;
    long Accum = 0, p;
@@ -417,9 +448,9 @@ int GausianNumber(int Probability, int Range) {
    p = divide((long)Probability << 16, (long)Range << 16, 16);
    p = multiply(p, con, 16);
    p = multiply((long)Distribution << 16, p, 16);
-   if(!(rand() % (Distribution - (int)(p >> 16) + 1))) {
+   if(!(rand15() % (Distribution - (int)(p >> 16) + 1))) {
       for(n = 0; n < Slope; n++)
-         Accum += rand();
+         Accum += rand15();
       Accum /= Slope;
       r = (int)(multiply((long)Range << 15, Accum, 15) >> 14);
       r = r - Range;
@@ -431,4 +462,3 @@ int GausianNumber(int Probability, int Range) {
 }
 
 #endif
-

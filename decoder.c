@@ -45,21 +45,10 @@
 #include <stdio.h>
 
 /***** Application Includes *********************************************/
+#include "prototyp.h"
 
 /***** Application Function Prototypes **********************************/
-short decoder(short);
 static short get_next_code(void);
-
-/* extern short get_byte()
- *
- *   - This external (machine specific) function is expected to return
- * either the next byte from the GIF file, or a negative number, as
- * defined in ERRS.H.
- */
-extern short get_byte(void);
-extern short get_bytes(char *,int);
-
-extern int keypressed(void);
 
 /* extern short out_line(pixels, linelen)
  *     UBYTE pixels[];
@@ -74,8 +63,7 @@ extern int keypressed(void);
  * occurs in an odd place in the GIF file...  In any case, linelen will be
  * equal to the number of pixels passed...
  */
-extern short out_line();
-short (*outln)(unsigned char *,short) = out_line;
+int (*outln)(BYTE *,int) = out_line;
 
 /***** Local Static Variables *******************************************/
 /* Various error codes used by decoder
@@ -97,17 +85,21 @@ short (*outln)(unsigned char *,short) = out_line;
 #define NOPE 0
 #define YUP -1
 
-static short curr_size;					/* The current code size */
+static short curr_size;			/* The current code size */
 
+#ifndef XFRACT
 static short far sizeofstring[MAX_CODES+1];
+#else
+static short sizeofstring[MAX_CODES+1];	/* size of string list */
+#endif
 
 /* The following static variables are used
  * for seperating out codes
  */
-static short navail_bytes;				/* # bytes left in block */
-static short nbits_left;				/* # bits left in current byte */
-static unsigned char byte_buff[257];	/* Current block, reuse shared mem */
-static unsigned char *pbytes;			/* Pointer to next byte in block */
+static short navail_bytes;		/* # bytes left in block */
+static short nbits_left;		/* # bits left in current byte */
+static BYTE byte_buff[257];	/* Current block, reuse shared mem */
+static BYTE *pbytes;		/* Pointer to next byte in block */
 static unsigned short ret_code;
 
 static short code_mask[13] = {
@@ -140,17 +132,17 @@ with 'extern's so as to declare (and re-use) the space elsewhere.
 The arrays are actually declared in the assembler source.
 						Bert Tyler
 */
-extern unsigned char dstack[MAX_CODES + 1];			/* Stack for storing pixels */
-extern unsigned char suffix[MAX_CODES + 1];			/* Suffix table */
+extern BYTE dstack[MAX_CODES + 1];			/* Stack for storing pixels */
+extern BYTE suffix[MAX_CODES + 1];			/* Suffix table */
 extern unsigned short prefix[MAX_CODES + 1];		/* Prefix linked list */
-extern unsigned char decoderline[2];				/* decoded line goes here */
+extern BYTE decoderline[2];				/* decoded line goes here */
 
 
-/* The reason we have these seperated like this instead of using
+/* The reason we have these separated like this instead of using
  * a structure like the original Wilhite code did, is because this
  * stuff generally produces significantly faster code when compiled...
  * This code is full of similar speedups...  (For a good book on writing
- * C for speed or for space optomisation, see Efficient C by Tom Plum,
+ * C for speed or for space optimization, see Efficient C by Tom Plum,
  * published by Plum-Hall Associates...)
  */
 
@@ -176,7 +168,7 @@ extern unsigned char decoderline[2];				/* decoded line goes here */
  */
 short decoder( short linewidth)
 {
-	unsigned char *sp;
+	BYTE *sp;
 	short code;
 	short old_code;
 	short ret;
@@ -189,12 +181,12 @@ short decoder( short linewidth)
 	short xskip;
 	short slot;						/* Last read code */
 	short newcodes;					/* First available code */
-	unsigned char *bufptr;
+	BYTE *bufptr;
 	short yskip;
 	short top_slot;					/* Highest code for current size */
 	short clear;					/* Value for a clear code */
 	short ending;					/* Value for a ending code */
-	unsigned char out_value;
+	BYTE out_value;
 
 
 	/* Initialize for decoding a new image...
@@ -320,7 +312,7 @@ for (i = 0; i < slot; i++)
 					{	*(bufptr + j) = suffix[code];
 						code = prefix[code];
 					} while(--j > 0);
-					*bufptr = (unsigned char)code;
+					*bufptr = (BYTE)code;
 					bufptr += ++i;
 					bufcnt -= i;
 					if (bufcnt == 0) /* finished an input row? */
@@ -352,12 +344,12 @@ for (i = 0; i < slot; i++)
 			 * it might be more proper to overwrite the last code...
 			*/
 			if (fastloop == NOPE)
-				*sp++ = (unsigned char)code;
+				*sp++ = (BYTE)code;
 
 			if (slot < top_slot)
 			{
 				sizeofstring[slot] = sizeofstring[old_code]+1;
-				suffix[slot] = out_value = (unsigned char)code;
+				suffix[slot] = out_value = (BYTE)code;
 				prefix[slot++] = old_code;
 				old_code = c;
 			}
@@ -409,7 +401,7 @@ for (i = 0; i < slot; i++)
  */
 static short get_next_code()
 {
-	static unsigned char b1;				/* Current byte */
+	static BYTE b1;				/* Current byte */
 	static unsigned short ret_code;
 
 	if (nbits_left == 0)

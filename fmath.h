@@ -89,12 +89,17 @@ Just be sure to declare x, y, and z as type floats instead of type double.
 */
 
 long 
+#ifndef XFRACT
    far RegFg2Float(long x, char FudgeFact),
+   far RegSftFloat(long x, char Shift),
+#else
+   far RegFg2Float(long x, int FudgeFact),
+   far RegSftFloat(long x, int Shift),
+#endif
    far RegFloat2Fg(long x, int Fudge),
    far RegAddFloat(long x, long y),
    far RegDivFloat(long x, long y),
    far RegMulFloat(long x, long y),
-   far RegSftFloat(long x, char Shift),
    far RegSqrFloat(long x),
    far RegSubFloat(long x, long y);
 long
@@ -103,7 +108,7 @@ long
 int
 	far sin13(long x),
 	far cos13(long x),
-   far FastCosine(int x),
+	far FastCosine(int x),
 	far FastSine(int x);
 long
 	far FastHypCosine(int x),

@@ -1,21 +1,54 @@
 /* FRACTINT.H - common structures and values for the FRACTINT routines */
 
+#if defined(PUTTHEMHERE)        /* this MUST be defined ONLY in FRACTINT.C */
+struct videoinfo videoentry;
+int helpmode;
+#endif
+
+#ifndef FRACTINT_H
+#define FRACTINT_H
+
+#if !defined(PUTTHEMHERE)  
+extern struct videoinfo videoentry;
+extern int		helpmode;
+#endif
+
+#include <math.h>
+#include "port.h"
+
+typedef BYTE BOOLEAN;
 
 #ifndef C6
 #define _fastcall	/* _fastcall is a Microsoft C6.00 extension */
 #endif
 
+#ifndef XFRACT
 #ifdef __TURBOC__
 #   define _bios_printer(a,b,c)   biosprint((a),(c),(b))
 #   define _bios_serialcom(a,b,c) bioscom((a),(c),(b))
 #else
-#   define MK_FP(seg,off) (void far *)( (((long)(seg))<<16) | \
-					((unsigned)(off)) )
+#ifndef __WATCOMC__
+#ifndef MK_FP
+#   define MK_FP(seg,off) (VOIDFARPTR )( (((long)(seg))<<16) | \
+                                          ((unsigned)(off)) )
+#endif
+#endif
+#endif
+#else
+#   define MK_FP(seg,off) (VOIDFARPTR )(seg+off)
 #endif
 
+#ifndef XFRACT
+#define clock_ticks() clock()
+#endif
 
+#ifdef XFRACT
+#define _fstrcpy(to,from) strcpy(to,from)
+#endif
+
+#define MAXPARAMS 10		/* maximum number of parameters */
 #define MAXPIXELS 2048		/* Maximum pixel count across/down the screen */
-#define SCREENASPECT 0.75	/* Assumed overall screen dimensions, y/x     */
+#define DEFAULTASPECT 0.75	/* Assumed overall screen dimensions, y/x     */
 
 struct videoinfo {		/* All we need to know about a Video Adapter */
 	char	name[26];	/* Adapter name (IBM EGA, etc)		*/
@@ -53,139 +86,132 @@ struct videoinfo {		/* All we need to know about a Video Adapter */
 #define INFO_ID 	"Fractal"
 #define FRACTAL_INFO   struct fractal_info
 
-struct fractal_info			/*  for saving data in GIF file     */
+/*
+ * Note: because non-MSDOS machines store structures differently, we have
+ * to do special processing of the fractal_info structure in loadfile.c.
+ * Make sure changes to the structure here get reflected there.
+ */
+#ifndef XFRACT
+#define FRACTAL_INFO_SIZE sizeof(FRACTAL_INFO)
+#else
+/* This value should be the MSDOS size, not the Unix size. */
+#define FRACTAL_INFO_SIZE 502
+#endif
+
+struct fractal_info	    /*  for saving data in GIF file     */
 {
-	char info_id[8];		/* Unique identifier for info block */
-	int iterations;
-	int fractal_type;	    /* 0=Mandelbrot 1=Julia 2= ... */
-	double	xmin;
-	double	xmax;
-	double	ymin;
-	double	ymax;
-	double	creal;
-	double	cimag;
-	int	videomodeax;
-	int	videomodebx;
-	int	videomodecx;
-	int	videomodedx;
-	int	dotmode;
-	int	xdots;
-	int	ydots;
-	int colors;
-	int version;	    /* used to be 'future[0]' */
+    char  info_id[8];	    /* Unique identifier for info block */
+    short iterations;
+    short fractal_type;	    /* 0=Mandelbrot 1=Julia 2= ... */
+    double xmin;
+    double xmax;
+    double ymin;
+    double ymax;
+    double creal;
+    double cimag;
+    short videomodeax;
+    short videomodebx;
+    short videomodecx;
+    short videomodedx;
+    short dotmode;
+    short xdots;
+    short ydots;
+    short colors;
+    short version;	    /* used to be 'future[0]' */
     float parm3;
     float parm4;
     float potential[3];
-    int rseed;
-    int rflag;
-    int biomorph;
-    int inside;
-    int logmap;
+    short rseed;
+    short rflag;
+    short biomorph;
+    short inside;
+    short logmap;
     float invert[3];
-    int decomp[2];
-    int symmetry;
-    /* version 2 stuff */
-    int init3d[16];
-    int previewfactor;
-    int xtrans;
-    int ytrans;
-    int red_crop_left;
-    int red_crop_right;
-    int blue_crop_left;
-    int blue_crop_right;
-    int red_bright;
-    int blue_bright;
-    int xadjust;
-    int eyeseparation;
-    int glassestype;
-    /* version 3 stuff, release 13 */
-    int outside;
-    /* version 4 stuff, release 14 */
+    short decomp[2];
+    short symmetry;
+			/* version 2 stuff */
+    short init3d[16];
+    short previewfactor;
+    short xtrans;
+    short ytrans;
+    short red_crop_left;
+    short red_crop_right;
+    short blue_crop_left;
+    short blue_crop_right;
+    short red_bright;
+    short blue_bright;
+    short xadjust;
+    short eyeseparation;
+    short glassestype;
+			/* version 3 stuff, release 13 */
+    short outside;
+			/* version 4 stuff, release 14 */
     double x3rd;	  /* 3rd corner */
     double y3rd;
     char stdcalcmode;	  /* 1/2/g/b */
     char useinitorbit;	  /* init Mandelbrot orbit flag */
-    int calc_status;	  /* resumable, finished, etc */
+    short calc_status;	  /* resumable, finished, etc */
     long tot_extend_len;  /* total length of extension blocks in .gif file */
-    int distest;
-    int floatflag;
-    int bailout;
+    short distest;
+    short floatflag;
+    short bailout;
     long calctime;
-    unsigned char trigndx[4]; /* which trig functions selected */
-    int finattract;
+    BYTE trigndx[4];      /* which trig functions selected */
+    short finattract;
     double initorbit[2];  /* init Mandelbrot orbit values */
-    int periodicity;	  /* periodicity checking */
-    /* version 5 stuff, release 15 */
-    int pot16bit;	  /* save 16 bit continuous potential info */
+    short periodicity;	  /* periodicity checking */
+			/* version 5 stuff, release 15 */
+    short pot16bit;	  /* save 16 bit continuous potential info */
     float faspectratio;   /* finalaspectratio, y/x */
-    int system; 	  /* 0 for dos, 1 for windows */
-    int release;	  /* release number, with 2 decimals implied */
-    int flag3d; 	  /* stored only for now, for future use */
-    int transparent[2];
-    int ambient;
-    int haze;
-    int randomize;
-    /* version 6 stuff, release 15.x */
-    int rotate_lo;
-    int rotate_hi;
-    int distestwidth;
-    /* version 7 stuff, release 16 */
+    short system; 	  /* 0 for dos, 1 for windows */
+    short release;	  /* release number, with 2 decimals implied */
+    short flag3d; 	  /* stored only for now, for future use */
+    short transparent[2];
+    short ambient;
+    short haze;
+    short randomize;
+			/* version 6 stuff, release 15.x */
+    short rotate_lo;
+    short rotate_hi;
+    short distestwidth;
+			/* version 7 stuff, release 16 */
     double dparm3;
     double dparm4;
-    /* version 8 stuff, release 17 */
-    int fillcolor;
-    int future[31];	  /* for stuff we haven't thought of yet */
+			/* version 8 stuff, release 17 */
+    short fillcolor;
+			/* version 9 stuff, release 18 */
+    double mxmaxfp;
+    double mxminfp;
+    double mymaxfp;
+    double myminfp;
+    short zdots;
+    float originfp;
+    float depthfp;
+    float heightfp;
+    float widthfp;
+    float distfp;
+    float eyesfp;
+    short orbittype;
+    short juli3Dmode;
+    short maxfn;
+    short inversejulia;
+    double dparm5;
+    double dparm6;
+    double dparm7;
+    double dparm8;
+    double dparm9;
+    double dparm10;
+    short future[50];	  /* for stuff we haven't thought of yet */
 };
 
+
+
 #define MAXVIDEOMODES 300	/* maximum entries in fractint.cfg	  */
-#define MAXVIDEOTABLE 40	/* size of the resident video modes table */
-
-#if defined(PUTTHEMHERE)	/* this MUST be defined ONLY in FRACTINT.C */
-
-struct videoinfo videoentry;
-
+#ifndef XFRACT
+#define MAXVIDEOTABLE 40        /* size of the resident video modes table */
 #else
-
-extern struct videoinfo videoentry;
-
+#define MAXVIDEOTABLE 2         /* size of the resident video modes table */
 #endif
-
-#define NUMIFS	  32	 /* number of ifs functions in ifs array */
-#define IFSPARM    7	 /* number of ifs parameters */
-#define IFS3DPARM 13	 /* number of ifs 3D parameters */
-
-#define ITEMNAMELEN 18	 /* max length of names in .frm/.l/.ifs/.fc */
-
-/* defines for symmetry */
-#define  NOSYM		0
-#define  XAXIS_NOPARM  -1
-#define  XAXIS		1
-#define  YAXIS_NOPARM  -2
-#define  YAXIS		2
-#define  XYAXIS_NOPARM -3
-#define  XYAXIS 	3
-#define  ORIGIN_NOPARM -4
-#define  ORIGIN 	4
-#define  PI_SYM_NOPARM -5
-#define  PI_SYM 	5
-#define  XAXIS_NOIMAG  -6
-#define  XAXIS_NOREAL	6
-#define  NOPLOT        99
-#define  SETUP_SYM    100
-
-/* bitmask defines for fractalspecific flags */
-#define  NOZOOM 	1    /* zoombox not allowed at all	   */
-#define  NOGUESS	2    /* solid guessing not allowed	   */
-#define  NOTRACE	4    /* boundary tracing not allowed	   */
-#define  NOROTATE	8    /* zoombox rotate/stretch not allowed */
-#define  NORESUME      16    /* can't interrupt and resume         */
-#define  INFCALC       32    /* this type calculates forever	   */
-#define  TRIG1	       64    /* number of trig functions in formula*/
-#define  TRIG2	      128
-#define  TRIG3	      192
-#define  TRIG4	      256
-#define  WINFRAC      512    /* supported in WinFrac		   */
-#define  PARMS3D     1024    /* uses 3d parameters		   */
 
 #define AUTOINVERT -123456.789
 
@@ -194,14 +220,28 @@ extern struct videoinfo videoentry;
 extern	long	 l_at_rad;	/* finite attractor radius  */
 extern	double	 f_at_rad;	/* finite attractor radius  */
 
+#define NUMIFS	  64	 /* number of ifs functions in ifs array */
+#define IFSPARM    7	 /* number of ifs parameters */
+#define IFS3DPARM 13	 /* number of ifs 3D parameters */
+
+#define ITEMNAMELEN 18	 /* max length of names in .frm/.l/.ifs/.fc */
+
+struct moreparams
+{
+   int      type;                    	/* index in fractalname of the fractal */
+   char     *param[MAXPARAMS-4];	/* name of the parameters */
+   double   paramvalue[MAXPARAMS-4]; 	/* default parameter values */
+};
+
 struct fractalspecificstuff
 {
    char  *name; 			/* name of the fractal */
+					/* (leading "*" supresses name display) */ 
    char  *param[4];			/* name of the parameters */
-   float paramvalue[4]; 		/* default parameter values */
+   double paramvalue[4]; 		/* default parameter values */
    int	 helptext;			/* helpdefs.h HT_xxxx, -1 for none */
    int	 helpformula;			/* helpdefs.h HF_xxxx, -1 for none */
-   int	 flags; 			/* constraints, bits defined above */
+   int	 flags; 			/* constraints, bits defined below */
    float xmin;				/* default XMIN corner */
    float xmax;				/* default XMAX corner */
    float ymin;				/* default YMIN corner */
@@ -230,30 +270,83 @@ struct fractalspecificstuff
    int orbit_bailout;		/* usual bailout value for orbit calc */
 };
 
+/* defines for symmetry */
+#define  NOSYM		0
+#define  XAXIS_NOPARM  -1
+#define  XAXIS		1
+#define  YAXIS_NOPARM  -2
+#define  YAXIS		2
+#define  XYAXIS_NOPARM -3
+#define  XYAXIS 	3
+#define  ORIGIN_NOPARM -4
+#define  ORIGIN 	4
+#define  PI_SYM_NOPARM -5
+#define  PI_SYM 	5
+#define  XAXIS_NOIMAG  -6
+#define  XAXIS_NOREAL	6
+#define  NOPLOT        99
+#define  SETUP_SYM    100
+
+/* defines for inside/outside */
+#define ITER        -1
+#define REAL        -2
+#define IMAG        -3
+#define MULT        -4
+#define SUM         -5
+#define ZMAG       -59
+#define BOF60      -60
+#define BOF61      -61
+#define EPSCROSS  -100
+#define STARTRAIL -101
+#define PERIOD    -102
+
+/* bitmask defines for fractalspecific flags */
+#define  NOZOOM 	1    /* zoombox not allowed at all	   */
+#define  NOGUESS	2    /* solid guessing not allowed	   */
+#define  NOTRACE	4    /* boundary tracing not allowed	   */
+#define  NOROTATE	8    /* zoombox rotate/stretch not allowed */
+#define  NORESUME      16    /* can't interrupt and resume         */
+#define  INFCALC       32    /* this type calculates forever	   */
+#define  TRIG1	       64    /* number of trig functions in formula*/
+#define  TRIG2	      128
+#define  TRIG3	      192
+#define  TRIG4	      256
+#define  WINFRAC      512    /* supported in WinFrac		   */
+#define  PARMS3D     1024    /* uses 3d parameters		   */
+#define  OKJB        2048    /* works with Julibrot */
+#define  MORE        4096    /* more than 4 parms */
+
 extern struct fractalspecificstuff far fractalspecific[];
 extern struct fractalspecificstuff far *curfractalspecific;
-
-
-#if defined(PUTTHEMHERE)	/* this MUST be defined ONLY in FRACTINT.C */
-
-int helpmode;
-
-#else
-
-extern int helpmode;
-
-#endif
 
 #define DEFAULTFRACTALTYPE	".gif"
 #define ALTERNATEFRACTALTYPE	".fra"
 
-#include <math.h>
+#ifndef _CMPLX_DEFINED
+#define _CMPLX_DEFINED
 
-#ifndef _LCOMPLEX_DEFINED
-struct lcomplex {
-   long x, y;
+struct DHyperComplex {
+    double x,y;
+    double z,t;  
 };
-#define _LCOMPLEX_DEFINED
+
+struct LHyperComplex {
+    long x,y;
+    long z,t; 
+};
+
+struct DComplex {
+    double x,y;
+};
+
+struct LComplex {
+    long x,y;
+};
+
+typedef struct  DComplex         _CMPLX;
+typedef struct  LComplex         _LCMPLX;
+typedef struct  DHyperComplex    _HCMPLX;
+typedef struct  LHyperComplex    _LHCMPLX;
 #endif
 
 #ifndef sqr
@@ -269,8 +362,7 @@ struct lcomplex {
 #define LCMPLXmod(z)	   (lsqr((z).x)+lsqr((z).y))
 #define LCMPLXconj(z)	((z).y =  -((z).y))
 
-typedef  struct complex CMPLX;
-typedef  struct lcomplex LCMPLX;
+typedef  _LCMPLX LCMPLX;
 
 /* 3D stuff - formerly in 3d.h */
 #ifndef dot_product
@@ -334,6 +426,31 @@ is not in the data structure */
 #define FALSE 0
 #endif
 
+/* Math definitions (normally in float.h) that are missing on some systems. */
+#ifndef FLT_MIN
+#define FLT_MIN 1.17549435e-38
+#endif
+#ifndef FLT_MAX
+#define FLT_MAX 3.40282347e+38
+#endif
+#ifndef DBL_EPSILON
+#define DBL_EPSILON 2.2204460492503131e-16
+#endif
+
+#ifndef XFRACT
+#define UPARR "\x18"
+#define DNARR "\x19"
+#define RTARR "\x1A"
+#define LTARR "\x1B"
+#else
+#define UPARR "K"
+#define DNARR "J"
+#define RTARR "L"
+#define LTARR "H"
+#endif
+
+#define JIIM  0
+#define ORBIT 1
 
 struct workliststuff	/* work list entry for std escape time engines */
 {
@@ -347,97 +464,22 @@ struct workliststuff	/* work list entry for std escape time engines */
 };
 #define MAXCALCWORK 12
 
-extern unsigned char trigndx[];
-extern void (*ltrig0)(), (*ltrig1)(), (*ltrig2)(), (*ltrig3)();
-extern void (*dtrig0)(), (*dtrig1)(), (*dtrig2)(), (*dtrig3)();
+extern BYTE trigndx[];
+extern void (*ltrig0)(void), (*ltrig1)(void), (*ltrig2)(void), (*ltrig3)(void);
+extern void (*dtrig0)(void), (*dtrig1)(void), (*dtrig2)(void), (*dtrig3)(void);
 
 struct trig_funct_lst
 {
     char *name;
-    void (*lfunct)();
-    void (*dfunct)();
-    void (*mfunct)();
+    void (*lfunct)(void);
+    void (*dfunct)(void);
+    void (*mfunct)(void);
 } ;
 extern struct trig_funct_lst trigfn[];
 
 /* function prototypes */
 
-extern	void   buzzer(int);
-extern	int    calcfract(void);
-extern	int    calcmand(void);
-extern  int    calcmandfp(void);
-extern	int    check_key(void);
-extern	int    complex_mult(CMPLX, CMPLX, CMPLX *);
-extern	int    complex_div(CMPLX, CMPLX, CMPLX *);
-extern	int    complex_power(CMPLX, int, CMPLX *);
-extern	int    cross_product(double [], double [], double []);
-extern	void   drawbox(int);
-extern	unsigned int emmallocate(unsigned int);
-extern	void   emmclearpage(unsigned int, unsigned int);
-extern	void   emmdeallocate(unsigned int);
-extern	unsigned int emmgetfree(void);
-extern	void   emmgetpage(unsigned int, unsigned int);
-extern	unsigned char far *emmquery(void);
-extern far_strlen( char far *);
-extern far_strcpy( char far *, char far *);
-extern far_strcmp( char far *, char far *);
-extern far_stricmp(char far *, char far *);
-extern far_strnicmp(char far *, char far *,int);
-extern far_strcat( char far *, char far *);
-extern far_memset( void far *, char	 , int);
-extern far_memcpy( void far *, void far *, int);
-extern far_memcmp( void far *, void far *, int);
-extern far_memicmp(void far *, void far *, int);
-extern	void far *farmemalloc(long);
-extern	void   farmemfree(void far *);
-extern	int    getakey(void);
-extern	int    _fastcall getcolor(int, int);
-extern	void   _fastcall putcolor(int, int, int);
 extern	void   (_fastcall *plot)(int, int, int);
-extern	void   _fastcall symPIplot(int,int,int);
-extern	void   _fastcall symPIplot2J(int,int,int);
-extern	void   _fastcall symPIplot4J(int,int,int);
-extern	void   _fastcall symplot2(int,int,int);
-extern	void   _fastcall symplot2Y(int,int,int);
-extern	void   _fastcall symplot2J(int,int,int);
-extern	void   _fastcall symplot4(int,int,int);
-extern	void   _fastcall symplot2basin(int,int,int);
-extern	void   _fastcall symplot4basin(int,int,int);
-extern	void   _fastcall noplot(int,int,int);
-extern	void   _fastcall draw_line(int,int,int,int,int);
-extern	int    has_8087(void );
-extern	void   putstring(int,int,int,unsigned char far *);
-extern	int    putstringcenter(int,int,int,int,char far *);
-extern	int    stopmsg(int,unsigned char far *);
-extern	void   identity(MATRIX);
-extern	int    Juliafp(void);
-extern	int    longvmultpersp(LVECTOR, LMATRIX, LVECTOR, LVECTOR, LVECTOR, int);
-extern	int    longpersp(LVECTOR, LVECTOR,int);
-extern	int    Lambda(void);
-extern	int    Lambdasine(void);
-extern	void   mat_mul(MATRIX, MATRIX, MATRIX);
-extern	void   main(int, char *[]);
-extern	int    Mandelfp(void);
-extern	long   multiply(long, long, int);
-extern	long   divide(long, long, int);
-extern	int    Newton(void);
-extern	int    perspective(double *v);
-extern	void   cdecl Print_Screen(void);
-extern	void   scale(double, double, double, MATRIX);
-extern	void   setvideomode(int, int, int, int);
-extern	int    Sierpinski(void);
-extern	void   spindac(int, int);
-extern	void   trans(double, double, double, MATRIX);
-extern	int    vmult(VECTOR,MATRIX,VECTOR);
-extern	void   xrot(double, MATRIX);
-extern	void   yrot(double, MATRIX);
-extern	void   zrot(double, MATRIX);
-extern	void   (_fastcall *standardplot)(int,int,int);
-extern	void   _fastcall plot3dsuperimpose16b(int,int,int);
-extern	void   _fastcall plot3dsuperimpose16(int,int,int);
-extern	void   _fastcall plot3dsuperimpose256(int,int,int);
-extern	void   _fastcall plotIFS3dsuperimpose256(int,int,int);
-extern	void   _fastcall plot3dalternate(int,int,int);
 
 /* for overlay return stack */
 
@@ -448,17 +490,27 @@ extern	void   _fastcall plot3dalternate(int,int,int);
    active_ovly = ovlyid
 #define EXIT_OVLY active_ovly = prev_ovly
 
+#define BIG 100000.0
+
 #define OVLY_MISCOVL   1
 #define OVLY_CMDFILES  2
 #define OVLY_HELP      3
-#define OVLY_PROMPTS   4
-#define OVLY_LOADFILE  5
-#define OVLY_ROTATE    6
-#define OVLY_PRINTER   7
-#define OVLY_LINE3D    8
-#define OVLY_ENCODER   9
-#define OVLY_CALCFRAC 10
-#define OVLY_INTRO    11
+#define OVLY_PROMPTS1  4
+#define OVLY_PROMPTS2  5
+#define OVLY_LOADFILE  6
+#define OVLY_ROTATE    7
+#define OVLY_PRINTER   8
+#define OVLY_LINE3D    9
+#define OVLY_ENCODER  10
+#define OVLY_CALCFRAC 11
+#define OVLY_INTRO    12
+#define OVLY_DECODER  13
+
+
+#define CTL(x) ((x)&0x1f)
+
+/* nonalpha tests if we have a control character */
+#define nonalpha(c) ((c)<32 || (c)>127)
 
 /* keys */
 #define   INSERT	 1082
@@ -479,9 +531,14 @@ extern	void   _fastcall plot3dalternate(int,int,int);
 #define   END		 1079
 #define   ENTER 	 13
 #define   ENTER_2	 1013
-#define   TAB		 9
-#define   ESC		 27
-#define   SPACE 	 32
+#define   CTL_ENTER      10
+#define   CTL_ENTER_2    1010
+#define   CTL_PAGE_UP    1132
+#define   CTL_PAGE_DOWN  1118
+#define   CTL_MINUS      1142
+#define   CTL_PLUS       1144
+#define   CTL_INSERT     1146
+#define   CTL_DEL        1147
 #define   F1		 1059
 #define   F2		 1060
 #define   F3		 1061
@@ -492,7 +549,19 @@ extern	void   _fastcall plot3dalternate(int,int,int);
 #define   F8		 1066
 #define   F9		 1067
 #define   F10		 1068
-
+#define   TAB            9
+#define   ESC            27
+#define   SPACE          32
+#define   SF1            1084
+#define   SF2            1085
+#define   SF3            1086
+#define   SF4            1087
+#define   SF5            1088
+#define   SF6            1089
+#define   SF7            1090
+#define   SF8            1091
+#define   SF9            1092
+#define   SF10           1093
 /* text colors */
 #define BLACK	   0
 #define BLUE	   1
@@ -514,7 +583,7 @@ extern	void   _fastcall plot3dalternate(int,int,int);
 #define INVERSE 0x8000 /* when 640x200x2 text or mode 7, inverse */
 #define BRIGHT	0x4000 /* when mode 7, bright */
 /* and their use: */
-extern unsigned char txtcolor[];
+extern BYTE txtcolor[];
 #define C_TITLE 	  txtcolor[0]+BRIGHT
 #define C_TITLE_DEV	  txtcolor[1]
 #define C_HELP_HDG	  txtcolor[2]+BRIGHT
@@ -526,7 +595,11 @@ extern unsigned char txtcolor[];
 #define C_PROMPT_TEXT	  txtcolor[8]
 #define C_PROMPT_LO	  txtcolor[9]
 #define C_PROMPT_MED	  txtcolor[10]
+#ifndef XFRACT
 #define C_PROMPT_HI	  txtcolor[11]+BRIGHT
+#else
+#define C_PROMPT_HI	  txtcolor[11]
+#endif
 #define C_PROMPT_INPUT	  txtcolor[12]+INVERSE
 #define C_PROMPT_CHOOSE   txtcolor[13]+INVERSE
 #define C_CHOICE_CURRENT  txtcolor[14]+INVERSE
@@ -547,10 +620,21 @@ extern unsigned char txtcolor[];
 #define C_PRIMARY	  txtcolor[29]
 #define C_CONTRIB	  txtcolor[30]
 
+/* structure for xmmmoveextended parameter */
+struct XMM_Move
+  {
+    unsigned long   Length;
+    unsigned int    SourceHandle;
+    unsigned long   SourceOffset;
+    unsigned int    DestHandle;
+    unsigned long   DestOffset;
+  };
+
 /* structure passed to fullscreen_prompts */
 struct fullscreenvalues
 {
-   int type;   /* 'd' for decimal, 's' for string, '*' for comment */
+   int type;   /* 'd' for double, 'f' for float, 's' for string,   */
+	       /* 'D' for integer in double, '*' for comment */
 	       /* 'i' for integer, 'y' for yes=1 no=0              */
 	       /* 0x100+n for string of length n		   */
 	       /* 'l' for one of a list of strings                 */
@@ -568,4 +652,4 @@ struct fullscreenvalues
       } ch;
    } uval;
 };
-
+#endif
