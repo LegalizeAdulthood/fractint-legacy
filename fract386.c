@@ -1,6 +1,6 @@
 /*
 	FRACT386 - 386-specific Mandelbrot/Julia Fractal Generator
-	C-code		Version 3.0		By Bert Tyler
+	C-code		Version 3.1		By Bert Tyler
 */
 
 struct videoinfo {		/* All we need to know about a Video Adapter */
@@ -55,16 +55,16 @@ struct videoinfo videomode[] = {
 "VEGA VGA",          0x30, 0, 0, 0, 1, 800, 600,256, "UNTESTED: may not work",
 "VEGA VGA",          0x36, 0, 0, 0, 1, 960, 720, 16, "UNTESTED: may not work",
 "VEGA VGA",          0x37, 0, 0, 0, 1,1024, 768, 16, "UNTESTED: may not work",
-"Video-7 Vram VGA", 0x6f05,0x60,0,0,1, 752, 410, 16, "UNTESTED: may not work",
-"Video-7 Vram VGA", 0x6f05,0x61,0,0,1, 720, 540, 16, "UNTESTED: may not work",
-"Video-7 Vram VGA", 0x6f05,0x62,0,0,1, 800, 600, 16, "UNTESTED: may not work",
-"Video-7 Vram VGA", 0x6f05,0x63,0,0,1,1024, 768,  2, "UNTESTED: may not work",
-"Video-7 Vram VGA", 0x6f05,0x64,0,0,1,1024, 768,  4, "UNTESTED: may not work",
-"Video-7 Vram VGA", 0x6f05,0x65,0,0,1,1024, 768, 16, "UNTESTED: may not work",
-"Video-7 Vram VGA", 0x6f05,0x66,0,0,1, 640, 400,256, "UNTESTED: may not work",
-"Video-7 Vram VGA", 0x6f05,0x67,0,0,1, 640, 480,256, "UNTESTED: may not work",
-"Video-7 Vram VGA", 0x6f05,0x68,0,0,1, 720, 540,256, "UNTESTED: may not work",
-"Video-7 Vram VGA", 0x6f05,0x69,0,0,1, 800, 600,256, "UNTESTED: may not work",
+"Video-7 Vram VGA", 0x6f05,0x60,0,0,2, 752, 410, 16, "Tested OK by Ira Emus",
+"Video-7 Vram VGA", 0x6f05,0x61,0,0,2, 720, 540, 16, "Tested OK by Ira Emus",
+"Video-7 Vram VGA", 0x6f05,0x62,0,0,2, 800, 600, 16, "Tested OK by Ira Emus",
+"Video-7 Vram VGA", 0x6f05,0x63,0,0,1,1024, 768,  2, "Tested OK by Ira Emus",
+"Video-7 Vram VGA", 0x6f05,0x64,0,0,1,1024, 768,  4, "Tested OK by Ira Emus",
+"Video-7  w/512K ", 0x6f05,0x65,0,0,1,1024, 768, 16, "Tested OK by Ira Emus",
+"Video-7 Vram VGA", 0x6f05,0x66,0,0,1, 640, 400,256, "Tested OK by Ira Emus",
+"Video-7  w/512K ", 0x6f05,0x67,0,0,1, 640, 480,256, "Tested OK by Ira Emus",
+"Video-7  w/512K ", 0x6f05,0x68,0,0,1, 720, 540,256, "Tested OK by Ira Emus",
+"Video-7  w/512K ", 0x6f05,0x69,0,0,1, 800, 600,256, "Tested OK by Ira Emus",
 "AT&T 6300",         0x41, 0, 0, 0, 1, 640, 200, 16, "UNTESTED: may not work",
 "AT&T 6300",         0x48, 0, 0, 0, 1, 640, 400,  2, "UNTESTED: may not work",
 "AT&T 6300",         0x42, 0, 0, 0, 1, 640, 400, 16, "UNTESTED: may not work",
@@ -185,7 +185,7 @@ if (argc == 5 || argc == 7) {			/* starting grid override */
 setvideomode(3,0,0,0);			/* switch to text mode */
 
 printf("\n\n\n");
-printf("FRACT386                      Version 3.0                by Bert Tyler\n");
+printf("FRACT386                      Version 3.1                by Bert Tyler\n");
 printf("\n");
 printf("The useful keys you can hit while this program is running are:\n");
 printf("\n");

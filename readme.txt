@@ -1,5 +1,5 @@
 
-       ***   FRACT386 (Version 3.0)   ******   by Bert Tyler   ***
+       ***   FRACT386 (Version 3.1)   ******   by Bert Tyler   ***
 
 
 This program generates Mandelbrot and Julia set fractal images using 32-bit

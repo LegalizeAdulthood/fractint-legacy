@@ -1,5 +1,5 @@
 
-;	FRACT386 (assembler portion)	Version 3.0	By Bert Tyler
+;	FRACT386 (assembler portion)	Version 3.1	By Bert Tyler
 
 ;	NOTE: this routine REQUIRES a 386.  It does NOT require (or use)
 ;	a floating point co-processor.
@@ -251,6 +251,7 @@ wedone:					; restore everything and return.
 	mov	ax,dotwrite		; check: were we in EGA/VGA mode?
 	cmp	ax,offset vgawrite	;  ...
 	jne	wereallydone		; nope.  no adjustments
+	mov	dx,03ceh		; graphics controller address
 	mov	ax,0ff08h		; restore the default bit mask
 	out	dx,ax			; ...
 	mov	ax,0003h		; restore the function select
@@ -521,6 +522,7 @@ drawnewbox:
 	mov	ax,dotwrite		; check: were we in EGA/VGA mode?
 	cmp	ax,offset vgawrite	;  ...
 	jne	dotsdone		; nope.  no adjustments
+	mov	dx,03ceh		; graphics controller address
 	mov	ax,0ff08h		; restore the default bit mask
 	out	dx,ax			; ...
 	mov	ax,0003h		; restore the function select
