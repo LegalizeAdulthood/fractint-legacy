@@ -1,5 +1,6 @@
 
-;	FRACT386 (assembler portion)	Version 3.1	By Bert Tyler
+;	FRACT386 (assembler portion)	Version 4.0		 By Bert Tyler
+;					      Mouse support by Michael Kaufman
 
 ;	NOTE: this routine REQUIRES a 386.  It does NOT require (or use)
 ;	a floating point co-processor.
@@ -38,13 +39,14 @@
 
 .386
 
-.CODE
+.DATA
 
 FUDGEFACTOR	equ	29
 
 ; ************************ External variables *****************************
 
 	extrn	julia:word		; == 0 if Mandelbrot set, else Julia
+	extrn	numpasses:word		; == 0 if single-pass, 1 if 2-pass
 	extrn	creal:dword, cimag:dword ; Julia Set Constant
 	extrn	lx0:dword, ly0:dword	; arrays of (dword) increment values
 	extrn	dotmode: word		; video mode:   1 = use the BIOS (yuck)
@@ -54,6 +56,11 @@ FUDGEFACTOR	equ	29
 	extrn	maxit:word, colors:word	; maximum iterations, colors
 	extrn	ixmin:word, ixmax:word	; for zoom/pan: x and y limits
 	extrn	iymin:word, iymax:word	;  for the local zoom-box
+
+; ************************ Internal variables *****************************
+
+passnum		db	0		; pass number: 1 (blitz) or 0
+dotadjust	dd	0		; adjustment factor (xdots)
 
 dotcount	dd	0		; dot-counter:  0 to a*b
 dotwrite	dw	0		; write-a-dot routine:  mode-specific
@@ -65,6 +72,101 @@ y		dw	0		; y-axis: 0 to (ydots-1)
 boxcount	dw	0		; (previous) box pt counter: 0 if none.
 boxpoints	dd	1028 dup(0)	; (previous) box data points
 boxvalues	db	1028 dup(0)	; (previous) box color values
+
+dacinit		db	0		; flag: 0 = DAC not saved
+		db	3   dup(0)	; temp space for DAC rotates
+dacbox		db	773 dup(0)	; saved DAC goes here
+kbd_type	db	0		; type of keyboard
+
+; ********************** Mouse Support Variables **************************
+
+mouse		db	0		; == -1 if/when a mouse is found.
+mousekey	db	0		; status of mouse keys (up, down)
+mousemickeys	dw	0		; running mickey counter
+
+; ******************* "Tweaked" VGA mode variables ************************
+
+						; 704 x 528 mode
+x704y528	db	704/8			; number of screen columns
+		db	528/16			; number of screen rows
+		db	 68h, 57h, 58h, 8Bh	; CRTC Registers
+		db	 59h, 86h, 3EH,0F0h
+		db	  0h, 60h,  0h,  0h
+		db	  0h,  0h,  2h, 3Dh
+		db	 19h, 8Bh, 0Fh, 2Ch
+		db	  0h, 18h, 38h,0E3h
+		db	0FFh
+						; 720 x 540 mode
+x720y540	db	720/8			; number of screen columns
+		db	540/16			; number of screen rows
+		db	 6Ah, 59h, 5Ah, 8Dh	; CRTC Registers
+		db	 5Eh, 8Bh, 4AH,0F0h
+		db	  0h, 60h,  0h,  0h
+		db	  0h,  0h,  2h, 49h
+		db	 24h, 86h, 1Bh, 2Dh
+		db	  0h, 24h, 44h,0E3h
+		db	0FFh
+						; 736 x 552 mode
+x736y552	db	736/8			; number of screen columns
+		db	552/16			; number of screen rows
+		db	 6Ch, 5Bh, 5Ch, 8Fh	; CRTC Registers
+		db	 5Fh, 8Ch, 56H,0F0h
+		db	  0h, 60h,  0h,  0h
+		db	  0h,  0h,  2h, 55h
+		db	 2Bh, 8Dh, 27h, 2Eh
+		db	  0h, 30h, 50h,0E3h
+		db	0FFh
+						; 752 x 564 mode
+x752y564	db	752/8			; number of screen columns
+		db	564/16			; number of screen rows
+		db	 6Eh, 5Dh, 5Eh, 91h	; CRTC Registers
+		db	 62h, 8Fh, 62H,0F0h
+		db	  0h, 60h,  0h,  0h
+		db	  0h,  0h,  2h, 61h
+		db	 37h, 89h, 33h, 2Fh
+		db	  0h, 3Ch, 5Ch,0E3h
+		db	0FFh
+						; 768 x 576 mode
+x768y576	db	768/8			; number of screen columns
+		db	576/16			; number of screen rows
+		db	 70h, 5Fh, 60h, 93h	; CRTC Registers
+		db	 66h, 93h, 6EH,0F0h
+		db	  0h, 60h,  0h,  0h
+		db	  0h,  0h,  2h, 6Dh
+		db	 43h, 85h, 3Fh, 30h
+		db	  0h, 48h, 68h,0E3h
+		db	0FFh
+						; 784 x 588 mode
+x784y588	db	784/8			; number of screen columns
+		db	588/16			; number of screen rows
+		db	 72h, 61h, 62h, 95h	; CRTC Registers
+		db	 69h, 96h, 7AH,0F0h
+		db	  0h, 60h,  0h,  0h
+		db	  0h,  0h,  2h, 79h
+		db	 4Fh, 81h, 4Bh, 31h
+		db	  0h, 54h, 74h,0E3h
+		db	0FFh
+						; 800 x 600 mode
+x800y600	db	800/8			; number of screen columns
+		db	600/16			; number of screen rows
+		db	 74h, 63h, 64h, 97h	; CRTC Registers
+		db	 68h, 95h, 86H,0F0h
+		db	  0h, 60h,  0h,  0h
+		db	  0h,  0h,  2h, 85h
+		db	 5Bh, 8Dh, 57h, 32h
+		db	  0h, 60h, 80h,0E3h
+		db	0FFh
+
+tweaks		dw	offset x704y528		; tweak table
+		dw	offset x704y528
+		dw	offset x720y540
+		dw	offset x736y552
+		dw	offset x752y564
+		dw	offset x768y576
+		dw	offset x784y588
+		dw	offset x800y600
+
+.CODE
 
 ; ***************** Function calcdots() **********************************
 
@@ -83,32 +185,27 @@ calcdots proc
 	mov	ax,0a000h		; EGA, VGA, MCGA starts here
 	mov	es,ax			; save it here during this routine
 
-	mov	eax,0			; initialize dot counter
-	dec	eax			;  (to -1: it gets incremented later)
-	mov	dotcount,eax		;  ...
-
 	mov	kbdcount,ax		; initialize keyboard counter (to -1)
 	mov	kbdflag,0		; initialize keyboard int flag: nope
 
-
 					; prepare special video-mode speedups
 	cmp	dotmode,3		; MCGA mode?
-	je	mcgamode		; yup.
+	je	short mcgamode		; yup.
 	cmp	dotmode,2		; EGA/VGA mode?
-	je	vgamode			; yup.
+	je	short vgamode		; yup.
 dullnormalmode:
 	mov	ax,offset normalwrite	; set up the BIOS write-a-dot routine
 	mov	bx,offset normalread	; set up the BIOS read-a-dot  routine
-	jmp	videomode		; return to common code
+	jmp	short videomode		; return to common code
 mcgamode:
 	mov	ax,offset mcgawrite	; set up MCGA write-a-dot routine
 	mov	bx,offset mcgaread	; set up the BIOS read-a-dot  routine
-	jmp	videomode		; return to common code
+	jmp	short videomode		; return to common code
 egamode:
 vgamode:
 	mov	ax,offset vgawrite	; set up EGA/VGA write-a-dot routine.
 	mov	bx,offset vgaread	; set up the BIOS read-a-dot  routine
-	jmp	videomode		; return to common code
+	jmp	short videomode		; return to common code
 videomode:
 	mov	dotwrite,ax		; save the results
 	mov	dotread,bx		;  ...
@@ -117,6 +214,16 @@ videomode:
 	shl	eax,FUDGEFACTOR		;  ( == 4 << fudgefactor )
 	mov	lm,eax			;  ...
 
+	mov	ax,numpasses		; detect 1 or 2-pass mode
+	mov	passnum,al		; initialize pass counter
+
+passloop:
+	mov	eax,0			; initialize dot counter
+	dec	eax			;  (to -1: it gets incremented later)
+	mov	dotcount,eax		;  ...
+	mov	eax,0			; save dot adjustment factor
+	mov	ax,xdots		;   == xdots
+	mov	dotadjust,eax		;   ...
 	mov	y,0			; initialize outer loop
 
 yloop:					; for (y = 0; y < ydots; y++)
@@ -139,7 +246,7 @@ xloop:					; for (x = 0; x < xdots; x++)
 					;      (lx0*lx0 - ly0*ly0) / fudge = 0
 
 	cmp	julia,0			; julia or mandelbrot set?
-	je	doeither		; Mandelbrot set:  initialization done.
+	je	short doeither		; Mandelbrot set:  initialization done.
 
 dojulia:				; Julia Set initialization
 					; "fudge" Mandelbrot start-up values
@@ -162,21 +269,26 @@ doeither:				; common Mandelbrot, Julia set code
 
 	inc	dotcount		; increment the dot-counter
 
+	cmp	numpasses,0		; multiple-pass mode?
+	jz	short singlepass	;  nope.  proceed.
+	cmp	passnum,0		; second pass?
+	jne	short singlepass	;  nope.  proceed
+	test	y,1			; odd dot?
+	jnz	short singlepass	;  yup.  proceed.
+	test	x,1			; odd dot?
+	jz	loopchecks		;  nope. skip it.
+singlepass:
+
 	dec	kbdcount		; decrement the keyboard counter
-	jns	maxittest		;  skip keyboard test if still positive
+	jns	short kloop		;  skip keyboard test if still positive
 	mov	kbdcount,5000		; else, stuff an appropriate count val
 	mov	ah,1			; check the keyboard
 	int	16h			; has it been hit?
-	jz	maxittest		; nope.  proceed
-	mov	kbdflag,1		; yup.  reset kbd-hit flag: yes.
+ 	jnz	short keyhit		; yes.  handle it
+ 	call	msemvd			; was the mouse moved
+ 	jnc	short kloop		; nope.  proceed
+keyhit:	mov	kbdflag,1		; yup.  reset kbd-hit flag: yes.
 	jmp	wedone			; so, bail out!
-
-maxittest:				; timing check: avoid the main
-	cmp	maxit,1			;  processing loop if maxit <= 1
-	jg	kloop			;  ...
-	mov	maxit,1			; avoid divides by zero
-	mov	k,0			; pretend we have done 1 loop
-	jmp	kloopend		; and bail out
 
 ;	This is the main processing loop.  Here, every T-state counts...
 
@@ -197,22 +309,22 @@ kloop:					; for (k = 0; k <= maxit; k++)
 	shrd	eax,edx,FUDGEFACTOR	; ( / fudge)
 	shr	edx,FUDGEFACTOR-1	; (complete 64-bit shift and check
 	cmp	edx,0			;  for any overflow/sign reversals)
-	jne	kloopend		; bail out if too high
+	jne	short kloopend		; bail out if too high
 	mov	ecx,eax			; save this for below
 	mov	eax,edi			; compute (ly * ly)
 	imul	edi			;  ...
 	shrd	eax,edx,FUDGEFACTOR	; ( / fudge)
 	shr	edx,FUDGEFACTOR-1	; (complete 64-bit shift and check
 	cmp	edx,0			;  for any overflow/sign reversals) 
-	jne	kloopend		; bail out if too high
+	jne	short kloopend		; bail out if too high
 	mov	ebx,ecx			; compute (lx*lx - ly*ly) / fudge
 	sub	ebx,eax			;  for the next iteration
 	add	eax,ecx			; compute (lx*lx + ly*ly) / fudge
-	jo	kloopend		; bail out if too high
-	js	kloopend		;  ...
+	jo	short kloopend		; bail out if too high
+	js	short kloopend		;  ...
 
 	dec	k			; while (k < maxit) (dec to 0 is faster)
-	jz	kloopend		; while (k < maxit) ...
+	jz	short kloopend		; while (k < maxit) ...
 
 	cmp	eax,lm			; while ( lr <= lm)
 	jbe	kloop			;  ...
@@ -223,11 +335,11 @@ kloopend:
 	sub	ax,k			;  (first, re-compute "k")
 	sub	kbdcount,ax		; adjust the keyboard count
 	cmp	ax,0			; convert any "outlier" region 
-	jne	coloradjust1		;  (where abs(x) > 2 or abs(y) > 2)
+	jne	short coloradjust1	;  (where abs(x) > 2 or abs(y) > 2)
 	mov	ax,1			;   to look like we ran through
 coloradjust1:				;    at least one loop.
 	cmp	ax,maxit		; did we max out on iterations?
-	jne	coloradjust2		;  nope.
+	jne	short coloradjust2	;  nope.
 	mov	ax,1			; reset max-out color to border color
 coloradjust2:				;  (it just looks better, somehow)
 	mov	dx,0			;  convert to a 32-bit value
@@ -236,21 +348,46 @@ coloradjust2:				;  (it just looks better, somehow)
 
 	call	dotwrite		; invoke the appropriate write-a-dot
 
+	cmp	passnum,0		; final pass?
+	je	short loopchecks	; yup.  proceed.
+
+	inc	dotcount		; bump up the dot counter
+	call	dotwrite		; write the dot again
+	mov	edx,dotadjust		; adjust the dot counter
+	add	dotcount,edx		;  ...
+	dec	dotcount		; bump down the dot counter
+	call	dotwrite		; write the dot again
+	inc	dotcount		; bump up the dot counter
+	call	dotwrite		; write the dot again
+	mov	edx,dotadjust		; adjust the dot counter
+	sub	dotcount,edx		;  ...
+	inc	x			; note extra dots have been written
+
 loopchecks:
 	inc	x			; check for end of xloop
 	mov	ax,xdots		;  ...
 	cmp	x,ax			;  ...
 	jb	xloop			; more to go
 
+	cmp	passnum,0		; last pass?
+	je	short lastpass		;  yup.  proceed.
+	inc	y			; adjust y-value
+	mov	edx,dotadjust		; adjust the dot counter
+	add	dotcount,edx		;  ...
+lastpass:
+
 	inc	y			; check for end of yloop
 	mov	ax,ydots		;  ...
 	cmp	y,ax			;  ...
 	jb	yloop			; more to go
 
+	dec	passnum			; decrement the pass counter
+	jns	passloop		; more to go
+
 wedone:					; restore everything and return.
 	mov	ax,dotwrite		; check: were we in EGA/VGA mode?
 	cmp	ax,offset vgawrite	;  ...
-	jne	wereallydone		; nope.  no adjustments
+	jne	short wereallydone	; nope.  no adjustments
 	mov	dx,03ceh		; graphics controller address
 	mov	ax,0ff08h		; restore the default bit mask
 	out	dx,ax			; ...
@@ -302,17 +439,18 @@ normalread	endp
 
 mcgawrite	proc	near		; MCGA 320*200, 246 colors
 	mov	ebx,dotcount		; load up an offset register
-	mov	es:[bx],al		; write the dot
+	mov	es:[ebx],al		; write the dot
 	ret				; we done.
 mcgawrite	endp
 
 mcgaread	proc	near		; MCGA 320*200, 246 colors
 	mov	ebx,dotcount		; load up an offset register
-	mov	al,es:[bx]		; retrieve the previous value
+	mov	al,es:[ebx]		; retrieve the previous value
 	ret				; we done.
 mcgaread	endp
 
 vgawrite	proc	near		; EGA/VGA write mode 0
+	push	ax			; save AX for a tad
 	mov	bh,al			; save the color value for a bit
 	mov	esi,dotcount		; compute the buffer offset
 	mov	cx,si			; and bit mask
@@ -328,7 +466,8 @@ vgawrite	proc	near		; EGA/VGA write mode 0
 	out	dx,ax			;  ...
 	mov	ax,0f01h		; enable set/reset registers
 	out	dx,ax			;  ...
-	or	es:[si],al		; update all bit planes
+	or	es:[esi],al		; update all bit planes
+	pop	ax			; restore the original AX
 	ret				; we done.
 vgawrite	endp
 
@@ -345,7 +484,7 @@ vgaread	proc	near			; EGA/VGA read mode 0
 	mov	ax,0304h		; set up controller address register
 vgareadloop:
 	out	dx,ax			; do it
-	mov	bh,es:[si]		; retrieve the old value
+	mov	bh,es:[esi]		; retrieve the old value
 	and	bh,ch			; mask one bit
 	neg	bh			; set bit 7 correctly
 	rol	bx,1			; rotate the bit into bl
@@ -393,14 +532,14 @@ drawbox	proc
 	sub	eax,xmin		;  this many dots,...
 	shl	eax,3			; an eighth of the screen or less?
 	cmp	eax,dxdots		;  ...
-	jb	solidbox		;  yup.  keep the box solid.
+	jb	short solidbox		;  yup.  keep the box solid.
 	mov	xstep,2			; nope.  make the box every other pixel
 	mov	edx,ystep		;  ...
 	add	ystep,edx		;  ...
 solidbox:
 	shr	eax,1			; a quarter of the screen or less?
 	cmp	eax,dxdots		;  ...
-	jb	solidbox2		;  yup.  keep the box (semi) solid.
+	jb	short solidbox2		;  yup.  keep the box (semi) solid.
 	mov	xstep,4			; nope.  make the box every 4th pixel
 	add	ystep,edx		;  ...
 solidbox2:
@@ -408,7 +547,7 @@ solidbox2:
 	mov	ax,colors		; define the zoom-box color
 	dec	al			;  ...
 	cmp	al,15			; do we have 16 colors?
-	jbe	whitebox		;  nope.  use what we can get.
+	jbe	short whitebox		;  nope.  use what we can get.
 	mov	al,15			; force a white zoom box
 whitebox:
 	mov	boxcolor,al		; save the box color
@@ -419,7 +558,7 @@ whitebox:
 
 	mov	bx,boxcount		; load up a counter: # points to clear
 	dec	bx			; switch to an offset value
-	js	calcnewbox		;  oops. no old box to clear.
+	js	short calcnewbox	;  oops. no old box to clear.
 eraseoldbox:
 	shl	bx,2			; switch to double-word counter
 	mov	edx,boxpoints[bx]	; get the (previous) point location
@@ -455,7 +594,7 @@ starttop:
 topline:
 	add	eax,edx			; calculate the next dot address
 	cmp	eax,boxpoints+4		; gone past the end-of-line?
-	jae	startbottom		;  yup.  bail out.
+	jae	short startbottom	;  yup.  bail out.
 	mov	boxpoints[bx],eax	; save this point.
 	add	bx,4			; bump up the pointer offsets
 	inc	boxcount		; and counters
@@ -465,7 +604,7 @@ startbottom:
 bottomline:
 	add	eax,edx			; calculate the next dot address
 	cmp	eax,boxpoints+12	; gone past the end-of-line?
-	jae	startleft		;  yup.  bail out.
+	jae	short startleft		;  yup.  bail out.
 	mov	boxpoints[bx],eax	; save this point.
 	add	bx,4			; bump up the pointer offsets
 	inc	boxcount		; and counters
@@ -476,7 +615,7 @@ startleft:
 leftline:
 	add	eax,edx			; calculate the next dot address
 	cmp	eax,boxpoints+8		; gone past the end-of-line?
-	jae	startright		;  yup.  bail out.
+	jae	short startright	;  yup.  bail out.
 	mov	boxpoints[bx],eax	; save this point.
 	add	bx,4			; bump up the pointer offsets
 	inc	boxcount		; and counters
@@ -486,7 +625,7 @@ startright:
 rightline:
 	add	eax,edx			; calculate the next dot address
 	cmp	eax,boxpoints+12	; gone past the end-of-line?
-	jae	endlines		;  yup.  bail out.
+	jae	short endlines		;  yup.  bail out.
 	mov	boxpoints[bx],eax	; save this point.
 	add	bx,4			; bump up the pointer offsets
 	inc	boxcount		; and counters
@@ -521,7 +660,7 @@ drawnewbox:
 
 	mov	ax,dotwrite		; check: were we in EGA/VGA mode?
 	cmp	ax,offset vgawrite	;  ...
-	jne	dotsdone		; nope.  no adjustments
+	jne	short dotsdone		; nope.  no adjustments
 	mov	dx,03ceh		; graphics controller address
 	mov	ax,0ff08h		; restore the default bit mask
 	out	dx,ax			; ...
@@ -542,25 +681,168 @@ drawbox	endp
 ;	No returned values, as there is no particular standard to
 ;	adhere to in this case.
 
+;	(SPECIAL "TWEAKED" VGA VALUES:  if AX==BX==CX==0, assume we have a 
+;	genuine VGA or register compatable adapter and program the registers
+;	directly using the coded value in DX)
+
 setvideomode	proc	argax:word, argbx:word, argcx:word, argdx:word
 	push	ax			; save registers
 	push	bx			;  ...
 	push	cx			;  ...
 	push	dx			;  ...
 	push	bp			;  ...
+
 	mov	ax,argax		; load up for the interrupt call
 	mov	bx,argbx		;  ...
 	mov	cx,argcx		;  ...
 	mov	dx,argdx		;  ...
-	int	10h			; do it.
+
+	cmp	ax,0			; TWEAK?:  look for AX==BX==CX==0
+	jne	short setvideobios	;  ...
+	cmp	bx,0			;  ...
+	jne	short setvideobios	;  ...
+	cmp	cx,0			;  ...
+	je	short setvideoregs	;  ...
+
+setvideobios:
+	int	10h			; do it via the BIOS.
+	jmp	short setvideoreturn	;  and return.
+
+setvideoregs:				; assume genuine VGA and program regs
+
+	mov	si,dx			; get the video table offset
+	shl	si,1			;  ...
+	mov	si,word ptr tweaks[si]	;  ...
+
+	mov	ax,0012h		; invoke video mode 12h
+	int	10h
+
+	mov	ax,1124h		; load ROM 8*16 characters
+	mov	bx,0
+	mov	dh,0
+	mov	dl,byte ptr [si+1]	; number of rows on the screen
+	int	10h
+
+	push	es			; save ES for a tad
+	mov	ax,40h			; Video BIOS DATA area
+	mov	es,ax			;  ...
+
+	mov	ah,0
+	mov	al,byte ptr [si]	; number of columns on the screen
+	mov	word ptr es:[4ah],ax
+	mul	byte ptr [si+1]		; number of characters on the screen
+	shl	ax,1			; (attributes, also)
+	mov	word ptr es:[4ch],ax
+
+	mov	dx,word ptr es:[63h]	; say, where's the 6845?
+	add	dx,6			; locate the status register
+vrdly1:	in	al,dx			; loop until vertical retrace is off
+	test	al,8			;   ...
+	jnz	vrdly1			;   ...
+vrdly2:	in	al,dx			; now loop until it's on!
+	test	al,8			;   ...
+	jz	vrdly2			;   ...
+
+	mov	dx,03c4h		; Sequencer Synchronous reset
+	mov	ax,0100h		; set sequencer reset
+	out	dx,ax
+	mov	dx,03c2h		; Update Misc Output Reg
+	mov	al,0E7h
+	out	dx,al
+	mov	dx,03c4h		; Sequencer Synchronous reset
+	mov	ax,0300h		; clear sequencer reset
+	out	dx,ax
+
+	mov	dx,word ptr es:[63h]	; say, where's the 6845?
+	add	si,2			; point SI to the CRTC registers table
+	mov	al,11h			; deprotect registers 0-7
+	mov	ah,byte ptr [si+11h]
+	and	ah,7fh
+	out	dx,ax
+
+	mov	cx,18h			; update this many registers
+	mov	bx,00			; starting with this one.
+crtcloop:
+	mov	al,bl			; update this register
+	mov	ah,byte ptr [bx+si]	; to this
+	out	dx,ax
+	inc	bx			; ready for the next register
+	loop	crtcloop		; (if there is a next register)
+
+	pop	es			; restore ES
+
+setvideoreturn:
 	pop	bp			; restore registers
 	pop	dx			;  ...
 	pop	cx			;  ...
 	pop	bx			;  ...
 	pop	ax			;  ...
+	mov	dacinit,0		; indicate new DAC
 	ret
 setvideomode	endp
 
+; ****************** Function palette(direction) ********************
+
+;	(just for fun) Rotate the MCGA/VGA DAC in the (plus or minus)
+;	"direction"
+
+palette	proc	direction:word
+	push	ax			; save a few registers
+	push	bx			;  ...
+	push	cx			;  ...
+	push	dx			;  ...
+	push	es			;  ...
+	push	si			;  ...
+	push	di			;  ...
+	push	ds			;  ...
+	pop	es			;  ...
+	cld				; set the direction
+	cmp	dacinit,0		; have we ever saved the DAC?
+	jne	short gotDAC		;  yup.  proceed.
+	mov	ax,1017h		; get the old DAC values
+	mov	bx,0			;  ...
+	mov	cx,256			;  ...
+	mov	dx,offset dacbox	;  ...
+	int	10h			; do it.
+	mov	dacinit,1		; indicate it's done.
+gotDAC:
+	cmp	direction,1		; rotate upwards?
+	jne	short downDAC		;  nope.  downwards
+	mov	si,offset dacbox+0	; set up the rotate
+	mov	di,offset dacbox+768	;  ...
+	mov	cx,3			;  ...
+	rep	movsb			; rotate it.
+	mov	si,offset dacbox+3	; set up the rotate
+	mov	di,offset dacbox+0	;  ...
+	mov	cx,768			;  ...
+	rep	movsb			; rotate it.
+	jmp	short newDAC		; set the new DAC
+downDAC:
+	std				; set the direction
+	mov	si,offset dacbox+767	; set up the rotate
+	mov	di,offset dacbox-1	;  ...
+	mov	cx,3			;  ...
+	rep	movsb			; rotate it.
+	mov	si,offset dacbox+764	; set up the rotate
+	mov	di,offset dacbox+767	;  ...
+	mov	cx,768			;  ...
+	rep	movsb			; rotate it.
+newDAC:
+	cld				; set the direction
+	mov	ax,1012h		; set the new DAC
+	mov	bx,0			;  ...
+	mov	cx,256			;  ...
+	mov	dx,offset dacbox	;  ...
+	int	10h			; do it.
+	pop	di			; restore a few registers
+	pop	si			;  ...
+	pop	es			;  ...
+	pop	dx			;  ...
+	pop	cx			;  ...
+	pop	bx			;  ...
+	pop	ax			;  ...
+	ret
+palette	endp
 
 ; ****************** Function getakey() *****************************
 
@@ -574,36 +856,202 @@ setvideomode	endp
 ;	SCANCHEK utility
 
 getakey	proc
-	push	es				; save ES for a tad
-	mov	ax,40h				; reload ES with BIOS data seg
-	mov	es,ax				;  ...
-	mov	ah,es:96h			; get the keyboard byte
-	pop	es				; restore ES
-	and	ah,10h				; isolate the Enhanced KBD bit
+ 	call	chkmse				; see if the mouse was used
+ 	jc	short getakey4			; ax holds the phoney key
+	mov	ah,kbd_type			; get the keyboard type
+	or	ah,1				; check if a key is ready
+	int	16h				; now check a key
+	jz	getakey				; so check the mouse again
+	mov	ah,kbd_type			; get the keyboard type
 	int	16h				; now get a key
 	cmp	al,0e0h				; check: Enhanced Keyboard key?
-	jne	getakey1			; nope.  proceed
+	jne	short getakey1			; nope.  proceed
 	cmp	ah,0				; part 2 of Enhanced Key check
-	je	getakey1			; failed.  normal key.
+	je	short getakey1			; failed.  normal key.
 	mov	al,0				; Turn enhanced key "normal"
-	jmp	getakey2			; jump to common code
+	jmp	short getakey2			; jump to common code
 getakey1:			
 	cmp	ah,0e0h				; check again:  Enhanced Key?
-	jne	getakey2			;  nope.  proceed.
+	jne	short getakey2			;  nope.  proceed.
 	mov	ah,al				; Turn Enhanced key "normal"
 	mov	al,0				;  ...
 getakey2:
 	cmp	al,0				; Function Key?
-	jne	getakey3			;  nope.  proceed.
+	jne	short getakey3			;  nope.  proceed.
 	mov	al,ah				; klooge into ASCII Key
 	mov	ah,0				; clobber the scan code
 	add	ax,1000				;  + 1000
-	jmp	getakey4			; go to common return
+	jmp	short getakey4			; go to common return
 getakey3:
 	mov	ah,0				; clobber the scan code
 getakey4:
 	ret
 getakey	endp
+
+
+; ********************* Mouse Support Code ******************************
+;
+; 		Contributed by Mike Kaufman
+;	(and then hacked up beyond all recall by me (sorry) - Bert)
+;
+; ***********************************************************************
+
+; ****************** Function initasmvars() *****************************
+initasmvars proc
+				       ; first see if a mouse is installed 
+         xor	ax,ax                  ; function for mouse check
+         int	33h                    ; call mouse driver
+	 mov	mouse,al	       ; al holds info about mouse
+	
+	 			       ; now get the information about the kbd
+	 push	es		       ; save ES for a tad
+	 mov	ax,40h		       ; reload ES with BIOS data seg
+	 mov	es,ax		       ;  ...
+	 mov	ah,es:96h	       ; get the keyboard byte
+	 pop	es		       ; restore ES
+	 and	ah,10h		       ; isolate the Enhanced KBD bit
+	 mov	kbd_type,ah	       ; and save it
+
+	 ret                           ; return to caller
+initasmvars endp
+
+
+; This function checks if a mouse button has been pushed or if the mouse moved
+chkmse	proc	near
+	cmp	mouse,-1	       ; is mouse installed
+	jz	short chkit	       ; yes, so do stuff
+	clc			       ; clear the carry flag
+	ret			       ; and return
+	 
+chkit:  push	bx                     ; save registers
+	push	dx
+	push	cx
+	push	bp
+mousecheck:
+	mov	ax,3                    ; function for mouse status
+	int	33h                     ; call mouse driver
+	and	bx,7                    ; we only care about these bits
+	mov	mousekey,bl		; save the results
+	cmp	bx,0		        ; any buttons pressed?
+	jz	short notpressed        ; no so check for mouse movement
+	cmp	bx,1			; left-hand button (only) down?
+	je	short mouseleft		;  yup.  deal with it.
+	cmp	bx,2			; right-hand button (only) down?
+	je	short mouseright	;  yup.  deal with it.
+
+mousemiddle:				; multiple or middle button down
+	mov	mousekey,4		; force it to be middle-button down
+	mov	ax,13			; pretend the ENTER key was hit
+	jmp	short pressed		; and return.
+	
+mouseleft:
+	mov	ax,0bh		        ; distance moved function
+	int	33h		        ; see how far the mouse has moved
+	mov	ax, 1073		; indicate page up
+	add	mousemickeys,dx		; compute a running movement sum
+	cmp	mousemickeys,-10	; which way'd we go?
+	jle	short pressed		;  Up.  Proceed.
+	mov	ax, 1081		; indicate page down
+	cmp	mousemickeys,10		; which way'd we go?
+	jge	short pressed		;  Up.  Proceed.
+	jmp	mousecheck		; else check again.
+	
+pressed:
+	mov	mousemickeys,0		; clear out the mickey counter
+	stc				; indicate something happened
+	jmp	short exitpress 	; and exit
+	 
+; The purpose of this bit of code is to eliminate the effect of small mouse
+; movements.  What I mean is that, the direction to move is the direction that
+; the mouse has moved the most
+
+mouseright:
+
+notpressed:			       ; no button pressed, but maybe the 
+				       ; mouse was moved so check that out
+	mov	ax,0bh		       ; distance moved function
+	int	33h		       ; see how far the mouse has moved
+	mov	ax,dx		       ; now see who moved farther
+	mov	bx,cx		       ; move to ax,bx so we can play
+	cmp	ax,0		       ; find the abs(ax)
+	jge	short chk_bx	       ; already postive
+	not	ax		       ; ax is negative, so negate
+chk_bx: cmp	bx,0		       ; find  the abs(bx)
+	jge	short chk_grt	       ; already postive
+	not	bx		       ; bx is negative, so negate
+chk_grt:
+	cmp	ax,bx		       ; see which one is greater
+	jl	short nocol	       ; bx is greater so check the rows
+	
+	cmp	dx,0		       ; did the col change
+	jz	short nthng	       ; no then nothing changed (ie cx=dx=0)
+	jg	short ardown	       ; mouse moved down
+	mov	ax,1072		       ; indicate an up arrow
+	cmp	mousekey,0	       ; were any mouse keys hit?
+	jne	pressed		       ;  yup.  proceed.
+	mov	ax,1141		       ; indicate a control-arrow
+	jmp	short pressed
+ardown:
+	mov	ax,1080		       ; indicate a down arrow
+	cmp	mousekey,0	       ; were any mouse keys hit?
+	jne	pressed		       ;  yup.  proceed.
+	mov	ax,1145		       ; indicate a control-arrow
+	jmp	short pressed
+nocol:	cmp	cx,0		       ; did the row change up or down
+	jg	short arright	       ; mouse moved to the right
+	mov	ax,1075		       ; indicate a left arrow
+	cmp	mousekey,0	       ; were any mouse keys hit?
+	jne	pressed		       ;  yup.  proceed.
+	mov	ax,1115		       ; indicate a control-arrow
+	jmp	short pressed
+arright:
+	mov	ax,1077		       ;indeicate a right arrow
+	cmp	mousekey,0	       ; were any mouse keys hit?
+	jne	pressed		       ;  yup.  proceed.
+	mov	ax,1116		       ; indicate a control-arrow
+	jmp	short pressed
+nthng:  clc                            ; indicate that nothing changed
+exitpress:
+	pop	bp		       ; restore registers
+	pop	cx
+	pop	dx
+	pop	bx		       ; restore value 
+	ret			       ; return to caller
+chkmse	endp
+
+
+; Check if a button was hit on the mouse
+msemvd	proc  near
+	cmp	mouse,0		       ; is mouse installed
+	jnz	short mchkit	       ; yes, so do stuff
+	clc			       ; clear the carry flag
+	ret			       ; and return
+
+mchkit:	push	bx                     ; save registers
+	push	dx
+	push	cx
+	push	ax
+mousecheck2:
+	mov	ax,3                   ; function to check mouse status
+	int	33h                    ; call mouse driver
+	and	bx,7                   ; we only care about these bits
+	cmp	mousekey,4	       ; ugly klooge for dual-key presses:
+	jne	short mouseklooge       ; wait until they ALL clear out
+	cmp	bx,0		       ; any keys still down?
+	jne	mousecheck2	       ;  yup.  try again.
+	mov	mousekey,0	       ; else clear out the klooge flag
+mouseklooge:
+	cmp	bx,0		       ; any buttons pressed?
+	jnz	short mpress	       ; yes so exit with a yes
+	clc			       ; indicate that nothing changed
+	jmp	short mexit	       ; and exit
+mpress:	stc			       ; indicate a change
+mexit:	pop	ax
+	pop	cx
+	pop	dx
+	pop	bx		       ; restore value 
+	ret			       ; return to caller
+msemvd	endp
 
 
 ; ****************** Function cputype() *****************************
@@ -631,7 +1079,7 @@ cputype    proc
            shl     ax,cl          ;  86 shifts 32 so ax = 0
            jnz     exit           ;non-zero: no shift, so 186
            mov     ax,86          ;zero: shifted out all bits
-           jmp     exit
+           jmp     short exit
 
 not86:     pushf                  ;Test 16 or 32 operand size:
            mov     ax,sp          ;  pushed 2 or 4 bytes of flags?
@@ -649,7 +1097,7 @@ is16bit:   sub     sp,6           ;Is it 286 or 386 in 16-bit mode?
            inc     ah             ;286 stores -1, 386 0 or 1
            jnz     is386
 is286:     mov     ax,286         ;set return value
-           jmp     testprot
+           jmp     short testprot
 
 is32bit:   db      66H            ;16-bit override in 32-bit mode
 is386:     mov     ax,386

@@ -1,7 +1,21 @@
 /*
 	FRACT386 - 386-specific Mandelbrot/Julia Fractal Generator
-	C-code		Version 3.1		By Bert Tyler
+	C-code		Version 4.0			   By Bert Tyler
+					Mouse support by Michael Kaufman
 */
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+void main(int argc, char *argv[]);
+int cputype(void);
+int initasmvars(void);
+int getakey(void);
+void setvideomode(int a, int b, int c, int d);
+int calcdots(void);
+void drawbox(void);
+void palette(int);
 
 struct videoinfo {		/* All we need to know about a Video Adapter */
 	char	name[40];	/* Adapter name (IBM EGA, etc)		*/
@@ -9,6 +23,7 @@ struct videoinfo {		/* All we need to know about a Video Adapter */
 	int	videomodebx;	/*		...and BX=(this)	*/
 	int	videomodecx;	/*		...and CX=(this)	*/
 	int	videomodedx;	/*		...and DX=(this)	*/
+				/* NOTE:  IF AX==BX==CX==0, SEE BELOW	*/
 	int	dotmode;	/* video access method used by asm code	*/
 				/*	1 == BIOS 10H, AH=12,13 (SLOW)	*/
 				/*	2 == access like EGA/VGA	*/
@@ -19,10 +34,24 @@ struct videoinfo {		/* All we need to know about a Video Adapter */
 	char	comment[40];	/* Comments (UNTESTED, etc)		*/
 	};
 
+/* NOTE:  if videomode[abc]x == 0, 'setvideomode' assumes it has an IBM (or
+	register compatable) adapter and tweaks the registers directly
+	to get one of the following modes (based on the value of videomodedx):
+
+		1		704 x 528 x 16
+		2		720 x 540 x 16
+		3		736 x 552 x 16
+		4		752 x 564 x 16
+		5		768 x 576 x 16
+		6		784 x 588 x 16
+		7		800 x 600 x 16
+
+*/
+
 struct videoinfo videomode[] = {
 /*
 	Feel free to add your favorite video adapter to the following table.
-	Just remember that only the first 50 entries get displayed and
+	Just remember that only the first 60 entries get displayed and
 	assigned Function keys.
 
 --Adapter/Mode------|---INT 10H---|Dot-|-Resolution-|------Comments-----------
@@ -37,24 +66,23 @@ struct videoinfo videomode[] = {
 "IBM B&W EGA",       0x0f, 0, 0, 0, 2, 640, 350,  2, "(Monochrome EGA)",
 "IBM B&W VGA",       0x11, 0, 0, 0, 2, 640, 480,  2, "(Monochrome VGA)",
 "IBM Med-Rez EGA",   0x0e, 0, 0, 0, 2, 640, 200, 16, "(Silly, but there!)",
-"ATI EGA Wonder",    0x51, 0, 0, 0, 1, 640, 480, 16, "UNTESTED: may not work",
-"ATI EGA Wonder",    0x52, 0, 0, 0, 1, 800, 560, 16, "UNTESTED: may not work",
-"Everex EVGA",       0x70, 2, 0, 0, 2, 800, 600, 16, "UNTESTED: may not work",
-"Everex EVGA",       0x70,19, 0, 0, 1, 512, 480,256, "UNTESTED: may not work",
-"Everex EVGA",       0x70,21, 0, 0, 1, 640, 350,256, "UNTESTED: may not work",
-"Paradise VGA",      0x5e, 0, 0, 0, 1, 640, 400,256, "UNTESTED: may not work",
-"Paradise VGA",      0x5f, 0, 0, 0, 1, 640, 480,256, "UNTESTED: may not work",
-"Paradise VGA",      0x58, 0, 0, 0, 2, 800, 600, 16, "Tested OK by Chris Green",
+"IBM VGA (+tweaked+)",  0, 0, 0, 1, 2, 704, 528, 16, "Register Compatables ONLY",
+"IBM VGA (+tweaked+)",  0, 0, 0, 2, 2, 720, 540, 16, "Register Compatables ONLY",
+"IBM VGA (+tweaked+)",  0, 0, 0, 3, 2, 736, 552, 16, "Register Compatables ONLY",
+"IBM VGA (+tweaked+)",  0, 0, 0, 4, 2, 752, 564, 16, "Register Compatables ONLY",
+"IBM VGA (+tweaked+)",  0, 0, 0, 5, 2, 768, 576, 16, "Register Compatables ONLY",
+"IBM VGA (+tweaked+)",  0, 0, 0, 6, 2, 784, 588, 16, "Register Compatables ONLY",
+"IBM VGA (+tweaked+)",  0, 0, 0, 7, 2, 800, 600, 16, "Register Compatables ONLY",
+"COMPAQ Portable 386",0x40,0, 0, 0, 1, 640, 400,  2, "TESTED OK by Michael Kaufman",
+"COMPAQ, DELL VGA",  0x5e, 0, 0, 0, 1, 640, 400,256, "UNTESTED: may not work",
+"COMPAQ, DELL VGA",  0x5f, 0, 0, 0, 1, 640, 480,256, "UNTESTED: may not work",
+"COMPAQ, DELL VGA",  0x58, 0, 0, 0, 2, 800, 600, 16, "UNTESTED: may not work",
+"COMPAQ, DELL VGA",  0x59, 0, 0, 0, 1, 800, 600,  2, "UNTESTED: may not work",
+"Paradise, AST VGA", 0x5e, 0, 0, 0, 1, 640, 400,256, "UNTESTED: may not work",
+"Paradise, AST VGA", 0x5f, 0, 0, 0, 1, 640, 480,256, "UNTESTED: may not work",
+"Paradise, AST VGA", 0x58, 0, 0, 0, 2, 800, 600, 16, "Tested OK by Chris Green",
+"Paradise, AST VGA", 0x59, 0, 0, 0, 1, 800, 600,  2, "UNTESTED: may not work",
 "Paradise EGA-480",  0x50, 0, 0, 0, 1, 640, 480, 16, "UNTESTED: may not work",
-"VEGA VGA",          0x2d, 0, 0, 0, 1, 640, 350,256, "UNTESTED: may not work",
-"VEGA VGA",          0x5e, 0, 0, 0, 1, 640, 400,256, "UNTESTED: may not work",
-"VEGA VGA",          0x2e, 0, 0, 0, 1, 640, 480,256, "UNTESTED: may not work",
-"VEGA VGA",          0x27, 0, 0, 0, 1, 720, 512, 16, "UNTESTED: may not work",
-"VEGA VGA",          0x2f, 0, 0, 0, 1, 720, 512,256, "UNTESTED: may not work",
-"VEGA VGA",          0x29, 0, 0, 0, 1, 800, 600, 16, "UNTESTED: may not work",
-"VEGA VGA",          0x30, 0, 0, 0, 1, 800, 600,256, "UNTESTED: may not work",
-"VEGA VGA",          0x36, 0, 0, 0, 1, 960, 720, 16, "UNTESTED: may not work",
-"VEGA VGA",          0x37, 0, 0, 0, 1,1024, 768, 16, "UNTESTED: may not work",
 "Video-7 Vram VGA", 0x6f05,0x60,0,0,2, 752, 410, 16, "Tested OK by Ira Emus",
 "Video-7 Vram VGA", 0x6f05,0x61,0,0,2, 720, 540, 16, "Tested OK by Ira Emus",
 "Video-7 Vram VGA", 0x6f05,0x62,0,0,2, 800, 600, 16, "Tested OK by Ira Emus",
@@ -65,9 +93,28 @@ struct videoinfo videomode[] = {
 "Video-7  w/512K ", 0x6f05,0x67,0,0,1, 640, 480,256, "Tested OK by Ira Emus",
 "Video-7  w/512K ", 0x6f05,0x68,0,0,1, 720, 540,256, "Tested OK by Ira Emus",
 "Video-7  w/512K ", 0x6f05,0x69,0,0,1, 800, 600,256, "Tested OK by Ira Emus",
+"Orchid, STB (VEGA?)",0x2d,0, 0, 0, 1, 640, 350,256, "UNTESTED: may not work",
+"Orchid, STB (VEGA?)",0x2e,0, 0, 0, 1, 640, 480,256, "UNTESTED: may not work",
+"Orchid, STB (VEGA?)",0x29,0, 0, 0, 2, 800, 600, 16, "UNTESTED: may not work",
+"Orchid, STB (VEGA?)",0x30,0, 0, 0, 1, 800, 600,256, "UNTESTED: may not work",
+"Orchid, STB (VEGA?)",0x37,0, 0, 0, 1,1024, 768, 16, "Tested OK (STB) by David Mills",
+"GENOA"             ,0x2d, 0, 0, 0, 1, 640, 350,256, "UNTESTED: may not work",
+"GENOA, SIGMA"      ,0x2e, 0, 0, 0, 1, 640, 480,256, "UNTESTED: may not work",
+"GENOA, SIGMA"      ,0x29, 0, 0, 0, 2, 800, 600, 16, "UNTESTED: may not work",
+"GENOA, SIGMA"      ,0x30, 0, 0, 0, 1, 800, 600,256, "UNTESTED: may not work",
+"GENOA"             ,0x37, 0, 0, 0, 1,1024, 768, 16, "UNTESTED: may not work",
+"STB (VEGA?)"       ,0x36, 0, 0, 0, 1, 960, 720, 16, "UNTESTED: may not work",
+"VEGA VGA (?)",      0x5e, 0, 0, 0, 1, 640, 400,256, "UNTESTED: may not work",
+"VEGA VGA (?)",      0x27, 0, 0, 0, 1, 720, 512, 16, "UNTESTED: may not work",
+"VEGA VGA (?)",      0x2f, 0, 0, 0, 1, 720, 512,256, "UNTESTED: may not work",
+"ATI EGA Wonder",    0x51, 0, 0, 0, 1, 640, 480, 16, "UNTESTED: may not work",
+"ATI EGA Wonder",    0x52, 0, 0, 0, 1, 800, 560, 16, "UNTESTED: may not work",
 "AT&T 6300",         0x41, 0, 0, 0, 1, 640, 200, 16, "UNTESTED: may not work",
-"AT&T 6300",         0x48, 0, 0, 0, 1, 640, 400,  2, "UNTESTED: may not work",
+"AT&T 6300",         0x40, 0, 0, 0, 1, 640, 400,  2, "TESTED OK by Michael Kaufman",
 "AT&T 6300",         0x42, 0, 0, 0, 1, 640, 400, 16, "UNTESTED: may not work",
+"Everex EVGA",       0x70, 2, 0, 0, 2, 800, 600, 16, "UNTESTED: may not work",
+"Everex EVGA",       0x70,19, 0, 0, 1, 512, 480,256, "UNTESTED: may not work",
+"Everex EVGA",       0x70,21, 0, 0, 1, 640, 350,256, "UNTESTED: may not work",
 "END",                  3, 0, 0, 0, 0,   0,   0,  0, "Marks END of the List"
 	};
 
@@ -81,6 +128,8 @@ char *fkeys[] = {		/* Function Key names for display table */
 	"AF1","AF2","AF3","AF4","AF5","AF6","AF7","AF8","AF9","AF10",
 	"Alt-1","Alt-2","Alt-3","Alt-4","Alt-5",
 	"Alt-6","Alt-7","Alt-8","Alt-9","Alt-0",
+	"Alt-Q","Alt-W","Alt-E","Alt-R","Alt-T",
+	"Alt-Y","Alt-U","Alt-I","Alt-O","Alt-P",
 	"END"};
 char *accessmethod[] = {" ","B"," "," "}; /* BIOS access indicator */
 
@@ -103,10 +152,11 @@ long	history[MAXHISTORY][6];	/* for historical (HOME Key) purposes */
 	int	ixmin, ixmax, iymin, iymax;	/* corners of the zoom box  */
 
 	int	julia;				/* if == 0, use Mandelbrot  */
+	int	numpasses;			/* 0 if single-pass, else 1 */
 	long	creal, cimag;			/* real, imag'ry parts of C */
 	long	lx0[2048], ly0[2048];		/* x, y grid (2K x 2K max)  */
 
-main(argc,argv)
+void main(argc,argv)
 int argc;
 char *argv[];
 {
@@ -132,16 +182,19 @@ if ((i=abs(cputype())) != 386) {		/* oops. not a 386 */
 	exit(1);
 	}
 
+initasmvars();	     /* this function sets up the various internal asm vars */
+
 for (maxvideomode = 0;				/* get size of adapter list */
 	strcmp(videomode[maxvideomode].name,"END") != 0
-		&& maxvideomode < 50;	/* that's all the Fn keys we got! */
+		&& maxvideomode < 60;	/* that's all the Fn keys we got! */
 	maxvideomode++);
-
-maxit = 150;					/* max iterations */
 
 fudge = 1; fudge = fudge << FUDGEFACTOR;	/* fudged value for printfs */
 
 restart:				/* insert key re-starts here */
+
+maxit = 150;					/* max iterations */
+numpasses = 0;					/* single-pass mode */
 
 julia = 0;					/* use the Mandelbrot set */
 creal = 0; cimag = 0;				/* dummy C-values         */
@@ -185,15 +238,15 @@ if (argc == 5 || argc == 7) {			/* starting grid override */
 setvideomode(3,0,0,0);			/* switch to text mode */
 
 printf("\n\n\n");
-printf("FRACT386                      Version 3.1                by Bert Tyler\n");
-printf("\n");
-printf("The useful keys you can hit while this program is running are:\n");
-printf("\n");
+printf("FRACT386          Version 4.0                                  by Bert Tyler\n");
+printf("                                            Mouse Support by Michael Kaufman\n");
+printf("Some of the useful keys you can hit while this program is running are:\n");
+printf("       (For a complete list, and the Mouse Commands, see the README file)\n");
 printf("  PageUp            Shrink the Zoom Box (Zoom in)  \n");
 printf("  PageDown          Expand the Zoom Box (Zoom out) \n");
-printf("  Cursor Keys       Move the Zoom Box Left, Right, Up, or Down (Panning)\n");
-printf("  Ctrl-Cursor-Keys  Pan as above, but quickly (may require an Enhanced KBD)\n");
-printf("  End or Enter      Redraw (full screen) the area inside the Zoom Box \n");
+printf("  Cursor Keys       Move the Zoom Box around (Panning)\n");
+printf("  Ctrl-Cursor-Keys  Pan as above, but quickly(may require an Enhanced KBD)\n");
+printf("  End or Enter      Redraw the Screen or area inside the Zoom Box \n");
 printf("  F1,F2,F3,F4...    Select a new Video Mode and THEN Redraw\n");
 printf("                    (See Instructions Below for a complete Video Mode list)\n");
 printf("  Home              Redraw Previous screen (you can 'back out' recursively)\n");
@@ -229,10 +282,19 @@ for (;;) {					/* wait for valid Fn Key */
 		adapter = kbdchar - 1080;	/* use this adapter initially */
 		break;
 		}
+	if (kbdchar >= 1016 && kbdchar < 1026	/* Alt-Q thru Alt-P */
+	 && kbdchar < 966 + maxvideomode) {
+		adapter = kbdchar - 966;	/* use this adapter initially */
+		break;
+		}
 	if (kbdchar == 1082) goto restart;	/* restart pgm on Insert Key */
 	if (kbdchar == 1000) exit(0);		/* Control-C */
 	if (kbdchar == 27) exit(0);		/* exit to DOS on Escape Key */
 	if (kbdchar == 1083) exit(0);		/* exit to DOS on Delete Key */
+	if (kbdchar == '1' || kbdchar == '2') {	/* select single or dual-pass */
+		numpasses = kbdchar - '1';
+		continue;
+		}
 	if (kbdchar == 13) {			/* <ENTER> key: display adapter list */
 		j += 14;			/* display next page */
 		if (j >= maxvideomode) j = 0;	/* (or 1st page)     */
@@ -269,7 +331,7 @@ while (more) {					/* eternal loop */
 	axmode  = videomode[adapter].videomodeax; /* video mode (BIOS call) */
 	bxmode  = videomode[adapter].videomodebx; /* video mode (BIOS call) */
 	cxmode  = videomode[adapter].videomodecx; /* video mode (BIOS call) */
-	dxmode  = videomode[adapter].videomodecx; /* video mode (BIOS call) */
+	dxmode  = videomode[adapter].videomodedx; /* video mode (BIOS call) */
 	dotmode = videomode[adapter].dotmode;	/* assembler dot read/write */
 	xdots   = videomode[adapter].xdots;	/* # dots across the screen */
 	ydots   = videomode[adapter].ydots;	/* # dots down the screen   */
@@ -281,6 +343,8 @@ while (more) {					/* eternal loop */
 		{ xstep = 16; ystep =  9; }
 	if (xdots == 720 && ydots == 512)	/* zoom-box adjust:  720x512 */
 		{ xstep = 20; ystep = 15; }
+	if (xdots * 3 == ydots * 4)		/* zoom-box adjust:  VGA Tweaks */
+		{ xstep = 16; ystep = 12; }
 	if (xdots == 1024 && ydots == 768)	/* zoom-box adjust: 1024x768 */
 		{ xstep = 32; ystep = 24; }
 
@@ -399,7 +463,30 @@ while (more) {					/* eternal loop */
 				printf("     Xmax = %12.9f \n",xxmax);
 				printf("     Ymin = %12.9f \n",yymin);
 				printf("     Ymax = %12.9f \n",yymax);
+				continue;	
+			break;
+			case '<':			/* lower iter maximum */
+			case ',':
+				if (maxit > 50) maxit -= 50;
+				maxit -= 50;		/* for fall-thru */
+			case '>':			/* raise iter maximum */
+			case '.':
+				if (maxit < 1000) maxit += 50;
+				printf("The Iteration Maximum is now %d\n", maxit);
 				continue;
+				break;
+			case '+':			/* rotate palette */
+				palette(+1);
+				continue;
+				break;
+			case '-':			/* rotate palette */
+				palette(-1);
+				continue;
+				break;
+			case '1':			/* single-pass mode */
+			case '2':			/* dual-pass mode */
+				numpasses = kbdchar - '1';
+				kbdmore = 0;
 				break;
 			case 13:			/* Enter */
 			case 1079:			/* end */
@@ -489,6 +576,11 @@ while (more) {					/* eternal loop */
 				else if (kbdchar >= 1120 && kbdchar < 1130
 				 && kbdchar < 1080 + maxvideomode) {
 					adapter = kbdchar - 1080;
+					kbdmore = 0;
+					}
+				else if (kbdchar >= 1016 && kbdchar < 1026
+				 && kbdchar < 966 + maxvideomode) {
+					adapter = kbdchar - 966;
 					kbdmore = 0;
 					}
 				else

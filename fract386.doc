@@ -1,16 +1,31 @@
 
-       ***   FRACT386 (Version 3.1)   ******   by Bert Tyler   ***
+ ********   FRACT386 (Version 4.0)   **********   by Bert Tyler   *********
+                                      with Mouse support by Michael Kaufman
+
+      +++++ Quick Documentation Format -- Features new to 4.0 +++++
+
+         - Mouse Support               (See the Mouse Notes, below)
+         - Dynamic Iteration Limits         ('<' and '>' keys)
+         - Color-Cycling                    ('+' and '-' keys)
+         - Dual-Pass Mode                   ('1' and '2' keys)
+         - Still More Video Modes, including "tweaked" modes
+                 for Genuine IBM VGA and register-compatable adapters
+
+                         +++ Features new to 3.0 +++
+         - Julia Sets
+
+      +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 This program generates Mandelbrot and Julia set fractal images using 32-bit
 integer arithmetic specific to the 386 microprocessor.   It will politely
 refuse to execute if it finds itself on any earlier Intel processors such
 as the 8086, 80186 or 80286.   The program will work with CGA, EGA, MCGA,
-VGA and many popular super-rez adapters, and can switch display modes
-on-the-fly for those adapters capable of multiple emulation.  For instance,
-I can run this program in any of nine IBM CGA/EGA/MCGA/VGA modes on my
-PS/2 model 80.   The program does not perform any floating point arithmetic
-in its image generation routines, and does not require an FPU.
+VGA, "tweaked" VGA, and many popular super-rez adapters, and can switch
+display modes on-the-fly for those adapters capable of multiple emulation.
+For instance, I can run this program in any of the IBM CGA/EGA/MCGA/VGA
+modes on my PS/2 model 80.   The program does not perform any floating point
+arithmetic in its image generation routines, and does not require an FPU.
 
 To start the program, simply type its name (FRACT386) without any parameters.
 When the program fires up, it displays a startup screen explaining how it
@@ -49,10 +64,49 @@ hit any of the following keys to select a function:
  Spacebar       Toggles between Mandelbrot images and their corresponding
                 Julia set images (read the Julia set notes below before
                 trying this option if you want to see anything interesting)
+ < or >         Lower or Raise the maximum iteration count by 50
+                (the default value is 150, the allowable range is 50 - 1000)
+                ((Note:  the unshifted equivalents (comma, period) also work))
+ 1 or 2		Select single-pass (the default) or dual-pass mode.  Dual-pass
+		mode generates a "coarse" screen first using (2x2) pixel boxes,
+		and then generates the rest of the dots with a second pass.
+ + or -         (For VGA adapters) Rotate the Video DAC in one or the other
+                direction.   Hint:  Hold down a key for exploding fractals!
  Insert         Restart the Program all over again at the Startup Screen
                 (in case you forgot the instructions or need to see the
                 Video Mode list again)
  Delete or Esc  Stop the Program and Return to MSDOS
+
+=============================================================================
+                          Mouse Support
+
+If you have a mouse, FRACT386 now supports it, thanks to the contributions
+of Michael Kaufman.   He added mouse encoding to FRACT386 (which I then
+hacked up beyond all recall, so any bugs in the code are probably mine - Bert)
+The mouse encoding is as follows:
+
+=============================================================================
+
+Left Button:   Brings up and sizes the Zoom Box.   While holding down the
+               left button, push the mouse forward to shrink the Zoom Box,
+               and pull it back to expand it.   Then let go of the button
+               and move the mouse around to "pan" the Zoom Box (with no
+               buttons held down, you are in "fast-pan" mode).
+
+Right Button:  When the right button is held down, the "panning" operation
+               switches from "fast-pan" to "slow-pan" mode, giving you
+               better control over the location of the Zoom Box.
+
+Both Buttons:  (or the middle button, if you have three of them) Redraws
+               the area inside the Zoom Box over your full screen.
+
+Zoom and Pan using the mouse typically consists of pushing in the left
+button, sizing the zoom box, letting go of the button, fast-panning to
+the general area, pushing in the right button and slow-panning to the
+exact area you want, and then (still holding down the right button) tapping
+the left button to perform the Zoom.
+
+=============================================================================
 
 Remember, you do NOT have to wait for the program to finish generating the
 full screen display (a process that can take from 30 seconds in "Low-Rez" EGA
@@ -80,6 +134,13 @@ detailed resolution quickly -- I've seen that first screen too often to
 get excited about it.   Actually, with its 256 colors (the program is
 "only" using the first 150), MCGA mode can give you some pretty spectacular
 effects on its own.
+
+A final hint:  Try using the '2' key to get dual-pass mode.   Dual-pass
+mode makes an initial sweep of the screen calculating every fourth pixel
+and using it to display a 2x2 pixel box, and then calculates the other three
+pixels in a second, "clean-up" sweep.   The total time it takes to generate
+a full screen is the same as in single-pass mode, and the final display is
+identical, but you get a quick scan early for zooming purposes.
 
 
        ***** Toggling between Mandelbrot and Julia Sets *****
@@ -186,13 +247,13 @@ programs, so you can compare pictures with your buddy's MAC-II.
          FRACT386 -.480 .626                    (generates a full Julia set)
 
 
-          *** Support for Third-Party Hi-Rez Video Adapters ***
+ *** Support for "Tweaked" VGA modes and Third-Party Hi-Rez Video Adapters ***
 
    FRACT386 uses a Video Adapter Table in the "C" program to reference
 everything it needs to know about any particular adapter/mode combination.
-This table can contain information for up to fifty adapter/mode combinations,
-and is automatically tied to fifty Function Keys (F1-F10, their Control/
-Shift/Alt variants, and Alt-0 thru Alt-9) when the program is running.
+This table can contain information for up to sixty adapter/mode combinations,
+and is automatically tied to sixty Function Keys (F1-F10, their Control/
+Shift/Alt variants, and many Alt-x keypad combos) when the program is running.
 The table entries, and the function keys they are tied to, are displayed
 on your screen if you hit the ENTER key at FRACT386's startup screen.
 This table makes adding support for various third-party video cards and
@@ -208,26 +269,56 @@ modes via INT 10.
 
    [Chris Green didn't have a "C" compiler handy, so he modified the
 program's video adapter table using DEBUG when he was testing the Paradise
-adapter entries -- but that's an act of desperation.   It worked, though.
-And I don't run the .EXE file through EXEPACK anymore, so it's easier now.]
+adapter entries -- it was an act of desperation, but it worked.   And the
+.EXE file isn't run through EXEPACK anymore, so it's easier now.]
 
-   The table as currently distributed begins with nine standard IBM video
-modes that have been exercised successfully with a PS/2 model 80.   These
-entries, coupled with the descriptive comments in the table definition
-and the knowledge you have about throwing your adapter into its unique modes,
-should be all you need to see to be able to add your own entries.
+   The table as currently distributed begins with nine standard and several
+non-standard ("tweaked") IBM video modes that have been exercised successfully
+with a PS/2 model 80.   These entries, coupled with the descriptive comments
+in the table definition and the knowledge you have about throwing your adapter
+into its unique modes, should be all you need to see to be able to add your
+own entries.
+
+   SPECIAL NOTE ON "TWEAKED" VGA MODES:   The IBM VGA adapter is a highly
+programmable device, and can be set up to display many video-mode combinations
+beyond those "officially" supported by the IBM BIOS.   The assembler program
+in FRACT386 contains code that sets up the IBM VGA adapter (or any truly
+register-compatable clone) for several extended modes - such as 704x528,
+736x552, 768x576, and 800x600.   The program accomplishes this by programming
+the VGA controller to use the fastest dot-clock on the IBM adapter (28.322Mhz),
+throwing more pixels on the screen, and reducing the refresh-rate to make up
+for it.   Note that these modes push many monitors beyond their rated specs,
+both in terms of higher pixel resolution and lower refresh-rate.   Signs that
+your monitor is having problems with a particular "tweak" include: vertical or
+horizontal overscan (displaying dots beyond the edges of your visible CRT
+area), annoying "flicker" (caused by a too-slow refresh-rate), and "rolling"
+or total garbage on the screen (your monitor simply can't keep up, or is
+attempting to "force" the image into a pre-set mode that doesn't fit).
+I have successfully tested the modes up to 768x576 on an IBM PS/2 model 80
+connected to IBM 8513, IBM 8514, NEC Multisync II, and Zenith 1490 monitors
+(all of which exhibit some overscan and flicker at the highest rates), and
+have tested 800x600 mode on the NEC Multisync II (although I had to fiddle
+with the vertical size knob some to get it to display correctly).
 
    UNTESTED (note the emphasis) support for a number of popular high-rez
 video adapters has been added to the table from an information sheet that
-shows up sporadically on USENET.   Because the information on the sheet is
-somewhat sparse, I was forced to use the BIOS method for reading/writing dots
-for each of these adapters.   Specs for the Everex EVGA board are courtesy
-of Tom Moran (tmoran on BIX).   Specs for the Video-7 board are courtesy of
-Ira Emus (irae on BIX).   I tried calling up each of the "major" video
-board manufacturers (defined as those paying for full-page ads in magazines
-like BYTE and PC) several times to get the specs for their boards, but
-never got through to any technical support people - unless they were the
-ones playing the MUSAK while I was on hold.   And boy, was I on hold.
+shows up sporadically on USENET (and later adjusted based on alternate lists
+and user feedback).   Because the information on the sheet is somewhat sparse,
+I was forced to use the BIOS method for reading/writing dots for each of these
+adapters.   Specs for the Everex EVGA board are courtesy of Tom Moran (tmoran
+on BIX).   Specs for the Video-7 board are courtesy of Ira Emus (irae on BIX).
+Other specs came from a list compiled by GRAFX and supplied by Juan Orlandini
+(juan on BIX).   (Specs for the VEGA VGA board have "?" added to them because
+I now have two lists with CONFLICTING specs on that particular board.
+Nobody has complained yet about the old listing, but another claims that it
+is programmed the same way as a Video-7 VRAM VGA.   Confusion reigns.)   Note
+that many "competitive" Super-VGA boards actually use identical chip sets,
+(Paradise, COMPAQ, Dell) and are programmed in an identical manner!
+I tried calling up each of the "major" video board manufacturers (defined as
+those paying for full-page ads in magazines like BYTE and PC) several times
+to get the specs for their boards, but never got through to any technical
+support people - unless they were the ones playing the MUSAK while I was on
+hold.   And boy, was I on hold.
 
    If you have a favorite adapter that you would like added to the standard
 releases of FRACT386, just give me the table entry that you added to get
@@ -341,7 +432,6 @@ that use four or more floating-point numbers to start FRACT386 on a particular
 piece of the fractal plane -- then picture that as the ONLY way to select an
 area to draw).   That's when I added the zoom-and-pan interface. It has passed
 a pretty robust ease-of-use test -- my seven year old likes to play with it.
-She wants me to modify it to work with a mouse, though (sigh).
 
 
    This code was compiled using Microsoft C (version 5.1) and Microsoft
@@ -368,3 +458,10 @@ Contribution policy:    Don't want money.   Got money.   Want admiration.
             124 Wooded Lane
             Villanova, Pa  19085
             (215) 525-6355
+
+Mouse support courtesy of:
+
+            Michael L. Kaufman             (accessable via EXEC-PC bbs)
+            2247 Ridge Ave #2k
+            Evanston, Il, 60201
+            (312) 864-7916
