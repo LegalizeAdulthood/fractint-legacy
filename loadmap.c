@@ -4,6 +4,7 @@
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<dos.h>
+#include	<string.h>
 
 typedef unsigned char uchar;
 
@@ -13,110 +14,80 @@ typedef struct palett {
    uchar blue;
 } Palettetype;
 
-extern char					loadPalette;
-extern int					targaType;
+extern char		loadPalette;
 extern Palettetype	dacbox[ 256 ];
-extern unsigned			tga16[ 256 ];
-extern long					tga32[ 256 ];
+extern unsigned far    *tga16;
+extern long	far    *tga32;
 
-
-static char * palName = "default.map";
-static int		maploaded;
-static Palettetype	low16[16];
+char far *mapdacbox = NULL;
 
 /***************************************************************************/
 
-int
-CustomLut( void )
-{
-	return( loadPalette );
-}
-
-
-/***************************************************************************/
-
-void
-RestoreMap()
-{
-int index;
-	for( index = 0; index < 16; index++ )
-		dacbox[index] = low16[index];
-	storedac();
-}
-
-
-/***************************************************************************/
-
-void
-ValidateLuts( FILE * f )
-{
+void SetTgaColors() {
 unsigned	r, g, b, index;
-unsigned char   line[101];
+    if (tga16 != NULL)
 	for( index = 0; index < 256; index++ ) {
-		if( f != NULL && fgets(line,100,f) != NULL) {
-			sscanf( line, "%d %d %d", &r, &g, &b );
-			/** load global dac values **/
-			dacbox[index].red   = r >> 2;	/* maps default to 8 bits */
-			dacbox[index].green = g >> 2;	/* DAC wants 6 bits */
-			dacbox[index].blue	= b >> 2;
-		}
-		else {
-			f = NULL;
-			r = dacbox[index].red   << 2;
-			g = dacbox[index].green << 2;
-			b = dacbox[index].blue  << 2;
-		}
-
-		/** load local tables **/
+		r = dacbox[index].red	<< 2;
+		g = dacbox[index].green << 2;
+		b = dacbox[index].blue	<< 2;
 		tga16[index] = ((r&248)<<7) | ((g&248)<<2) | (b>>3);
 		tga32[index] = ((long)r<<16) | (g<<8) | b;
-/***
-printf( "%08lx\n", tga32[index] );
-***/
 	}
 }
 
-
-/***************************************************************************/
-
-int
-LoadColorMap( void )
+int ValidateLuts( char * fn )
 {
-char temp[81];
-FILE *f;
+FILE * f;
 unsigned	r, g, b, index;
-
-	if( maploaded ) return( 1 );
-	findpath( palName, temp);		/* search the dos path */
-	f = fopen( temp, "r" );
-	if( f != NULL ) {
-		/** save first 16 color map entries **/
-		loaddac();
-		for( index = 0; index < 16; index++ )
-			low16[index] = dacbox[index];
-		atexit( RestoreMap );
-		ValidateLuts( f );
-		fclose( f );
-		maploaded = 1;
-		return( 1 );
+unsigned char	line[101];
+unsigned char	temp[81];
+	strcpy (temp,fn);
+	if (strchr(temp,'.') == NULL) /* Did name have an extension? */
+		strcat(temp,".map");  /* No? Then add .map */
+	findpath( temp, line);	      /* search the dos path */
+	f = fopen( line, "r" );
+	if (f == NULL)
+		return 1;
+	for( index = 0; index < 256; index++ ) {
+		if (fgets(line,100,f) == NULL)
+			break;
+		sscanf( line, "%d %d %d", &r, &g, &b );
+		/** load global dac values **/
+		dacbox[index].red   = r >> 2;	/* maps default to 8 bits */
+		dacbox[index].green = g >> 2;	/* DAC wants 6 bits */
+		dacbox[index].blue  = b >> 2;
 	}
-	return( 0 );
+	fclose( f );
+	SetTgaColors();
+	return 0;
 }
 
 
 /***************************************************************************/
 
-void
-SetColorPaletteName( char * fn )
+int SetColorPaletteName( char * fn )
 {
-	palName = fn;
-	loadPalette = 0;
-	if (LoadColorMap() == 0) {
-		strcpy(palName,"default.map");
-		buzzer(2);
+	extern unsigned char far *farmemalloc(long);
+	char msg[200];
+	char far *saveptr;
+	char *dacptr;
+	int  i;
+	if( ValidateLuts( fn ) != 0) {
+		sprintf(msg,"Could not load color map %s",fn);
+		stopmsg(0,msg);
+		return 1;
 		}
-	else
-		loadPalette = 1;
+	if( mapdacbox == NULL && (mapdacbox = farmemalloc(768L)) == NULL) {
+		stopmsg(0,"Insufficient memory for color map.");
+		return 1;
+		}
+	saveptr = mapdacbox;
+	dacptr = (char *)&dacbox[0];
+	for (i = 0; i < 768; ++i)
+		*(saveptr++) = *(dacptr++);
+	loadPalette = 1;
+	/* PB, 900829, removed atexit(RestoreMap) stuff, goodbye covers it */
+	return 0;
 }
 
 

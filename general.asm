@@ -59,7 +59,10 @@
 ;
 ;	cputype()
 ;	fputype()
-
+;
+; ---- IFS far arrays
+;	initifs
+;	initifs3d
 
 
 ;			 required for compatibility if Turbo ASM
@@ -77,7 +80,9 @@ ENDIF
 
 	extrn	help:far		; help code (in help.c)
 	extrn	tab_display:far 	; TAB display (in fractint.c)
-	extrn	adapter_detect:far	; video adapter detector (in video.asm)
+	extrn	restore_active_ovly:far
+	extrn	edit_text_colors:far
+	extrn	adapter_init:far	; video adapter init (in video.asm)
 
 .DATA
 
@@ -86,8 +91,12 @@ ENDIF
 	extrn	soundflag:word		; if 0, supress sounds
 	extrn	debugflag:word		; for debugging purposes only
 	extrn	helpmode:word		; help mode (AUTHORS is special)
-	extrn	xdots:word		; horizontal pixels
+	extrn	tabmode:word		; tab key enabled?
+	extrn	sxdots:word		; horizontal pixels
 	extrn	timedsave:word		; triggers autosave
+	extrn	calc_status:word	; in calcfrac.c
+	extrn	got_status:word 	; in calcfrac.c
+	extrn	currow:word		; in calcfrac.c
 
 
 ; ************************ Public variables *****************************
@@ -97,11 +106,14 @@ public		fpu			; will be used by somebody someday
 public		lookatmouse		; used by 'calcfrac'
 public		saveticks		; set by fractint
 public		savebase		; set by fractint
+public		finishrow		; set by fractint
 public		_dataseg_xx		; used by TARGA, other Turbo Code
 
 public		extraseg		; extra 64K segment, if any
 
 public		overflow		; Mul, Div overflow flag: 0 means none
+
+public		initifs, initifs3d
 
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
@@ -121,12 +133,11 @@ public		paldata, stbuff 		; 8514A arrays, (FR8514A.ASM)
 ;   decoder	"r"estoring an image                 decoder.c, gifview.c
 ;   zoom	zoom box is visible		     zoom.c, video.asm
 ;   vidswitch	temp during video mode setting	     video.asm
-;   vidreset	temp during video reset 	     prompts.c, fractint.c, rotate.c, cmdfiles.c
 ;   8514a	8514a is in use (graphics only?)     fr8514a.asm
 ;   tgaview	restore of tga image		     tgaview.c
 ;   solidguess	image gen with "g", not to disk      calcfrac.c
 ;   btm 	image gen with "b", not to disk      calcfrac.c
-;   contpot	image gen, cont.potential, to .tga   calcfrac.c
+;   editpal	palette editor "heap"                editpal.c
 ; Note that decoder using an 8514a is worst case, uses all arrays at once.
 ; Keep db lengths even so that word alignment is preserved for speed.
 
@@ -137,16 +148,15 @@ teststring	label	byte		; encoder(100)
 dstack		dw	2048 dup(0)	; decoder(4k), solidguess(4k), btm(2k)
 					;   zoom(2k)
 
-
-strlocn 	label	word		; encoder(10k)
+strlocn 	label	word		; encoder(10k), editpal(10k)
 prefix		label	word		; decoder(8k), solidguess(6k)
-olddacbox	label	byte		; vidreset(768)
-boxx		dw	2048 dup(0)	; zoom(4k), contpot(4k), tgaview(4k)
+olddacbox	label	byte		; fractint(768)
+boxx		dw	2048 dup(0)	; zoom(4k), tgaview(4k), prompts(5k)
 boxy		dw	2048 dup(0)	; zoom(4k)
 boxvalues	label	byte		; zoom(2k)
 decoderline	db	2050 dup(0)	; decoder(2049), btm(2k)
 
-rlebuf		label	byte		; f16.c(258) .tga save/restore/contpot?
+rlebuf		label	byte		; f16.c(258) .tga save/restore?
 paldata 	db	1024 dup(0)	; 8514a(1k)
 stbuff		db	415 dup(0)	; 8514a(415)
 
@@ -188,6 +198,7 @@ mbclicks	db	0		; had 1 click so far? &1 mlb, &2 mrb
 savechktime	dw	0		; time of last autosave check
 savebase	dw	2 dup(0)	; base clock ticks
 saveticks	dw	2 dup(0)	; save after this many ticks
+finishrow	dw	0		; save when this row is finished
 
 
 .CODE
@@ -275,6 +286,22 @@ temp	dw	5 dup(0)		; temporary 64-bit result goes here
 sign	db	0			; sign flag goes here
 
 .CODE
+
+FRAME	MACRO regs
+	push	bp
+	mov	bp, sp
+	IRP	reg, <regs>
+	  push	reg
+	  ENDM
+	ENDM
+
+UNFRAME MACRO regs
+	IRP	reg, <regs>
+	  pop reg
+	  ENDM
+	pop bp
+	ENDM
+
 
 multiply	proc	x:dword, y:dword, n:word
 
@@ -638,7 +665,8 @@ divide		endp
 ;	'tab_display()' if appropriate.
 ;	Think of 'keypressed()' as a super-'kbhit()'.
 
-keypressed	proc	uses di si es
+keypressed  proc
+	FRAME	<di,si,es>			; std frame, for TC++ overlays
 keypressed1:
 	cmp	keybuffer,0			; is a keypress stacked up?
 	jne	keypressed3			;  yup. use it.
@@ -655,51 +683,43 @@ keypressed2:
 	mov	keybuffer,ax			; and save the result.
 keypressed3:
 	mov	ax,keybuffer			; return the keypress code.
-	cmp	helpmode,1			; is this HELPAUTHORS mode?
-	je	keypressed99			;  yup.  forget help.
+	cmp	debugflag,3000			; color play enabled?
+	jne	keypressed3b			;  nope
+	cmp	ax,'~'                          ; color play requested?
+	jne	keypressed3b			;  nope
+	mov	keybuffer,0			; discard the key
+	call	far ptr edit_text_colors	; play
+	jmp	short keypressed98		; done playing, return
+keypressed3b:
+	cmp	helpmode,0			; help disabled?
+	jl	keypressed99			;  yup.  forget help.
 	cmp	ax,1059 			; help called?
-	je	keypressed4			;  ...
-;	cmp	ax,'h'                          ; help called?
-;	je	keypressed4			;  ...
-;	cmp	ax,'H'                          ; help called?
-;	je	keypressed4			;  ...
-	cmp	ax,'?'                          ; help called?
-	je	keypressed4			;  ...
-	cmp	ax,'/'                          ; help called?
-	je	keypressed4			;  ...
-	jmp	keypressed5			; no help asked for.
-keypressed4:
+	jne	keypressed5			; no help asked for.
 	mov	keybuffer,0			; say no key hit
 	mov	ax,2				; ask for general help
 	push	ax				;  ...
 	call	far ptr help			; help!
 	mov	keybuffer,ax			; save the result
+	call	far ptr restore_active_ovly	; help might've clobbered ovly
 	pop	ax				; returned value
-	jmp	keypressed99
+	jmp	short keypressed99
 keypressed5:
 	cmp	ax,9				; TAB key hit?
-	jne	keypressed99			; nope.  no TAB display.
+	jne	keypressed99			;  nope.  no TAB display.
+	cmp	tabmode,0			; tab enabled?
+	je	keypressed99			;  nope
 	mov	keybuffer,0			; say no key hit
 	call	far ptr tab_display		; show the TAB status
+keypressed98:
+	call	far ptr restore_active_ovly	; might've clobbered ovly
 keypressed99:
 	mov	ax,keybuffer			; return keypress, if any
+	UNFRAME <es,si,di>			; pop frame
 	ret
 keypressed	endp
 
-getakey proc	uses di si es
-; TARGA 31 May 89 j mclain
-; when using '.model size,c' with TASM,
-;   TASM 'gifts' us with automatic insertions of:
-;  proc xxxx
-;   -> push bp
-;   -> mov bp,sp
-;    ...
-;   ->pop bp
-;  ret
-;
-; we corrected a situation here where we had a constant 'jz getakey'
-; can we say 'stack overflow'
-;
+getakey proc
+	FRAME	<di,si,es>			; std frame, for TC++ overlays
 getakey0:
 	mov	ax,keybuffer			; keypress may be here
 	mov	keybuffer,0			; if it was, clear it
@@ -734,6 +754,15 @@ getakey2:
 getakey3:
 	mov	ah,0				; clobber the scan code
 getakey4:
+	cmp	debugflag,3000			; color play enabled?
+	jne	getakeyx			;  nope
+	cmp	ax,'~'                          ; color play requested?
+	jne	getakeyx			;  nope
+	call	far ptr edit_text_colors	; play
+	call	far ptr restore_active_ovly	; might've clobbered ovly
+	jmp	short getakey0			; done playing, back around
+getakeyx:
+	UNFRAME <es,si,di>			; pop frame
 	ret
 getakey endp
 
@@ -910,7 +939,7 @@ initasmvarsgo:
 	pop	ax			;  ...
 	mov	extraseg,dx		; save the results here.
 
-	call	adapter_detect		; call the video adapter detector
+	call	adapter_init		; call the video adapter init
 
 	push	es			; save ES for a tad
 	mov	ax,0			; reset ES to BIOS data area
@@ -1006,8 +1035,8 @@ mousefkey dw   1077,1075,1080,1072  ; right,left,down,up     just movement
 
 DclickTime    equ 9   ; ticks within which 2nd click must occur
 JitterTime    equ 6   ; idle ticks before turfing unreported mickeys
-TextHSens     equ 160 ; horizontal sensitivity in text mode
-TextVSens     equ 50  ; vertical sensitivity in text mode
+TextHSens     equ 22  ; horizontal sensitivity in text mode
+TextVSens     equ 44  ; vertical sensitivity in text mode
 GraphSens     equ 5   ; sensitivity in graphics mode; gets lower @ higher res
 ZoomSens      equ 20  ; sensitivity for zoom box sizing/rotation
 TextVHLimit   equ 6   ; treat angles < 1:6  as straight
@@ -1039,9 +1068,26 @@ tickread:
 tickcompare:
 	cmp	dx,saveticks+2	; check if past autosave time
 	jb	mouse0
-	ja	tickdosave
+	ja	ticksavetime
 	cmp	ax,saveticks
 	jb	mouse0
+ticksavetime:			; it is time to do a save
+	mov	ax,finishrow
+	cmp	ax,-1		; waiting for the end of a row before save?
+	jne	tickcheckrow	;  yup, go check row
+	cmp	calc_status,1	; safety check, calc active?
+	jne	tickdosave	;  nope, don't check type of calc
+	cmp	got_status,0	; 1pass or 2pass?
+	je	ticknoterow	;  yup
+	cmp	got_status,1	; solid guessing?
+	jne	tickdosave	;  not 1pass, 2pass, ssg, so save immediately
+ticknoterow:
+	mov	ax,currow	; note the current row
+	mov	finishrow,ax	;  ...
+	jmp	short mouse0	; and keep working for now
+tickcheckrow:
+	cmp	ax,currow	; started a new row since timer went off?
+	je	mouse0		;  nope, don't do the save yet
 tickdosave:
 	mov	timedsave,1	; tell mainline what's up
 	mov	ax,9999 	; a dummy key value, never gets used
@@ -1239,7 +1285,7 @@ mchkmv: cmp	lookatmouse,2	; slow (text) mode?
 	cmp	mbstatus,0	; yup, any buttons down?
 	jne	mchkm2		; yup, use zoomsens
 mchkmg: mov	dx,GraphSens
-	mov	cx,xdots	; reduce sensitivity for higher res
+	mov	cx,sxdots	; reduce sensitivity for higher res
 mchkg2: cmp	cx,400		; horiz dots >= 400?
 	jl	mchkg3
 	shr	cx,1		; horiz/2
@@ -1902,5 +1948,26 @@ xmmmoveextended proc uses si, MoveStruct:word
 
 xmmmoveextended endp
 
-	end
+
+;	IFS fractal of a fern
+;	      a     b	  c	d     e     f	  p
+
+initifs dd 0.00, 0.00, 0.00, 0.16, 0.00, 0.00, 0.01
+	dd 0.85, 0.04, -.04, 0.85, 0.00, 1.60, 0.85
+	dd 0.20, -.26, 0.23, 0.22, 0.00, 1.60, 0.07
+	dd -.15, 0.28, 0.26, 0.24, 0.0,  0.44, 0.07
+	dd 28*7 dup(0.0)
+	dd 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1.00
+
+;		IFS3D fractal of a fern
+;		a     b     c	  d	e     f     g	  h	i     j     k	  l	p
+initifs3d dd  0.00, 0.00, 0.00, 0.00, 0.18, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.01
+	  dd  0.85, 0.00, 0.00, 0.00, 0.85, 0.10, 0.00,-0.10, 0.85, 0.00, 1.60, 0.00, 0.85
+	  dd  0.20,-0.20, 0.00, 0.20, 0.20, 0.00, 0.00, 0.00, 0.30, 0.00, 0.80, 0.00, 0.07
+	  dd -0.20, 0.20, 0.00, 0.20, 0.20, 0.00, 0.00, 0.00, 0.30, 0.00, 0.80, 0.00, 0.07
+	  dd  28*13 dup(0.0)
+	  dd  0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1.00
+
+
+		end
 

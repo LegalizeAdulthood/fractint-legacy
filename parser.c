@@ -12,9 +12,9 @@
      however this is optional.
 
      Mark C. Peterson
-     128 Hamden Ave., F
-     Waterbury, CT 06704
-     (203) 754-1162
+     253 West St., H
+     Plantsville, CT 06479
+     (203) 276-9474
 */
 
 #include <string.h>
@@ -25,6 +25,7 @@
 void findpath(char *filename, char *fullpathname);
 void far *farmemalloc(long bytestoalloc);
 void farmemfree(void far *farptr);
+int  stopmsg(int,unsigned char far *);
 
 MATH_TYPE MathType = D_MATH;
 /* moved struct lcomplex and union ARg to mpmath.h -6-20-90 TIW */
@@ -39,17 +40,20 @@ struct PEND_OP {
    void (far *f)(void);
    int p;
 };
-struct PEND_OP far *o;
 
-union Arg *Arg1, *Arg2, s[20], far *a, far * far *Store, far * far *Load;
-int StoPtr, LodPtr, OpPtr;
+/* PB 901103 made some of the following static for safety */
+static struct PEND_OP far *o;
 
-void (far * far *f)(void) = (void(far * far *)(void))0;
+union Arg *Arg1, *Arg2;
+static union Arg s[20], far *a, far * far *Store, far * far *Load;
+static int StoPtr, LodPtr, OpPtr;
+
+static void (far * far *f)(void) = (void(far * far *)(void))0;
 
 static unsigned n, ErrPtr, posp, vsp, NextOp, LastOp, InitN;
 static int paren, SyntaxErr, ExpectingArg;
-static struct ConstArg far *v;
-static int InitLodPtr, InitStoPtr, InitOpPtr, LastInitOp, NumVar; 
+static struct ConstArg far *v = (struct ConstArg far *)0;
+static int InitLodPtr, InitStoPtr, InitOpPtr, LastInitOp, NumVar;
 static int Delta16;
 static double fgLimit;
 static double fg;
@@ -63,7 +67,6 @@ extern int symmetry;          /* symmetry flag for calcmand()  */
 extern double param[];
 
 extern int debugflag;         /* BDT for debugging */
-extern int oktoprint;         /* BDT 0 if printf() won't work */
 extern int row, col, overflow, cpu, fpu;
 extern struct complex old, new;
 extern double far *dx0, far *dy0;
@@ -96,6 +99,7 @@ static char * ErrStrings[] = {
    "Undefined Operator",
    "Undefined Function",
    "More than one ','",
+   "Table overflow"
 };
 
 void dStkAbs(void) {
@@ -738,17 +742,11 @@ int ParseStr(char *Str) {
    struct ConstArg far *c;
    int CondFlag = 0, ModFlag = 999, Len, Equals = 0, Mod[20], mdstk = 0;
    struct ERROR { int n, s; } far *e;
-   strcpy(memstr,"Insufficient memory to run fractal type 'formula'\n");
+   strcpy(memstr,"Insufficient memory to run fractal type 'formula'");
 
    e = (struct ERROR far *)farmemalloc(sizeof(struct ERROR) * 100L);
-   o = (struct PEND_OP far *)farmemalloc(sizeof(struct PEND_OP) * 100L);
-   a = (union Arg far *)farmemalloc(sizeof(union Arg) * 100L);
-   Store = (union Arg far * far *)farmemalloc(sizeof(union Arg far *) * 100L);
-   Load = (union Arg far * far *)farmemalloc(sizeof(union Arg far *) * 100L);
-   v = (struct ConstArg far *)farmemalloc(sizeof(struct ConstArg) * 100L);
    if(!e || !o || !a || !Store || !Load || !v) {
-      if(oktoprint)
-         fprintf(stderr, memstr);
+      stopmsg(0,memstr); /* PB printf replaced by stopmsg */
       return(1);
    }
    switch(MathType) {
@@ -1019,6 +1017,11 @@ int ParseStr(char *Str) {
          e[ErrPtr++].s = SyntaxErr;
          SyntaxErr = -1;
       }
+      if(posp>=100-1) { /* PB 901103 added safety test here */
+         e[ErrPtr].n = InitN;
+         e[ErrPtr++].s = 7;
+         break;
+      }
    }
 
    o[posp].f = (void(far*)(void))0;
@@ -1027,16 +1030,45 @@ int ParseStr(char *Str) {
       e[ErrPtr].n = n;
       e[ErrPtr++].s = 3;
    }
-   for(n = 0; n < ErrPtr; n++) {
-      unsigned j;
-
-      if (oktoprint) {
-         fprintf(stderr, "Error(%d):  %s\n", e[n].s, ErrStrings[e[n].s]);
-         fprintf(stderr, "%s\n", Str);
-         for(j = 0; j < e[n].n; j++)
-            fputc(' ', stderr);
-         fprintf(stderr, "^\n");
+   if (ErrPtr) {
+      int i, j, k, m;
+      char msgbuf[700];  /* PB replaced printf loop by build msgbuf & stopmsg */
+      /* stopmsg defined to have max 9 lines, show at most first 3 errors */
+      msgbuf[0] = 0;
+      for(n = 0; n < ErrPtr && n < 3; n++) {
+         if (n)
+            strcat(msgbuf,"\n");
+         sprintf(&msgbuf[strlen(msgbuf)], "Error(%d):  %s\n  ", e[n].s,
+               ErrStrings[e[n].s]);
+         j = 24;
+         if ((i = e[n].n - j) < 0) {
+            j = e[n].n;
+            i = 0;
+         }
+         else {
+            strcat(msgbuf,"...");
+            j += 3;
+         }
+         k = strlen(msgbuf);
+         m = i + 66;
+         while (i < m && Str[i]) {
+            if ((msgbuf[k] = Str[i]) == '\n' || msgbuf[k] == '\t')
+               msgbuf[k] = ' ';
+            ++i;
+            ++k;
+         }
+         if (Str[i]) {
+            msgbuf[k++] = '.';
+            msgbuf[k++] = '.';
+            msgbuf[k++] = '.';
+         }
+         msgbuf[k++] = '\n';
+         while (--j >= -2)
+            msgbuf[k++] = ' ';
+         msgbuf[k++] = '^';
+         msgbuf[k] = 0;
       }
+      stopmsg(8,msgbuf);
    }
    if(!ErrPtr) {
       NextOp = 0;
@@ -1047,8 +1079,7 @@ int ParseStr(char *Str) {
       f = (void(far * far *)(void))farmemalloc(sizeof(void(far * far *)(void))
             * (long)posp);
       if(!f) {
-         if(oktoprint)
-            fprintf(stderr, memstr);
+         stopmsg(0,memstr); /* PB printf replaced by stopmsg */
          return(1);
       }
       while(NextOp < posp) {
@@ -1062,12 +1093,14 @@ int ParseStr(char *Str) {
    }
    else
       posp = 0;
-   farmemfree(o);
    farmemfree(e);
+/*
+   farmemfree(o);
    farmemfree(a);
    farmemfree(Store);
    farmemfree(Load);
    farmemfree(v);
+*/
    return(ErrPtr);
 }
 
@@ -1144,7 +1177,7 @@ extern char FormFileName[];   /* BDT file to find the formulas in */
 extern char FormName[];    /* BDT Name of the Formula (if not null) */
 
 char *FindFormula(char *Str) {
-   static char StrBuff[200];
+   static char StrBuff[201];  /* PB, to match a safety fix in parser */
    char fullfilename[100]; /* BDT Full file name */
    int c, j, k, l;
    FILE *File;
@@ -1164,8 +1197,10 @@ char *FindFormula(char *Str) {
                         break;
                      }
                   }
-                  if(!SymStr[n].s[0] && oktoprint) {
-                     fprintf(stderr, "%s is undefined\n", StrBuff);
+                  if(!SymStr[n].s[0]) {
+                     sprintf(fullfilename,"Undefined symmetry:\n  %.76s",
+                           StrBuff);
+                     stopmsg(0,fullfilename); /* PB printf -> stopmsg */
                      fclose(File);
                      return((char*)0);
                   }
@@ -1184,10 +1219,8 @@ char *FindFormula(char *Str) {
                fclose(File);        /* BDT close the file */
                return(StrBuff);
             }
-            else {
-               fclose(File);        /* BDT close the file */
-               return((char*)0);
-            }
+            else
+               break;               /* PB moved close & msg to end of while */
          }
          fscanf(File, "%200[ \n\t({]", StrBuff);
          if(StrBuff[strcspn(StrBuff, "({")]) {
@@ -1196,21 +1229,24 @@ skipcomments:
             if (getc(File)!= '}') goto skipcomments;
          }
       }
+      fclose(File);                 /* BDT close the file */
+      sprintf(fullfilename, "Formula \"%s\" not found", Str);
+      stopmsg(0,fullfilename);      /* PB printf -> stopmsg */
    }
-   else if (oktoprint)
-      fprintf(stderr, "Unable to open %s\n", FormFileName);
+   else {
+      sprintf(fullfilename, "Unable to open %s", FormFileName);
+      stopmsg(0,fullfilename);      /* PB printf -> stopmsg */
+   }
    return((char*)0);
 }
 
 int RunForm(char *Name) {
    if (FormName[0] == 0) return(1);
+   parser_allocate();
    if(FormStr = FindFormula(Name))
       return(ParseStr(FormStr));
-   else {
-      if (oktoprint)
-         fprintf(stderr, "Formula \"%s\" not found\n", Name);
-      return(1);
-   }
+   else
+      return(1);                    /* PB, msg moved to FindFormula */
 }
 
 int fpFormulaSetup(void) {
@@ -1234,15 +1270,31 @@ int intFormulaSetup(void) {
 
 
 /* TIW added 06-20-90 so functions can be called from fractals.c */
-void init_misc() 
+void init_misc()
 {
    static struct ConstArg far vv[5];
    static union Arg argfirst,argsecond;
-   v = vv;  /* this is needed by lStkSqr and dStkSqr */
+   if(!v) /* PB 901103 added this test to avoid clobbering the real thing */
+      v = vv;  /* this is needed by lStkSqr and dStkSqr */
    Arg1 = &argfirst; Arg2 = &argsecond; /* needed by all the ?Stk* functions */
    fg = (double)(1L << bitshift);
    fgLimit = (double)0x7fffffffL / fg;
    ShiftBack = 32 - bitshift;
    Delta16 = bitshift - 16;
    bitshiftless1 = bitshift-1;
+}
+
+static int parser_allocated = 0;
+
+parser_allocate()
+{
+   if (parser_allocated) return(0);
+   parser_allocated = 1;
+
+   o = (struct PEND_OP far *)farmemalloc(sizeof(struct PEND_OP) * 100L);
+   a = (union Arg far *)farmemalloc(sizeof(union Arg) * 100L);
+   Store = (union Arg far * far *)farmemalloc(sizeof(union Arg far *) * 100L);
+   Load = (union Arg far * far *)farmemalloc(sizeof(union Arg far *) * 100L);
+   v = (struct ConstArg far *)farmemalloc(sizeof(struct ConstArg) * 100L);
+
 }

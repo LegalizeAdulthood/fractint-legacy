@@ -1,6 +1,6 @@
 /**************************************
 **
-** PORT.H : Miscellaneous definitions for portability.  Please add
+** PORT.H : Miscellaneous definitions for portability.	Please add
 ** to this file for any new machines/compilers you may have.
 */
 
@@ -54,23 +54,21 @@
 #endif
 
 #ifdef MSDOS
-	#define READMODE        "rb"	/* Correct DOS text-mode	*/
-	#define WRITEMODE       "wb"	/* file open "feature".		*/
+	#define READMODE	"rb"    /* Correct DOS text-mode        */
+	#define WRITEMODE	"wb"    /* file open "feature".         */
 #else
 #ifdef __MSDOS__
-	#define READMODE        "rb"	/* Correct DOS text-mode	*/
-	#define WRITEMODE       "wb"	/* file open "feature".		*/
+	#define READMODE	"rb"    /* Correct DOS text-mode        */
+	#define WRITEMODE	"wb"    /* file open "feature".         */
 #else
-	#define READMODE        "r"
-	#define WRITEMODE       "w"
+	#define READMODE	"r"
+	#define WRITEMODE	"w"
 #endif
 #endif
 
 #ifdef LOBYTEFIRST
-	#define STORE16(c,i)	*((U16*)(&(c)))=(i)
 	#define GET16(c,i)		(i)=*((U16*)(&(c)))
 #else
-	#define STORE16(c,i)	(c)=(i)&0xFF,*((char*)&(c)+1)=(i)>>8
 	#define GET16(c,i)		(i)=(c)+(*((char*)&(c)+1))<<8
 #endif
 

@@ -12,9 +12,9 @@ SUBTTL All rights reserved.
 ;    however this is optional.
 ;
 ;    Mark C. Peterson
-;    128 Hamden Ave., F
-;    Waterbury, CT 06704
-;    (203) 754-1162
+;    253 West St., H
+;    Plantsville, CT 06479
+;    (203) 276-9474
 ;
 ;  Note: Remark statements following floating point commands generally indicate
 ;     the FPU stack contents after the command is completed.

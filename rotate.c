@@ -1,12 +1,22 @@
 /*
-	rotate.c - Routines that manipulate the Video DAC on VGA Adapters
+    rotate.c - Routines that manipulate the Video DAC on VGA Adapters
+    This module is linked as an overlay, use ENTER_OVLY and EXIT_OVLY.
 */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "fractint.h"
+
+/* routines in this module	*/
+
+void rotate_overlay(void);
+void rotate(int);
+void save_palette(void);
+void load_palette(void);
+
+static void pauserotate(void);
+static void set_palette(),set_palette2(),set_palette3();
 
 extern char temp1[];
 
@@ -18,7 +28,8 @@ extern int	reallyega;		/* == 0 if it's really an EGA */
 
 static int paused;				/* rotate-is-paused flag */
 
-extern int key_count(int);
+extern int field_prompt(int options, char *hdg, char *instr, char *fld, int len,
+		int (*checkkey)() );
 
 static unsigned char Red[3]    = {63, 0, 0};	/* for shifted-Fkeys */
 static unsigned char Green[3]  = { 0,63, 0};
@@ -28,32 +39,39 @@ static unsigned char White[3]  = {63,63,63};
 static unsigned char Yellow[3] = {63,63, 0};
 static unsigned char Brown[3]  = {31,31, 0};
 
-rotate(direction)			/* rotate-the-palette routine	*/
+char mapmask[13] = {"*.map"};
+char mapfile[80] = {".\\"};
+
+
+void rotate_overlay() { }	/* for restore_active_ovly */
+
+void rotate(direction)		/* rotate-the-palette routine */
 int direction;
 {
 int  kbdchar, more, last, next, maxreg;
-int fkey, length, step, fstep, istep, jstep, oldstep;
+int fkey, step, fstep, istep, jstep, oldstep;
 int incr, random, fromred, fromblue, fromgreen, tored, toblue, togreen;
 int i, changecolor, changedirection;
 int oldhelpmode;
 
 static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 
-FILE *dacfile;
+ENTER_OVLY(OVLY_ROTATE);
 
 if (dacbox[0][0] == 255 ||		/* ??? no DAC to rotate!	*/
 	colors < 16) {			/* strange things happen in 2x modes */
 		buzzer(2);
-		return(0);
+		EXIT_OVLY;
+		return;
 		}
 
 oldhelpmode = helpmode; 		/* save the old help mode */
 helpmode = HELPCYCLING; 		/* new help mode */
 
 paused = 0;				/* not paused			*/
-length = 0;				/* no random coloring		*/
 step = 1;				/* single-step			*/
 fkey = 0;				/* no random coloring		*/
+fstep = 1;
 changecolor = -1;			/* no color (rgb) to change	*/
 changedirection = 0;			/* no color derection to change */
 incr = 999;				/* ready to randomize		*/
@@ -96,8 +114,8 @@ while (more) {
 				dacbox[jstep][1] = fromgreen + (((togreen - fromgreen)*incr)/fstep);
 				dacbox[jstep][2] = fromblue  + (((toblue  - fromblue )*incr)/fstep);
 				}
-			if (step >= 256) step = oldstep;
 			}
+		if (step >= 256) step = oldstep;
 		spindac(direction, step);
 		}
 	kbdchar = getakey();
@@ -201,97 +219,39 @@ while (more) {
 			break;
 		case 'd':               /* load colors from "default.map" */
 		case 'D':
-			findpath("default.map",temp1);
-			dacfile = fopen(temp1,"r");
-			if (dacfile == NULL) {
+			if (ValidateLuts("default") != 0) {
 				buzzer(2);
 				break;
 				}
-			ValidateLuts(dacfile);	/* read the palette file */
-			fclose(dacfile);
 			fkey = 0;	/* disable random generation */
 			pauserotate();	/* update palette and pause */
 			break;
 		case 'a':               /* load colors from "altern.map" */
 		case 'A':
-			findpath("altern.map",temp1);
-			dacfile = fopen(temp1,"r");
-			if (dacfile == NULL) {
+			if (ValidateLuts("altern") != 0) {
 				buzzer(2);
 				break;
 				}
-			ValidateLuts(dacfile);	/* read the palette file */
-			fclose(dacfile);
 			fkey = 0;	/* disable random generation */
 			pauserotate();	/* update palette and pause */
 			break;
-		case 'm':               /* load colors from a specified map */
-		case 'M':
-			{
-			char temp2[80];
-			setfortext();
-			printf("\n\n Please enter your .MAP file name ==> ");
-			gets(temp2);
-			if (strchr(temp2,'.') == NULL)
-				strcat(temp2,".map");
-			findpath(temp2,temp1);
-			setforgraphics();
-			}
-			dacfile = fopen(temp1,"r");
-			if (dacfile == NULL) {
-				buzzer(2);
-				break;
-				}
-			ValidateLuts(dacfile);	/* read the palette file */
-			fclose(dacfile);
+		case 'l':               /* load colors from a specified map */
+		case 'L':
+			load_palette();
 			fkey = 0;	/* disable random generation */
 			pauserotate();	/* update palette and pause */
 			break;
 		case 's':               /* save the palette */
 		case 'S':
-			setfortext();
-			printf("\n\n Please enter your .MAP file name ==> ");
-			gets(temp1);
-			if (strchr(temp1,'.') == NULL)
-				strcat(temp1,".map");
-			setforgraphics();
-			dacfile = fopen(temp1,"w");
-			if (dacfile == NULL) {
-				buzzer(2);
-				break;
-				}
-			fprintf(dacfile,"  0   0   0\n");
-			for (i = 1; i < 256; i++)
-				fprintf(dacfile, "%3d %3d %3d\n",
-				dacbox[i][0] << 2,
-				dacbox[i][1] << 2,
-				dacbox[i][2] << 2);
-			fclose(dacfile);
+			save_palette();
 			fkey = 0;	/* disable random generation */
 			pauserotate();	/* update palette and pause */
 			break;
-		case 'x':               /* switch to x-hair */
-		case 'X':
-			if (reallyega) break;	/* no sense on real EGAs */
-			{
-			int olddaccount;
-			olddaccount = daccount;
-			daccount = 256;
-			dacbox[0][0] = 63;
-			dacbox[0][1] = 63;
-			dacbox[0][2] = 63;
-			spindac(0,1);		/* show white border */
-			daccount = olddaccount;
-			palettes();		/* bring up crosshairs */
-			fkey = 0;		/* disable random generation */
-			pauserotate();		/* update palette and pause */
-			}
-			break;
 		default:		/* maybe a new palette, maybe bail-out */
-		if (kbdchar < 1084 || kbdchar > 1113) {
-			more = 0;	/* time to bail out */
-			break;
-			}
+			if (kbdchar == 27) {	/* escape */
+				more = 0;	/* time to bail out */
+				break;
+				}
 			if (reallyega) break;	/* no sense on real EGAs */
 			fkey = 0;		/* disable random generation */
 			if (kbdchar == 1084)
@@ -360,33 +320,38 @@ while (more) {
 	}
 
 helpmode = oldhelpmode; 		/* return to previous help mode */
+EXIT_OVLY;
 }
 
-pauserotate()				/* pause-the-rotate routine */
+static void pauserotate()		/* pause-the-rotate routine */
 {
 int olddaccount;			/* saved dac-count value goes here */
+unsigned char olddac0,olddac1,olddac2;
 
 if (paused) {	/* if already paused , just clear */
 	paused = 0;
 	}
 else {					/* else set border, wait for a key */
 	olddaccount = daccount;
+	olddac0 = dacbox[0][0];
+	olddac1 = dacbox[0][1];
+	olddac2 = dacbox[0][2];
 	daccount = 256;
-	dacbox[0][0] = 63;
-	dacbox[0][1] = 63;
-	dacbox[0][2] = 63;
+	dacbox[0][0] = 48;
+	dacbox[0][1] = 48;
+	dacbox[0][2] = 48;
 	spindac(0,1);			/* show white border */
 	while (!keypressed());		/* wait for any key */
-	dacbox[0][0] = 0;
-	dacbox[0][1] = 0;
-	dacbox[0][2] = 0;
+	dacbox[0][0] = olddac0;
+	dacbox[0][1] = olddac1;
+	dacbox[0][2] = olddac2;
 	spindac(0,1);			/* show black border */
 	daccount = olddaccount;
 	paused = 1;
 	}
 }
 
-set_palette(start, finish)
+static void set_palette(start, finish)
 unsigned char start[3], finish[3];
 {
    int i, j;
@@ -395,7 +360,7 @@ unsigned char start[3], finish[3];
 	 dacbox[i][j] = (i*start[j] + (256-i)*finish[j])/255;
 }
 
-set_palette2(start, finish)
+static void set_palette2(start, finish)
 unsigned char start[3], finish[3];
 {
    int i, j;
@@ -406,7 +371,7 @@ unsigned char start[3], finish[3];
       }
 }
 
-set_palette3(start, middle, finish)
+static void set_palette3(start, middle, finish)
 unsigned char start[3], middle[3], finish[3];
 {
    int i, j;
@@ -419,241 +384,42 @@ unsigned char start[3], middle[3], finish[3];
 }
 
 
-extern	int	xdots, ydots;			/* # of dots on the screen  */
-
-static int crosshair_active, crosshair_cursor;
-static int crosshair_row, crosshair_col, crosshair_color, crosshair_newcolor;
-static int old_crosshair_row, old_crosshair_col;
-static unsigned char crosshair_colors[2][10], crosshair_oldcolor[3];
-
-extern int	lookatmouse;		/* used to activate non-button mouse movement */
-
-palettes()				/* adjust-the-palette routine	*/
+void save_palette()
 {
-int  kbdchar, more;
-int i, j, k, changecolor, changedirection;
-int oldhelpmode, oldlookatmouse;
-int olddaccount;
-
-if (dacbox[0][0] == 255 ||		/* ??? no DAC to rotate! */
-	reallyega ||			/* true VGAs only, please */
-	colors < 16) {			/* strange things happen in 2x modes */
-		buzzer(2);
-		return(0);
-		}
-
-oldhelpmode = helpmode; 		/* save the old help mode */
-helpmode = HELPXHAIR;			/* new help mode */
-
-olddaccount = daccount; 		/* update the DAC ASAP */
-daccount = 256;
-
-crosshair_row = xdots / 2;		/* start the cursor in the */
-crosshair_col = ydots / 2;		/* middle of the screen */
-crosshair_active = 0;			/* no crosshair active */
-crosshair_cursor = 0;			/* black crosshair cursor */
-cross_hair(1);				/* draw the crosshair */
-
-oldlookatmouse = lookatmouse;		/* save the old mouse mode */
-lookatmouse = 3;			/* graphics mouse and buttons stuff */
-
-more = 1;
-while (more) {
-	while(!keypressed());		/* wait until a key gets hit	*/
-	kbdchar = getakey();
-	switch (kbdchar) {
-		case '+':               /* '+'  */
-			if (++crosshair_newcolor == 256)
-				crosshair_newcolor = 1;
-			for (k = 0; k < 3; k++)
-				dacbox[crosshair_color][k] =
-					 dacbox[crosshair_newcolor][k];
-			if (crosshair_color == crosshair_newcolor)
-				for (k = 0; k < 3; k++)
-					dacbox[crosshair_color][k] =
-						crosshair_oldcolor[k];
-			spindac(0,1);
-			break;
-		case '-':               /* '-'  */
-			if (--crosshair_newcolor == 0)
-				crosshair_newcolor = 255;
-			for (k = 0; k < 3; k++)
-				dacbox[crosshair_color][k] =
-					 dacbox[crosshair_newcolor][k];
-			if (crosshair_color == crosshair_newcolor)
-				for (k = 0; k < 3; k++)
-					dacbox[crosshair_color][k] =
-						crosshair_oldcolor[k];
-			spindac(0,1);
-			break;
-		case 1077:		/* RightArrow	*/
-		case 1075:		/* LeftArrow	*/
-		case 1072:		/* UpArrow	*/
-		case 1080:		/* DownArrow	*/
-		case 1116:		/* Ctrl-RightArrow	*/
-		case 1115:		/* Ctrl-LeftArrow */
-		case 1141:		/* Ctrl-UpArrow 	*/
-		case 1145:		/* Ctrl-DownArrow	*/
-			move_cross_hair(kbdchar);
-			break;
-		case 1146:		/* ctl-ins */
-			if ((crosshair_cursor+=key_count(1146)) >= colors)
-				crosshair_cursor = 0;
-			cross_hair(1);
-			break;
-		case 1147:		/* ctl-del */
-			if ((crosshair_cursor-=key_count(1147)) < 0)
-				crosshair_cursor = colors-1;
-			cross_hair(1);
-			break;
-		case 'r':               /* color changes */
-			if (changecolor    == -1) changecolor = 0;
-			if (changedirection == 0) changedirection = -1;
-		case 'g':               /* color changes */
-			if (changecolor    == -1) changecolor = 1;
-			if (changedirection == 0) changedirection = -1;
-		case 'b':               /* color changes */
-			if (changecolor    == -1) changecolor = 2;
-			if (changedirection == 0) changedirection = -1;
-		case 'R':               /* color changes */
-			if (changecolor    == -1) changecolor = 0;
-			if (changedirection == 0) changedirection = 1;
-		case 'G':               /* color changes */
-			if (changecolor    == -1) changecolor = 1;
-			if (changedirection == 0) changedirection = 1;
-		case 'B':               /* color changes */
-			if (changecolor    == -1) changecolor = 2;
-			if (changedirection == 0) changedirection = 1;
-
-			i = getcolor(crosshair_row, crosshair_col);
-			dacbox[i][changecolor] += changedirection;
-			if (dacbox[i][changecolor] == 64)
-				dacbox[i][changecolor] = 63;
-			if (dacbox[i][changecolor] == 255)
-				dacbox[i][changecolor] = 0;
-			spindac(0,1);
-
-			changecolor    = -1;	/* clear flags for next time */
-			changedirection = 0;
-			break;
-		case 13:			/* do-nothing keys/mouse */
-		case 1013:			/* enter */
-		case 10:
-		case 1010:			/* ctl-enter */
-		case 1119:			/* ctl-home */
-		case 1117:			/* ctl-end */
-		case 1132:			/* ctl-pgup */
-		case 1118:			/* ctl-pgdn */
-		case 1073:			/* pgup */
-		case 1081:			/* pgdn */
-		case 1142:			/* ctl-kpad- */
-		case 1144:			/* ctl-kpad+ */
-			break;
-		default:
-			more = 0;
-			break;
-		}
-	}
-cross_hair(0);				/* remove the cross-hairs */
-daccount = olddaccount; 		/* replace the DAC count */
-lookatmouse = oldlookatmouse;		/* return to previous mouse mode */
-helpmode = oldhelpmode; 		/* return to previous help mode */
+   FILE *dacfile;
+   int i;
+   stackscreen();
+   temp1[0] = 0;
+   i = field_prompt(0,"Name of map file to write",NULL,temp1,60,NULL);
+   unstackscreen();
+   if (i != -1 && temp1[0]) {
+      if (strchr(temp1,'.') == NULL)
+	 strcat(temp1,".map");
+      dacfile = fopen(temp1,"w");
+      if (dacfile == NULL)
+	 buzzer(2);
+      else {
+	 /**fprintf(dacfile,"  0   0   0\n");**/
+	 for (i = 0; i < 256; i++)
+	    fprintf(dacfile, "%3d %3d %3d\n",
+		    dacbox[i][0] << 2,
+		    dacbox[i][1] << 2,
+		    dacbox[i][2] << 2);
+	 }
+      fclose(dacfile);
+      }
 }
 
-cross_hair(onoff)
+
+void load_palette(void)
 {
-int i, j;
-
-if (crosshair_active) { 		/* remove old cross-hair? */
-	for (i = 0; i < 10; i++) {
-		j = old_crosshair_row - 6 + i;
-		if (i >= 5) j += 3;
-		if (j > -1 && j < xdots)
-			putcolor(j, old_crosshair_col, crosshair_colors[0][i]);
-		}
-	for (i = 0; i < 10; i++) {
-		j = old_crosshair_col - 6 + i;
-		if (i >= 5) j += 3;
-		if (j > -1 && j < ydots)
-			putcolor(old_crosshair_row, j, crosshair_colors[1][i]);
-		}
-	}
-
-crosshair_active = 0;
-
-if (onoff) {			/* display new old cross-hair? */
-	crosshair_active = 1;
-	old_crosshair_row = crosshair_row;
-	old_crosshair_col = crosshair_col;
-	crosshair_color = getcolor(old_crosshair_row, old_crosshair_col);
-	for (i = 0; i < 3; i++)
-		crosshair_oldcolor[i] = dacbox[crosshair_color][i];
-	crosshair_newcolor = crosshair_color;
-		for (i = 0; i < 10; i++) {
-		j = old_crosshair_row - 6 + i;
-		if (i >= 5) j += 3;
-		if (j > -1 && j < xdots) {
-			crosshair_colors[0][i] = getcolor(j, old_crosshair_col);
-			putcolor(j, old_crosshair_col, crosshair_cursor);
-			}
-		}
-	for (i = 0; i < 10; i++) {
-		j = old_crosshair_col - 6 + i;
-		if (i >= 5) j += 3;
-		if (j > -1 && j < ydots) {
-			crosshair_colors[1][i] = getcolor(old_crosshair_row, j);
-			putcolor(old_crosshair_row, j, crosshair_cursor);
-			}
-		}
-	}
+   int i;
+   stackscreen();
+   i = getafilename("Select a MAP File",mapmask,mapfile);
+   unstackscreen();
+   if (i >= 0)
+      if (ValidateLuts(mapfile) != 0)
+	 buzzer(2);
 }
 
-/* do all pending movement at once for smooth mouse diagonal moves */
-move_cross_hair(int keynum)
-{
-int vertical, horizontal, getmore;
-vertical = horizontal = 0;
-getmore = 1;
-while (getmore) {
-	switch (keynum) {
-		case 1116:		/* Ctrl-RightArrow	*/
-			horizontal += 4;
-		case 1077:		/* RightArrow	*/
-			horizontal++;
-			break;
-		case 1115:		/* Ctrl-LeftArrow */
-			horizontal -= 4;
-		case 1075:		/* LeftArrow	*/
-			horizontal--;
-			break;
-		case 1141:		/* Ctrl-UpArrow 	*/
-			vertical -= 4;
-		case 1072:		/* UpArrow	*/
-			vertical--;
-			break;
-		case 1145:		/* Ctrl-DownArrow	*/
-			vertical += 4;
-		case 1080:		/* DownArrow	*/
-			vertical++;
-			break;
-		default:
-			getmore = 0;
-	}
-	if (getmore) {
-		if (getmore == 2)		/* eat last key used */
-			getakey();
-		getmore = 2;
-		keynum = keypressed();		/* next pending key */
-	}
-}
-if ((crosshair_row += horizontal) >= xdots)
-	crosshair_row = xdots-1;
-if (crosshair_row < 0)
-	crosshair_row = 0;
-if ((crosshair_col += vertical) >= ydots)
-	crosshair_col = ydots-1;
-if (crosshair_col < 0)
-	crosshair_col = 0;
-cross_hair(1);
-}
 

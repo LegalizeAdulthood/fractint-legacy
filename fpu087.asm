@@ -58,7 +58,7 @@ a              dw       ?
 SinNeg         dw       ?
 CosNeg	       dw	?
 Ans	       dq	?
-
+fake_es        dw       ?         ; <BDT> Windows can't use ES for storage
 
 TaylorTerm  MACRO
 LOCAL Ratio
@@ -392,7 +392,7 @@ r16Mul     PROC    uses si di, x1:word, x2:word, y1:word, y2:word
       sub   ch, 127              ; Determine resulting exponent
       add   bh, ch
       mov   al, bh
-      mov   es, ax               ; es has the resulting exponent and sign
+      mov   fake_es, ax          ; es has the resulting exponent and sign
 
       mov   ax, di
       mov   al, ah
@@ -403,7 +403,7 @@ r16Mul     PROC    uses si di, x1:word, x2:word, y1:word, y2:word
       mov   dh, bl
 
       mul   dx
-      mov   cx, es
+      mov   cx, fake_es
 
       shl   ax, 1
       rcl   dx, 1
@@ -627,7 +627,7 @@ ExpFudged      ENDP
 
 
 PUBLIC   LogFudged
-LogFudged      PROC	uses si di es, x_low:word, x_high:word, Fudge:word
+LogFudged      PROC	uses si di, x_low:word, x_high:word, Fudge:word
 LOCAL exp:WORD
       xor   bx, bx
       mov   cx, 16
@@ -680,7 +680,7 @@ LOCAL exp:WORD
       mov   ax, bx
    ; bx is the accumulator, First term is x
       mul   si                      ; dx:ax, Fudged 35, max of 0.037037
-      mov   es, dx                  ; Save high word, Fudged (35 - 16) = 19
+      mov   fake_es, dx             ; Save high word, Fudged (35 - 16) = 19
       mov   di, 0c000h              ; di, 3 Fudged 14
       div   di                      ; ax, Fudged (36 - 14) = 21
       or    ax, ax
@@ -691,9 +691,9 @@ LOCAL exp:WORD
       add   bx, ax                  ; bx, max of 0.345679
    ; x = x + x**3/3
 
-      mov   ax, es                  ; ax, Fudged 19
+      mov   ax, fake_es             ; ax, Fudged 19
       mul   si                      ; dx:ax, Fudged 38, max of 0.004115
-      mov   es, dx                  ; Save high word, Fudged (38 - 16) = 22
+      mov   fake_es, dx             ; Save high word, Fudged (38 - 16) = 22
       mov   di, 0a000h              ; di, 5 Fudged 13
       div   di                      ; ax, Fudged (38 - 13) = 25
       or    ax, ax
@@ -704,7 +704,7 @@ LOCAL exp:WORD
       add   bx, ax
    ; x = x + x**3/3 + x**5/5
 
-      mov   ax, es                  ; ax, Fudged 22
+      mov   ax, fake_es             ; ax, Fudged 22
       mul   si                      ; dx:ax, Fudged 41, max of 0.0004572
       mov   di, 0e000h              ; di, 7 Fudged 13
       div   di                      ; ax, Fudged (41 - 13) = 28
@@ -816,7 +816,7 @@ RegDivFloat     PROC  uses si di, x1:word, x2:word, y1:word, y2:word
       sub   ch, 127              ; Determine resulting exponent
       sub   bh, ch
       mov   al, bh
-      mov   es, ax               ; es has the resulting exponent and sign
+      mov   fake_es, ax          ; es has the resulting exponent and sign
 
       mov   ax, si               ; 8 bit shift, bx:si moved to dx:ax
       mov   dh, bl
@@ -874,7 +874,7 @@ RegDivFloat     PROC  uses si di, x1:word, x2:word, y1:word, y2:word
 
    RemoveDivOneBit:
       add   dx, bx
-      mov   cx, es
+      mov   cx, fake_es
       shl   ax, 1
       rcl   dx, 1
       jc    AfterDivNorm

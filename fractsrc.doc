@@ -1,19 +1,40 @@
-FRACTSRC.ZIP includes the complete source code for FRACTINT (.C and .ASM).
+The source code for Fractint is freely available.
+
+Enhancements to it are appreciated.  If you want to add something to
+Fractint and join the Stone Soup Group, please do!  To submit changes,
+see "Contacting the Authors" in Fractint's online help.
+
+Some parts of the source are from the public domain and are not
+copyrighted.
+Some parts of the source bear explicit copyright notices from the
+author and are subject to the conditions listed there by the author.
+
+The remainder of the source (not already public domain, no explicit
+author's copyright notice) is copyrighted by the Stone Soup Group
+(a loosely associated and ever-growing group of fanatic programmers).
+The source code may be copied freely and may be used in other programs
+under the following conditions:
+  It may not be used in a commercial program which produces fractal images.
+  Please credit the author (in general, credit Fractint and the Stone Soup
+  Group) as the source of the code.
+
+
+FRASRC.EXE includes the complete source code for FRACTINT (.C and .ASM).
 Recognizing that not everyone HAS (or even wants) an assembler, much less
 either MASM 5.1 or Turbo-ASM, which are the only two assemblers that the
 authors are aware of that can handle these particular files, it also contains
 a complete set of .OBJ files from the assembler code,
 
-Note that the Keepers of the Official Sets of Source Code (Bert Tyler and
-Timothy Wegner) both use the Microsoft 5.1 or 6.0 C compiler and Microsoft
-5.1 assembler, so that is the one combination of compiler/assemblers that is
-pretty much guaranteed to handle FRACTINT in all of its various mutations.
+Note that the Microsoft 5.1 C compiler and Microsoft 5.1 assembler are used
+for Fractint releases, so that is the one combination of compiler/assembler
+which is pretty much guaranteed to handle FRACTINT in all of its various
+mutations.
 Given that several of FRACTINT's co-authors now prefer (or only have!)
-alternate combinations, we have re-arranged the code to (usually) handle 
+alternate combinations, we have re-arranged the code to (usually) handle
 several popular alternatives.  In particular:
 
 
-Microsoft C 5.1 or 6.0 (and MASM 5.1):
+Microsoft C 5.1 and MASM 5.1:
 ======================================
 
 Just run MAKEFRAC.BAT, which invokes the Microsoft MAKE utility using
@@ -25,36 +46,83 @@ on some nifty features added to version 5.1 (like the '.model medium,c'
 option) and will not assemble under older versions of MASM without a LOT
 of work.
 
-MSC 6.0 users:  Due to limitations with (and a bug in) MSC 6.0, the following
-files *must* be compiled with the '/qc' option:  FRACTALS.C (without the
-'/qc' option, MSC chokes with a heap overflow on pass 2) and PARSER.C 
-(without the '/qc' option, MSC 6.0 creates a bad OBJ file!!)
+Microsoft C 6.0:
+======================================
 
+This ought to work exactly as MSC 5.1 does, but we've had some problems.
+You should compile parser.c, loadfile.c, and calcfrac.c with no optimization,
+using the /qc option.  There might be other problems, those are the only
+ones we're aware of...
 
 Quick-C:
 ========
 
-As of version 9.0, FRACTINT is just too big for the interactive Quick-C
-(QC) environment.  You have to use the command-line variant of Quick-C
-(QCL) these days (which even works, now - we chopped up the large routine
-in FRACTINT.C that was choking Quick-C).  To convert the MAKEfiles to use
-Quick-C rather than "regular" C, edit FRACTINT.MAK, comment out the fifth
-line (the one that goes " cl /AM ...") and un-comment out the second line
-(the one that goes " qcl /AM ..."). 
-
+FRACTINT is just too big for the interactive Quick-C (QC) environment.
+You have to use the command-line variant of Quick-C (QCL).
+To convert the MAKEfiles to use Quick-C rather than "regular" C, edit
+FRACTINT.MAK, comment out the " cl /AM ..." line and un-comment the
+" qcl /AM ..." line.
+We're not sure all versions of QuickC work.  2.01 does as of version 15.
+With other versions, you might find it necessary to remove the /O option.
 
 Turbo-C, Turbo-C++ and TASM
 ===========================
 
 Sorry, Turbo-C fans, but as of version 14.0, FRACTINT requires TC++.
 The lack of initialized FAR arrays and structures just did the older Turbo-C
-product in.  The *good* news is that several of the FRACTINT authors now
+product in.  The *good* news is that some of the FRACTINT authors now
 use Turbo-C++, so the odds of released FRACTINT distributions that do
-not sompile with Turbo products are lower than they used to be.
+not compile with Turbo products are lower than they used to be.
 
 We have replaced the old TC.MAK and TC.LNK files with a FRACTINT.PRJ
-replacement that Mark Peterson uses to compile and link FRACTINT using
-the Turbo products on his machine.
+replacement.
+
+
+Overlays
+========
+
+Note: generally you won't have to worry about this!
+Only the addition of huge code (new overlays), or work which changes the
+relationship between major components of Fractint, are likely to affect
+the overlay structure.	However, if you make changes in a module which has a
+comment at the start saying it is an overlay, please follow the guidelines
+for use of ENTER_OVLY and EXIT_OVLY described after the next paragraph.
+
+Fractint uses the Microsoft Link overlay feature, to reduce the runtime
+memory required (which would otherwise exceed what DOS can give it.)
+Some caution is required with overlays.  Those source modules which are
+part of an overlay have a comment to indicate this at the start.  See the
+fractint.lnk file for the current overlay structure.
+Some notes about overlays:
+  o The obvious one: control should not switch to different overlays
+    frequently, else Fractint will become sluggish.  If the overlay structure
+    changes, a test from floppy disk with no disk caching is a good idea.
+  o The linker cannot detect indirect calls (e.g. thing=routinename;
+    (*thing)();) to an overlay.  Routines in overlays should not be called
+    indirectly, except from within the same overlay.
+  o The overlay manager logic (inserted by the linker) does handle calls
+    from within one overlay to another - the new overlay is brought in
+    from disk (displacing the old one in memory), when the subroutine
+    finishes the old overlay is brought back into memory.
+  o The overlay manager logic does not handle situations like the following:
+    overlayA calls residentB(), which calls overlayC().  OverlayC is loaded
+    and executed ok, eventually control returns to residentB ok, BUT the
+    return from there to overlayA does NOT reload overlayA!  Fractint has
+    constructs called ENTER_OVLY and EXIT_OVLY to circumvent this problem.
+
+Guidelines for routines in overlayed modules:
+  o If the routine is local, declare it "static" to ensure this and to
+    make analysis of relationships among overlays easier.
+  o If the routine is called from external code (resident, or in another
+    overlay), the first executable line in the routine must be:
+      ENTER_OVLY(OVLY_XXX); /* XXX is the module name */
+    Each "return" from the routine (incl. the implicit one at the end) must
+    be preceded by:
+      EXIT_OVLY;
+  o When creating a new overlay XXX, add a new OVLY_XXX value to Fractint:
+    Fractint.h has a define for each OVLY_XXX value.  Miscres.c has a
+    routine "restore_active_ovly" which needs a new line for OVLY_XXX.
+    The source module needs a dummy routine "xxx_overlay".
 
 
 Where the Goodies are
@@ -65,37 +133,40 @@ at all have been wandering through the FRACTINT source code just to get at
 some of the neat tricks buried therein.  Here are a few hints as to where
 to look:
 
-DEBUGFLA.DOC    - (semi-)documented list of the programmer's debugging
-                  flags that have been buried in Fractint for years,
-                  but never documented.
-
 FRACTINT.C	- The main routine.  Nothing special here.
 FRACTINT.H	- General Include file.  Nothing special here, either.
 FRACTYPE.H	- Fractal type-specific Include file.
+
 PROMPTS.C	- The full-screen prompting code (using support routines
 		  in VIDEO.ASM)
+CMDFILES.C	- Command line and sstools.ini parsing.
 
 FRACTALS.C,	- Most of the fractal-specific code.  If you want to know
-CALCFRAC.C	  how a fractal is calculated, look in here.  Specific
-		  speed-em-up support for special fractal types is in...
+ CALCFRAC.C,	  how a fractal is calculated, look in here.  Specific
+ FRACSUBR.C	  speed-em-up support for special fractal types is in:
+ FRACSUBA.ASM
 CALCMAND.ASM	- Mandelbrot/Julia set calculations.
 NEWTON.ASM	- Newton calculations
-JB.C 		- "Julibrot" fractal type calculations
+LORENZ.C	- Attractor fractals and IFS
+JB.C		- "Julibrot" fractal type calculations
 TESTPT.C	- "Roll-your-own" fractal routine
 MPMATH_C.C,	- Mark Peterson's "fast-math" support routines.
-MPMATH_A.ASM,	  (this stuff puts some of the routines supplied by your
-FPU387.ASM,       favorite "C" compiler to shame!)
-FPU087.ASM	  ...
+ MPMATH_A.ASM,	  (this stuff puts some of the routines supplied by your
+ FPU387.ASM,	  favorite "C" compiler to shame!)
+ FPU087.ASM,	  ...
+ FMATH.H,	  ...
+ MPMATH.H	  ...
 PARSER.C	- The "type=formula" formula parser routines
+LSYS.C		- L-Systems code
 
 VIDEO.ASM	- Assembler code containing all of the video routines
 		  (setting up the video, reading/writing pixels, zoom-box
 		  code, color-cycling, graphics-to-text "help" switch,
 		  ... with help from the routines below for special adapters:
 TARGA.C,	- TARGA Video Routines
-TARGA.H,	  ...
-LOADMAP.C,	  ...
-TGASUBS.C	  ...
+ TARGA.H,	  ...
+ LOADMAP.C,	  ...
+ TGASUBS.C	  ...
 FR8514A.ASM	- 8514/A Routines
 HGCFRA.ASM	- Hercules Video Routines
 DISKVID.C	- "DISK'RAM" video routines
@@ -104,7 +175,7 @@ YOURVID.C	- "Roll-your-own" video routines
 GENERAL.ASM	- General assembler code having nothing to do with fractals.
 		  Lots of the tricky stuff is in here, and many of the "C"
 		  routines that perform tricky functions rely on support
-		  code buried in here.  In particular, this routine has the:
+		  code buried in here.	In particular, this routine has the:
 			CPU, FPU Detectors
 			Keyboard routines
 			Mouse routines
@@ -113,18 +184,32 @@ GENERAL.ASM	- General assembler code having nothing to do with fractals.
 
 ENCODER.C	- GIF Encoder routine.
 GIFVIEW.C,	- GIF Decoder routines.
-DECODER.C,
-TGAVIEW.C,	  (including a TARGA-format encoder/decoder currently used
-F16.C		  only for the "Continuous Potential" algorithm)
+ DECODER.C,
+ TGAVIEW.C,	  (including a TARGA-format decoder currently used only for
+ F16.C, 	  loading obsolete .tga format "Continuous Potential" files)
+ TARGA_LC.H	  ...
+LOADFILE.C	- Loads the Fractint parameter info from a GIF file.
+ LOADFDOS.C	  subroutines for DOS Fractint only
 
 LINE3D.C,	- 3D manipulation routines
-3D.C
+ 3D.C
+PLOT3D		- 3D subroutines for LINE3D.C and LORENZ.C
 
 ROTATE.C	- routines which "spin" the VGA video-DAC.
-CONFIG.C	- general Fractal File configuration routines.
+EDITPAL.C	- palette-editing mode
 
-HELP.C,		- HELP support
-FARMSG.ASM	- HELP and various other messages (placed in this FAR
-		  segment to free up some precious NEAR data space)
+HELP.C, 	- HELP support
+ HELPMSG.ASM	- HELP messages (placed here to free up data space)
+
+ZOOM.C		- Zoombox manipulation.
 
 PRINTER.C	- The Printer Routines
+
+MISCRES.C	- Miscellaneous resident subroutines; nothing special.
+MISCOVL.C	- Miscellaneous overlayed subroutines; includes <B>atch
+		  command.
+REALDOS.C	- Some subroutines isolated from Windows development work;
+		  nothing special in here.
+
+PORT.H		- Some portability stuff, nothing special here.
+

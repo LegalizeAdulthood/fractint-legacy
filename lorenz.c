@@ -6,16 +6,56 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <float.h>
 #include "fractint.h"
 #include "fractype.h"
+struct affine
+{
+   /* weird order so a,b,e and c,d,f are vectors */
+   double a;
+   double b;
+   double e;
+   double c;
+   double d;
+   double f;
+};
 
-int realtime;
+/* Routines in this module	*/
+
+int  orbit3dlongsetup();
+int  orbit3dfloatsetup();
+int  lorenz3dlongorbit(long *, long *, long *);
+int  lorenz3dfloatorbit(double *, double *, double *);
+int  henonfloatorbit(double *, double *, double *);
+int  henonlongorbit(long *, long *, long *);
+int  rosslerfloatorbit(double *, double *, double *);
+int  pickoverfloatorbit(double *, double *, double *);
+int  gingerbreadfloatorbit(double *, double *, double *);
+int  rosslerlongorbit(long *, long *, long *);
+int  kamtorusfloatorbit(double *, double *, double *);
+int  kamtoruslongorbit(long *, long *, long *);
+int  orbit2dfloat(void);
+int  orbit2dlong(void);
+int  orbit3dlongcalc(void);
+int  orbit3dfloatcalc(void);
+int  funny_glasses_call(int (*calc)());
+int  ifs(void);
+int  orbit3dfloat(void);
+int  orbit3dlong(void);
+int  ifs3d(void);
+
+static int  ifs3dlong(void);
+static int  ifs3dfloat(void);
+static double determinant(double mat[3][3]);
+static int  solve3x3(double mat[3][3],double vec[3],double ans[3]);
+static int  setup_convert_to_screen(struct affine *);
+static void setupmatrix(MATRIX);
+
+static int realtime;
+extern int active_system;
 extern int overflow;
 extern int soundflag;
 extern int basehertz;
-extern int solidguessing;
 extern int fractype;
 extern int glassestype;
 extern int whichimage;
@@ -33,7 +73,6 @@ extern int	xdots, ydots;		/* coordinates of dots on the screen  */
 extern int	maxit;				/* try this many iterations */
 extern double param[];
 extern double	xxmin,xxmax,yymin,yymax,xx3rd,yy3rd; /* selected screen corners  */
-extern char far plasmamessage[];
 extern	int	diskvideo;			/* for disk-video klooges */
 extern int	bitshift;			/* bit shift for fudge */
 extern long	fudge;				/* fudge factor (2**n) */
@@ -58,6 +97,9 @@ extern void end_resume();
 extern int  put_resume(int len, ...);
 extern int  get_resume(int len, ...);
 extern int  calc_status, resuming;
+extern int  diskisactive;
+extern int  resave_flag;
+extern char savename[];
 
 /* these are potential user parameters */
 int connect = 1;    /* flag to connect points with a line */
@@ -68,7 +110,7 @@ int projection = 2; /* projection plane - default is to plot x-y */
 /*		   zoom box conversion functions		  */
 /******************************************************************/
 
-double determinant(mat) /* determinant of 3x3 matrix */
+static double determinant(mat) /* determinant of 3x3 matrix */
 double mat[3][3];
 {
    /* calculate determinant of 3x3 matrix */
@@ -81,7 +123,7 @@ double mat[3][3];
 
 }
 
-solve3x3(mat,vec,ans) /* solve 3x3 inhomogeneous linear equations */
+static int solve3x3(mat,vec,ans) /* solve 3x3 inhomogeneous linear equations */
 double mat[3][3], vec[3], ans[3];
 {
    /* solve 3x3 linear equation [mat][ans] = [vec] */
@@ -124,18 +166,7 @@ double mat[3][3], vec[3], ans[3];
       then we just apply the transformation to each orbit value.
 */
 
-struct affine
-{
-   /* weird order so a,b,e and c,d,f are vectors */
-   double a;
-   double b;
-   double e;
-   double c;
-   double d;
-   double f;
-};
-
-setup_convert_to_screen(struct affine *scrn_cnvt)
+static int setup_convert_to_screen(struct affine *scrn_cnvt)
 {
    /* we do this twice - rather than having six equations with six unknowns,
       everything partitions to two sets of three equations with three
@@ -190,7 +221,7 @@ long   l_orbit;
 extern double sinx,cosx;
 long l_sinx,l_cosx;
 
-orbit3dlongsetup()
+int orbit3dlongsetup()
 {
    connect = 1;
    waste = 100;
@@ -239,13 +270,12 @@ orbit3dlongsetup()
    l_adt = multiply(l_a,l_dt,bitshift);
    l_bdt = multiply(l_b,l_dt,bitshift);
    l_cdt = multiply(l_c,l_dt,bitshift);
-   solidguessing = 0;
    return(1);
 }
 
 
 
-orbit3dfloatsetup()
+int orbit3dfloatsetup()
 {
    connect = 1;
    waste = 100;
@@ -300,7 +330,6 @@ orbit3dfloatsetup()
    bdt = b*dt;
    cdt = c*dt;
 
-   solidguessing = 0;
    return(1);
 }
 
@@ -308,7 +337,7 @@ orbit3dfloatsetup()
 /*   orbit functions - put in fractalspecific[fractype].orbitcalc */
 /******************************************************************/
 
-lorenz3dlongorbit(long *l_x, long *l_y, long *l_z)
+int lorenz3dlongorbit(long *l_x, long *l_y, long *l_z)
 {
       l_xdt = multiply(*l_x,l_dt,bitshift);
       l_ydt = multiply(*l_y,l_dt,bitshift);
@@ -322,7 +351,7 @@ lorenz3dlongorbit(long *l_x, long *l_y, long *l_z)
       return(0);
 }
 
-lorenz3dfloatorbit(double *x, double *y, double *z)
+int lorenz3dfloatorbit(double *x, double *y, double *z)
 {
       xdt = (*x)*dt;
       ydt = (*y)*dt;
@@ -336,7 +365,7 @@ lorenz3dfloatorbit(double *x, double *y, double *z)
       return(0);
 }
 
-henonfloatorbit(double *x, double *y, double *z)
+int henonfloatorbit(double *x, double *y, double *z)
 {
       double newx,newy;
       newx  = 1 + *y - a*(*x)*(*x);
@@ -346,7 +375,7 @@ henonfloatorbit(double *x, double *y, double *z)
       return(0);
 }
 
-henonlongorbit(long *l_x, long *l_y, long *l_z)
+int henonlongorbit(long *l_x, long *l_y, long *l_z)
 {
       long newx,newy;
       newx = multiply(*l_x,*l_x,bitshift);
@@ -358,7 +387,7 @@ henonlongorbit(long *l_x, long *l_y, long *l_z)
       return(0);
 }
 
-rosslerfloatorbit(double *x, double *y, double *z)
+int rosslerfloatorbit(double *x, double *y, double *z)
 {
       xdt = (*x)*dt;
       ydt = (*y)*dt;
@@ -373,7 +402,7 @@ rosslerfloatorbit(double *x, double *y, double *z)
       return(0);
 }
 
-pickoverfloatorbit(double *x, double *y, double *z)
+int pickoverfloatorbit(double *x, double *y, double *z)
 {
       double newx,newy,newz;
       newx = sin(a*(*y)) - (*z)*cos(b*(*x));
@@ -385,7 +414,7 @@ pickoverfloatorbit(double *x, double *y, double *z)
       return(0);
 }
 /* page 149 "Science of Fractal Images" */
-gingerbreadfloatorbit(double *x, double *y, double *z)
+int gingerbreadfloatorbit(double *x, double *y, double *z)
 {
       double newx;
       newx = 1 - (*y) + fabs(*x);
@@ -394,7 +423,7 @@ gingerbreadfloatorbit(double *x, double *y, double *z)
       return(0);
 }
 
-rosslerlongorbit(long *l_x, long *l_y, long *l_z)
+int rosslerlongorbit(long *l_x, long *l_y, long *l_z)
 {
       l_xdt = multiply(*l_x,l_dt,bitshift);
       l_ydt = multiply(*l_y,l_dt,bitshift);
@@ -417,7 +446,7 @@ rosslerlongorbit(long *l_x, long *l_y, long *l_z)
 /* a	  = Angle */
 
 
-kamtorusfloatorbit(double *r, double *s, double *z)
+int kamtorusfloatorbit(double *r, double *s, double *z)
 {
    double srr;
    if(t++ >= l_d)
@@ -435,7 +464,7 @@ kamtorusfloatorbit(double *r, double *s, double *z)
    return(0);
 }
 
-kamtoruslongorbit(long *r, long *s, long *z)
+int kamtoruslongorbit(long *r, long *s, long *z)
 {
    long srr;
    if(t++ >= l_d)
@@ -458,7 +487,7 @@ kamtoruslongorbit(long *r, long *s, long *z)
 /*   Main fractal engines - put in fractalspecific[fractype].calctype */
 /**********************************************************************/
 
-orbit2dfloat()
+int orbit2dfloat()
 {
    double *soundvar;
    double x,y,z;
@@ -562,7 +591,7 @@ orbit2dfloat()
    return(0);
 }
 
-orbit2dlong()
+int orbit2dlong()
 {
    long a,b,c,d,e,f;
    long *soundvar;
@@ -672,7 +701,7 @@ orbit2dlong()
    return(0);
 }
 
-orbit3dlongcalc()
+int orbit3dlongcalc()
 {
    long a,b,c,d,e,f;
    unsigned count;
@@ -737,9 +766,7 @@ orbit3dlongcalc()
       }
    if(diskvideo)		/* this would KILL a disk drive! */
    {
-      setvideomode(3,0,0,0);
-      buzzer(2);
-      helpmessage(plasmamessage);
+      notdiskmsg();
       return(-1);
    }
 
@@ -916,7 +943,7 @@ orbit3dlongcalc()
 }
 
 
-orbit3dfloatcalc()
+int orbit3dfloatcalc()
 {
    unsigned count;
    int oldcol,oldrow;
@@ -968,9 +995,7 @@ orbit3dfloatcalc()
 
    if(diskvideo)		/* this would KILL a disk drive! */
    {
-      setvideomode(3,0,0,0);
-      buzzer(2);
-      helpmessage(plasmamessage);
+      notdiskmsg();
       return(-1);
    }
 
@@ -1090,7 +1115,7 @@ orbit3dfloatcalc()
 
 /* this function's only purpose is to manage funnyglasses related */
 /* stuff so the code is not duplicated for ifs3d() and lorenz3d() */
-funny_glasses_call(int (*calc)())
+int funny_glasses_call(int (*calc)())
 {
    int status;
    status = 0;
@@ -1106,22 +1131,33 @@ funny_glasses_call(int (*calc)())
       realtime = 0;
       return(status);
    }
-   if(glassestype && status == 0)
+   if(glassestype && status == 0 && display3d)
    {
       if(glassestype==3) /* photographer's mode */
-      {
-	 setfortext();
-	 printf("First image (left eye) is ready - hit any key to see it\n");
-	 printf("Then hit any key again to create second image\n");
-	 getch();
-	 setforgraphics();
-	 getch();
-	 /* is there a better way to clear the screen in graphics mode? */
-	 setvideomode(videoentry.videomodeax,
-	     videoentry.videomodebx,
-	     videoentry.videomodecx,
-	     videoentry.videomodedx);
-      }
+	 if(active_system == 0) { /* dos version */
+	    int i;
+static char far firstready[]={"\
+First image (left eye) is ready.  Hit any key to see it,\n\
+then hit <s> to save, hit any other key to create second image."};
+	    stopmsg(16,firstready);
+	    while ((i = getakey()) == 's' || i == 'S') {
+	       if (resave_flag == 2)
+		  resave_flag = 0;
+	       diskisactive = 1;
+	       savetodisk(savename);
+	       diskisactive = 0;
+	       }
+	    /* is there a better way to clear the screen in graphics mode? */
+	    setvideomode(videoentry.videomodeax,
+		videoentry.videomodebx,
+		videoentry.videomodecx,
+		videoentry.videomodedx);
+	 }
+	 else { 		  /* Windows version */
+static char far firstready2[]={"First (Left Eye) image is complete"};
+	    stopmsg(0,firstready2);
+	    clear_screen();
+	    }
       whichimage = 2;
       plot_setup();
       plot = standardplot;
@@ -1129,18 +1165,16 @@ funny_glasses_call(int (*calc)())
       if(status = calc())
 	 return(status);
       if(glassestype==3) /* photographer's mode */
-      {
-	 setfortext();
-	 printf("Second image (right eye) is ready - hit any key to see it\n");
-	 getch();
-	 setforgraphics();
-      }
+	 if(active_system == 0) { /* dos version */
+static char far secondready[]={"Second image (right eye) is ready"};
+	    stopmsg(16,secondready);
+	 }
    }
    return(status);
 }
 
 /* double version - mainly for testing */
-ifs3dfloat()
+static int ifs3dfloat()
 {
    double tmp;
    double tmpx;
@@ -1181,9 +1215,7 @@ ifs3dfloat()
 
    if(diskvideo)		/* this would KILL a disk drive! */
    {
-      setvideomode(3,0,0,0);
-      buzzer(2);
-      helpmessage(plasmamessage);
+      notdiskmsg();
       return(-1);
    }
 
@@ -1311,7 +1343,7 @@ ifs3dfloat()
    return(0);
 }
 
-ifs()		 /* IFS logic shamelessly converted to integer math */
+int ifs()	/* IFS logic shamelessly converted to integer math */
 {
    long a,b,c,d,e,f;
    long  *lifsptr;
@@ -1334,9 +1366,7 @@ ifs()		 /* IFS logic shamelessly converted to integer math */
    srand(1);
 
    if(diskvideo) {		/* this would KILL a disk drive! */
-	setvideomode(3,0,0,0);
-	buzzer(2);
-	helpmessage(plasmamessage);
+	notdiskmsg();
 	return(-1);
 	}
 
@@ -1393,7 +1423,7 @@ ifs()		 /* IFS logic shamelessly converted to integer math */
    return(0);
 }
 
-ifs3dlong()
+static int ifs3dlong()
 {
    long a,b,c,d,e,f;
    double tmpx, tmpy, tmpz;
@@ -1450,9 +1480,7 @@ ifs3dlong()
       }
    if(diskvideo)		/* this would KILL a disk drive! */
    {
-      setvideomode(3,0,0,0);
-      buzzer(2);
-      helpmessage(plasmamessage);
+      notdiskmsg();
       return(-1);
    }
 
@@ -1636,7 +1664,7 @@ ifs3dlong()
    return(0);
 }
 
-setupmatrix(MATRIX doublemat)
+static void setupmatrix(MATRIX doublemat)
 {
    /* build transformation matrix */
    identity (doublemat);
@@ -1651,7 +1679,7 @@ setupmatrix(MATRIX doublemat)
 
 }
 
-orbit3dfloat()
+int orbit3dfloat()
 {
    display3d = -1;
    if(0 < glassestype && glassestype < 3)
@@ -1660,7 +1688,7 @@ orbit3dfloat()
       realtime = 0;
    return(funny_glasses_call(orbit3dfloatcalc));
 }
-orbit3dlong()
+int orbit3dlong()
 {
    display3d = -1;
    if(0 < glassestype && glassestype < 3)
@@ -1670,7 +1698,7 @@ orbit3dlong()
    return(funny_glasses_call(orbit3dlongcalc));
 }
 
-ifs3d()
+int ifs3d()
 {
    display3d = -1;
 

@@ -1,4 +1,4 @@
-/** targa.c 
+/** targa.c
 
 
 **/
@@ -13,48 +13,47 @@
 #include	<stdlib.h>
 #include	<dos.h>
 #include	"targa.h"
+#include	"fractint.h"
 
 #ifndef true
 #	define	true	1
 #	define	false	0
 #endif
 
-/*************  ****************/
+/*************	****************/
 
 extern unsigned int _dataseg_xx;
 
-extern char far runningontarga[];
-
 extern void	helptitle();
-extern void	helpmessage(unsigned char far *);
 extern int	LoadColorMap( void );
+extern char	loadPalette;
 
-/*************  ****************/
+/*************	****************/
 
 typedef unsigned char uchar;
 
-/*************  ****************/
+/*************	****************/
 
 void	WriteTGA( int x, int y, int index );
 int		ReadTGA ( int x, int y );
 void	LineTGA ( uchar far * lineData, int y, int cnt );
-void	EndTGA  ( void );
+void	EndTGA	( void );
 void	StartTGA( int xDim, int yDim );
 
-/*************  ****************/
+/*************	****************/
 
-int				xorTARGA;
-int				targaType;
-unsigned	tga16[ 256 ];
-long			tga32[ 256 ];
+int	     xorTARGA;
+int	     targaType;
+unsigned far *tga16 = NULL;  /* [256] */
+long	 far *tga32;	     /* [256] */
 
-/*************  ****************/
+/*************	****************/
 
 static int	xdots;
 static int	ydots;
 static int	initialized;
 
-/*************  ****************/
+/*************	****************/
 
 void			(*DoPixel) ( int x, int y, int index );
 void			(*PutPixel)( int x, int y, int index );
@@ -209,7 +208,7 @@ static int	last;
 
 /**************************************************************************/
 
-void 
+void
 DoFirstPixel( int x, int y, int index )
 {
 	PutPixel = DoPixel;
@@ -252,7 +251,7 @@ LineTGA( uchar far * lineData, int y, int cnt )
 /**** not yet
 	TSetMode( targa->mode | 1 );
 	TSetMode( targa->mode & 0xFFFE );
- 	return;
+	return;
 ****/
 }
 
@@ -267,7 +266,7 @@ EndTGA( void )
 		GraphEnd();
 		initialized = 0;
 	}
- 	return;
+	return;
 }
 
 
@@ -280,7 +279,8 @@ int	itemp;
 int	v1, v2, v3, index;
 union REGS regs;
 
-static int onlyonce;
+static char far runningontarga[]={"\
+\nFRACTINT Running On TrueVision TARGA Card\n"};
 
 	/****************/
 	xdots = xDim;
@@ -288,34 +288,37 @@ static int onlyonce;
 
 	/****************/
 	if( initialized ) return;
-	if( ! onlyonce ) {
-		onlyonce = 1;
-		atexit( EndTGA );
-	}
+	/* PB, 900829, removed atexit(EndTGA) stuff - video.asm covers it */
 	initialized = 1;
 
 	/****************/
 	/** first, set up so default palette will be loaded if we're on a VGA **/
 	regs.x.ax = 0x1200;
 	regs.x.bx = 0x0031;
-	/** set mono text mode **/
-	regs.x.ax = 7;	/* 'cause TARGA can live at 0xA000, we DO NOT want to */
-	int86( 0x10, &regs, &regs ); /* have an EGA/VGA in graphics mode!! */
 	int86( 0x10, &regs, &regs );
+	regs.x.ax = 3;	/* 'cause TARGA can live at 0xA000, we DO NOT want to */
+	int86( 0x10, &regs, &regs ); /* have an EGA/VGA in graphics mode!! */
 	helptitle();
-	helpmessage(runningontarga);
-	
+	putstring(2,16,7,runningontarga);
+
 	/****************/
 	/*** look for and activate card ***/
 	itemp = GraphInit( 16 );
 	if( itemp == 0 ) {		/* all is ok */
 		VCenterDisplay( ydots + 1 );
-	 	targaType = targa->boardType;
+		targaType = targa->boardType;
 	}
 	else {	/* no targa found */
-    printf( "\n\nCould not find Targa Card\n ...aborting !\n" );
+		putstring(4,0,15,"Could not find Targa Card\n ...aborting!");
 		exit( 1 );
-  }
+	}
+	if (tga16 == NULL)
+	    if ( (tga16 = (unsigned far *)farmemalloc(512L)) == NULL
+	      || (tga32 = (long     far *)farmemalloc(1024L)) == NULL) {
+		putstring(4,0,15,"Insufficient memory for Targa\n ...aborting!");
+		exit( 1 );
+	}
+	SetTgaColors();
 	if( targaType == 16 ) {
 		GetPixel = GetPix16;
 		DoPixel = PutPix16;
@@ -329,13 +332,11 @@ static int onlyonce;
 	TSetMode( targa->mode & 0xFFFE );
 
 	/****************/
-	if( ! LoadColorMap() ) {
-		printf( "\n\nColor Map Not Found\n ... aborting!\n" );
-		exit( 1 );
-	}
+	if (loadPalette == 0 && SetColorPaletteName("default") != 0)
+		exit( 1 ); /* stopmsg has already been issued */
 
 	/****************/
- 	return;
+	return;
 }
 
 

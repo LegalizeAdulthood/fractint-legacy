@@ -30,7 +30,7 @@ HRPAL	equ	58
 
 .DATA
 
-	extrn	xdots:word, ydots:word	; number of dots across and down
+	extrn	sxdots:word, sydots:word  ; number of dots across and down
 	extrn	dacbox:byte, daccount:word
 
 afiptr		dd	0
@@ -155,11 +155,11 @@ open8514	proc	far
 
 	mov	bl, 0		;if > 640 x 480 then 1024 x 768
 
-	mov	ax, xdots
+	mov	ax, sxdots
 	cmp	ax, 640
 	ja	setupopen
 
-	mov	ax, ydots
+	mov	ax, sydots
 	cmp	ax, 480
 	ja	setupopen
 
@@ -180,20 +180,20 @@ setupopen:
 	call	callafi
 
 	mov	ax, amode + 10		;get the screen width
-	cmp	ax, xdots
+	cmp	ax, sxdots
 	jae	xdotsok 		;check for fit
-	mov	xdots, ax
+	mov	sxdots, ax
 xdotsok:
-	sub	ax, xdots		;save centering factor
+	sub	ax, sxdots		;save centering factor
 	shr	ax, 1
 	mov	xadj, ax
 
 	mov	ax, amode + 12		;get the screen height
-	cmp	ax, ydots
+	cmp	ax, sydots
 	jae	ydotsok
-	mov	ydots, ax
+	mov	sydots, ax
 ydotsok:
-	sub	ax, ydots
+	sub	ax, sydots
 	shr	ax, 1
 	mov	yadj, ax
 	clc
@@ -273,6 +273,7 @@ fr85wbox	proc	far uses si
 	add	cx, xadj
 	add	dx, yadj
 	sub	ax, cx
+	inc	ax			; BDT patch 11/4/90
 	mov	chn + 2, si		;point to data
 	mov	chn + 6, ax
 	mov	bbw + 4, ax		;define the rectangle
@@ -325,6 +326,7 @@ fr85rbox	proc	far uses si
 	add	cx, xadj
 	add	dx, yadj
 	sub	ax, cx
+	inc	ax			; BDT patch 11/4/90
 	mov	chn + 2, di		;point to data
 	mov	chn + 6, ax
 	mov	bbr + 4, ax		;define the rectangle

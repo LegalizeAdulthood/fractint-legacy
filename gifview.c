@@ -1,4 +1,5 @@
 /*
+ *
  * This GIF decoder is designed for use with Bert Tyler's FRACTINT
  * program. It should be noted that the "FRACTINT" program only decodes
  * GIF files FRACTINT creates, so this decoder code lacks full generality
@@ -14,60 +15,39 @@
 #include <stdio.h>
 #include <string.h>
 #include <dos.h>
-
 #include "fractint.h"
+
+/* routines in this module	*/
+
+int  gifview(void);
+int  get_byte(void);		/* used only locally and by decoder.c */
+
+static void close_file(void);
 
 #define MAXCOLORS	256
 
-struct RGB
-{
-   unsigned char red, green, blue;
-};
-
-extern int decoder();
-extern int rowcount;					/* row counter for screen */
-extern char readname[]; 				/* file name		*/
-static FILE *fpin = NULL;				/* FILE pointer 	    */
+extern int timer(int timertype,int(*subrtn)(),...);
+extern int rowcount;		/* row counter for screen */
+extern char readname[]; 	/* file name		  */
+static FILE *fpin = NULL;	/* FILE pointer 	  */
 unsigned int height;
 
-extern	FILE *dacfile;
 extern	char MAP_name[];
 extern	int	mapset;
 
 extern int glassestype;
 extern int display3d;
-extern int dotmode;					/* so we can detect disk-video */
+extern int dotmode;		/* so we can detect disk-video */
 extern int calc_status;
 extern long calctime;
 extern long timer_interval;
+extern int pot16bit;		/* 16 bit values for continuous potential */
 
-int bad_code_count = 0; 				/* needed by decoder module */
+int bad_code_count = 0; 	/* needed by decoder module */
 
-get_byte()
+int get_byte()
 {
-   static int c;
-
-   /* make sure fpin NULL if not open */
-   if (!fpin)
-   {
-      char temp1[81];
-
-      strcpy(temp1,readname);
-      if (strchr(temp1,'.') == NULL) {
-	 strcat(temp1,DEFAULTFRACTALTYPE);
-	 if ((fpin = fopen(temp1,"rb")) != NULL) {
-	    fclose(fpin);
-	    }
-	 else {
-	    strcpy(temp1,readname);
-	    strcat(temp1,ALTERNATEFRACTALTYPE);
-	    }
-	 }
-
-      if ((fpin = fopen(temp1, "rb")) == NULL)
-	 return (-1);
-   }
-   return (fgetc(fpin)); /* EOF is -1, as desired */
+   return (getc(fpin)); /* EOF is -1, as desired */
 }
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
@@ -76,11 +56,12 @@ extern int paletteVGA[16];		/* VGA Palette-to-DAC registers */
 extern unsigned char decoderline[2049]; /* write-line routines use this */
 
 /* Main entry decoder */
-gifview()
+int gifview()
 {
    unsigned numcolors;
    unsigned char buffer[16];
    unsigned width, finished;
+   char temp1[81];
 
    int status;
    int i, j, k, planes;
@@ -92,6 +73,21 @@ gifview()
 
    /* zero out the full write-line */
    for (width = 0; width < 2049; width++) decoderline[width] = 0;
+
+   /* Open the file */
+   strcpy(temp1,readname);
+   if (strchr(temp1,'.') == NULL) {
+      strcat(temp1,DEFAULTFRACTALTYPE);
+      if ((fpin = fopen(temp1,"rb")) != NULL) {
+	 fclose(fpin);
+	 }
+      else {
+	 strcpy(temp1,readname);
+	 strcat(temp1,ALTERNATEFRACTALTYPE);
+	 }
+      }
+   if ((fpin = fopen(temp1, "rb")) == NULL)
+      return (-1);
 
    /* Get the screen description */
    for (i = 0; i < 13; i++)
@@ -129,18 +125,19 @@ gifview()
 	 k = i;
       for (j = 0; j < 3; j++) {
 	 if ((buffer[j] = (unsigned char)get_byte()) < 0)
+	 {
+	    close_file();
 	    return(-1);
+	 }
 	 if (dacbox[0][0] != 255)	/* (only if we really have a DAC) */
 	    if(!display3d || (glassestype != 1 && glassestype != 2))
 	       dacbox[k][j] = buffer[j] >> 2;
       }
    }
    /* don't read if glasses */
-   if (mapset && glassestype!=1 && glassestype != 2)
+   if (display3d && mapset && glassestype!=1 && glassestype != 2)
    {
-       dacfile = fopen(MAP_name,"r");
-       ValidateLuts(dacfile);  /* read the palette file */
-       fclose(dacfile); /* close it */
+       ValidateLuts(MAP_name);	/* read the palette file */
        if (dotmode != 11)
 	  spindac(0,1); /* load it, but don't spin */
    }
@@ -148,10 +145,7 @@ gifview()
       spindac(0,1);	  /* update the DAC */
 
    if (dotmode == 11) /* disk-video */
-   {
-       movecursor(2,0);
-       printf("...restoring...");
-   }
+       dvid_status(1,"...restoring...");
 
    /* Now display one or more GIF objects */
    finished = 0;
@@ -166,39 +160,40 @@ gifview()
 	 status = 0;
 	 break;
 
-	case '!':                               /* GIF Extension Block */
-		get_byte();			/* read (and ignore) the ID */
-		while ((i = get_byte()) > 0)	/* get the data length */
-			for (j = 0; j < i; j++)
-				get_byte();	/* flush the data */
-		break;
+      case '!':                               /* GIF Extension Block */
+	 get_byte();			 /* read (and ignore) the ID */
+	 while ((i = get_byte()) > 0)	 /* get the data length */
+	    for (j = 0; j < i; j++)
+	       get_byte();     /* flush the data */
+	 break;
       case ',':
 	 /*
 	  * Start of an image object. Read the image description.
 	  */
 
-	  for (i = 0; i < 9; i++)
-	  {
-	     if ((buffer[i] = (unsigned char)get_byte ()) < 0)
-	     {
-		status = -1;
-		break;
-	     }
-	  }
-	  if(status < 0)
-	  {
-	     finished = 1;
-	     break;
-	  }
+	 for (i = 0; i < 9; i++)
+	 {
+	    if ((buffer[i] = (unsigned char)get_byte ()) < 0)
+	    {
+	       status = -1;
+	       break;
+	    }
+	 }
+	 if(status < 0)
+	 {
+	    finished = 1;
+	    break;
+	 }
 
-	  width  = buffer[4] | buffer[5] << 8;
-	  height = buffer[6] | buffer[7] << 8;
+	 width	= buffer[4] | buffer[5] << 8;
+	 if (pot16bit) width >>= 1;
+	 height = buffer[6] | buffer[7] << 8;
 
 	 /* Setup the color palette for the image */
 
 	 if (calc_status == 1) /* should never be so, but make sure */
 	    calc_status = 0;
-	 status = timer(decoder,1,width);
+	 status = timer(1,NULL,width); /* call decoder(width) via timer */
 	 if (calc_status == 1) /* e.g., set by line3d */
 	 {
 	    calctime = timer_interval; /* note how long it took */
@@ -216,17 +211,15 @@ gifview()
       }
    }
    close_file();
-   if (dotmode == 11) /* disk-video */
-   {
-       home();
-       printf("Restore completed        \n\n                    ");
-   }
+   if (dotmode == 11) { /* disk-video */
+      dvid_status(0,"Restore completed");
+      dvid_status(1,"");
+      }
 
-   /* if (status == 0)
-      buzzer(0); */		/* audible signal - we done */
    return(status);
 }
-close_file()
+
+static void close_file()
 {
    fclose(fpin);
    fpin = NULL;

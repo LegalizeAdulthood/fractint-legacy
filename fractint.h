@@ -2,6 +2,7 @@
 /* FRACTINT.H - common structures and values for the FRACTINT routines */
 
 #define MAXPIXELS 2049		/* Maximum pixel count across/down the screen */
+#define SCREENASPECT 0.75	/* Assumed overall screen dimensions, y/x     */
 
 struct videoinfo {		/* All we need to know about a Video Adapter */
 	char	name[26];	/* Adapter name (IBM EGA, etc)		*/
@@ -113,7 +114,17 @@ struct fractal_info			/*  for saving data in GIF file     */
     int finattract;
     double initorbit[2];  /* init Mandelbrot orbit values */
     int periodicity;	  /* periodicity checking */
-    int future[2];	  /* for stuff we haven't thought of yet */
+    /* version 5 stuff, release 15 */
+    int pot16bit;	  /* save 16 bit continuous potential info */
+    float faspectratio;   /* finalaspectratio, y/x */
+    int system; 	  /* 0 for dos, 1 for windows */
+    int release;	  /* release number, with 2 decimals implied */
+    int flag3d; 	  /* stored only for now, for future use */
+    int transparent[2];
+    int ambient;
+    int haze;
+    int randomize;
+    int future[16];	  /* for stuff we haven't thought of yet */
 };
 
 #define MAXVIDEOMODES 100	/* maximum size of the video table */
@@ -204,10 +215,13 @@ extern int maxvideomode;
 #define  TRIG2	      128
 #define  TRIG3	      192
 #define  TRIG4	      256
+#define  WINFRAC      512    /* supported in WinFrac		   */
 
 #define AUTOINVERT -123456.789
 extern float   far initifs[NUMIFS][IFSPARM];	      /* IFS code values */
 extern float   far initifs3d[NUMIFS][IFS3DPARM];      /* IFS 3D code values */
+
+#define N_ATTR 8			/* max number of attractors	*/
 
 struct fractalspecificstuff
 {
@@ -257,6 +271,9 @@ extern struct fractalspecificstuff far fractalspecific[];
 #define HELPVIDEO	7
 #define HELPMOREINFO	8
 #define HELPMOUSE	9
+#define HELPLOADFILE	10
+#define HELPZOOM	11
+#define HELPVIEW	12
 #define HELPMENU	98
 #define HELPEXIT	99
 
@@ -272,6 +289,15 @@ extern int helpmode;
 
 #define DEFAULTFRACTALTYPE	".gif"
 #define ALTERNATEFRACTALTYPE	".fra"
+
+#include <math.h>
+
+#ifndef _LCOMPLEX_DEFINED
+struct lcomplex {
+   long x, y;
+};
+#define _LCOMPLEX_DEFINED
+#endif
 
 #ifndef sqr
 #define sqr(x) ((x)*(x))
@@ -378,9 +404,6 @@ extern struct trig_funct_lst trigfn[];
 
 /* function prototypes */
 
-#include <math.h>
-
-extern	void   adjust(int, int, int, int, int, int);
 extern	void   buzzer(int);
 extern	int    calcfract(void);
 extern	int    calcmand(void);
@@ -409,15 +432,15 @@ extern	void   farmemfree(unsigned char far *);
 extern	int    getakey(void);
 extern	int    getcolor(int, int);
 extern	int    has_8087(void );
-extern	void	helpmessage(unsigned char far *);
+extern	void   putstring(int,int,int,unsigned char far *);
+extern	int    putstringcenter(int,int,int,int,char far *);
+extern	int    stopmsg(int,unsigned char far *);
 extern	void   identity(MATRIX);
-extern	int    iplot_orbit(long, long, int);
 extern	int    Juliafp(void);
 extern	int    longvmultpersp(LVECTOR, LMATRIX, LVECTOR, LVECTOR, LVECTOR, int);
 extern	int    longpersp(LVECTOR, LVECTOR,int);
 extern	int    Lambda(void);
 extern	int    Lambdasine(void);
-extern	int    MainNewton(void);
 extern	void   mat_mul(MATRIX, MATRIX, MATRIX);
 extern	void   main(int, char *[]);
 extern	int    Mandelfp(void);
@@ -425,30 +448,85 @@ extern	long   multiply(long, long, int);
 extern	long   divide(long, long, int);
 extern	int    Newton(void);
 extern	int    perspective(double *v);
-extern	int    plasma(void);
-extern	int    plot_orbit(double, double, int);
-extern	void	cdecl	Print_Screen(void);	/* MDS 7/1/89 */
+extern	void   cdecl Print_Screen(void);
 extern	void   putcolor(int, int, int);
 extern	void   scale(double, double, double, MATRIX);
-extern	int    scrub_orbit(void);
-extern	int    set_Plasma_palette(void);
 extern	void   setvideomode(int, int, int, int);
 extern	int    Sierpinski(void);
-extern	int    solidguess(void);
 extern	void   spindac(int, int);
-extern	void   subDivide(int, int, int, int);
-extern	void   symPIplot(int, int, int);
-extern	void   symPIplot2J(int, int, int);
-extern	void   symPIplot4J(int, int, int);
-extern	void   symplot2(int, int, int);
-extern	void   symplot2J(int, int, int);
-extern	void   symplot2Y(int, int, int);
-extern	void   symplot4(int, int, int);
 extern	void   noplot(int, int, int);
-extern	int    test(void);
 extern	void   trans(double, double, double, MATRIX);
 extern	int    vmult(VECTOR,MATRIX,VECTOR);
 extern	void   xrot(double, MATRIX);
 extern	void   yrot(double, MATRIX);
 extern	void   zrot(double, MATRIX);
+
+/* for overlay return stack */
+
+#define ENTER_OVLY(ovlyid)\
+   extern int active_ovly;\
+   int prev_ovly;\
+   prev_ovly = active_ovly;\
+   active_ovly = ovlyid
+#define EXIT_OVLY active_ovly = prev_ovly
+
+#define OVLY_MISCOVL   1
+#define OVLY_CMDFILES  2
+#define OVLY_HELP      3
+#define OVLY_PROMPTS   4
+#define OVLY_LOADFILE  5
+#define OVLY_ROTATE    6
+#define OVLY_PRINTER   7
+#define OVLY_LINE3D    8
+#define OVLY_ENCODER   9
+#define OVLY_CALCFRAC 10
+
+/* text colors */
+#define BLACK	   0
+#define BLUE	   1
+#define GREEN	   2
+#define CYAN	   3
+#define RED	   4
+#define MAGENTA    5
+#define BROWN	   6 /* dirty yellow on cga */
+#define WHITE	   7
+/* use values below this for foreground only, they don't work background */
+#define GRAY	   8 /* don't use this much - is black on cga */
+#define L_BLUE	   9
+#define L_GREEN   10
+#define L_CYAN	  11
+#define L_RED	  12
+#define L_MAGENTA 13
+#define YELLOW	  14
+#define L_WHITE   15
+#define INVERSE 0x8000 /* when 640x200x2 mode in use, inverse */
+/* and their use: */
+extern unsigned char textcolor[];
+#define C_TITLE 	  textcolor[0]
+#define C_TITLE_DEV	  textcolor[1]
+#define C_HELP_HDG	  textcolor[2]
+#define C_HELP_BODY	  textcolor[3]
+#define C_HELP_INSTR	  textcolor[4]
+#define C_PROMPT_BKGRD	  textcolor[5]
+#define C_PROMPT_LO	  textcolor[6]
+#define C_PROMPT_MED	  textcolor[7]
+#define C_PROMPT_HI	  textcolor[8]
+#define C_PROMPT_INPUT	  textcolor[9]
+#define C_CHOICE_CURRENT  textcolor[10]
+#define C_CHOICE_SP_INSTR textcolor[11]
+#define C_CHOICE_SP_KEYIN textcolor[12]
+#define C_GENERAL_HI	  textcolor[13]
+#define C_GENERAL_MED	  textcolor[14]
+#define C_GENERAL_LO	  textcolor[15]
+#define C_GENERAL_INPUT   textcolor[16]
+#define C_DVID_BKGRD	  textcolor[17]
+#define C_DVID_HI	  textcolor[18]
+#define C_DVID_LO	  textcolor[19]
+#define C_STOP_ERR	  textcolor[20]
+#define C_STOP_INFO	  textcolor[21]
+#define C_TITLE_LOW	  textcolor[22]
+#define C_AUTHDIV1	  textcolor[23]
+#define C_AUTHDIV2	  textcolor[24]
+#define C_PRIMARY	  textcolor[25]
+#define C_CONTRIB	  textcolor[26]
 

@@ -87,7 +87,7 @@ IMPORT INT get_byte();
  * equal to the number of pixels passed...
  */
 IMPORT INT out_line();
-INT (*outln)() = out_line;
+INT (*outln)(UTINY *,INT) = out_line;
 
 /* IMPORT INT bad_code_count;
  *
@@ -97,6 +97,10 @@ INT (*outln)() = out_line;
  * corrupt in some way...
  */
 IMPORT INT bad_code_count;
+
+/* whups, here are more globals, added by PB: */
+IMPORT INT skipxdots; /* 0 to get every dot, 1 for every 2nd, 2 every 3rd, ... */
+IMPORT INT skipydots; /* ditto for rows */
 
 #define NULL   0L
 #define MAX_CODES   4095
@@ -255,6 +259,7 @@ WORD decoder(linewidth)
    UTINY *buf;
    FAST WORD code, fc, oc, bufcnt;
    WORD c, size, ret;
+   WORD xskip,yskip;
 
    /* Initialize for decoding a new image...
     */
@@ -263,6 +268,7 @@ WORD decoder(linewidth)
    if (size < 2 || 9 < size)
       return(BAD_CODE_SIZE);
    init_exp(size);
+   xskip = yskip = 0;
 
    /* Initialize in case they forgot to put in a clear code.
     * (This shouldn't happen, but we'll try and decode it anyway...)
@@ -323,23 +329,8 @@ WORD decoder(linewidth)
 
 	 oc = fc = c;
 
-	 /* And let us not forget to put the char into the buffer... And
-	  * if, on the off chance, we were exactly one pixel from the end
-	  * of the line, we have to send the buffer to the out_line()
-	  * routine...
-	  */
-	 *bufptr++ = c;
-	 if (--bufcnt == 0)
-	    {
-	    if ((ret = (*outln)(buf, linewidth)) < 0)
-	       return(ret);
-	    if (keypressed()) {
-		buzzer(1);
-		return(-1);
-		}
-	    bufptr = buf;
-	    bufcnt = linewidth;
-	    }
+	 /* And let us not forget to put the char into the buffer... */
+	 *sp++ = c; /* let the common code outside the if else stuff it */
 	 }
       else
 	 {
@@ -393,31 +384,40 @@ WORD decoder(linewidth)
 	       top_slot <<= 1;
 	       ++curr_size;
 	       }
+	 }
 
-	 /* Now that we've pushed the decoded string (in reverse order)
-	  * onto the stack, lets pop it off and put it into our decode
-	  * buffer...  And when the decode buffer is full, write another
-	  * line...
-	  */
-	 while (sp > dstack)
+      /* Now that we've pushed the decoded string (in reverse order)
+       * onto the stack, lets pop it off and put it into our decode
+       * buffer...  And when the decode buffer is full, write another
+       * line...
+       */
+      while (sp > dstack)
+	 {
+	 --sp;
+	 if (--xskip < 0)
 	    {
-	    *bufptr++ = *(--sp);
-	    if (--bufcnt == 0)
+	    xskip = skipxdots;
+	    *bufptr++ = *sp;
+	    }
+	 if (--bufcnt == 0) /* finished an input row? */
+	    {
+	    if (--yskip < 0)
 	       {
-	       if ((ret = (*outln)(buf, linewidth)) < 0)
+	       if ((ret = (*outln)(buf, bufptr - buf)) < 0)
 		  return(ret);
-	       if (keypressed()) {
-		  buzzer(1);
-		  return(-1);
-		}
-	       bufptr = buf;
-	       bufcnt = linewidth;
+	       yskip = skipydots;
 	       }
+	    if (keypressed())
+	       return(-1);
+	    bufptr = buf;
+	    bufcnt = linewidth;
+	    xskip = 0;
 	    }
 	 }
       }
-   ret = 0;
-   if (bufcnt != linewidth)
-      ret = out_line(buf, (linewidth - bufcnt));
-   return(ret);
+   /* PB note that if last line is incomplete, we're not going to try
+      to emit it;  original code did, but did so via out_line and therefore
+      couldn't have worked well in all cases... */
+   return(0);
    }
+

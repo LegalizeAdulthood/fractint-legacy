@@ -56,197 +56,20 @@ an appropriate setup, per_image, per_pixel, and orbit routines.
 extern struct complex  initorbit;
 extern struct lcomplex linitorbit;
 extern char useinitorbit;
- 
+
+extern void (*ltrig0)();
+extern void (*ltrig1)();
+extern void (*ltrig2)();
+extern void (*ltrig3)();
+extern void (*dtrig0)();
+extern void (*dtrig1)();
+extern void (*dtrig2)();
+extern void (*dtrig3)();
+
 /* -------------------------------------------------------------------- */
 /*   The following #defines allow the complex transcendental functions	*/
 /*   in parser.c to be used here thus avoiding duplicated code. 	*/
 /* -------------------------------------------------------------------- */
-
-union Arg argfirst,argsecond;
-
-unsigned char trigndx[] = {SIN,SQR,SINH,COSH};
-void (*ltrig0)() = lStkSin;
-void (*ltrig1)() = lStkSqr;
-void (*ltrig2)() = lStkSinh;
-void (*ltrig3)() = lStkCosh;
-
-void (*dtrig0)() = dStkSin;
-void (*dtrig1)() = dStkSqr;
-void (*dtrig2)() = dStkSinh;
-void (*dtrig3)() = dStkCosh;
-
-struct trig_funct_lst trigfn[] =
-/* changing the order of these alters meaning of *.fra file */
-{
-   {"sin", lStkSin, dStkSin },
-   {"cos", lStkCos, dStkCos },
-   {"sinh",lStkSinh,dStkSinh},
-   {"cosh",lStkCosh,dStkCosh},
-   {"exp", lStkExp, dStkExp },
-   {"log", lStkLog, dStkLog },
-   {"sqr", lStkSqr, dStkSqr }
-};
-
-/* switch obsolete fractal types to new generalizations */
-backwardscompat()
-{
-    extern	int	initfractype;
-    extern	int	distest;
-    extern struct fractal_info read_info;
-    switch(initfractype)
-    {
-    case LAMBDASINE:
-       initfractype = LAMBDATRIGFP;
-       trigndx[0] = SIN;
-       break;
-    case LAMBDACOS    :
-       initfractype = LAMBDATRIGFP;
-       trigndx[0] = COS;
-       break;
-    case LAMBDAEXP    :
-       initfractype = LAMBDATRIGFP;
-       trigndx[0] = EXP;
-       break;
-    case MANDELSINE   :
-       initfractype = MANDELTRIGFP;
-       trigndx[0] = SIN;
-       break;
-    case MANDELCOS    :
-       initfractype = MANDELTRIGFP;
-       trigndx[0] = COS;
-       break;
-    case MANDELEXP    :
-       initfractype = MANDELTRIGFP;
-       trigndx[0] = EXP;
-       break;
-    case MANDELSINH   :
-       initfractype = MANDELTRIGFP;
-       trigndx[0] = SINH;
-       break;
-    case LAMBDASINH   :
-       initfractype = LAMBDATRIGFP;
-       trigndx[0] = SINH;
-       break;
-    case MANDELCOSH   :
-       initfractype = MANDELTRIGFP;
-       trigndx[0] = COSH;
-       break;
-    case LAMBDACOSH   :
-       initfractype = LAMBDATRIGFP;
-       trigndx[0] = COSH;
-       break;
-    case LMANDELSINE  :
-       initfractype = MANDELTRIG;
-       trigndx[0] = SIN;
-       break;
-    case LLAMBDASINE  :
-       initfractype = LAMBDATRIG;
-       trigndx[0] = SIN;
-       break;
-    case LMANDELCOS   :
-       initfractype = MANDELTRIG;
-       trigndx[0] = COS;
-       break;
-    case LLAMBDACOS   :
-       initfractype = LAMBDATRIG;
-       trigndx[0] = COS;
-       break;
-    case LMANDELSINH  :
-       initfractype = MANDELTRIG;
-       trigndx[0] = SINH;
-       break;
-    case LLAMBDASINH  :
-       initfractype = LAMBDATRIG;
-       trigndx[0] = SINH;
-       break;
-    case LMANDELCOSH  :
-       initfractype = MANDELTRIG;
-       trigndx[0] = COSH;
-       break;
-    case LLAMBDACOSH  :
-       initfractype = LAMBDATRIG;
-       trigndx[0] = COSH;
-       break;
-    case LMANDELEXP   :
-       initfractype = MANDELTRIG;
-       trigndx[0] = EXP;
-       break;
-    case LLAMBDAEXP   :
-       initfractype = LAMBDATRIG;
-       trigndx[0] = EXP;
-       break;
-    case DEMM	      :
-       initfractype = MANDELFP;
-       distest = (read_info.ydots - 1) * 2;
-       break;
-    case DEMJ	      :
-       initfractype = JULIAFP;
-       distest = (read_info.ydots - 1) * 2;
-       break;
-    case MANDELLAMBDA :
-       useinitorbit = 2;
-       break;       
-   }
-   return(0);
-}
-
-/* set array of trig function indices according to "function=" command */
-set_trig_array(int k, char *name)
-{
-   char trigname[6];  
-   int i, lstlen;
-   char *slash;
-   strncpy(trigname,name,5);
-   trigname[5] = 0; /* safety first */
-   
-   if ((slash = strchr(trigname,'/')))
-      *slash = 0;
-   
-   strlwr(trigname);
-   lstlen = sizeof(trigfn)/sizeof(struct trig_funct_lst);
-
-   for(i=0;i<lstlen;i++)
-   {
-      if(strcmp(trigname,trigfn[i].name)==0)
-      {
-	 trigndx[k] = i;
-	 set_trig_pointers(k);
-	 break;
-      }
-   }
-   return(0);
-}
-set_trig_pointers(int which)
-{
-  /* set trig variable functions to avoid array lookup time */
-   int i;
-   switch(which)
-   {
-   case 0:
-      ltrig0 = trigfn[trigndx[0]].lfunct;
-      dtrig0 = trigfn[trigndx[0]].dfunct;
-      break;
-   case 1:
-      ltrig1 = trigfn[trigndx[1]].lfunct;
-      dtrig1 = trigfn[trigndx[1]].dfunct;
-      break;
-   case 2:
-      ltrig2 = trigfn[trigndx[2]].lfunct;
-      dtrig2 = trigfn[trigndx[2]].dfunct;
-      break;
-   case 3:
-      ltrig3 = trigfn[trigndx[3]].lfunct;
-      dtrig3 = trigfn[trigndx[3]].dfunct;
-      break;
-   default: /* do 'em all */
-      for(i=0;i<4;i++)
-	 set_trig_pointers(i);
-      break;
-   }
-   return(0);
-}
-typedef  struct complex CMPLX;
-typedef  struct lcomplex LCMPLX;
 
 #define CMPLXmod(z)	  (sqr((z).x)+sqr((z).y))
 #define CMPLXconj(z)	((z).y =  -((z).y))
@@ -349,13 +172,11 @@ LCMPLX lcoefficient,lold,lnew,lparm, linit,ltmp,ltmp2,lparm2;
 long ltempsqrx,ltempsqry;
 extern int decomp[];
 extern double param[];
+extern int potflag;			       /* potential enabled? */
 extern double f_radius,f_xcenter,f_ycenter;    /* inversion radius, center */
 extern double xxmin,xxmax,yymin,yymax;	       /* corners */
-extern VECTOR view;
 extern int overflow;
-extern int orbit_ptr;		/* pointer into save_orbit array */
 extern int integerfractal;	/* TRUE if fractal uses integer math */
-extern int kbdcount;
 
 int maxcolor;
 int root, degree,basin;
@@ -366,34 +187,22 @@ extern CMPLX init,tmp,old,new,saved,ComplexPower();
 CMPLX	staticroots[16]; /* roots array for degree 16 or less */
 CMPLX	*roots = staticroots;
 struct MPC	*MPCroots;
-extern int color, oldcolor, oldmax, oldmax10, row, col;
+extern int color, row, col;
 extern int invert;
 extern double far *dx0, far *dy0;
 extern double far *dx1, far *dy1;
-extern long XXOne, FgOne, FgTwo;
 long FgHalf;
 
 CMPLX one;
 CMPLX pwr;
 CMPLX Coefficient;
 
-extern int StandardPixel();
 extern void (*plot)();
 
-extern int  alloc_resume(int,int);	/* save/resume stuff */
-extern int  start_resume();
-extern void end_resume();
-extern int  put_resume(int len, ...);
-extern int  get_resume(int len, ...);
-extern int  calc_status, resuming;
-
-extern int	xdots, ydots;		/* coordinates of dots on the screen  */
 extern int	colors; 			/* maximum colors available */
 extern int	inside; 			/* "inside" color to use    */
+extern int	outside;			/* "outside" color to use   */
 extern int	finattract;
-extern int  min_index;		/* iteration for min_orbit */
-extern double min_orbit;	/* orbit value closest to origin */
-extern int	maxit;				/* try this many iterations */
 extern int	fractype;			/* fractal type */
 extern int	debugflag;			/* for debugging purposes */
 
@@ -424,19 +233,15 @@ int	bitshiftless1;			/* bit shift less 1 */
 double twopi = PI*2.0;
 static int c_exp;
 
+
 /* These are local but I don't want to pass them as parameters */
-extern CMPLX lambda;
-extern double deltaX, deltaY;
+CMPLX lambda;
 extern double magnitude, rqlim, rqlim2;
 CMPLX parm,parm2;
 CMPLX *floatparm;
 LCMPLX *longparm;
 extern int (*calctype)();
-extern FILE *fp_pot;
-extern int potflag; /* tells if continuous potential on  */
 extern unsigned long lm;		/* magnitude limit (CALCMAND) */
-
-extern int ixstart, ixstop, iystart, iystop; /* start, stop here */
 
 /* -------------------------------------------------------------------- */
 /*		These variables are external for speed's sake only      */
@@ -465,6 +270,8 @@ extern int MarksCplxMandperp(void);
 /* these are in (I think) JB.C */
 extern int Std4dFractal(), JulibrotSetup(), jb_per_pixel();
 
+extern int Lsystem();
+
 /* temporary variables for trig use */
 long lcosx, lcoshx, lsinx, lsinhx;
 long lcosy, lcoshy, lsiny, lsinhy;
@@ -484,7 +291,7 @@ CMPLX	T_Cm1;	      /* 3 * (floatparm - 1)		    */
 CMPLX	T_Cm2;	      /* 3 * (floatparm - 2)		    */
 CMPLX	T_Cm1Cm2;     /* (floatparm - 1) * (floatparm - 2) */
 
-FloatPreCalcMagnet2() /* precalculation for Magnet2 (M & J) for speed */
+void FloatPreCalcMagnet2() /* precalculation for Magnet2 (M & J) for speed */
   {
     T_Cm1.x = floatparm->x - 1.0;   T_Cm1.y = floatparm->y;
     T_Cm2.x = floatparm->x - 2.0;   T_Cm2.y = floatparm->y;
@@ -498,7 +305,6 @@ FloatPreCalcMagnet2() /* precalculation for Magnet2 (M & J) for speed */
 /*		Stand-alone routines											*/
 /* -------------------------------------------------------------------- */
 
-extern char far plasmamessage[];
 extern int orbit2dfloat();
 extern int orbit2dlong();
 extern int kamtorusfloatorbit();
@@ -518,269 +324,32 @@ extern int henonlongorbit();
 extern int pickoverfloatorbit();
 extern int gingerbreadfloatorbit();
 extern int diffusion();
+extern int plasma();
+extern int test();
 extern int ifs();
 extern int ifs3d();
-
-/***************************************************************/
-/* The following code now forms a generalised Fractal Engine   */
-/* for Bifurcation fractal typeS.  By rights it now belongs in */
-/* CALCFRACT.C, but it's easier for me to leave it here !      */
-
-/* Original code by Phil Wilson, hacked around by Kev Allen.   */
-
-/* Besides generalisation, enhancements include Periodicity    */
-/* Checking during the plotting phase (AND halfway through the */
-/* filter cycle, if possible, to halve calc times), quicker    */
-/* floating-point calculations for the standard Verhulst type, */
-/* and new bifurcation types (integer bifurcation, f.p & int   */
-/* biflambda - the real equivalent of complex Lambda sets -    */
-/* and f.p renditions of bifurcations of r*sin(Pi*p), which    */
-/* spurred Mitchel Feigenbaum on to discover his Number).      */
-
-/* To add further types, extend the fractalspecific[] array in */
-/* usual way, with Bifurcation as the engine, and the name of  */
-/* the routine that calculates the next bifucation generation  */
-/* as the "orbitcalc" routine in the fractalspecific[] entry.  */
-
-/* Bifurcation "orbitcalc" routines get called once per screen */
-/* pixel column.  They should calculate the next generation    */
-/* from the doubles Rate & Population (or the longs lRate &    */
-/* lPopulation if they use integer math), placing the result   */
-/* back in Population (or lPopulation).  They should return 0  */
-/* if all is ok, or any non-zero value if calculation bailout  */
-/* is desirable (eg in case of errors, or the series tending   */
-/* to infinity).		Have fun !		       */
-/***************************************************************/
-
-#define BIG 100000.0
-#define DEFAULTFILTER 1000     /* "Beauty of Fractals" recommends using 5000
-			       (p.25), but that seems unnecessary. Can
-			       override this value with a nonzero param1 */
-
-#define SEED 0.66		/* starting value for population */
-
-static void verhulst (void);
-
-int far *verhulst_array;
-unsigned int filter_cycles;
-
-unsigned int	half_time_check;
-	 long	lPopulation, lRate;
-	 double Population,  Rate;
-static	 int	mono, outside_x;
-
-int Bifurcation(void)
-{
-   unsigned long array_size;
-   int row, column;
-   column = 0;
-   if (resuming)
-   {
-      start_resume();
-      get_resume(sizeof(int),&column,0);
-      end_resume();
-   }
-
-   array_size =  (iystop + 2) * sizeof(int);
-   if ((verhulst_array = (int far *) farmemalloc(array_size)) == NULL)
-   {
-      setfortext();
-      printf("\n\n\n\n\nInsufficient free memory for calculation.");
-      printf("\n\n\nHit any key to continue.\n");
-      buzzer(2);
-      getakey();
-      setforgraphics();
-      return(-1);
-   }
-
-   for (row = 0; row <= iystop+1; row++)
-      verhulst_array[row] = 0;
-
-   mono = 0;
-   if (colors == 2)
-      mono = 1;
-   if (mono)
-   {
-      if (inside)
-      {
-	 outside_x = 0;
-	 inside = 1;
-      }
-      else
-	 outside_x = 1;
-   }
-
-   if ((filter_cycles = parm.x) == 0)
-      filter_cycles = DEFAULTFILTER;
-   half_time_check = FALSE;
-   if (periodicitycheck && maxit < filter_cycles)
-   {
-      filter_cycles = (filter_cycles - maxit + 1) / 2;
-      half_time_check = TRUE;
-   }
-
-   if (integerfractal)
-      linit.y = ly0[iystop];   /* Y-value of	*/
-   else
-      init.y = dy0[iystop];   /* bottom pixels */
-
-   while (column <= ixstop)
-   {
-      if(check_key())
-      {
-	 farmemfree((char far *)verhulst_array);
-	 alloc_resume(10,1);
-	 put_resume(sizeof(int),&column,0);
-	 return(-1);
-      }
-      if (integerfractal)
-	 lRate = lx0[column];
-      else
-	 Rate = dx0[column];
-      verhulst();	 /* calculate array once per column */
-
-      for (row = iystop+1; row > 0; row--)
-      {
-	 int color;
-	 color = verhulst_array[row];
-	 if(color && mono)
-	    color = inside;
-	 else if((!color) && mono)
-	    color = outside_x;
-	 verhulst_array[row] = 0;
-	 (*plot)(column,row,color);
-      }
-      column++;
-   }
-   farmemfree((char far *)verhulst_array);
-   return(0);
-}
-
-static void verhulst()		/* P. F. Verhulst (1845) */
-{
-   unsigned int pixel_row, counter, errors;
-
-   if (integerfractal)
-      lPopulation = SEED * fudge;
-   else
-      Population = SEED;
-
-   errors = overflow = FALSE;
-
-   for (counter=0 ; counter < filter_cycles ; counter++)
-   {
-      errors = (*fractalspecific[fractype].orbitcalc)();
-      if (errors)
-	 return;
-   }
-
-   if (half_time_check) /* check for periodicity at half-time */
-   {
-      Bif_Period_Init();
-      for (counter=0 ; counter < maxit ; counter++)
-      {
-	 errors = (*fractalspecific[fractype].orbitcalc)();
-	 if (errors) return;
-	 if (periodicitycheck && Bif_Periodic(counter)) break;
-      }
-      if (counter >= maxit)   /* if not periodic, go the distance */
-      {
-	 for (counter=0 ; counter < filter_cycles ; counter++)
-	 {
-	    errors = (*fractalspecific[fractype].orbitcalc)();
-	    if (errors) return;
-	 }
-      }
-   }
-
-   if (periodicitycheck) Bif_Period_Init();
-
-   for (counter=0 ; counter < maxit ; counter++)
-   {
-      errors = (*fractalspecific[fractype].orbitcalc)();
-      if (errors) return;
-
-      /* assign population value to Y coordinate in pixels */
-      if (integerfractal)
-	 pixel_row = iystop + 1 - (lPopulation - linit.y) / dely;
-      else
-	 pixel_row = iystop + 1 - (int)((Population - init.y) / deltaY);
-
-      /* if it's visible on the screen, save it in the column array */
-      if ((pixel_row >= 0) && (pixel_row <= iystop + 1))
-	 verhulst_array[ pixel_row ] ++;
-
-      if (periodicitycheck && Bif_Periodic(counter))
-      {
-	 if ((pixel_row >= 0) && (pixel_row <= iystop + 1))
-	    verhulst_array[ pixel_row ] --;
-	 break;
-      }
-   }
-}
-static	long	lBif_closenuf, lBif_savedpop;	/* poss future use  */
-static	double	 Bif_closenuf,	Bif_savedpop;
-static	int	 Bif_savedinc,	Bif_savedand;
-
-Bif_Period_Init()
-{
-   Bif_savedinc = 1;
-   Bif_savedand = 1;
-   if (integerfractal)
-   {
-      lBif_savedpop = -1;
-      lBif_closenuf = dely / 8;
-   }
-   else
-   {
-      Bif_savedpop = -1.0;
-      Bif_closenuf = deltaY / 8.0;
-   }
-}
-
-Bif_Periodic (time)	/* Bifurcation Population Periodicity Check */
-int time;		/* Returns : 1 if periodicity found, else 0 */
-{
-   if ((time & Bif_savedand) == 0)	/* time to save a new value */
-   {
-      if (integerfractal) lBif_savedpop = lPopulation;
-      else		     Bif_savedpop =  Population;
-      if (--Bif_savedinc == 0)
-      {
-	 Bif_savedand = (Bif_savedand << 1) + 1;
-	 Bif_savedinc = 4;
-      }
-   }
-   else 			/* check against an old save */
-   {
-      if (integerfractal)
-      {
-	 if (labs(lBif_savedpop-lPopulation) <= lBif_closenuf)
-	    return(1);
-      }
-      else
-      {
-	 if (fabs(Bif_savedpop-Population) <= Bif_closenuf)
-	    return(1);
-      }
-   }
-   return(0);
-}
-
-/* Here Endeth the Generalised Bifurcation Fractal Engine   */
-
-/* END Phil Wilson's Code (modified slightly by Kev Allen et. al. !) */
+extern int Bifurcation(void);
+extern int BifurcVerhulst(void);
+extern int LongBifurcVerhulst(void);
+extern int BifurcLambda(void);
+extern int LongBifurcLambda(void);
+extern int BifurcAddSinPi(void);
+extern int BifurcSetSinPi(void);
+extern int popcorn(void);
 
 /* -------------------------------------------------------------------- */
 /*		Bailout Routines Macros 												*/
 /* -------------------------------------------------------------------- */
 
-#define FLOATBAILOUT()	 \
-   tempsqrx = sqr(new.x);\
-   tempsqry = sqr(new.y);\
-   if((magnitude = tempsqrx + tempsqry) >= rqlim) return(1);\
+static int near floatbailout()
+{
+   if ( ( magnitude = ( tempsqrx=sqr(new.x) )
+		    + ( tempsqry=sqr(new.y) ) ) >= rqlim ) return(1);
    old = new;
+   return(0);
+}
 
+/* longbailout() is equivalent to next */
 #define LONGBAILOUT()	\
    ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);\
    lmagnitud = ltempsqrx + ltempsqry;\
@@ -841,50 +410,6 @@ int time;		/* Returns : 1 if periodicity found, else 0 */
       (X) = tmp;\
    }\
 
-/**********************************************************************/
-/*								                                      */
-/* The following are Bifurcation "orbitcalc" routines...              */
-/*								                                      */
-/**********************************************************************/
-
-BifurcVerhulst()
-  {
-    Population += Rate * Population * (1 - Population);
-    return (fabs(Population) > BIG);
-  }
-
-LongBifurcVerhulst()
-  {
-    ltmp.y = lPopulation - multiply(lPopulation,lPopulation,bitshift);
-    lPopulation += multiply(lRate,ltmp.y,bitshift);
-    return (overflow);
-  }
-
-BifurcLambda()
-  {
-    Population = Rate * Population * (1 - Population);
-    return (fabs(Population) > BIG);
-  }
-
-LongBifurcLambda()
-  {
-    ltmp.y = lPopulation - multiply(lPopulation,lPopulation,bitshift);
-    lPopulation = multiply(lRate,ltmp.y,bitshift);
-    return (overflow);
-  }
-
-BifurcAddSinPi()
-  {
-    Population += Rate * sin(PI*Population);
-    return (fabs(Population) > BIG);
-  }
-
-BifurcSetSinPi()
-  {
-    Population = Rate * sin(PI*Population);
-    return (fabs(Population) > BIG);
-  }
-
 /* -------------------------------------------------------------------- */
 /*		Fractal (once per iteration) routines			*/
 /* -------------------------------------------------------------------- */
@@ -893,7 +418,7 @@ static double xt, yt, t2;
 /* Raise complex number (base) to the (exp) power, storing the result
 ** in complex (result).
 */
-cpower(CMPLX *base, int exp, CMPLX *result)
+void cpower(CMPLX *base, int exp, CMPLX *result)
 {
     xt = base->x;   yt = base->y;
 
@@ -1174,8 +699,7 @@ Barnsley1Fractal()
       lnew.x = (oldxinitx + longparm->x - oldyinity);
       lnew.y = (oldyinitx + longparm->y + oldxinity);
    }
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 Barnsley1FPFractal()
@@ -1199,8 +723,7 @@ Barnsley1FPFractal()
       new.x = (foldxinitx + floatparm->x - foldyinity);
       new.y = (foldyinitx + floatparm->y + foldxinity);
    }
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 Barnsley2Fractal()
@@ -1225,8 +748,7 @@ Barnsley2Fractal()
       lnew.x = oldxinitx + longparm->x - oldyinity;
       lnew.y = oldyinitx + longparm->y + oldxinity;
    }
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 Barnsley2FPFractal()
@@ -1251,8 +773,7 @@ Barnsley2FPFractal()
       new.x = foldxinitx + floatparm->x - foldyinity;
       new.y = foldyinitx + floatparm->y + foldxinity;
    }
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 JuliaFractal()
@@ -1261,8 +782,7 @@ JuliaFractal()
       Mandelbrot and Julia */
    lnew.x  = ltempsqrx - ltempsqry + longparm->x;
    lnew.y = multiply(lold.x, lold.y, bitshiftless1) + longparm->y;
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 JuliafpFractal()
@@ -1270,8 +790,7 @@ JuliafpFractal()
    /* floating point version of classical Mandelbrot/Julia */
    new.x = tempsqrx - tempsqry + floatparm->x;
    new.y = 2.0 * old.x * old.y + floatparm->y;
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 LambdaFPFractal()
@@ -1283,8 +802,7 @@ LambdaFPFractal()
 
    new.x = floatparm->x * tempsqrx - floatparm->y * tempsqry;
    new.y = floatparm->x * tempsqry + floatparm->y * tempsqrx;
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 LambdaFractal()
@@ -1300,8 +818,7 @@ LambdaFractal()
 	- multiply(longparm->y, ltempsqry, bitshift);
    lnew.y = multiply(longparm->x, ltempsqry, bitshift)
 	+ multiply(longparm->y, ltempsqrx, bitshift);
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 SierpinskiFractal()
@@ -1315,8 +832,7 @@ SierpinskiFractal()
    else if(lold.x > ltmp.y)	/* if old.x > .5 */
       lnew.x = lnew.x - ltmp.x; /* new.x = 2 * old.x - 1 */
    /* end barnsley code */
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 SierpinskiFPFractal()
@@ -1332,8 +848,7 @@ SierpinskiFPFractal()
       new.x = new.x - 1;
 
    /* end barnsley code */
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 LambdaexponentFractal()
@@ -1388,8 +903,7 @@ FloatTrigPlusExponentFractal()
    /*new =   trig(old) + e**old + C  */
    new.x += tmpexp*cosy + floatparm->x;
    new.y += tmpexp*siny + floatparm->y;
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 
@@ -1406,8 +920,7 @@ LongTrigPlusExponentFractal()
    LCMPLXtrig0(lold,lnew);
    lnew.x += multiply(longtmp,	  lcosy,   bitshift) + longparm->x;
    lnew.y += multiply(longtmp,	  lsiny,   bitshift) + longparm->y;
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 MarksLambdaFractal()
@@ -1423,10 +936,11 @@ MarksLambdaFractal()
    lnew.y = multiply(lcoefficient.x, ltmp.y, bitshift)
 	+ multiply(lcoefficient.y, ltmp.x, bitshift) + longparm->y;
 
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
+
+long XXOne, FgOne, FgTwo;
 
 UnityFractal()
 {
@@ -1471,13 +985,12 @@ Mandel4Fractal()
    /* first, compute (x + iy)**2 */
    lnew.x  = ltempsqrx - ltempsqry;
    lnew.y = multiply(lold.x, lold.y, bitshiftless1);
-   LONGBAILOUT();
+   if (longbailout()) return(1);
 
    /* then, compute ((x + iy)**2)**2 + lambda */
    lnew.x  = ltempsqrx - ltempsqry + longparm->x;
    lnew.y = multiply(lold.x, lold.y, bitshiftless1) + longparm->y;
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 floatZtozPluszpwrFractal()
@@ -1486,8 +999,7 @@ floatZtozPluszpwrFractal()
    old = ComplexPower(old,old);
    new.x = new.x + old.x +floatparm->x;
    new.y = new.y + old.y +floatparm->y;
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 longZpowerFractal()
@@ -1496,16 +1008,14 @@ longZpowerFractal()
       lnew.x = lnew.y = 8L<<bitshift;
    lnew.x += longparm->x;
    lnew.y += longparm->y;
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 floatZpowerFractal()
 {
    cpower(&old,c_exp,&new);
    new.x += floatparm->x;
    new.y += floatparm->y;
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 Barnsley3Fractal()
@@ -1535,8 +1045,7 @@ Barnsley3Fractal()
 	 is uninteresting. */
       lnew.y += multiply(longparm->y,lold.x,bitshift);
    }
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 Barnsley3FPFractal()
@@ -1566,8 +1075,7 @@ Barnsley3FPFractal()
 	 is uninteresting. */
       new.y += floatparm->y * old.x;
    }
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 TrigPlusZsquaredFractal()
@@ -1578,8 +1086,7 @@ TrigPlusZsquaredFractal()
    LCMPLXtrig0(lold,lnew);
    lnew.x += ltempsqrx - ltempsqry + longparm->x;
    lnew.y += multiply(lold.x, lold.y, bitshiftless1) + longparm->y;
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 TrigPlusZsquaredfpFractal()
@@ -1591,41 +1098,7 @@ TrigPlusZsquaredfpFractal()
    CMPLXtrig0(old,new);
    new.x += tempsqrx - tempsqry + floatparm->x;
    new.y += 2.0 * old.x * old.y + floatparm->y;
-   FLOATBAILOUT();
-   return(0);
-}
-
-/* main engine for orbit-popcorn, subset of std engine */
-popcorn()
-{
-   int start_row;
-   start_row = 0;
-   if (resuming)
-   {
-      start_resume();
-      get_resume(sizeof(int),&start_row,0);
-      end_resume();
-   }
-   kbdcount=(cpu==386) ? 80 : 30;
-   plot = noplot;
-   tempsqrx = ltempsqrx = 0; /* PB added this to cover weird BAILOUTs */
-   for (row = start_row; row <= iystop; row++)
-   {
-      oldcolor = 1;
-      oldmax = min(maxit, 250);
-      oldmax10 = oldmax - 10;
-      for (col = 0; col <= ixstop; col++)
-      {
-	 if (StandardPixel() == -1) /* interrupted */
-	 {
-	    alloc_resume(10,1);
-	    put_resume(sizeof(int),&row,0);
-	    return(-1);
-	 }
-      }
-   }
-   calc_status = 4;
-   return(0);
+   return(floatbailout());
 }
 
 PopcornFractal()
@@ -1652,11 +1125,16 @@ PopcornFractal()
       old = new;
    }
    else
-      FLOATBAILOUT();
-   /* PB The above line is weird, not what it seems to be!  But, bracketing
+   /* FLOATBAILOUT(); */
+   /* PB The above line was weird, not what it seems to be!  But, bracketing
 	 it or always doing it (either of which seem more likely to be what
 	 was intended) changes the image for the worse, so I'm not touching it.
 	 Same applies to int form in next routine. */
+   /* PB later: recoded inline, still leaving it weird */
+      tempsqrx = sqr(new.x);
+   tempsqry = sqr(new.y);
+   if((magnitude = tempsqrx + tempsqry) >= rqlim) return(1);
+   old = new;
    return(0);
 }
 
@@ -1686,6 +1164,7 @@ LPopcornFractal()
    }
    else
       LONGBAILOUT();
+   /* PB above still the old way, is weird, see notes in FP popcorn case */
    return(0);
 }
 
@@ -1696,8 +1175,7 @@ int MarksCplxMand(void)
    FPUcplxmul(&tmp, &Coefficient, &new);
    new.x += floatparm->x;
    new.y += floatparm->y;
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 int SpiderfpFractal(void)
@@ -1707,8 +1185,7 @@ int SpiderfpFractal(void)
    new.y = 2 * old.x * old.y + tmp.y;
    tmp.x = tmp.x/2 + new.x;
    tmp.y = tmp.y/2 + new.y;
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 SpiderFractal(void)
@@ -1718,16 +1195,14 @@ SpiderFractal(void)
    lnew.y = multiply(lold.x, lold.y, bitshiftless1) + ltmp.y;
    ltmp.x = (ltmp.x >> 1) + lnew.x;
    ltmp.y = (ltmp.y >> 1) + lnew.y;
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 TetratefpFractal()
 {
    /* Tetrate(XAXIS) { c=z=pixel: z=c^z, |z|<=(P1+3) } */
    new = ComplexPower(*floatparm,old);
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 ZXTrigPlusZFractal()
@@ -1738,8 +1213,7 @@ ZXTrigPlusZFractal()
    LCMPLXmult(lold,ltmp,ltmp2);      /* ltmp2 = p1*old*trig(old)      */
    LCMPLXmult(lparm2,lold,ltmp);     /* ltmp  = p2*old		      */
    LCMPLXadd(ltmp2,ltmp,lnew);	     /* lnew  = p1*trig(old) + p2*old */
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 ScottZXTrigPlusZFractal()
@@ -1748,8 +1222,7 @@ ScottZXTrigPlusZFractal()
    LCMPLXtrig0(lold,ltmp);	    /* ltmp  = trig(old)       */
    LCMPLXmult(lold,ltmp,lnew);	     /* lnew  = old*trig(old)	*/
    LCMPLXadd(lnew,lold,lnew);	     /* lnew  = trig(old) + old */
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 SkinnerZXTrigSubZFractal()
@@ -1758,8 +1231,7 @@ SkinnerZXTrigSubZFractal()
    LCMPLXtrig0(lold,ltmp);	    /* ltmp  = trig(old)       */
    LCMPLXmult(lold,ltmp,lnew);	     /* lnew  = old*trig(old)	*/
    LCMPLXsub(lnew,lold,lnew);	     /* lnew  = trig(old) - old */
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 ZXTrigPlusZfpFractal()
@@ -1770,8 +1242,7 @@ ZXTrigPlusZfpFractal()
    CMPLXmult(old,tmp,tmp2);	 /* tmp2 = p1*old*trig(old)	 */
    CMPLXmult(parm2,old,tmp);	 /* tmp  = p2*old		 */
    CMPLXadd(tmp2,tmp,new);	 /* new  = p1*trig(old) + p2*old */
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 ScottZXTrigPlusZfpFractal()
@@ -1780,8 +1251,7 @@ ScottZXTrigPlusZfpFractal()
    CMPLXtrig0(old,tmp); 	/* tmp	= trig(old)	  */
    CMPLXmult(old,tmp,new);	 /* new  = old*trig(old)   */
    CMPLXadd(new,old,new);	 /* new  = trig(old) + old */
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 SkinnerZXTrigSubZfpFractal()
@@ -1790,8 +1260,7 @@ SkinnerZXTrigSubZfpFractal()
    CMPLXtrig0(old,tmp); 	/* tmp	= trig(old)	  */
    CMPLXmult(old,tmp,new);	 /* new  = old*trig(old)   */
    CMPLXsub(new,old,new);	 /* new  = trig(old) - old */
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 Sqr1overTrigFractal()
@@ -1800,8 +1269,7 @@ Sqr1overTrigFractal()
    LCMPLXtrig0(lold,lold);
    LCMPLXrecip(lold,lold);
    LCMPLXsqr(lold,lnew);
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 Sqr1overTrigfpFractal()
@@ -1810,8 +1278,7 @@ Sqr1overTrigfpFractal()
    CMPLXtrig0(old,old);
    CMPLXrecip(old,old);
    CMPLXsqr(old,new);
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 TrigPlusTrigFractal()
@@ -1822,8 +1289,7 @@ TrigPlusTrigFractal()
    LCMPLXtrig1(lold,ltmp2);
    LCMPLXmult(lparm2,ltmp2,lold);
    LCMPLXadd(ltmp,lold,lnew);
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 TrigPlusTrigfpFractal()
@@ -1834,8 +1300,7 @@ TrigPlusTrigfpFractal()
    CMPLXtrig1(old,old);
    CMPLXmult(parm2,old,old);
    CMPLXadd(tmp,old,new);
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 
@@ -1845,8 +1310,7 @@ ScottTrigPlusTrigFractal()
    LCMPLXtrig0(lold,ltmp);
    LCMPLXtrig1(lold,lold);
    LCMPLXadd(ltmp,lold,lnew);
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 ScottTrigPlusTrigfpFractal()
@@ -1855,8 +1319,7 @@ ScottTrigPlusTrigfpFractal()
    CMPLXtrig0(old,tmp);
    CMPLXtrig1(old,tmp2);
    CMPLXadd(tmp,tmp2,new);
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 SkinnerTrigSubTrigFractal()
@@ -1865,8 +1328,7 @@ SkinnerTrigSubTrigFractal()
    LCMPLXtrig0(lold,ltmp);
    LCMPLXtrig1(lold,ltmp2);
    LCMPLXsub(ltmp,ltmp2,lnew);
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 SkinnerTrigSubTrigfpFractal()
@@ -1875,8 +1337,7 @@ SkinnerTrigSubTrigfpFractal()
    CMPLXtrig0(old,tmp);
    CMPLXtrig1(old,tmp2);
    CMPLXsub(tmp,tmp2,new);
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 
@@ -1886,8 +1347,7 @@ TrigXTrigfpFractal()
    CMPLXtrig0(old,tmp);
    CMPLXtrig1(old,old);
    CMPLXmult(tmp,old,new);
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 TrigXTrigFractal()
@@ -1899,12 +1359,11 @@ TrigXTrigFractal()
    LCMPLXmult(ltmp,ltmp2,lnew);
    if(overflow)
       TryFloatFractal(TrigXTrigfpFractal);
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
  /* call float version of fractal if integer math overflow */
-TryFloatFractal(void (*fpFractal)())
+TryFloatFractal(int (*fpFractal)())
 {
    overflow=0;
    /* lold had better not be changed! */
@@ -1931,8 +1390,7 @@ TrigPlusSqrFractal() /* generalization of Scott and Skinner types */
    LCMPLXsqr_old(ltmp); 	/* ltmp = sqr(lold)			    */
    LCMPLXmult(lparm2,ltmp,ltmp);/* ltmp = lparm2*sqr(lold)		    */
    LCMPLXadd(lnew,ltmp,lnew);	/* lnew = lparm*trig(lold)+lparm2*sqr(lold) */
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 TrigPlusSqrfpFractal() /* generalization of Scott and Skinner types */
@@ -1943,8 +1401,7 @@ TrigPlusSqrfpFractal() /* generalization of Scott and Skinner types */
    CMPLXsqr_old(tmp);	     /* tmp = sqr(old)			    */
    CMPLXmult(parm2,tmp,tmp2); /* tmp = parm2*sqr(old)		     */
    CMPLXadd(new,tmp2,new);    /* new = parm*trig(old)+parm2*sqr(old) */
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 ScottTrigPlusSqrFractal()
@@ -1953,8 +1410,7 @@ ScottTrigPlusSqrFractal()
    LCMPLXtrig0(lold,lnew);    /* lnew = trig(lold)	     */
    LCMPLXsqr_old(ltmp);        /* lold = sqr(lold)	      */
    LCMPLXadd(ltmp,lnew,lnew);  /* lnew = trig(lold)+sqr(lold) */
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 ScottTrigPlusSqrfpFractal() /* float version */
@@ -1963,8 +1419,7 @@ ScottTrigPlusSqrfpFractal() /* float version */
    CMPLXtrig0(old,new);       /* new = trig(old)	  */
    CMPLXsqr_old(tmp);	       /* tmp = sqr(old)	   */
    CMPLXadd(new,tmp,new);      /* new = trig(old)+sqr(old) */
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 SkinnerTrigSubSqrFractal()
@@ -1973,8 +1428,7 @@ SkinnerTrigSubSqrFractal()
    LCMPLXtrig0(lold,lnew);    /* lnew = trig(lold)	     */
    LCMPLXsqr_old(ltmp);        /* lold = sqr(lold)	      */
    LCMPLXsub(lnew,ltmp,lnew);  /* lnew = trig(lold)-sqr(lold) */
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 SkinnerTrigSubSqrfpFractal()
@@ -1983,8 +1437,7 @@ SkinnerTrigSubSqrfpFractal()
    CMPLXtrig0(old,new);       /* new = trig(old) */
    CMPLXsqr_old(tmp);	       /* old = sqr(old)  */
    CMPLXsub(new,tmp,new);      /* new = trig(old)-sqr(old) */
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 TrigZsqrdfpFractal()
@@ -1992,8 +1445,7 @@ TrigZsqrdfpFractal()
    /* { z=pixel: z=trig(z*z), |z|<TEST } */
    CMPLXsqr_old(tmp);
    CMPLXtrig0(tmp,new);
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 TrigZsqrdFractal() /* this doesn't work very well */
@@ -2003,8 +1455,7 @@ TrigZsqrdFractal() /* this doesn't work very well */
    LCMPLXtrig0(ltmp,lnew);
    if(overflow)
       TryFloatFractal(TrigZsqrdfpFractal);
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 SqrTrigFractal()
@@ -2012,8 +1463,7 @@ SqrTrigFractal()
    /* { z=pixel: z=sqr(trig(z)), |z|<TEST} */
    LCMPLXtrig0(lold,ltmp);
    LCMPLXsqr(ltmp,lnew);
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 SqrTrigfpFractal()
@@ -2021,8 +1471,7 @@ SqrTrigfpFractal()
    /* SZSB(XYAXIS) { z=pixel, TEST=(p1+3): z=sin(z)*sin(z), |z|<TEST} */
    CMPLXtrig0(old,tmp);
    CMPLXsqr(tmp,new);
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 
@@ -2047,8 +1496,7 @@ Magnet1Fractal()    /*	  Z = ((Z**2 + C - 1)/(2Z + C - 2))**2	  */
     new.y = tmp.x * tmp.y;
     new.y += new.y;
 
-    FLOATBAILOUT();
-    return(0);
+    return(floatbailout());
   }
 
 Magnet2Fractal()  /* Z = ((Z**3 + 3(C-1)Z + (C-1)(C-2)	) /	 */
@@ -2081,8 +1529,7 @@ Magnet2Fractal()  /* Z = ((Z**3 + 3(C-1)Z + (C-1)(C-2)	) /	 */
     new.y = tmp.x * tmp.y;
     new.y += new.y;
 
-    FLOATBAILOUT();
-    return(0);
+    return(floatbailout());
   }
 
 LambdaTrigFractal()
@@ -2146,8 +1593,7 @@ ManOWarFractal()
    lnew.x  = ltempsqrx - ltempsqry + ltmp.x + longparm->x;
    lnew.y = multiply(lold.x, lold.y, bitshiftless1) + ltmp.y + longparm->y;
    ltmp = lold;
-   LONGBAILOUT();
-   return(0);
+   return(longbailout());
 }
 
 ManOWarfpFractal()
@@ -2156,8 +1602,7 @@ ManOWarfpFractal()
    new.x = tempsqrx - tempsqry + tmp.x + floatparm->x;
    new.y = 2.0 * old.x * old.y + tmp.y + floatparm->y;
    tmp = old;
-   FLOATBAILOUT();
-   return(0);
+   return(floatbailout());
 }
 
 
@@ -2284,6 +1729,7 @@ int julia_per_pixel()
 
    ltempsqrx = multiply(lold.x, lold.x, bitshift);
    ltempsqry = multiply(lold.y, lold.y, bitshift);
+   ltmp = lold;
    return(0);
 }
 
@@ -2431,7 +1877,7 @@ int mandelfp_per_pixel()
       old = initorbit;
    else if(useinitorbit == 2)
       old = init;
-        
+
    if(inside == -60 || inside == -61)
    {
       /* kludge to match "Beauty of Fractals" picture since we start
@@ -2464,6 +1910,7 @@ int juliafp_per_pixel()
    }
    tempsqrx = sqr(old.x);  /* precalculated value for regular Julia */
    tempsqry = sqr(old.y);
+   tmp = old;
    return(0);
 }
 
@@ -2600,9 +2047,9 @@ int MarksCplxMandperp(void)
 
 MandelSetup()		/* Mandelbrot Routine */
 {
-   extern int outside; /* there is a static int outside decl elsewhere */
    if (debugflag != 90 && ! invert && decomp[0] == 0 && rqlim <= 4.0
-       && forcesymmetry == 999 && biomorph == -1 && inside != -60
+       && bitshift == 29 && potflag == 0
+       && biomorph == -1 && inside != -60
        && inside != -61 && outside == -1 && useinitorbit != 1)
       calctype = calcmand; /* the normal case - use CALCMAND */
    else
@@ -2616,9 +2063,9 @@ MandelSetup()		/* Mandelbrot Routine */
 
 JuliaSetup()		/* Julia Routine */
 {
-   extern int outside; /* there is a static int outside decl elsewhere */
    if (debugflag != 90 && ! invert && decomp[0] == 0 && rqlim <= 4.0
-       && forcesymmetry == 999 && biomorph == -1 && inside != -60
+       && bitshift == 29 && potflag == 0
+       && biomorph == -1 && inside != -60
        && inside != -61 && outside == -1 && !finattract)
       calctype = calcmand; /* the normal case - use CALCMAND */
    else
@@ -2743,7 +2190,7 @@ NewtonSetup()		/* Newton/NewtBasin Routines */
 
 StandaloneSetup()
 {
-   timer(fractalspecific[fractype].calctype,0);
+   timer(0,fractalspecific[fractype].calctype);
    return(0);		/* effectively disable solid-guessing */
 }
 
@@ -2818,7 +2265,7 @@ JuliafpSetup()
       break;
    case LAMBDAEXP:
       if(parm.y == 0.0)
-         symmetry=XAXIS;
+	 symmetry=XAXIS;
       get_julia_attractor (0.0, 0.0);	/* another attractor? */
       break;
    default:
@@ -2936,8 +2383,8 @@ TrigPlusTrigfpSetup()
 
 FnPlusFnSym() /* set symmetry matrix for fn+fn type */
 {
-   static char far fnplusfn[7][7] =  
-   {/* fn2 ->sin     cos    sinh    cosh   sqr    exp    log  */    
+   static char far fnplusfn[7][7] =
+   {/* fn2 ->sin     cos    sinh    cosh   sqr	  exp	 log  */
    /* fn1 */
    /* sin */ {PI_SYM,XAXIS, XYAXIS, XAXIS, XAXIS, XAXIS, XAXIS},
    /* cos */ {XAXIS, PI_SYM,XAXIS,  XYAXIS,XAXIS, XAXIS, XAXIS},
@@ -2956,12 +2403,12 @@ FnPlusFnSym() /* set symmetry matrix for fn+fn type */
 
 ZXTrigPlusZSetup()
 {
-   static char far ZXTrigPlusZSym1[] = 
-   /* fn1 ->  sin   cos    sinh  cosh   sqr    exp   log  */    
-             {XAXIS,XYAXIS,XAXIS,XYAXIS,XYAXIS,XAXIS,XAXIS};
-   static char far ZXTrigPlusZSym2[] = 
-   /* fn1 ->  sin   cos    sinh  cosh   sqr    exp   log  */    
-             {NOSYM,ORIGIN,NOSYM,ORIGIN,XYAXIS,NOSYM,NOSYM};
+   static char far ZXTrigPlusZSym1[] =
+   /* fn1 ->  sin   cos    sinh  cosh	sqr    exp   log  */
+	     {XAXIS,XYAXIS,XAXIS,XYAXIS,XYAXIS,XAXIS,XAXIS};
+   static char far ZXTrigPlusZSym2[] =
+   /* fn1 ->  sin   cos    sinh  cosh	sqr    exp   log  */
+	     {NOSYM,ORIGIN,NOSYM,ORIGIN,XYAXIS,NOSYM,NOSYM};
    if(param[1] == 0.0 && param[3] == 0.0)
       symmetry = ZXTrigPlusZSym1[trigndx[0]];
    else
@@ -2972,9 +2419,9 @@ ZXTrigPlusZSetup()
       fractalspecific[fractype].orbitcalc =  ZXTrigPlusZFractal;
       if(lparm.x == fudge && lparm.y == 0L && lparm2.y == 0L && debugflag != 90)
       {
-         if(lparm2.x == fudge)	   /* Scott variant */
+	 if(lparm2.x == fudge)	   /* Scott variant */
 		 fractalspecific[fractype].orbitcalc =	ScottZXTrigPlusZFractal;
-         else if(lparm2.x == -fudge)  /* Skinner variant */
+	 else if(lparm2.x == -fudge)  /* Skinner variant */
 		 fractalspecific[fractype].orbitcalc =	SkinnerZXTrigSubZFractal;
       }
       return(JulialongSetup());
@@ -2984,9 +2431,9 @@ ZXTrigPlusZSetup()
       fractalspecific[fractype].orbitcalc =  ZXTrigPlusZfpFractal;
       if(parm.x == 1.0 && parm.y == 0.0 && parm2.y == 0.0 && debugflag != 90)
       {
-         if(parm2.x == 1.0)	/* Scott variant */
+	 if(parm2.x == 1.0)	/* Scott variant */
 		 fractalspecific[fractype].orbitcalc =	ScottZXTrigPlusZfpFractal;
-         else if(parm2.x == -1.0)	/* Skinner variant */
+	 else if(parm2.x == -1.0)	/* Skinner variant */
 		 fractalspecific[fractype].orbitcalc =	SkinnerZXTrigSubZfpFractal;
       }
    }
@@ -3040,8 +2487,8 @@ LambdaTrigSetup()
 
 JuliafnPlusZsqrdSetup()
 {
-   static char far fnpluszsqrd[] = 
-   /* fn1 ->  sin   cos    sinh  cosh   sqr    exp   log  */    
+   static char far fnpluszsqrd[] =
+   /* fn1 ->  sin   cos    sinh  cosh	sqr    exp   log  */
    /* sin */ {NOSYM,ORIGIN,NOSYM,ORIGIN,ORIGIN,NOSYM,NOSYM};
 
    symmetry = fnpluszsqrd[trigndx[0]];
@@ -3053,9 +2500,9 @@ JuliafnPlusZsqrdSetup()
 
 SqrTrigSetup()
 {
-   static char far SqrTrigSym[] = 
-   /* fn1 ->  sin    cos    sinh   cosh   sqr    exp   log  */    
-             {PI_SYM,PI_SYM,XYAXIS,XYAXIS,XYAXIS,XAXIS,XAXIS};
+   static char far SqrTrigSym[] =
+   /* fn1 ->  sin    cos    sinh   cosh   sqr	 exp   log  */
+	     {PI_SYM,PI_SYM,XYAXIS,XYAXIS,XYAXIS,XAXIS,XAXIS};
    symmetry = SqrTrigSym[trigndx[0]];
    if(fractalspecific[fractype].isinteger)
       return(JulialongSetup());
@@ -3065,8 +2512,8 @@ SqrTrigSetup()
 
 FnXFnSetup()
 {
-   static char far fnxfn[7][7] = 
-   {/* fn2 ->sin     cos    sinh    cosh   sqr    exp    log  */    
+   static char far fnxfn[7][7] =
+   {/* fn2 ->sin     cos    sinh    cosh   sqr	  exp	 log  */
    /* fn1 */
    /* sin */ {PI_SYM,YAXIS, XYAXIS,XYAXIS,XYAXIS,XAXIS, XAXIS},
    /* cos */ {YAXIS, PI_SYM,XYAXIS,XYAXIS,XYAXIS,XAXIS, XAXIS},
@@ -3245,11 +2692,11 @@ struct fractalspecificstuff far fractalspecific[] =
    |---------------|---------------|---------------|----------------|-------|
    */
 
-   "mandel",      realz0, imagz0,"","",0,0,0,0, 0,
+   "mandel",      realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.5,  1.5, -1.5,  1.5, 1, JULIA,	 NOFRACTAL, MANDELFP, XAXIS_NOPARM,
    JuliaFractal,  mandel_per_pixel,MandelSetup,    calcmand,	    STDBAILOUT,
 
-   "julia",       realparm, imagparm,"","",0.3,0.6,0,0, 0,
+   "julia",       realparm, imagparm,"","",0.3,0.6,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MANDEL, JULIAFP,  ORIGIN,
    JuliaFractal,   julia_per_pixel, JuliaSetup,    calcmand,	    STDBAILOUT,
 
@@ -3257,7 +2704,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, MPNEWTBASIN,   NOSYM,
    NewtonFractal2, otherjuliafp_per_pixel,  NewtonSetup, StandardFractal,NOBAILOUT,
 
-   "lambda",      realparm, imagparm,"","",0.85,0.6,0,0, 0,
+   "lambda",      realparm, imagparm,"","",0.85,0.6,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MANDELLAMBDA, LAMBDAFP,  NOSYM,
    LambdaFractal,   julia_per_pixel, JulialongSetup,  StandardFractal,STDBAILOUT,
 
@@ -3274,79 +2721,79 @@ struct fractalspecificstuff far fractalspecific[] =
    JuliafpFractal, juliafp_per_pixel,  JuliafpSetup,StandardFractal,STDBAILOUT,
 
    "plasma",      "Graininess Factor (.1 to 50, default is 2)","","","",2,0,0,0,
-   NOZOOM+NOGUESS+NOTRACE+NORESUME,
+   NOZOOM+NOGUESS+NOTRACE+NORESUME+WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL,	 NOSYM,
    NULL,	   NULL,   StandaloneSetup,	 plasma,	  NOBAILOUT,
 
-   "*mandelfn",  realz0, imagz0,"","",0,0,0,0,TRIG1,
+   "*mandelfn",  realz0, imagz0,"","",0,0,0,0,TRIG1+WINFRAC,
    -8.0,  8.0, -6.0,  6.0, 0, LAMBDATRIGFP,NOFRACTAL, MANDELTRIG, XYAXIS_NOPARM,
    LambdaTrigfpFractal,othermandelfp_per_pixel,MandelTrigSetup,StandardFractal,FTRIGBAILOUT,
 
    "*manowar",    realz0, imagz0,"","",0,0,0,0, 0,
-   -2.5,  1.5, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, MANOWAR,  XAXIS_NOPARM,
+   -2.5,  1.5, -1.5,  1.5, 0, MANOWARJ, NOFRACTAL, MANOWAR,  XAXIS_NOPARM,
    ManOWarfpFractal,mandelfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "manowar",    realz0, imagz0,"","",0,0,0,0, 0,
-   -2.5,  1.5, -1.5,  1.5, 1, NOFRACTAL, NOFRACTAL, MANOWARFP,  XAXIS_NOPARM,
+   "manowar",    realz0, imagz0,"","",0,0,0,0, WINFRAC,
+   -2.5,  1.5, -1.5,  1.5, 1, MANOWARJFP, NOFRACTAL, MANOWARFP, XAXIS_NOPARM,
    ManOWarFractal,mandel_per_pixel, MandellongSetup,StandardFractal,STDBAILOUT,
 
    "test",        "(testpt Param #1)","(testpt param #2)","(testpt param #3)", "(testpt param #4)",0,0,0,0, 0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,	 NOSYM,
    NULL,	  NULL, 	    StandaloneSetup, test,    STDBAILOUT,
 
-  "sierpinski",  "","","","",0,0,0,0, 0,
+  "sierpinski",  "","","","",0,0,0,0, WINFRAC,
    -0.9,  1.7, -0.9,  1.7, 1, NOFRACTAL, NOFRACTAL, SIERPINSKIFP,   NOSYM,
    SierpinskiFractal,long_julia_per_pixel, SierpinskiSetup,StandardFractal,127.0,
 
-  "barnsleym1",  realz0, imagz0,"","",0,0,0,0, 0,
+  "barnsleym1",  realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, BARNSLEYJ1,NOFRACTAL, BARNSLEYM1FP,  XYAXIS_NOPARM,
    Barnsley1Fractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-  "barnsleyj1",  realparm, imagparm,"","",0.6,1.1,0,0, 0,
+  "barnsleyj1",  realparm, imagparm,"","",0.6,1.1,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, BARNSLEYM1, BARNSLEYJ1FP,  ORIGIN,
    Barnsley1Fractal,long_julia_per_pixel,JulialongSetup,StandardFractal,STDBAILOUT,
 
-   "barnsleym2",  realz0, imagz0,"","",0,0,0,0, 0,
+   "barnsleym2",  realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, BARNSLEYJ2,NOFRACTAL, BARNSLEYM2FP,  YAXIS_NOPARM,
    Barnsley2Fractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "barnsleyj2",  realparm, imagparm,"","",0.6,1.1,0,0, 0,
+   "barnsleyj2",  realparm, imagparm,"","",0.6,1.1,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, BARNSLEYM2, BARNSLEYJ2FP,  ORIGIN,
    Barnsley2Fractal,long_julia_per_pixel,JulialongSetup,StandardFractal,STDBAILOUT,
 
-   "sqr(fn)", "","","","",0,0,0,0,TRIG1,
+   "sqr(fn)", "","","","",0,0,0,0,TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, NOFRACTAL, SQRTRIGFP,XYAXIS,
    SqrTrigFractal,   long_julia_per_pixel, SqrTrigSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "*sqr(fn)", "","","","",0,0,0,0,TRIG1,
+   "*sqr(fn)", "","","","",0,0,0,0,TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, NOFRACTAL, SQRTRIG,XYAXIS,
    SqrTrigfpFractal,   otherjuliafp_per_pixel, SqrTrigSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "fn+fn", recoeftrg1, imcoeftrg1,recoeftrg2, imcoeftrg2,1,0,1,0,TRIG2,
+   "fn+fn", recoeftrg1, imcoeftrg1,recoeftrg2, imcoeftrg2,1,0,1,0,TRIG2+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, NOFRACTAL, TRIGPLUSTRIGFP,XAXIS,
-   TrigPlusTrigFractal,   long_julia_per_pixel, TrigPlusTriglongSetup,  StandardFractal,LTRIGBAILOUT,
+   TrigPlusTrigFractal,   long_julia_per_pixel, TrigPlusTriglongSetup,	StandardFractal,LTRIGBAILOUT,
 
-   "mandellambda",realz0, imagz0,"","",0,0,0,0, 0,
+   "mandellambda",realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -3.0,  5.0, -3.0,  3.0, 1, LAMBDA,	 NOFRACTAL, MANDELLAMBDAFP,  XAXIS_NOPARM,
    LambdaFractal,mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "marksmandel", realz0, imagz0, exponent,"",0,0,1,0, 0,
+   "marksmandel", realz0, imagz0, exponent,"",0,0,1,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, MARKSJULIA, NOFRACTAL, NOFRACTAL,  NOSYM,
    MarksLambdaFractal,marksmandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "marksjulia", realparm, imagparm, exponent,"",0.1,0.9,0,0, 0,
+   "marksjulia", realparm, imagparm, exponent,"",0.1,0.9,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MARKSMANDEL, NOFRACTAL,   ORIGIN,
    MarksLambdaFractal,julia_per_pixel,MarksJuliaSetup,StandardFractal,STDBAILOUT,
 
-   "unity",       "","","","",0,0,0,0, 0,
+   "unity",       "","","","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, NOFRACTAL, UNITYFP,   XYAXIS,
    UnityFractal, long_julia_per_pixel,UnitySetup,StandardFractal,NOBAILOUT,
 
-   "mandel4",      realz0, imagz0,"","",0,0,0,0, 0,
+   "mandel4",      realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, JULIA4,	  NOFRACTAL, NOFRACTAL,  XAXIS_NOPARM,
    Mandel4Fractal,  mandel_per_pixel, MandellongSetup, StandardFractal,  STDBAILOUT,
 
-   "julia4",       realparm, imagparm,"","",0.6,0.55,0,0, 0,
+   "julia4",       realparm, imagparm,"","",0.6,0.55,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MANDEL4, NOFRACTAL, ORIGIN,
    Mandel4Fractal,   julia_per_pixel, JulialongSetup,StandardFractal,	 STDBAILOUT,
 
@@ -3358,19 +2805,19 @@ struct fractalspecificstuff far fractalspecific[] =
    -11.0,  11.0, -11.0, 11.0, 16, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM,
    NULL,	  NULL,      StandaloneSetup, ifs3d,	NOBAILOUT,
 
-   "barnsleym3",  realz0, imagz0,"","",0,0,0,0, 0,
+   "barnsleym3",  realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, BARNSLEYJ3,NOFRACTAL, BARNSLEYM3FP,  XAXIS_NOPARM,
    Barnsley3Fractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "barnsleyj3",  realparm, imagparm,"","",0.1,0.36,0,0, 0,
-   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, BARNSLEYM3, BARNSLEYJ3FP,  XAXIS,
+   "barnsleyj3",  realparm, imagparm,"","",0.1,0.36,0,0, WINFRAC,
+   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, BARNSLEYM3, BARNSLEYJ3FP,  NOSYM,
    Barnsley3Fractal,long_julia_per_pixel,JulialongSetup,StandardFractal,STDBAILOUT,
 
-   "fn(z*z)", "","","","",0,0,0,0,TRIG1,
+   "fn(z*z)", "","","","",0,0,0,0,TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, NOFRACTAL, TRIGSQRFP,XYAXIS,
    TrigZsqrdFractal,   julia_per_pixel, JulialongSetup,  StandardFractal,STDBAILOUT,
 
-   "*fn(z*z)", "","","","",0,0,0,0,TRIG1,
+   "*fn(z*z)", "","","","",0,0,0,0,TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, NOFRACTAL, TRIGSQR,XYAXIS,
    TrigZsqrdfpFractal,	 juliafp_per_pixel, JuliafpSetup,  StandardFractal,STDBAILOUT,
 
@@ -3378,31 +2825,31 @@ struct fractalspecificstuff far fractalspecific[] =
    1.9,  3.0, 0,  1.34, 0, NOFRACTAL, NOFRACTAL, LBIFURCATION, NOSYM,
    BifurcVerhulst, NULL, StandaloneSetup, Bifurcation, NOBAILOUT,
 
-   "*fn+fn", recoeftrg1, imcoeftrg1,recoeftrg2, imcoeftrg2,1,0,1,0,TRIG2,
+   "*fn+fn", recoeftrg1, imcoeftrg1,recoeftrg2, imcoeftrg2,1,0,1,0,TRIG2+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, NOFRACTAL, TRIGPLUSTRIG,XAXIS,
-   TrigPlusTrigfpFractal, otherjuliafp_per_pixel, TrigPlusTrigfpSetup,  StandardFractal,LTRIGBAILOUT,
+   TrigPlusTrigfpFractal, otherjuliafp_per_pixel, TrigPlusTrigfpSetup,	StandardFractal,LTRIGBAILOUT,
 
-   "fn*fn", "","","","",0,0,0,0,TRIG2,
+   "fn*fn", "","","","",0,0,0,0,TRIG2+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, NOFRACTAL, TRIGXTRIGFP,PI,
-   TrigXTrigFractal, long_julia_per_pixel, FnXFnSetup,  StandardFractal,LTRIGBAILOUT,
+   TrigXTrigFractal, long_julia_per_pixel, FnXFnSetup,	StandardFractal,LTRIGBAILOUT,
 
-   "*fn*fn", "","","","",0,0,0,0,TRIG2,
+   "*fn*fn", "","","","",0,0,0,0,TRIG2+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, NOFRACTAL, TRIGXTRIG,PI,
    TrigXTrigfpFractal, otherjuliafp_per_pixel, FnXFnSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "sqr(1/fn)","","","","",0,0,0,0,TRIG1,
+   "sqr(1/fn)","","","","",0,0,0,0,TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, NOFRACTAL, SQR1OVERTRIGFP,NOSYM,
    Sqr1overTrigFractal, long_julia_per_pixel, SqrTrigSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "*sqr(1/fn)","","","","",0,0,0,0,TRIG1,
+   "*sqr(1/fn)","","","","",0,0,0,0,TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, NOFRACTAL, SQR1OVERTRIG,NOSYM,
    Sqr1overTrigfpFractal, otherjuliafp_per_pixel, SqrTrigSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "fn*z+z",recoeftrg1, imcoeftrg1, recoef2nd,imcoef2nd,1,0,1,0,TRIG1,
+   "fn*z+z",recoeftrg1, imcoeftrg1, recoef2nd,imcoef2nd,1,0,1,0,TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 1, NOFRACTAL, NOFRACTAL, ZXTRIGPLUSZFP,XAXIS,
    ZXTrigPlusZFractal,julia_per_pixel,ZXTrigPlusZSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "*fn*z+z",recoeftrg1, imcoeftrg2, recoef2nd,imcoef2nd,1,0,1,0,TRIG1,
+   "*fn*z+z",recoeftrg1, imcoeftrg2, recoef2nd,imcoef2nd,1,0,1,0,TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, NOFRACTAL, ZXTRIGPLUSZ,XAXIS,
    ZXTrigPlusZfpFractal,   juliafp_per_pixel, ZXTrigPlusZSetup,  StandardFractal,LTRIGBAILOUT,
 
@@ -3410,7 +2857,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -1.0,  1.0, -.75, .75, 0, NOFRACTAL, NOFRACTAL, KAM, NOSYM,
    kamtorusfloatorbit, NULL,	     orbit3dfloatsetup, orbit2dfloat,	 NOBAILOUT,
 
-   "kamtorus",kamangle,kamstep,kamstop,pointsperorbit,1.3,.05,1.5,150, NOGUESS+NOTRACE+INFCALC,
+   "kamtorus",kamangle,kamstep,kamstop,pointsperorbit,1.3,.05,1.5,150, NOGUESS+NOTRACE+INFCALC+WINFRAC,
    -1.0,  1.0, -.75, .75,16, NOFRACTAL, NOFRACTAL, KAMFP,	NOSYM,
    kamtoruslongorbit, NULL,	     orbit3dlongsetup, orbit2dlong,	 NOBAILOUT,
 
@@ -3418,43 +2865,43 @@ struct fractalspecificstuff far fractalspecific[] =
    -3.0,  3.0, -1, 3.5, 0, NOFRACTAL, NOFRACTAL, KAM3D,       NOSYM,
    kamtorusfloatorbit, NULL,	     orbit3dfloatsetup, orbit3dfloat,	 NOBAILOUT,
 
-   "kamtorus3d",kamangle,kamstep,kamstop,pointsperorbit,1.3,.05,1.5,150, NOGUESS+NOTRACE+INFCALC,
+   "kamtorus3d",kamangle,kamstep,kamstop,pointsperorbit,1.3,.05,1.5,150, NOGUESS+NOTRACE+INFCALC+WINFRAC,
    -3.0,  3.0, -1, 3.5,16, NOFRACTAL, NOFRACTAL, KAM3DFP,     NOSYM,
    kamtoruslongorbit, NULL,	     orbit3dlongsetup, orbit3dlong,	 NOBAILOUT,
 
-   "lambdafn",      realparm, imagparm,"","",1.0,0.4,0,0,TRIG1,
+   "lambdafn",      realparm, imagparm,"","",1.0,0.4,0,0,TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, MANDELTRIG, LAMBDATRIGFP,PI_SYM,
    LambdaTrigFractal,long_julia_per_pixel, LambdaTrigSetup,	StandardFractal,LTRIGBAILOUT,
 
-   "manfn+zsqrd",      realz0, imagz0,"","",0,0,0,0, TRIG1,
+   "manfn+zsqrd",      realz0, imagz0,"","",0,0,0,0, TRIG1+WINFRAC,
    -2.5,  1.5, -1.5,  1.5, 16, LJULTRIGPLUSZSQRD,  NOFRACTAL, FPMANTRIGPLUSZSQRD, XAXIS_NOPARM,
    TrigPlusZsquaredFractal,mandel_per_pixel,MandellongSetup,StandardFractal, STDBAILOUT,
 
-   "julfn+zsqrd",       realparm, imagparm,"","",-0.5,0.5,0,0, TRIG1,
+   "julfn+zsqrd",       realparm, imagparm,"","",-0.5,0.5,0,0, TRIG1+WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 16, NOFRACTAL, LMANTRIGPLUSZSQRD, FPJULTRIGPLUSZSQRD,	NOSYM,
    TrigPlusZsquaredFractal,julia_per_pixel, JuliafnPlusZsqrdSetup,StandardFractal, STDBAILOUT,
 
-   "*manfn+zsqrd",    realz0, imagz0,"","",0,0,0,0, TRIG1,
+   "*manfn+zsqrd",    realz0, imagz0,"","",0,0,0,0, TRIG1+WINFRAC,
    -2.5,  1.5, -1.5,  1.5, 0, FPJULTRIGPLUSZSQRD,   NOFRACTAL, LMANTRIGPLUSZSQRD, XAXIS_NOPARM,
    TrigPlusZsquaredfpFractal,mandelfp_per_pixel, MandelfpSetup,StandardFractal, STDBAILOUT,
 
-   "*julfn+zsqrd",     realparm, imagparm,"","",-0.5,0.5,0,0, TRIG1,
-   -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, FPMANTRIGPLUSZSQRD, LJULTRIGPLUSZSQRD,	NOSYM,
+   "*julfn+zsqrd",     realparm, imagparm,"","",-0.5,0.5,0,0, TRIG1+WINFRAC,
+   -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, FPMANTRIGPLUSZSQRD, LJULTRIGPLUSZSQRD, NOSYM,
    TrigPlusZsquaredfpFractal, juliafp_per_pixel,  JuliafnPlusZsqrdSetup,StandardFractal, STDBAILOUT,
 
-   "*lambdafn",  realparm, imagparm,"","",1.0,0.4,0,0,TRIG1,
+   "*lambdafn",  realparm, imagparm,"","",1.0,0.4,0,0,TRIG1+WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, MANDELTRIGFP, LAMBDATRIG, PI_SYM,
    LambdaTrigfpFractal,otherjuliafp_per_pixel,LambdaTrigSetup,StandardFractal,FTRIGBAILOUT,
 
-   "mandelfn",realz0, imagz0,"","",0,0,0,0,TRIG1,
+   "mandelfn",realz0, imagz0,"","",0,0,0,0,TRIG1+WINFRAC,
    -8.0,  8.0, -6.0,  6.0, 16, LAMBDATRIG, NOFRACTAL, MANDELTRIGFP, XYAXIS_NOPARM,
    LambdaTrigFractal,long_mandel_per_pixel,MandelTrigSetup,StandardFractal,LTRIGBAILOUT,
 
-   "manzpower", realz0, imagz0, exponent,"",0,0,2,0, 0,
+   "manzpower", realz0, imagz0, exponent,"",0,0,2,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, LJULIAZPOWER, NOFRACTAL, FPMANDELZPOWER,	XAXIS,
    longZpowerFractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "julzpower", realparm, imagparm, exponent,"",0.3,0.6,2,0, 0,
+   "julzpower", realparm, imagparm, exponent,"",0.3,0.6,2,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, LMANDELZPOWER, FPJULIAZPOWER,	 ORIGIN,
    longZpowerFractal,long_julia_per_pixel,JulialongSetup,StandardFractal,STDBAILOUT,
 
@@ -3466,35 +2913,35 @@ struct fractalspecificstuff far fractalspecific[] =
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, FPMANDELZPOWER, LJULIAZPOWER,	ORIGIN,
    floatZpowerFractal, otherjuliafp_per_pixel,	JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "manzzpwr",    realz0, imagz0, exponent,"",0,0,2,0, 0,
+   "manzzpwr",    realz0, imagz0, exponent,"",0,0,2,0, WINFRAC,
    -2.5,  1.5, -1.5,  1.5, 0, FPJULZTOZPLUSZPWR,   NOFRACTAL, NOFRACTAL,  XAXIS_NOPARM,
    floatZtozPluszpwrFractal,othermandelfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "julzzpwr",     realparm, imagparm, exponent,"",-0.3,0.3,2,0, 0,
+   "julzzpwr",     realparm, imagparm, exponent,"",-0.3,0.3,2,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, FPMANZTOZPLUSZPWR, NOFRACTAL,	NOSYM,
    floatZtozPluszpwrFractal, otherjuliafp_per_pixel,  JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "manfn+exp",realz0, imagz0,"","",0,0,0,0, TRIG1,
+   "manfn+exp",realz0, imagz0,"","",0,0,0,0, TRIG1+WINFRAC,
    -8.0,  8.0, -6.0,  6.0, 16, LJULTRIGPLUSEXP,    NOFRACTAL,  FPMANTRIGPLUSEXP, XAXIS_NOPARM,
    LongTrigPlusExponentFractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "julfn+exp",      realparm, imagparm,"","",0,0,0,0, TRIG1,
+   "julfn+exp",      realparm, imagparm,"","",0,0,0,0, TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, LMANTRIGPLUSEXP,FPJULTRIGPLUSEXP, NOSYM,
    LongTrigPlusExponentFractal,   long_julia_per_pixel, JulialongSetup,  StandardFractal,STDBAILOUT,
 
-   "*manfn+exp",   realz0, imagz0,"","",0,0,0,0, TRIG1,
+   "*manfn+exp",   realz0, imagz0,"","",0,0,0,0, TRIG1+WINFRAC,
    -8.0,  8.0, -6.0,  6.0, 0, FPJULTRIGPLUSEXP, NOFRACTAL, LMANTRIGPLUSEXP,   XAXIS_NOPARM,
    FloatTrigPlusExponentFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "*julfn+exp",   realparm, imagparm,"","",0,0,0,0, TRIG1,
+   "*julfn+exp",   realparm, imagparm,"","",0,0,0,0, TRIG1+WINFRAC,
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, FPMANTRIGPLUSEXP, LJULTRIGPLUSEXP,   NOSYM,
    FloatTrigPlusExponentFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "*popcorn", "", "", "","",0,0,0,0, NOGUESS+NOTRACE,
+   "*popcorn", "", "", "","",0,0,0,0, NOGUESS+NOTRACE+WINFRAC,
    -3.0,  3.0, -2.2,  2.2, 0, NOFRACTAL, NOFRACTAL, LPOPCORN,  NOPLOT,
    PopcornFractal, otherjuliafp_per_pixel,  JuliafpSetup,  popcorn,STDBAILOUT,
 
-   "popcorn", "", "", "","",0,0,0,0, NOGUESS+NOTRACE,
+   "popcorn", "", "", "","",0,0,0,0, NOGUESS+NOTRACE+WINFRAC,
    -3.0,  3.0, -2.2,  2.2, 16, NOFRACTAL, NOFRACTAL, FPPOPCORN,  NOPLOT,
    LPopcornFractal,   long_julia_per_pixel, JulialongSetup,popcorn,STDBAILOUT,
 
@@ -3502,35 +2949,35 @@ struct fractalspecificstuff far fractalspecific[] =
    -15,  15, 0, 30, 0, NOFRACTAL, NOFRACTAL, LLORENZ,	NOSYM,
    lorenz3dfloatorbit, NULL,	     orbit3dfloatsetup, orbit2dfloat,	 NOBAILOUT,
 
-   "lorenz",timestep,"a","b", "c",.02,5,15,1, NOGUESS+NOTRACE+INFCALC,
+   "lorenz",timestep,"a","b", "c",.02,5,15,1, NOGUESS+NOTRACE+INFCALC+WINFRAC,
    -15,  15, 0, 30, 16, NOFRACTAL, NOFRACTAL, FPLORENZ,   NOSYM,
    lorenz3dlongorbit, NULL,	    orbit3dlongsetup, orbit2dlong,    NOBAILOUT,
 
-   "lorenz3d",timestep,"a","b", "c",.02,5,15,1, NOGUESS+NOTRACE+NORESUME,
+   "lorenz3d",timestep,"a","b", "c",.02,5,15,1, NOGUESS+NOTRACE+NORESUME+WINFRAC,
    -30.0,  30.0,  -30.0,   30.0, 16, NOFRACTAL, NOFRACTAL, FPLORENZ3D,	 NOSYM,
    lorenz3dlongorbit, NULL,	    orbit3dlongsetup, orbit3dlong,    NOBAILOUT,
 
-   "newton",      newtdegree,"", "","",3,0,0,0, 0,
+   "newton",      newtdegree,"", "","",3,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NEWTON,   XAXIS,
    MPCNewtonFractal, MPCjulia_per_pixel,  NewtonSetup, StandardFractal,NOBAILOUT,
 
-   "newtbasin",      newtdegree,stripes, "","",0,0,0,0, 0,
+   "newtbasin",      newtdegree,stripes, "","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NEWTBASIN,	 NOSYM,
    MPCNewtonFractal, MPCjulia_per_pixel,  NewtonSetup, StandardFractal,NOBAILOUT,
 
-   "complexnewton", realdegree, imagdegree, realroot, imagroot,3,0,1,0, 0,
+   "complexnewton", realdegree, imagdegree, realroot, imagroot,3,0,1,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,	 NOSYM,
    ComplexNewton, otherjuliafp_per_pixel,  ComplexNewtonSetup, StandardFractal,NOBAILOUT,
 
-   "complexbasin", realdegree, imagdegree, realroot, imagroot,3,0,1,0, 0,
+   "complexbasin", realdegree, imagdegree, realroot, imagroot,3,0,1,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,	 NOSYM,
    ComplexBasin, otherjuliafp_per_pixel,  ComplexNewtonSetup,  StandardFractal, NOBAILOUT,
 
-   "cmplxmarksmand", realz0, imagz0, realdegree, imagdegree,0,0,1,0, 0,
+   "cmplxmarksmand", realz0, imagz0, realdegree, imagdegree,0,0,1,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, COMPLEXMARKSJUL, NOFRACTAL, NOFRACTAL,   NOSYM,
    MarksCplxMand, MarksCplxMandperp, MandelfpSetup, StandardFractal, STDBAILOUT,
 
-   "cmplxmarksjul", realparm, imagparm, realdegree, imagdegree,0.3,0.6,1,0, 0,
+   "cmplxmarksjul", realparm, imagparm, realdegree, imagdegree,0.3,0.6,1,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, COMPLEXMARKSMAND, NOFRACTAL,	NOSYM,
    MarksCplxMand, juliafp_per_pixel, JuliafpSetup, StandardFractal, STDBAILOUT,
 
@@ -3548,7 +2995,7 @@ struct fractalspecificstuff far fractalspecific[] =
 
    "*lambda",      realparm, imagparm,"","",0.85,0.6,0,0, 0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, MANDELLAMBDAFP, LAMBDA,  NOSYM,
-   LambdaFPFractal,   juliafp_per_pixel, JuliafpSetup,  StandardFractal,STDBAILOUT,
+   LambdaFPFractal,   juliafp_per_pixel, JuliafpSetup,	StandardFractal,STDBAILOUT,
 
   "*barnsleym1",  realz0, imagz0,"","",0,0,0,0, 0,
    -2.0,  2.0, -1.5,  1.5, 0, BARNSLEYJ1FP,NOFRACTAL, BARNSLEYM1,  XYAXIS_NOPARM,
@@ -3580,13 +3027,13 @@ struct fractalspecificstuff far fractalspecific[] =
 
    "julibrot", "","","","", -.83, -.83, .25, -.25, NOGUESS+NOTRACE+NOROTATE+NORESUME,
    -2.0, 2.0, -1.5, 1.5, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL, NOSYM,
-   JuliaFractal, jb_per_pixel, JulibrotSetup, Std4dFractal, STDBAILOUT,
+   JuliaFractal, jb_per_pixel, JulibrotSetup, Std4dFractal, NOBAILOUT,
 
    "*lorenz3d",timestep,"a","b", "c",.02,5,15,1, NOGUESS+NOTRACE+NORESUME,
    -30.0,  30.0,  -30.0,   30.0, 0, NOFRACTAL, NOFRACTAL, LLORENZ3D,   NOSYM,
    lorenz3dfloatorbit, NULL,	     orbit3dfloatsetup, orbit3dfloat,	 NOBAILOUT,
 
-   "rossler3d",timestep,"a","b", "c",.04, .2, .2, 5.7, NOGUESS+NOTRACE+NORESUME,
+   "rossler3d",timestep,"a","b", "c",.04, .2, .2, 5.7, NOGUESS+NOTRACE+NORESUME+WINFRAC,
    -30.0,  30.0,  -20.0,   40.0, 16, NOFRACTAL, NOFRACTAL, FPROSSLER,	NOSYM,
    rosslerlongorbit, NULL,	   orbit3dlongsetup, orbit3dlong,    NOBAILOUT,
 
@@ -3594,7 +3041,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -30.0,  30.0,  -20.0,   40.0, 0, NOFRACTAL, NOFRACTAL, LROSSLER,   NOSYM,
    rosslerfloatorbit, NULL,	    orbit3dfloatsetup, orbit3dfloat,	NOBAILOUT,
 
-   "henon","a","b","","",1.4,.3,0,0, NOGUESS+NOTRACE+INFCALC,
+   "henon","a","b","","",1.4,.3,0,0, NOGUESS+NOTRACE+INFCALC+WINFRAC,
    -1.4,  1.4,	-.5,   .5, 16, NOFRACTAL, NOFRACTAL, FPHENON,	NOSYM,
    henonlongorbit, NULL,	 orbit3dlongsetup, orbit2dlong,    NOBAILOUT,
 
@@ -3602,16 +3049,16 @@ struct fractalspecificstuff far fractalspecific[] =
    -1.4,  1.4,	-.5,   .5, 0, NOFRACTAL, NOFRACTAL, LHENON,   NOSYM,
    henonfloatorbit, NULL,	  orbit3dfloatsetup, orbit2dfloat,    NOBAILOUT,
 
-   "pickover","a","b","c","d",2.24,.43,-.65, -2.43, NOGUESS+NOTRACE+NORESUME,
+   "pickover","a","b","c","d",2.24,.43,-.65, -2.43, NOGUESS+NOTRACE+NORESUME+WINFRAC,
    -2.8,  2.8,	-2.0, 2.0, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,	 NOSYM,
    pickoverfloatorbit, NULL,	     orbit3dfloatsetup, orbit3dfloat,	 NOBAILOUT,
 
-   "gingerbreadman","","","","",0,0,0,0, NOGUESS+NOTRACE+INFCALC,
+   "gingerbreadman","","","","",0,0,0,0, NOGUESS+NOTRACE+INFCALC+WINFRAC,
    -4.5,  8.5,	-4.5, 8.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,	 NOSYM,
    gingerbreadfloatorbit, NULL, orbit3dfloatsetup, orbit2dfloat,    NOBAILOUT,
 
    "diffusion",        "Border size","","", "",10,0,0,0,
-   NOZOOM+NOGUESS+NOTRACE+NORESUME,
+   NOZOOM+NOGUESS+NOTRACE+WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,	 NOSYM,
    NULL,   NULL,     StandaloneSetup, diffusion,    NOBAILOUT,
 
@@ -3620,38 +3067,38 @@ struct fractalspecificstuff far fractalspecific[] =
    UnityfpFractal, otherjuliafp_per_pixel,StandardSetup,StandardFractal,NOBAILOUT,
 
    "*spider",    realz0, imagz0,"","",0,0,0,0, 0,
-   -2.5,  1.5, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, SPIDERFP+1,  XAXIS_NOPARM,
+   -2.5,  1.5, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, SPIDER,  XAXIS_NOPARM,
    SpiderfpFractal,mandelfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "spider",    realz0, imagz0,"","",0,0,0,0, 0,
+   "spider",    realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.5,  1.5, -1.5,  1.5, 1, NOFRACTAL, NOFRACTAL, SPIDERFP,  XAXIS_NOPARM,
    SpiderFractal,mandel_per_pixel, MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "tetrate",  realparm, imagparm,"","",0,0,0,0, 0,
+   "tetrate",  realparm, imagparm,"","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,	XAXIS,
    TetratefpFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "magnet1m", realz0, imagz0,"","",0,0,0,0,0,
+   "magnet1m", realz0, imagz0,"","",0,0,0,0,WINFRAC,
    -4.0, 4.0, -3.0, 3.0, 0, MAGNET1J,NOFRACTAL,NOFRACTAL, XAXIS_NOPARM,
    Magnet1Fractal,mandelfp_per_pixel,MandelfpSetup,StandardFractal,100.0,
 
-   "magnet1j", realz0, imagz0,"","",0,0,0,0,0,
+   "magnet1j", realparm, imagparm,"","",0,0,0,0,WINFRAC,
    -8.0,  8.0, -6.0,  6.0, 0, NOFRACTAL,MAGNET1M,NOFRACTAL, XAXIS_NOIMAG,
    Magnet1Fractal,juliafp_per_pixel,JuliafpSetup,StandardFractal,100.0,
 
-   "magnet2m", realz0, imagz0,"","",0,0,0,0,0,
+   "magnet2m", realz0, imagz0,"","",0,0,0,0,WINFRAC,
    -1.5,3.7, -1.95,1.95,   0, MAGNET2J,NOFRACTAL,NOFRACTAL, XAXIS_NOPARM,
    Magnet2Fractal,mandelfp_per_pixel,MandelfpSetup,StandardFractal,100.0,
 
-   "magnet2j", realz0, imagz0,"","",0,0,0,0,0,
+   "magnet2j", realparm, imagparm,"","",0,0,0,0,WINFRAC,
    -8.0,  8.0, -6.0,  6.0, 0, NOFRACTAL,MAGNET2M,NOFRACTAL, XAXIS_NOIMAG,
    Magnet2Fractal,juliafp_per_pixel,JuliafpSetup,StandardFractal,100.0,
 
-   "bifurcation",     "", "","","",0,0,0,0,NOGUESS+NOTRACE+NOROTATE,
+   "bifurcation",     "", "","","",0,0,0,0,NOGUESS+NOTRACE+NOROTATE+WINFRAC,
    1.9,  3.0, 0,  1.34, 1, NOFRACTAL, NOFRACTAL, BIFURCATION, NOSYM,
    LongBifurcVerhulst, NULL, StandaloneSetup, Bifurcation, NOBAILOUT,
 
-   "biflambda",     "", "","","",0,0,0,0,NOGUESS+NOTRACE+NOROTATE,
+   "biflambda",     "", "","","",0,0,0,0,NOGUESS+NOTRACE+NOROTATE+WINFRAC,
    -2.0, 4.0, -1.0, 2.0, 1, NOFRACTAL, NOFRACTAL, BIFLAMBDA,   NOSYM,
    LongBifurcLambda, NULL, StandaloneSetup, Bifurcation, NOBAILOUT,
 
@@ -3659,22 +3106,33 @@ struct fractalspecificstuff far fractalspecific[] =
    -2.0, 4.0, -1.0, 2.0, 0, NOFRACTAL, NOFRACTAL, LBIFLAMBDA,  NOSYM,
    BifurcLambda, NULL, StandaloneSetup, Bifurcation, NOBAILOUT,
 
-   "bif+sinpi",    "", "","","",0,0,0,0,NOGUESS+NOTRACE+NOROTATE,
+   "bif+sinpi",    "", "","","",0,0,0,0,NOGUESS+NOTRACE+NOROTATE+WINFRAC,
    0.275,1.45, 0.0, 2.0, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM,
    BifurcAddSinPi, NULL, StandaloneSetup, Bifurcation, NOBAILOUT,
 
-   "bif=sinpi",     "", "","","",0,0,0,0,NOGUESS+NOTRACE+NOROTATE,
+   "bif=sinpi",     "", "","","",0,0,0,0,NOGUESS+NOTRACE+NOROTATE+WINFRAC,
    -2.5, 2.5, -3.5, 3.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM,
    BifurcSetSinPi, NULL, StandaloneSetup, Bifurcation, NOBAILOUT,
 
-   "*popcornjul", "", "", "","",0,0,0,0, 0,
+   "*popcornjul", "", "", "","",0,0,0,0, WINFRAC,
    -3.0,  3.0, -2.2,  2.2, 0, NOFRACTAL, NOFRACTAL, LPOPCORNJUL,  ORIGIN,
    PopcornFractal, otherjuliafp_per_pixel,  JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "popcornjul", "", "", "","",0,0,0,0, 0,
+   "popcornjul", "", "", "","",0,0,0,0, WINFRAC,
    -3.0,  3.0, -2.2,  2.2, 16, NOFRACTAL, NOFRACTAL, FPPOPCORNJUL,  ORIGIN,
    LPopcornFractal,   long_julia_per_pixel, JulialongSetup,  StandardFractal,STDBAILOUT,
 
+   "lsystem", "Order", "", "", "", 2, 0, 0, 0, NOZOOM+NORESUME+NOGUESS+NOTRACE+WINFRAC,
+   -1, 1, -1, 1, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL, NOSYM,
+   NULL, NULL, StandaloneSetup, Lsystem, NOBAILOUT,
+
+   "*manowarj",    realparm, imagparm,"","",0,0,0,0, 0,
+   -2.5,  1.5, -1.5,  1.5, 0, NOFRACTAL, MANOWAR, MANOWARJ,  NOSYM,
+   ManOWarfpFractal,juliafp_per_pixel, JuliafpSetup,StandardFractal,STDBAILOUT,
+
+   "manowarj",    realparm, imagparm,"","",0,0,0,0, WINFRAC,
+   -2.5,  1.5, -1.5,  1.5, 1, NOFRACTAL,MANOWARFP , MANOWARJFP, NOSYM,
+   ManOWarFractal,julia_per_pixel, JulialongSetup,StandardFractal,STDBAILOUT,
 
    NULL, NULL, NULL, NULL, NULL,0,0,0,0, 0, /* marks the END of the list */
    0,  0, 0,  0, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM,

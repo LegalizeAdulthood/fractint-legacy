@@ -1,6 +1,10 @@
-fractint+encoder+config+gifview+decoder+rotate+general+
-calcmand+calcfrac+fractals+testpt+diskvid+line3d+3d+
-newton+cmdfiles+fr8514a+hgcfra+help+farmsg+prompts+
-targa+loadmap+tgasubs+video+yourvid+parser+
-printer+tgaview+f16+fpu087+fpu387+mpmath_c+mpmath_a+jb+
-lorenz+plot3d+zoom;
+fractint+general+fractals+fracsubr+fracsuba+
+newton+fr8514a+hgcfra+diskvid+
+targa+loadmap+tgasubs+video+yourvid+parser+lsys+
+fpu087+fpu387+mpmath_c+mpmath_a+jb+
+lorenz+plot3d+3d+zoom+miscres+realdos+
+gifview+decoder+tgaview+f16+
+(cmdfiles)+(help+helpmsg)+(prompts)+
+(calcfrac+calcmand+testpt)+
+(encoder)+(loadfile+loadfdos)+(line3d)+
+(rotate+editpal)+(printer)+(miscovl);

@@ -1,21 +1,33 @@
 /* This file contains a 3D replacement for the out_line function called
    by the decoder. The purpose is to apply various 3D transformations before
-   displaying points. Called once per line of the original GIF file.
+   displaying points. Called once per line of the input file.
+
+   This module is linked as an overlay, use ENTER_OVLY and EXIT_OVLY.
 
    Original Author Tim Wegner, with extensive help from Marc Reinig.
 */
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <limits.h>
 #include <dos.h>
 #include "fractint.h"
 
-static int TOP = -1;
-static int BOT = -1;
-static int LEFT = -1;
-static int RIGHT = -1;
+/* routines in this module	*/
+
+void line3d_overlay(void);
+int  line3d();
+
+static void vdraw_line(double *,double *,int);
+static int  putminmax();
+static int  clipcolor(int,int,int);
+/* static int  clipcolor2(int,int,int); */
+static int  interpcolor(int,int,int);
+static int  T_clipcolor(int,int,int);
+static int  T_interpcolor(int,int,int);
+static void corners(),draw_light_box(),showfpoint();
+static int  putatriangle(),offscreen(),H_R(),R_H();
+static int  Open_T_24(),startdisk1(),set_pixel_buff();
 
 static	int line_length1;
 static	int T_header_24 = 18; /* Size of current Targa-24 header */
@@ -29,20 +41,15 @@ int haze;
 static int HAZE_MULT;
 int full_color;
 char light_name[80];
-extern	int warn;	    /* warnings on/off */
+extern	char overwrite;     /* overwrite flag on/off */
 unsigned char back_color[3];
 static unsigned char Real_Color;
 extern int dotmode; /* video access method, 11 if really disk video */
 extern int calc_status;
 extern long calctime;
 
-int clipcolor(int,int,int);
-int clipcolor2(int,int,int);
-int interpcolor(int,int,int);
-int T_clipcolor(int,int,int);
-int T_interpcolor(int,int,int);
-int (*fillplot)();
-int (*normalplot)();
+static int (*fillplot)();
+static int (*normalplot)();
 int (*standardplot)();
 
 char preview = 0;
@@ -59,19 +66,21 @@ extern int overflow;
 extern int filetype;
 extern char floatflag;
 extern int (*plot)();
-extern int xdots, ydots, colors;
+extern int xdots, ydots, colors, sxoffs, syoffs;
 extern int debugflag;
 extern void draw_line (int X1, int Y1, int X2, int Y2, int color);
 extern int extraseg;
 extern unsigned height;
 extern int rowcount;		/* in general.asm */
 extern int init3d[];			/* 3D arguments (FRACTINT.C) */
-extern FILE *fp_pot;			/* potential file pointer */
 extern long far *lx0;
 extern int transparent[2];		/* transparency min/max */
+extern int pot16bit;
+extern int filecolors;
 
 static int zcoord = 256;
 static double aspect;		   /* aspect ratio */
+static int evenoddrow;
 
 static float far *sinthetaarray;	/* all sine   thetas go here  */
 static float far *costhetaarray;	/* all cosine thetas go here */
@@ -110,7 +119,9 @@ VECTOR view;	/* position of observer for perspective */
 VECTOR cross;
 VECTOR tmpcross;
 
-line3d(unsigned char pixels[], unsigned linelen)
+void line3d_overlay() { }	/* for restore_active_ovly */
+
+int line3d(unsigned char pixels[], unsigned linelen)
 {
 
 static FILE *out1;
@@ -173,14 +184,20 @@ char openfile[80], lightfiletype[10];
    double xmin, ymin, zmin, xmax, ymax, zmax;
    int i,j;
    int lastdot;
+   int rownum;
+
+   ENTER_OVLY(OVLY_LINE3D);
 
    if(transparent[0] || transparent[1])
       plot = normalplot = T_clipcolor;	/*  Use the transparent plot function */
-   else if(colors >= 16)
+   else /* if(colors >= 16) */
       plot = normalplot = clipcolor;	/* the usual FRACTINT plot function with clipping */
-   else
-      plot = normalplot = clipcolor2;
+/* else
+      plot = normalplot = clipcolor2; */
 
+   rownum = rowcount;
+   if (pot16bit)
+      rownum >>= 1;
 
    /*
       This IF clause is executed ONCE per image. All precalculations are
@@ -188,7 +205,7 @@ char openfile[80], lightfiletype[10];
       communication with the rest of the program is generally via static
       or global variables.
    */
-   if(rowcount == 0)
+   if(rowcount++ == 0)
    {
 
 
@@ -200,50 +217,56 @@ char openfile[80], lightfiletype[10];
       /* lastrow stores the previous row of the original GIF image for
 	 the purpose of filling in gaps with triangle procedure */
 
-    calctime = 0;
+    calctime = evenoddrow = 0;
     calc_status = 1; /* mark as in-progress, and enable <tab> timer display */
-    if (dotmode == 11) {
-       movecursor(2,0);
-       printf("...mapping to 3d...");
-       }
+    if (dotmode == 11)
+       dvid_status(1,"...mapping to 3d...");
 
-    IAmbient = (unsigned int) 255 * (float)(100 - Ambient) / 100.0;
+/* MRR */
+    IAmbient = (unsigned int) (255 * (float)(100 - Ambient) / 100.0);
+    if (IAmbient < 1)	IAmbient = 1;
+
     if (full_color && FILLTYPE >= 5)
     {
-
 	restart:
 
-	strcpy(openfile,light_name);
-	strcpy(lightfiletype,".tga");    /*  Assume file ext. is ".tga"   */
+	strcpy(openfile,light_name);		      /*  Work with copy  */
+	strcpy(lightfiletype,".tga");          /*  Assume ext. is ".tga"  */
 	for (i = 0; i < strlen(openfile); i++)	/*  See if they supplied  */
-	    if (openfile[i] == '.')             /*  an extention          */
-	    {					/*  Yes!		  */
-		strcpy(lightfiletype,&openfile[i]);  /*  Capture it	  */
+	    if (openfile[i] == '.')                     /*  an extension  */
+	    {							/*  Yes!  */
+		strcpy(lightfiletype,&openfile[i]);	  /*  Capture it  */
 		openfile[i] = 0;    /*	Del. the ext. from the filename   */
 	    }
-	if (++numsaves1 > 1) /*  Have we already saved this file on	  */
+	if ((++numsaves1 > 1))		    /*	Already saved this file?  */
 	{   /*	Yes!  */
-	    updatesavename(openfile);	 /* secondary saves? new filename */
+	    updatesavename(openfile);		   /*  Make new filename  */
 	    strncpy(light_name, openfile, strlen(openfile));
 	}
-	strcat(openfile,lightfiletype); /* Rebuild filename with ext.	  */
-	  /*  Does file name exist?  */
-	if (warn && (out1=fopen(openfile,"r")) != NULL)
+	strcat(openfile,lightfiletype); 	/*  Add .xxx to filename  */
+					       /*  Does file name exist?  */
+	if ((overwrite==0) && (out1=fopen(openfile,"r")) != NULL)
 	{   /*	Oops!  */
 	    fclose(out1);
 	    goto restart;
 	}
+	fclose(out1);
+	strcpy (light_name,openfile);
 	startdisk1(light_name);
     }
+/* MRR end */
+
     rand_factor = 14 - RANDOMIZE;
 
-      if(colors<16)
-	 zcoord = 256;
-      else
-	 zcoord = colors;
-      crossavg[0] = 0;
-	  crossavg[1] = 0;
-      crossavg[2] = 0;
+ /* if(colors<16)
+       zcoord = 256;
+    else
+       zcoord = colors; */
+    zcoord = filecolors;
+
+    crossavg[0] = 0;
+    crossavg[1] = 0;
+    crossavg[2] = 0;
 
       /*********************************************************************
        Memory allocation - assumptions - a 64K segment starting at extraseg
@@ -266,8 +289,10 @@ char openfile[80], lightfiletype[10];
 	 FP_SEG(lastrow)=extraseg;
 	 FP_OFF(lastrow)=0;
 #endif
-      }else
+      }else {
+	 EXIT_OVLY;
 	 return(-1);
+	 }
 
       check_extra = sizeof(*lastrow)*xdots;
       if(SPHERE)
@@ -304,16 +329,20 @@ char openfile[80], lightfiletype[10];
 	    if(got_mem)
 	       minmax_x = got_mem;
 	    else
+	    {
+	       EXIT_OVLY;
 	       return(-1);
+	    }
 	 }
 	 else /* ok to use extra segment */
 	    minmax_x = (struct minmax far *)(fpixels+xdots);
       }
       if(debugflag == 2222 || check_extra > 1L<<16)
-      {
-	 printf("used %ld of extra segment\n",check_extra);
-	 getch();
-      }
+	 {
+	 char tmpmsg[70];
+	 sprintf(tmpmsg,"used %ld of extra segment",check_extra);
+	 stopmsg(4,tmpmsg);
+	 }
       /* get scale factors */
       sclx =   XSCALE/100.0;
       scly =   YSCALE/100.0;
@@ -616,9 +645,6 @@ char openfile[80], lightfiletype[10];
 	 lastrow[i]   = bad;
 	 f_lastrow[i] = f_bad;
       }
-      if(fp_pot)
-	 fclose(fp_pot);
-      fp_pot=fopen("tmppot","rb");
    } /* end of once-per-image intializations */
    crossnotinit = 1;
    col = 0;
@@ -628,7 +654,11 @@ char openfile[80], lightfiletype[10];
    f_old = f_bad;
 
    /* copies pixels buffer to float type fpixels buffer for fill purposes */
-   set_pixel_buff(pixels,fpixels,linelen);
+   if (set_pixel_buff(pixels,fpixels,linelen))
+   {
+      EXIT_OVLY;
+      return(0);
+   }
 
    /*
    This section of code allows the operation of a preview mode when the
@@ -644,9 +674,9 @@ char openfile[80], lightfiletype[10];
    localpreviewfactor = ydots/previewfactor;
 
    /* Insure last line is drawn in preview and filltype -1  */
-   if ((preview || FILLTYPE == -1) && (rowcount != ydots-1))
-      if (rowcount % localpreviewfactor)
-	 if ( !(((FILLTYPE == 5) || (FILLTYPE == 6)) && (rowcount == 1)))
+   if ((preview || FILLTYPE == -1) && (rownum != ydots-1))
+      if (rownum % localpreviewfactor)
+	 if ( !(((FILLTYPE == 5) || (FILLTYPE == 6)) && (rownum == 1)))
 	    goto reallythebottom; /* skip over most of the line3d calcs */
    lastdot = min(xdots-1, linelen-1);
 
@@ -654,13 +684,17 @@ char openfile[80], lightfiletype[10];
    while(col < linelen)
    {
 
-if (FILLTYPE >= 5)
-if (haze != 0 && full_color)
-{
-    HAZE_MULT = haze * (0.1 + 0.9 * (float)( ydots - 1 - rowcount)) /
-    (float)(ydots - 1);
-    HAZE_MULT = 100 - HAZE_MULT;
-}
+    if (FILLTYPE >= 5)
+	if (haze != 0 && full_color)
+	{
+/* MRR */
+	    HAZE_MULT = haze * (
+		(float)((long)(ydots - 1 - rownum) *
+		(long)(ydots - 1 - rownum)) /
+		(float)((long)(ydots - 1) * (long)(ydots - 1)));
+	    HAZE_MULT = 100 - HAZE_MULT;
+	}
+/* MRR end */
 
       if (FILLTYPE == -1)
       {
@@ -775,9 +809,9 @@ if (haze != 0 && full_color)
 		lv0[0] = 0;
 
 	     /* use 32-bit multiply math to snap this out */
-	     lv[0] = col;      lv[0] = lv[0] << 16;
-	     lv[1] = rowcount; lv[1] = lv[1] << 16;
-	     if(filetype) /* don't truncate fractional part */
+	     lv[0] = col;    lv[0] = lv[0] << 16;
+	     lv[1] = rownum; lv[1] = lv[1] << 16;
+	     if(filetype || pot16bit) /* don't truncate fractional part */
 		 lv[2] = f_cur.color*65536.0;
 	     else	  /* there IS no fractaional part here! */
 	     {
@@ -808,7 +842,7 @@ if (haze != 0 && full_color)
 	 {
 	    /* slow float version for comparison */
 	    v[0] = col;
-	    v[1] = rowcount;
+	    v[1] = rownum;
 	    v[2] = f_cur.color;
 	    vmult(v,m,v);
 	    f_cur.x   = v[0];
@@ -840,16 +874,18 @@ if (cur.color > WATERLINE)
 	    old.x > bad_check &&
 	    old.x < (xdots - bad_check))
 	    draw_line (old.x, old.y, cur.x, cur.y, cur.color);
-	if (rowcount &&
+	if (rownum &&
 	    lastrow[col].x > bad_check &&
 	    lastrow[col].y > bad_check &&
 	    lastrow[col].x < (xdots - bad_check) &&
 	    lastrow[col].y < (ydots - bad_check))
 	    draw_line (lastrow[col].x,lastrow[col].y,cur.x, cur.y,cur.color);
 	break;
+
        case 0:
 	 (*plot)(cur.x,cur.y,cur.color);
 	 break;
+
        case 1:		   /* connect-a-dot */
 	 if ((old.x < xdots) && (col) &&
 		old.x > bad_check &&
@@ -858,6 +894,7 @@ if (cur.color > WATERLINE)
 	 old.x = cur.x;
 	 old.y = cur.y;
 	 break;
+
       case 2: /* with interpolation */
       case 3: /* no interpolation */
 	 /*
@@ -872,7 +909,7 @@ if (cur.color > WATERLINE)
 		       /       1	  /
 	    oldrow/col _____ trow/col	/
 	 */
-	 if(rowcount && col)	/* skip first row and first column */
+	 if(rownum && col)    /* skip first row and first column */
 	 {
 	    if(col == 1)
 	       putatriangle(lastrow[col],oldlast,old,old.color);
@@ -890,6 +927,7 @@ if (cur.color > WATERLINE)
 
 	 }
 	 break;
+
       case 4: /* "solid fill" */
 	 if (SPHERE)
 	 {
@@ -905,7 +943,7 @@ if (cur.color > WATERLINE)
 	 }
 	 else
 	 {
-	    lv[0] = col;  lv[1] = rowcount;  lv[2] = 0;
+	    lv[0] = col;  lv[1] = rownum;  lv[2] = 0;
 
 	    /* apply fudge bit shift for integer math */
 	    lv[0] = lv[0] << 16;  lv[1] = lv[1] << 16;
@@ -932,10 +970,11 @@ if (cur.color > WATERLINE)
 	    old.y = ydots-1;
 	 draw_line(old.x,old.y,cur.x,cur.y,cur.color);
 	 break;
+
       case 5:
       case 6:
 	 /* light-source modulated fill */
-	 if(rowcount && col)	/* skip first row and first column */
+	 if(rownum && col)    /* skip first row and first column */
 	 {
 	    if(f_cur.color < bad_check || f_old.color < bad_check ||
 	    f_lastrow[col].color < bad_check)
@@ -967,7 +1006,11 @@ if (cur.color > WATERLINE)
 
 	    /* normalize cross - and check if non-zero */
 	    if(normalize_vector(cross))
+	    {
+	       if(debugflag)
+		  printf("cur.color = bad.color!\n");
 	       cur.color = f_cur.color = bad.color;
+	    }
 	    else
 	    {
 	       /* line-wise averaging scheme */
@@ -997,7 +1040,7 @@ if (cur.color > WATERLINE)
 		     showfpoint(f_cur);
 		     showfpoint(f_lastrow[col]);
 		     showfpoint(f_lastrow[col-1]);
-		     getch();
+		     getakey();
 		     }
 		     cur.color = f_cur.color = colors;
 		  }
@@ -1005,22 +1048,26 @@ if (cur.color > WATERLINE)
 		  crossavg[1] = tmpcross[1];
 		  crossavg[2] = tmpcross[2];
 	       }
-	       /* dot product of unit vectors is cos of angle between */
+
+	   /* dot product of unit vectors is cos of angle between */
 	       /* we will use this value to shade surface */
-	       cur.color = 1+(colors-2)*(1.0-dot_product(cross,light_direction));
+
+	   cur.color = 1+(colors-2)*(1.0-dot_product(cross,light_direction));
 	    }
 	    /* if colors out of range, set them to min or max color index
 	       but avoid background index. This makes colors "opaque" so
-	       SOMETHING plots */
-	    if(cur.color <= 0)			/* prevent transparent colors */
-	       cur.color = 1;		       /* avoid background */
-	    if(cur.color >= colors)
-	       cur.color = colors-1;
+	   SOMETHING plots. These conditions shouldn't happen but just
+	   in case
+	*/
+	if(cur.color < 1)	   /* prevent transparent colors */
+	    cur.color = 1;		/* avoid background */
+	if(cur.color > colors-1)
+	    cur.color = colors-1;
 
 	    /* why "col < 2"? So we have sufficient geometry for the fill
 	       algorithm, which needs previous point in same row to have
 	       already been calculated (variable old) */
-	    if(col < 2 || rowcount < 2) /* don't have valid colors yet */
+	    if(col < 2 || rownum < 2) /* don't have valid colors yet */
 	       break;
 
 	    Real_Color = pixels[col];
@@ -1053,23 +1100,14 @@ if (cur.color > WATERLINE)
       col++;
    }  /*  End of while statement for plotting line  */
 
-	/*  Done with the row (line). Now, increment rowcount and see if
-	    you are  done with image  */
-   reallythebottom:
+reallythebottom:
 
-   if(++rowcount >= ydots)
+   if(rownum >= ydots)
    {
 
       if (full_color && FILLTYPE >= 5)
 	 enddisk(); /* We done! */
 
-      /* end of image mopup stuff */
-      /* done - make sure pot file is closed */
-      if(fp_pot)
-      {
-	 fclose(fp_pot);
-	 fp_pot = NULL;
-      }
       if(preview && !SPHERE && showbox)
       {
 	 /* draw box to help visualize effect of rotations */
@@ -1084,7 +1122,7 @@ if (cur.color > WATERLINE)
    if(SPHERE)
    {
       /* incremental sin/cos phi calc */
-      if(rowcount == 1)
+      if(rownum == 0)
       {
 	 sinphi = oldsinphi2;
 	 cosphi = oldcosphi2;
@@ -1098,121 +1136,12 @@ if (cur.color > WATERLINE)
 	 oldcosphi2 = cosphi;
       }
    }
+   EXIT_OVLY;
    return(0); /* decoder needs to know all is well !!! */
 }
 
-/* Bresenham's algorithm for drawing line */
-void draw_line (int X1, int Y1, int X2, int Y2, int color)
-
-{				  /* uses Bresenham algorithm to draw a line */
-  int dX, dY;						/* vector components */
-  int row, col,
-      final,				       /* final row or column number */
-      G,			       /* used to test for new row or column */
-      inc1,		    /* G increment when row or column doesn't change */
-      inc2;			   /* G increment when row or column changes */
-  char pos_slope;
-  extern int xdots,ydots;
-  extern int (*plot)();
-
-  dX = X2 - X1; 				   /* find vector components */
-  dY = Y2 - Y1;
-  pos_slope = (dX > 0); 			       /* is slope positive? */
-  if (dY < 0)
-    pos_slope = !pos_slope;
-  if (abs (dX) > abs (dY))				/* shallow line case */
-  {
-    if (dX > 0) 		    /* determine start point and last column */
-    {
-      col = X1;
-      row = Y1;
-      final = X2;
-    }
-    else
-    {
-      col = X2;
-      row = Y2;
-      final = X1;
-    }
-    inc1 = 2 * abs (dY);	       /* determine increments and initial G */
-    G = inc1 - abs (dX);
-    inc2 = 2 * (abs (dY) - abs (dX));
-    if (pos_slope)
-      while (col <= final)	/* step through columns checking for new row */
-      {
-	(*plot) (col, row, color);
-	col++;
-	if (G >= 0)				 /* it's time to change rows */
-	{
-	  row++;	     /* positive slope so increment through the rows */
-	  G += inc2;
-	}
-	else					     /* stay at the same row */
-	  G += inc1;
-      }
-    else
-      while (col <= final)	/* step through columns checking for new row */
-      {
-	(*plot) (col, row, color);
-	col++;
-	if (G > 0)				 /* it's time to change rows */
-	{
-	  row--;	     /* negative slope so decrement through the rows */
-	  G += inc2;
-	}
-	else					     /* stay at the same row */
-	  G += inc1;
-      }
-  }  /* if |dX| > |dY| */
-  else							  /* steep line case */
-  {
-    if (dY > 0) 		       /* determine start point and last row */
-    {
-      col = X1;
-      row = Y1;
-      final = Y2;
-    }
-    else
-    {
-      col = X2;
-      row = Y2;
-      final = Y1;
-    }
-    inc1 = 2 * abs (dX);	       /* determine increments and initial G */
-    G = inc1 - abs (dY);
-    inc2 = 2 * (abs (dX) - abs (dY));
-    if (pos_slope)
-      while (row <= final)	/* step through rows checking for new column */
-      {
-	(*plot) (col, row, color);
-	row++;
-	if (G >= 0)			      /* it's time to change columns */
-	{
-	  col++;	  /* positive slope so increment through the columns */
-	  G += inc2;
-	}
-	else					  /* stay at the same column */
-	  G += inc1;
-      }
-    else
-      while (row <= final)	/* step through rows checking for new column */
-      {
-	(*plot) (col, row, color);
-	row++;
-	if (G > 0)			      /* it's time to change columns */
-	{
-	  col--;	  /* negative slope so decrement through the columns */
-	  G += inc2;
-	}
-	else					  /* stay at the same column */
-	  G += inc1;
-      }
-  }
-}  /* draw_line */
-
-
 /* vector version of line draw */
-void vdraw_line(v1,v2,color)
+static void vdraw_line(v1,v2,color)
 double *v1,*v2;
 int color;
 {
@@ -1230,7 +1159,7 @@ int color;
    centering purposes. As a side effect it can also plot the transformed
    box as an aid in setting reasonable rotation parameters
 */
-corners(m,show,pxmin,pymin,pzmin,pxmax,pymax,pzmax)
+static void corners(m,show,pxmin,pymin,pzmin,pxmax,pymax,pzmax)
 MATRIX m;
 int show; /* turns on box-showing feature */
 double *pxmin,*pymin,*pzmin,*pxmax,*pymax,*pzmax;
@@ -1411,7 +1340,7 @@ double *pxmin,*pymin,*pzmin,*pxmax,*pymax,*pzmax;
    be adding hidded line capability to this and/or corners.
 */
 
-draw_light_box(origin,direct,m)
+static void draw_light_box(origin,direct,m)
     double *origin, *direct;
     MATRIX m;
 
@@ -1480,7 +1409,7 @@ draw_light_box(origin,direct,m)
 
 /* replacement for plot - builds a table of min and max x's instead of plot */
 /* called by draw_line as part of triangle fill routine */
-int putminmax(int x,int y,int color)
+static int putminmax(int x,int y,int color)
 {
     if(y < 0 || y >= ydots) return(-1);
     if(x < minmax_x[y].minx) minmax_x[y].minx = x;
@@ -1496,7 +1425,7 @@ int putminmax(int x,int y,int color)
    Then rows are filled in with horizontal lines
 */
 #define MAXOFFSCREEN  2 /* allow two of three points to be off screen */
-putatriangle(pt1,pt2,pt3,color)
+static int putatriangle(pt1,pt2,pt3,color)
 struct point pt1,pt2,pt3;
 int color;
 {
@@ -1588,7 +1517,7 @@ int color;
 }
 
 
-offscreen(struct point *pt)
+static int offscreen(struct point *pt)
 {
    if(pt->x >= 0)
       if(pt->x < xdots)
@@ -1598,11 +1527,11 @@ offscreen(struct point *pt)
    return(1); /* point is off the screen */
 }
 
-clipcolor(int x,int y,int color)
+static int clipcolor(int x,int y,int color)
 {
    if(0 <= x	&& x < xdots   &&
       0 <= y	&& y < ydots   &&
-      0 <= color && color < colors)
+      0 <= color && color < filecolors)
    {
       standardplot(x,y,color);
       return(0);
@@ -1611,7 +1540,8 @@ clipcolor(int x,int y,int color)
       return(-1);
 }
 
-clipcolor2(int x,int y,int color)
+/*
+static int clipcolor2(int x,int y,int color)
 {
    if(0 <= x	&& x < xdots   &&
       0 <= y	&& y < ydots   &&
@@ -1623,8 +1553,9 @@ clipcolor2(int x,int y,int color)
    else
       return(-1);
 }
+*/
 
-T_clipcolor(int x,int y,int color)
+static int T_clipcolor(int x,int y,int color)
 /*	This function is the same as clipcolor but checks for color being
 	in transparent range. Intended to be called only if transparency
     has been enabled.
@@ -1649,7 +1580,7 @@ T_clipcolor(int x,int y,int color)
    to the x and y values of three points (p1,p2,p3) which are static in
    this routine */
 
-int interpcolor(int x,int y,int color)
+static int interpcolor(int x,int y,int color)
 {
 unsigned char R1, G, B;
 unsigned long H, S, V;
@@ -1685,40 +1616,38 @@ int D,d1,d2,d3;
 	    RGB[1]  =  dacbox [Real_Color] [1];
 	    RGB[2]  =  dacbox [Real_Color] [2];
 
-	    /* Now lets convert it to hsv */
+	/* Now lets convert it to hsv */
 	    R_H(RGB[0], RGB[1], RGB[2], &H, &S, &V);
 
-	    /* Modify H, S and V components */
-	    V = (65280 - color * IAmbient);
-
-	    if (haze != 0)
+	/* Modify S and V components */
+/* MRR */
+	V = (65280 - color * IAmbient);
+	if (haze)
 	    {
-		S = (unsigned long)(S * HAZE_MULT) / 100;
-
-		if (V >= 32640)
-		{
-		    V = V - 32640;
-		    V = (unsigned long)(V * (HAZE_MULT >> 1) / 100);
-		    V = V + 32640;
-		}
-		else
-		{
-		    V = 32640 - V;
-		    V = (unsigned long)(V * (HAZE_MULT >> 1) / 100);
-		    V = 32640 - V;
-		}
+	    S = (unsigned long)(S * HAZE_MULT) / 100;
+	    if (V >= 32640)
+	    {
+		V = V - 32640;
+		V = (unsigned long)((V * HAZE_MULT) / 100);
+		V = V + 32640;
 	    }
-
+	    else
+	    {
+		V = 32640 - V;
+		V = (unsigned long)((V * HAZE_MULT) / 100);
+		V = 32640 - V;
+	    }
+	}
 	    /*	Now lets convert it back to RGB  */
 	    H_R(&RGB[0], &RGB[1], &RGB[2], H, S, V);
+/* MRR end */
 
 	    /* Now write the color triple to its transformed location
 		on the disk. */
-
-	    targa_writedisk (x, y, RGB[0], RGB[1], RGB[2]);
-
+	    targa_writedisk (x+sxoffs, y+syoffs, RGB[0], RGB[1], RGB[2]);
 	}
-	if (FILLTYPE >= 5)    color = (color * IAmbient)/255;
+
+    if (FILLTYPE >= 5)	  color = 1 + (color * IAmbient) / 256;
 
 	standardplot(x,y,color);
 	return(0);
@@ -1728,7 +1657,7 @@ int D,d1,d2,d3;
 
 }
 
-int T_interpcolor(int x,int y,int color)
+static int T_interpcolor(int x,int y,int color)
 
 /* A substitute for interpcolor that interpolates the colors according
    to the x and y values of three points (p1,p2,p3) which are static in
@@ -1767,37 +1696,44 @@ int T_interpcolor(int x,int y,int color)
       return(-1);  /*  Sorry, can't plot that  */
 }
 
-int set_pixel_buff(unsigned char *pixels,float far *fpixels,unsigned linelen)
+static int set_pixel_buff(unsigned char *pixels,float far *fpixels,unsigned linelen)
 {
    unsigned int *intbuf;
    int i;
-   switch(filetype)
+   if (filetype) /* obsolete (last generated in v14) .tga potfile */
    {
-   case 2:	 /* TARGA type 10 (RGB 16 bit) */
-   case 1:	 /* TIW 16 bit */
       intbuf = (unsigned int *)pixels;
       for(i=0;i<linelen;i++)
 	 pixels[i] = fpixels[i] = ((float)intbuf[i])/(1<<8);
-      break;
-   case 0:	 /* GIF 8 bit */
+   }
+   else if (pot16bit) /* gif type, but 16 bits per pixel on alt rows */
+   {
+      if ((evenoddrow++ & 1) == 0) /* even rows are color value */
+      {
+	 for(i=0;i<linelen;i++)
+	    *(fpixels+i) = *(pixels+i);
+	 return(1);
+      }
+      for(i=0;i<linelen;i++) /* add the fractional part in odd row */
+	 pixels[i] = *(fpixels+i) += ((float)*(pixels+i))/(1<<8);
+   }
+   else /* normal gif type file */
+   {
       for(i=0;i<linelen;i++)
 	 *(fpixels+i) = *(pixels+i);
-      break;
-   default:
-      return(-1);
-      break;
    }
    return(0);
 }
 
 
-showfpoint(struct f_point pt)
+static void showfpoint(struct f_point pt)
 {
    printf("%f %f %f\n",pt.x,pt.y,pt.color);
 }
 
 /* cross product  - useful because cross is perpendicular to v and w */
-int chk_cross_product (int col, int row,VECTOR v, VECTOR w, VECTOR cross, VECTOR crossavg)
+/**** PB commented this out - it is unused
+static int chk_cross_product (int col, int row,VECTOR v, VECTOR w, VECTOR cross, VECTOR crossavg)
 {
    static start = 1;
    static FILE *fp;
@@ -1812,17 +1748,10 @@ int chk_cross_product (int col, int row,VECTOR v, VECTOR w, VECTOR cross, VECTOR
 	row,col,v[0],v[1],v[2],w[0],w[1],w[2],cross[0],cross[1],cross[2],crossavg[0],crossavg[1],crossavg[2]);
    return(0);
 }
-slowout_line(char buffer[], int linelen)
-{
-   int i;
-   for(i=0;i<linelen;i++)
-      putcolor(i,rowcount,buffer[i]);
-   rowcount++;
-   return(0);
-}
+****/
 
 
-int startdisk1 (File_Name1)
+static int startdisk1 (File_Name1)
 char *File_Name1;
 
 /**********************************************************************
@@ -1835,39 +1764,40 @@ char *File_Name1;
 
 {
 int status;
+char msgbuf[300];
 
 if ( (status = Open_T_24 (File_Name1)) == 0 )
     return(0);
 
-buzzer(2);	/*  Opps, there was an error!  */
-
 if (status == -1)
 {
-    printf("\n(OOPS - Couldn't Open  < %s >\n",File_Name1);
+    sprintf(msgbuf,"OOPS - Couldn't Open  < %s >",File_Name1);
+    stopmsg(0,msgbuf);
     return(-1);
 }
 
 if (status == -2)
-    {
-	printf("\nOOPS - Ran Out Of Disk Space\n\n");
-	printf("You Will Need A Min Of\n\n  < %ld Bytes >\n\n",
-	    (3L*(long)xdots*(long)ydots)+18L);
-	printf("Of Disk Space To Create \n\n");
-	printf("  < %s >\n\n",File_Name1);
-	printf("Press Any Key To Cont. With Screen Only");
-	getch();
-	return(-1);
+{
+    sprintf(msgbuf,"\
+OOPS - Ran out of disk space.\n\
+You will need a min of\n\
+  < %ld bytes >\n\
+of disk space to create\n\
+  < %s >\n\
+I will continue with screen only.",
+	    (3L*(long)xdots*(long)ydots)+18L, File_Name1);
+    stopmsg(0,msgbuf);
+    return(-1);
     }
 
-printf("Press Any Key To Cont. With Screen Only");
-getch();
+/* error -3, from targa_startdisk, message already issued */
 return(-1);
 
 }
 
 
 
-int Open_T_24(File_Name2)
+static int Open_T_24(File_Name2)
 char *File_Name2;
 
 /**********************************************************
@@ -1881,7 +1811,7 @@ char *File_Name2;
        return (0)   successfull
        return (-1)  Open failure
        return (-2)  Out of disk space
-       return (-3)  Out of memory
+       return (-3)  Error in targa_startdisk (probably out of memory)
 
  **********************************************************/
 
@@ -1944,7 +1874,7 @@ return(0);
 
 
 
-int R_H (R, G, B, H, S, V)
+static int R_H (R, G, B, H, S, V)
 unsigned char R,G,B;
 unsigned long *H, *S, *V;
 
@@ -2010,7 +1940,7 @@ if (*V == MIN)
 
 
 
-int H_R (R, G, B, H, S, V)
+static int H_R (R, G, B, H, S, V)
 unsigned char *R, *G, *B;
 unsigned long  H, S, V;
 
@@ -2042,7 +1972,7 @@ int	RMD, I;
 	case 4:     *R = P3;	*G = P1;    *B = V;	break;
 	case 5:     *R = V ;	*G = P1;    *B = P2;	break;
 	}
-return(0);
+    return(0);
 }
 
 

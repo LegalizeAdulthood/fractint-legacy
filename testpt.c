@@ -13,6 +13,9 @@ rather than the current parameter-passing scheme.  The goal, however was
 to make it as easy as possible to add fractal types, and this looked like
 the easiest way.
 
+This module is part of an overlay, with calcfrac.c.  The routines in it
+must not be called by any part of Fractint other than calcfrac.
+
 The sample code below is a straightforward Mandelbrot routine.
 
 */
@@ -21,11 +24,11 @@ extern int xdots;		/* the screen is this many dots across */
 extern int ydots;		/* the screen is this many dots down */
 extern int colors;		/* the screen has this many colors */
 
-teststart()	/* this routine is called just before the fractal starts */
+void teststart()     /* this routine is called just before the fractal starts */
 {
 }
 
-testend()	/* this routine is called just after the fractal ends */
+void testend()	     /* this routine is called just after the fractal ends */
 {
 }
 

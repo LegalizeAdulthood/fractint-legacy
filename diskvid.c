@@ -13,11 +13,18 @@
 #include <dos.h>
 #include "fractint.h"
 
-extern	int xdots, ydots, colors;
-extern	int dotmode;	   /* video access method, 11 if really disk video */
-extern	int diskvideo;	   /* nonzero if really really to disk */
-extern	int diskisactive;  /* set by fractint to disable re-init */
-extern	int debugflag;
+extern int sxdots, sydots, colors;
+extern int dotmode;	  /* video access method, 11 if really disk video */
+extern int diskisactive;  /* set by fractint to disable re-init */
+extern int debugflag;
+extern int diskflag;
+
+#define BOXROW	 6
+#define BOXCOL	 11
+#define BOXWIDTH 57
+#define BOXDEPTH 12
+
+int disk16bit=0;	   /* storing 16 bit values for continuous potential */
 
 static int timetodisplay;
 static FILE *fp = NULL;
@@ -47,6 +54,7 @@ static unsigned int far *hash_ptr = NULL;
 static int pixelshift;
 static int headerlength;
 static unsigned int rowsize = 0;   /* doubles as a disk video not ok flag */
+static unsigned int colsize;	   /* sydots, *2 when pot16bit */
 
 static char far *charbuf = NULL;   /* currently used only with XMM */
 
@@ -71,7 +79,7 @@ struct XMM_Move
 #define XMMWRITELEN 256 /* max amount transferred to extended mem at once,
 			   must be a factor of 1024 and >= XMMREADLEN */
 
-int startdisk();
+int startdisk(),pot_startdisk();
 void enddisk();
 int readdisk(unsigned int,unsigned int);
 void writedisk(unsigned int,unsigned int,unsigned int);
@@ -81,22 +89,36 @@ void targa_readdisk (unsigned int, unsigned int,
 void targa_writedisk(unsigned int, unsigned int,
 		     unsigned char, unsigned char, unsigned char);
 
-int common_startdisk();
+static int common_startdisk();
 static void findload_cache(long);
-struct cache far *find_cache(long);
+static struct cache far *find_cache(long);
 static void write_cache_lru();
-void (*put_char)(unsigned char),disk_putc(unsigned char),
-     exp_putc(unsigned char),  ext_putc(unsigned char);
-unsigned char (*get_char)(),disk_getc(),exp_getc(),ext_getc();
-void (*doseek)(),disk_seek(),exp_seek(),ext_seek();
+static void (*put_char)(unsigned char),disk_putc(unsigned char),
+	    exp_putc(unsigned char),  ext_putc(unsigned char);
+static unsigned char (*get_char)(),disk_getc(),exp_getc(),ext_getc();
+static void (*doseek)(),disk_seek(),exp_seek(),ext_seek();
+void dvid_status(int,char *);
 
 int startdisk()
 {
    if (!diskisactive)
       return(0);
-   rowsize = xdots;
    headerlength = disktarga = 0;
-   return (common_startdisk());
+   return (common_startdisk(sxdots,sydots));
+   }
+
+int pot_startdisk()
+{
+   int i;
+   if (dotmode == 11) /* ditch the original disk file */
+      enddisk();
+   else
+      showtempmsg("clearing 16bit pot work area");
+   headerlength = disktarga = 0;
+   i = common_startdisk(sxdots,sydots<<1);
+   cleartempmsg();
+   disk16bit = 1;
+   return (i);
    }
 
 int targa_startdisk(FILE *targafp,int overhead)
@@ -106,16 +128,15 @@ int targa_startdisk(FILE *targafp,int overhead)
       enddisk();      /* close the 'screen' */
       setnullvideo(); /* set readdot and writedot routines to do nothing */
       }
-   rowsize = xdots * 3;      /* 3 bytes per pixel for targa */
    headerlength = overhead;
    fp = targafp;
    disktarga = 1;
-   i = common_startdisk();
+   i = common_startdisk(sxdots*3,sydots);
    high_offset = 100000000L; /* targa not necessarily init'd to zeros */
    return (i);
 }
 
-int common_startdisk()
+static int common_startdisk(int newrowsize, int newcolsize)
 {
    int i,j,success;
    long memorysize;
@@ -127,15 +148,27 @@ int common_startdisk()
    struct XMM_Move MoveStruct;
    unsigned char far *tempfar;
 
+   if (diskflag)
+      enddisk();
    if (dotmode == 11) { /* otherwise, real screen also in use, don't hit it */
-      home();
-      printf("Clearing the 'screen'...\n\n");
-      printf("\n\n'Disk-Video' has been activated.\n\n");
-      printf("Your 'screen' resolution is %d x %d", xdots, ydots);
+      char buf[20];
+      helptitle();
+      setattr(1,0,C_DVID_BKGRD,24*80);	/* init rest to background */
+      for (i = 0; i < BOXDEPTH; ++i)
+	 setattr(BOXROW+i,BOXCOL,C_DVID_LO,BOXWIDTH);  /* init box */
+      putstring(BOXROW+2,BOXCOL+4,C_DVID_HI,"'Disk-Video' mode");
+      putstring(BOXROW+4,BOXCOL+4,C_DVID_LO,"Screen resolution: ");
+      sprintf(buf,"%d x %d",sxdots,sydots);
+      putstring(-1,-1,C_DVID_LO,buf);
       if (disktarga)
-	 printf(", 24 bit targa   \n");
-      else
-	 printf(" x %d colors   \n",colors);
+	 putstring(-1,-1,C_DVID_LO,"  24 bit Targa");
+      else {
+	 putstring(-1,-1,C_DVID_LO,"  Colors: ");
+	 sprintf(buf,"%d",colors);
+	 putstring(-1,-1,C_DVID_LO,buf);
+	 }
+      putstring(BOXROW+8,BOXCOL+4,C_DVID_LO,"Status:");
+      dvid_status(0,"clearing the 'screen'");
       }
    cur_offset = seek_offset = high_offset = -1;
    cur_row    = -1;
@@ -162,15 +195,16 @@ int common_startdisk()
    cache_size = (unsigned short)longtmp >> 10;
    cache_start = (struct cache far *)farmemalloc(longtmp);
    cache_end = (cache_lru = cache_start) + (cache_size<<10)/sizeof(*cache_start);
-   hash_ptr  = (int far *)farmemalloc((long)(HASHSIZE<<1));
+   hash_ptr  = (unsigned int far *)farmemalloc((long)(HASHSIZE<<1));
    if (cache_start == NULL || hash_ptr == NULL) {
-      buzzer(2);
-      printf("\n*** insufficient free memory for buffers ***\n\n");
-      rowsize = 0;
+      stopmsg(0,"*** insufficient free memory for cache buffers ***");
       return(-1);
       }
-   if (dotmode == 11)
-      printf("Cache size: %dK\n\n",cache_size);
+   if (dotmode == 11) {
+      char buf[50];
+      sprintf(buf,"Cache size: %dK\n\n",cache_size);
+      putstring(BOXROW+6,BOXCOL+4,C_DVID_LO,buf);
+      }
 
    /* preset cache to all invalid entries so we don't need free list logic */
    for (i = 0; i < HASHSIZE; ++i)
@@ -185,10 +219,13 @@ int common_startdisk()
       *fwd_link = (char far *)ptr1 - (char far *)cache_start;
       }
 
-   memorysize = (long)(ydots) * rowsize;
+   memorysize = (long)(newcolsize) * newrowsize;
    if ((i = (short)memorysize & (BLOCKLEN-1)) != 0)
       memorysize += BLOCKLEN - i;
    memorysize >>= pixelshift;
+   diskflag = 1;
+   rowsize = newrowsize;
+   colsize = newcolsize;
 
    if (debugflag != 420 && debugflag != 422 /* 422=xmm test, 420=disk test */
      && disktarga == 0) {
@@ -197,13 +234,13 @@ int common_startdisk()
       if ((expmemoryvideo = emmquery()) != NULL
 	&& (emmhandle = emmallocate(exppages)) != 0) {
 	 if (dotmode == 11)
-	    printf("(Using your Expanded Memory)\n");
+	    putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,"Using your Expanded Memory");
 	 for (oldexppage = 0; oldexppage < exppages; oldexppage++)
 	    emmclearpage(oldexppage, emmhandle); /* clear the "video" */
 	 put_char = exp_putc;
 	 get_char = exp_getc;
 	 doseek  = exp_seek;
-	 return(0);
+	 goto common_okend;
 	 }
       }
 
@@ -213,7 +250,7 @@ int common_startdisk()
 	&& xmmquery() !=0
 	&& (xmmhandle = xmmallocate(longtmp = (memorysize+1023) >> 10)) != 0) {
 	 if (dotmode == 11)
-	    printf("(Using your Extended Memory)\n");
+	    putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,"Using your Extended Memory");
 	 for (i = 0; i < XMMWRITELEN; i++)
 	    charbuf[i] = 0;
 	 MoveStruct.SourceHandle = 0;	 /* Source is in conventional memory */
@@ -232,34 +269,32 @@ int common_startdisk()
 	    doseek  = ext_seek;
 	    extbufptr = endreadbuf = charbuf;
 	    endwritebuf = charbuf + XMMWRITELEN;
-	    return(0);			 /* and bail out */
+	    goto common_okend;
 	    }
-	 if (dotmode == 11)
-	    printf("OOPS - Unable to use extended Memory\n");
 	 xmmdeallocate(xmmhandle);	 /* Clear the memory */
 	 xmmhandle = 0; 		 /* Signal same */
 	 }
       }
 
    if (dotmode == 11)
-      printf("(Using your Disk Drive)     \n");
+      putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,"Using your Disk Drive");
    if (disktarga == 0) {
-      if ((fp = fopen("FRACTINT.DSK","w+b")) == NULL) {
-	 buzzer(2);
-	 if (dotmode == 11)
-	    printf("*** Couldn't create FRACTINT.DSK ***");
-	 rowsize = 0;
-	 return(-1);
+      if ((fp = fopen("FRACTINT.DSK","w+b")) != NULL) {
+	 while (--memorysize >= 0) /* "clear the screen" (write to the disk) */
+	    putc(0,fp);
+	 if (ferror(fp)) {
+	    stopmsg(0,"*** insufficient free disk space ***");
+	    fclose(fp);
+	    remove("FRACTINT.DSK");
+	    fp = NULL;
+	    rowsize = 0;
+	    return(-1);
+	    }
+	 fclose(fp); /* so clusters aren't lost if we crash while running */
+	 fp = fopen("FRACTINT.DSK","r+b"); /* reopen */
 	 }
-      while (--memorysize >= 0) /* "clear the screen" (write to the disk) */
-	 putc(0,fp);
-      if (ferror(fp)) {
-	 buzzer(2);
-	 if (dotmode == 11)
-	    printf("*** insufficient free disk space ***\n");
-	 fclose(fp);
-	 remove("FRACTINT.DSK");
-	 fp = NULL;
+      if (fp == NULL) {
+	 stopmsg(0,"*** Couldn't create FRACTINT.DSK ***");
 	 rowsize = 0;
 	 return(-1);
 	 }
@@ -267,6 +302,10 @@ int common_startdisk()
    put_char = disk_putc;
    get_char = disk_getc;
    doseek  = disk_seek;
+
+common_okend:
+   if (dotmode == 11)
+      dvid_status(0,"");
    return(0);
 }
 
@@ -291,7 +330,7 @@ void enddisk()
       emmdeallocate(emmhandle);
    if (xmmhandle != 0)	 /* Extended memory video? */
       xmmdeallocate(xmmhandle);
-   rowsize = emmhandle = xmmhandle = 0;
+   diskflag = rowsize = emmhandle = xmmhandle = disk16bit = 0;
    hash_ptr    = NULL;
    cache_start = NULL;
    charbuf     = NULL;
@@ -302,12 +341,14 @@ int readdisk(unsigned int col, unsigned int row)
 {
    int col_subscr;
    long offset;
-   if (col >= rowsize || row >= (unsigned)ydots) /* if init bad, rowsize is 0 */
+   char buf[41];
+   if (col >= rowsize || row >= colsize) /* if init bad, rowsize is 0 */
       return(0);
    if (--timetodisplay < 0) {  /* time to display status? */
       if (dotmode == 11) {
-	 home();	 /* show a progress report */
-	 printf("Reading Line %4d...     ",row);
+	 sprintf(buf," reading line %4d",
+		(row >= sydots) ? row-sydots : row); /* adjust when potfile */
+	 dvid_status(0,buf);
 	 }
       timetodisplay = 1000;
       }
@@ -333,12 +374,14 @@ void writedisk(unsigned int col, unsigned int row, unsigned int color)
 {
    int col_subscr;
    long offset;
-   if (col >= rowsize || row >= (unsigned)ydots)
+   char buf[41];
+   if (col >= rowsize || row >= colsize)
       return;
    if (--timetodisplay < 0) {  /* time to display status? */
       if (dotmode == 11) {
-	 home();	 /* show a progress report */
-	 printf("Writing Line %4d...     ",row);
+	 sprintf(buf," writing line %4d",
+		(row >= sydots) ? row-sydots : row); /* adjust when potfile */
+	 dvid_status(0,buf);
 	 }
       timetodisplay = 1000;
       }
@@ -446,9 +489,9 @@ static void findload_cache(long offset) /* used by read/write */
    cur_cache = cache_lru;
    }
 
-struct cache far *find_cache(long offset) /* lookup for write_cache_lru */
+static struct cache far *find_cache(long offset) /* lookup for write_cache_lru */
 {
-   int tbloffset;
+   unsigned int tbloffset;
    struct cache far *ptr1;
    tbloffset = hash_ptr[ ((unsigned short)offset >> BLOCKSHIFT) & (HASHSIZE-1) ];
    while (tbloffset != 0xffff) {
@@ -516,12 +559,12 @@ static void write_cache_lru()
    a put_char nor v.v. without a seek between them.
    */
 
-void disk_seek(long offset)	/* real disk seek */
+static void disk_seek(long offset)     /* real disk seek */
 {
    fseek(fp,offset+headerlength,SEEK_SET);
    }
 
-unsigned char disk_getc()	/* real disk get_char */
+static unsigned char disk_getc()       /* real disk get_char */
 {
    return(getc(fp));
    }
@@ -531,7 +574,7 @@ void disk_putc(unsigned char c) /* real disk put_char */
    putc(c,fp);
    }
 
-void exp_seek(long offset)	/* expanded mem seek */
+static void exp_seek(long offset)      /* expanded mem seek */
 {
    int page;
    expoffset = (short)offset & 0x3fff;
@@ -542,21 +585,21 @@ void exp_seek(long offset)	/* expanded mem seek */
       }
    }
 
-unsigned char exp_getc()	/* expanded mem get_char */
+static unsigned char exp_getc()        /* expanded mem get_char */
 {
    if (expoffset > 0x3fff) /* wrapped into a new page? */
       exp_seek((long)(oldexppage+1) << 14);
    return(expmemoryvideo[expoffset++]);
    }
 
-void exp_putc(unsigned char c)	/* expanded mem put_char */
+static void exp_putc(unsigned char c)  /* expanded mem put_char */
 {
    if (expoffset > 0x3fff) /* wrapped into a new page? */
       exp_seek((long)(oldexppage+1) << 14);
    expmemoryvideo[expoffset++] = c;
    }
 
-void ext_writebuf()		/* subrtn for extended mem seek/put_char */
+static void ext_writebuf()	       /* subrtn for extended mem seek/put_char */
 {
    struct XMM_Move MoveStruct;
    MoveStruct.Length = extbufptr - charbuf;
@@ -567,7 +610,7 @@ void ext_writebuf()		/* subrtn for extended mem seek/put_char */
    xmmmoveextended(&MoveStruct);
    }
 
-void ext_seek(long offset)	/* extended mem seek */
+static void ext_seek(long offset)      /* extended mem seek */
 {
    if (extbufptr > endreadbuf) /* only true if there was a put_char sequence */
       ext_writebuf();
@@ -575,7 +618,7 @@ void ext_seek(long offset)	/* extended mem seek */
    extbufptr = endreadbuf = charbuf;
    }
 
-unsigned char ext_getc()	/* extended mem get_char */
+static unsigned char ext_getc()        /* extended mem get_char */
 {
    struct XMM_Move MoveStruct;
    if (extbufptr >= endreadbuf) { /* drained the last read buffer we fetched? */
@@ -591,7 +634,7 @@ unsigned char ext_getc()	/* extended mem get_char */
    return (*(extbufptr++));
    }
 
-void ext_putc(unsigned char c)	/* extended mem get_char */
+static void ext_putc(unsigned char c)  /* extended mem get_char */
 {
    if (extbufptr >= endwritebuf) { /* filled the local write buffer? */
       ext_writebuf();
@@ -600,4 +643,15 @@ void ext_putc(unsigned char c)	/* extended mem get_char */
       }
    *(extbufptr++) = c;
    }
+
+void dvid_status(int line,char *msg)
+{
+   char buf[41];
+   memset(buf,' ',40);
+   strcpy(buf,msg);
+   buf[strlen(msg)] = ' ';
+   buf[40] = 0;
+   putstring(BOXROW+8+line,BOXCOL+12,C_DVID_HI,buf);
+   movecursor(25,80);
+}
 

@@ -1,18 +1,24 @@
 
-/* Routine to decode Targa 16 bit RGB file */
+/* Routine to decode Targa 16 bit RGB file
+   */
+
+/* 16 bit .tga files were generated for continuous potential "potfile"s
+   from version 9.? thru version 14.  Replaced by double row gif type
+   file (.pot) in version 15.  Delete this code after a few more revs.
+*/
 
 #include <stdio.h>
 #include "fractint.h"
 #include "targa_lc.h"
 #include "port.h"
 
-extern char readname[]; 				/* file name		  */
-extern unsigned int boxx[];		    /* write-line routines use this */
+extern char readname[]; 		/* file name		  */
+extern unsigned int boxx[];		/* write-line routines use this */
 extern int colors;
 extern int rowcount;
 
-static FILE *fptarga = NULL;				/* FILE pointer 	  */
-extern unsigned int height;		    /* image height	      */
+static FILE *fptarga = NULL;		/* FILE pointer 	  */
+extern unsigned int height;		/* image height 	  */
 extern int (*outln)();
 
 /* Main entry decoder */
@@ -40,10 +46,9 @@ tgaview()
        }
        if (keypressed())
        {
-	      buzzer(1);
 	  fclose(fptarga);
 	  fptarga = NULL;
-		  return(-1);
+	  return(-1);
        }
    }
    fclose(fptarga);

@@ -1,52 +1,80 @@
 /*
 	FRACTINT Help routines
+	This module is linked as an overlay, use ENTER_OVLY and EXIT_OVLY.
 */
 
 #include "fractint.h"
 #include <stdio.h>
 #include <time.h>
 
-	/* the actual message text is defined in FARMSG.ASM */
-extern char far helpmessagetitle[];
+/* routines in this module	*/
+
+void help_overlay();
+int  help(void);
+
+static int  helppage(char far *helppages[]);
+static int  helpvideo(void);
+static void showapage(char far *info);
+
+/* the actual message text is defined in helpmsg.asm */
 extern char far helpmessageauthors[];
 extern char far helpmessagecredits[];
 extern char far helpmessagemenu[];
+extern char far helpmessagemenuinstr[];
 extern char far *helpmessagemain[];
 extern char far *helpmessagecycling[];
 extern char far *helpmessagexhair[];
 extern char far *helpmessagemouse[];
 extern char far *helpmessagecmdline[];
 extern char far *helpmessagefractals[];
-extern char far helpmessageformoreinfo[];
-extern char far helpmessagemoretext[];
+extern char far *helpmessageformoreinfo[];
+extern char far *helpmessageloadfile[];
+extern char far *helpmessageview[];
+extern char far *helpmessagezoom[];
 extern char far helpmessageendtext[];
+extern char far helpmessagenexttext[];
+extern char far helpmessageprevtext[];
+extern char far helpmessagenextprevtext[];
 extern char far helpmessagevideo[];
 
-extern	void	helpmessage(unsigned char far *);
-
 extern	int	adapter;
-
 extern	int	lookatmouse;	/* used to activate non-button mouse movement */
-
 extern	long	timer_start;
+extern	int	textcbase;
 
-extern	char far *findfont(int);
-extern	int	oktoprint;		/* 0 if printf() won't work */
-extern	int	xdots, ydots;		/* # of dots on the screen  */
-extern	int	dotmode;		/* so we can detect disk-video */
+void help_overlay() { } 		/* for restore_active_ovly */
 
-helptitle()
-{
-home(); 				/* home the cursor		*/
-setclear();				/* clear the screen		*/
-helpmessage(helpmessagetitle);
 
-}
+#ifdef __TURBOC__
+#   define FIX_HLPMSG(msg) (char far *)( ((unsigned)((long)(msg)>>16)!=_DS) ? (((unsigned long)_CS)<<16) | ((unsigned)(msg)) : (msg) )
+#endif
 
-help()
+
+static void puthelpmsg(int row, int col, int attr, char far *msg)
+   {
+
+#ifdef __TURBOC__
+   msg = FIX_HLPMSG(msg);
+#endif
+   putstring(row, col, attr, msg);  /* should not call an overlay! */
+   }
+
+
+static void puthelpmsgcenter(int row, int col, int width, int attr, char far *msg)
+   {
+#ifdef __TURBOC__
+   msg = FIX_HLPMSG(msg);
+#endif
+   putstringcenter(row, col, width, attr, msg); /* should not call an overlay! */
+   }
+
+
+int help()
 {
 int mode, key;
 int oldlookatmouse;
+
+ENTER_OVLY(OVLY_HELP);
 
 timer_start -= clock(); 		/* "time out" during help */
 
@@ -59,25 +87,43 @@ if (mode == HELPAUTHORS) {
 	int toprow, botrow, i, j, delaymax;
 	char oldchar;
 	int authors[100];		/* this should be enough for awhile */
+	char far *credits;
 
-        toprow = 12;
-	toprow = 8;
-	botrow = 21;
+#ifdef __TURBOC__
+	credits = FIX_HLPMSG(helpmessagecredits);
+#else
+	credits = helpmessagecredits;
+#endif
+
 	j = 0;
 	authors[j] = 0; 		/* find the start of each credit-line */
-	for (i = 0; helpmessagecredits[i] != 0; i++)
-		if (helpmessagecredits[i] == 10)
+	for (i = 0; credits[i] != 0; i++)
+		if (credits[i] == 10)
 			authors[++j] = i+1;
 	authors[j+1] = i;
+
 	helptitle();
-	helpmessage(helpmessageauthors);
-	movecursor(toprow,0);
+	toprow = 8;
+	botrow = 21;
+	puthelpmsgcenter(1,0,80,C_TITLE,
+			"Press ENTER for main menu, F1 for help.");
+	puthelpmsg(2,0,C_CONTRIB,helpmessageauthors);
+	setattr(2,0,C_AUTHDIV1,80);
+	setattr(7,0,C_AUTHDIV1,80);
+	setattr(22,0,C_AUTHDIV2,80);
+	setattr(3,0,C_PRIMARY,320);
+	setattr(23,0,C_TITLE_LOW,160);
+	for (i = 3; i < 7; ++i)
+	   setattr(i,20,C_CONTRIB,60);
+	setattr(toprow,0,C_CONTRIB,14*80);
 	i = botrow - toprow;
-	oldchar = helpmessagecredits[authors[i+1]];
-	helpmessagecredits[authors[i+1]] = 0;
-	helpmessage(helpmessagecredits);
-	helpmessagecredits[authors[i+1]] = oldchar;
+	oldchar = credits[authors[i+1]];
+	credits[authors[i+1]] = 0;
+	puthelpmsg(toprow,0,C_CONTRIB,credits);
+	credits[authors[i+1]] = oldchar;
 	delaymax = 10;
+	movecursor(25,80); /* turn it off */
+	helpmode = HELPMENU;
 	while (! keypressed()) {
 		for (j = 0; j < delaymax && !(keypressed()); j++)
 			delay(100);
@@ -87,39 +133,47 @@ if (mode == HELPAUTHORS) {
 			if (keypressed() == 32)
 				getakey();
 			}
+#ifdef __TURBOC__
+		credits = FIX_HLPMSG(helpmessagecredits); /* because keypressed() may call an overlay */
+#endif
+
 		delaymax = 15;
 		scrollup(toprow, botrow);
-		movecursor(botrow,0);
 		i++;
-		if (helpmessagecredits[authors[i]] == 0) i = 0;
-		oldchar = helpmessagecredits[authors[i+1]];
-		helpmessagecredits[authors[i+1]] = 0;
-		helpmessage(&helpmessagecredits[authors[i]]);
-		helpmessagecredits[authors[i+1]] = oldchar;
+		if (credits[authors[i]] == 0) i = 0;
+		oldchar = credits[authors[i+1]];
+		credits[authors[i+1]] = 0;
+		puthelpmsg(botrow,0,C_CONTRIB,&credits[authors[i]]);
+		setattr(botrow,0,C_CONTRIB,80);
+		credits[authors[i+1]] = oldchar;
+		movecursor(25,80); /* turn it off */
 		}
 	lookatmouse = oldlookatmouse;		/* restore the mouse-checking */
+	helpmode = HELPAUTHORS;
+	EXIT_OVLY;
 	return(0);
 	}
 
-setfortext();
+stackscreen();
 while (mode != HELPEXIT) {
 	if (mode == HELPMENU) {
 		while (mode == HELPMENU) {
-			helptitle();
-			helpmessage(helpmessagemenu);
+			showapage(helpmessagemenu);
+			puthelpmsg(23,0,C_HELP_INSTR,helpmessagemenuinstr);
+			movecursor(25,80); /* turn it off */
 			key = getakey();
 			switch (key) {
 				case '1':
 					mode = HELPMAIN;
 					break;
 				case '2':
-					mode = HELPCYCLING;
+					mode = HELPZOOM;
 					break;
 				case '3':
-					mode = HELPXHAIR;
+					mode = HELPCYCLING;
 					break;
 				case '4':
-					mode = HELPCMDLINE;
+					mode = HELPXHAIR;
 					break;
 				case '5':
 					mode = HELPFRACTALS;
@@ -128,10 +182,13 @@ while (mode != HELPEXIT) {
 					mode = HELPVIDEO;
 					break;
 				case '7':
-					mode = HELPMOREINFO;
+					mode = HELPMOUSE;
 					break;
 				case '8':
-					mode = HELPMOUSE;
+					mode = HELPCMDLINE;
+					break;
+				case '9':
+					mode = HELPMOREINFO;
 					break;
 				case 27:
 					mode = HELPEXIT;
@@ -168,18 +225,18 @@ while (mode != HELPEXIT) {
 		case HELPMOREINFO:
 			key = helppage(helpmessageformoreinfo);
 			break;
+		case HELPLOADFILE:
+			key = helppage(helpmessageloadfile);
+			break;
+		case HELPZOOM:
+			key = helppage(helpmessagezoom);
+			break;
+		case HELPVIEW:
+			key = helppage(helpmessageview);
+			break;
 		default:
 			key = 27;
 			break;
-		}
-	if (key != 27
-		&& key != 1059				/* F1 */
-		&& key != 'h' && key != 'H'
-		&& key != '?' && key != '/') {
-		setforgraphics();
-		lookatmouse = oldlookatmouse;		/* restore the mouse-checking */
-		timer_start += clock(); 		/* end of "time out" */
-		return(key);
 		}
 	if (key == 27)
 		mode = HELPEXIT;
@@ -187,71 +244,114 @@ while (mode != HELPEXIT) {
 		mode = HELPMENU;
 	}
 
-setforgraphics();
+unstackscreen();
 lookatmouse = oldlookatmouse;		/* restore the mouse-checking */
 timer_start += clock(); 		/* end of "time out" */
+EXIT_OVLY;
 return(0);
 }
 
-helppage(char far * helppages[])
+static int helppage(char far * helppages[])
 {
 int key, page;
 
-if (helppages[1] == NULL) {
-	helptitle();
-	helpmessage(helppages[0]);
-	movecursor(22,0);
-	helpmessage(helpmessageendtext);
-	return(getakey());
+if (helppages[1] == NULL) { /* just one page of help for this type */
+	showapage(helppages[0]);
+	puthelpmsg(23,0,C_HELP_INSTR,helpmessageendtext);
+	movecursor(25,80); /* turn it off */
+	while ((key = getakey()) != 27 && key != 1059) { } /* just ESC or F1 */
+	return(key);
 	}
 
-key = 13;
-page = 1;
-
-while (key == 13 || key == 1013) {
-	helptitle();
-	helpmessage(helppages[page-1]);
-	movecursor(21,0);
-	helpmessage(helpmessagemoretext);
-	helpmessage(helpmessageendtext);
-	if (helppages[++page-1] == NULL) page = 1;
-	key = getakey();
+page = 0;
+while (1) {
+	showapage(helppages[page]);
+	puthelpmsg(23,0,C_HELP_INSTR,helpmessageendtext);
+	if (page == 0)
+		puthelpmsg(24,0,C_HELP_INSTR,helpmessagenexttext);
+	else if (helppages[page+1] == NULL)
+		puthelpmsg(24,0,C_HELP_INSTR,helpmessageprevtext);
+	else
+		puthelpmsg(24,0,C_HELP_INSTR,helpmessagenextprevtext);
+	movecursor(25,80); /* turn it off */
+	while (1) {
+		key = getakey();
+		if (key == 27 || key == 1059) /* escape or F1 */
+			return(key);
+		if (key == 13 || key == 1013) { /* for old time's sake */
+			if (helppages[++page] == NULL) page = 0;
+			break;
+			}
+		if (key == 1073 && page > 0) { /* page up */
+			--page;
+			break;
+			}
+		if (key == 1081 && helppages[page+1] != NULL) { /* page down */
+			++page;
+			break;
+			}
+		}
 	}
-return(key);
+}
+
+static void showapage(char far *info)
+{
+char far *body;
+
+#ifdef __TURBOC__
+   info = FIX_HLPMSG(info);
+#endif
+
+body = info;
+while (*body != 10) ++body; /* find end of 1st line */
+helptitle();
+*body = 0;
+puthelpmsgcenter(1,0,80,C_HELP_HDG,info);
+*body = 10;
+setattr(2,0,C_HELP_BODY,21*80);
+setattr(23,0,C_HELP_INSTR,160);
+textcbase = 1;
+puthelpmsg(2,0,C_HELP_BODY,body+1);
+textcbase = 0;
 }
 
 extern int hasconfig;
 extern char *fkeys[];
 
-helpvideo()
+static int helpvideo()
 {
 int key, i ,j;
 char accessmethod[2];
+char msg[81];
 
-j = -12;
-key = 13;
-
-while (key == 13 || key == 1013) {
-	helptitle();
-	printf("\n");
-	j += 12;	/* display next page */
-	if (j >= maxvideomode) j = 0;	/* (or 1st page)     */
-	printf("The current list of supported Video Adapters and Modes includes:\n");
-	if (hasconfig == 0)
-		printf("   <<NOTE>> The default list has been replaced by a FRACTINT.CFG file.\n");
+j = 0;
+while (1) {
+	showapage("Video Modes\n");
+	puthelpmsg(23,0,C_HELP_INSTR,helpmessageendtext);
+	if (j == 0) {
+		if (j+12 < maxvideomode)
+			puthelpmsg(24,0,C_HELP_INSTR,helpmessagenexttext);
+		}
+	else if (j+12 >= maxvideomode)
+		puthelpmsg(24,0,C_HELP_INSTR,helpmessageprevtext);
 	else
-		printf("\n");
-	printf("       %-25s  Resolution Colors %-25s\n\n",
-	"Video Adapter & Mode", "     Comments");
+		puthelpmsg(24,0,C_HELP_INSTR,helpmessagenextprevtext);
+	if (hasconfig == 0)
+		puthelpmsg(3,4,C_HELP_BODY,
+		 "<<NOTE>> The default list has been replaced by a FRACTINT.CFG file.");
+	sprintf(msg,"%-25s  Resolution Colors %-25s",
+		"Video Adapter & Mode", "     Comments");
+	puthelpmsg(4,8,C_HELP_BODY,msg);
+	movecursor(6,0);
 	for (i = j; i < maxvideomode && i < j + 12; i++) {
 		fromvideotable(i);
-	strcpy(accessmethod," ");
-	if (videoentry.dotmode == 1)
-		accessmethod[0] = 'B';
+		strcpy(accessmethod," ");
+		if (videoentry.dotmode == 1)
+			accessmethod[0] = 'B';
 #ifdef __TURBOC__
-		printf("%-6.6s %-25.25s%5d x%4d%5d %1.1s  %-25.25s\n",
+		sprintf(msg,"%-6.6s %-25.25s%5d x%4d%5d %1.1s  %-25.25s\n",
 #else
-		printf("%-6s %-25s%5d x%4d%5d %1s  %-25s\n",
+		sprintf(msg,"%-6s %-25s%5d x%4d%5d %1s  %-25s\n",
 #endif
 			fkeys[i],
 			videoentry.name,
@@ -261,102 +361,28 @@ while (key == 13 || key == 1013) {
 			accessmethod,
 			videoentry.comment
 			);
+		puthelpmsg(-1,1,C_HELP_BODY,msg);
 		}
-	for (; i <= j+12; i++) printf("\n");
-	helpmessage(helpmessagevideo);
-	fromvideotable(adapter);
-
-	key = getakey();
+	puthelpmsg(19,1,C_HELP_BODY,helpmessagevideo);
+	movecursor(25,80); /* turn it off */
+	fromvideotable(adapter); /* restore this to normal */
+	while (1) {
+		key = getakey();
+		if (key == 27 || key == 1059) /* escape or F1 */
+			return(key);
+		if (key == 13 || key == 1013) { /* for old time's sake */
+			if ((j += 12) >= maxvideomode) j = 0;
+			break;
+			}
+		if (key == 1073 && j > 0) { /* page up */
+			j -= 12;
+			break;
+			}
+		if (key == 1081 && j+12 < maxvideomode) { /* page down */
+			j += 12;
+			break;
+			}
+		}
 	}
-return(key);
-}
-
-/* texttempmsg(msg) displays a text message of up to 40 characters, waits
-      for a key press, restores the prior display, and returns (without
-      eating the key).
-      It works in almost any video mode - does nothing in some very odd cases
-      (HCGA hi-res with old bios), or when there isn't 10k of temp mem free. */
-int texttempmsg(char *msgparm)
-{
-   unsigned char msg[41],buffer[640];
-   char far *savearea;
-   char far *fartmp;
-   char far *fontptr;
-   unsigned char *bufptr;
-   int i,j,k,xsave,ysave,xrepeat,yrepeat,fontchar,charnum;
-   strncpy(msg,msgparm,40);
-   msg[40] = 0; /* ensure max message len of 40 chars */
-   if (dotmode == 11) /* disk video, screen in text mode, easy */
-   {
-      movecursor(0,0);
-      printf(msg);
-      while (!keypressed()) { } /* wait for a keystroke but don't eat it */
-      movecursor(0,0);
-      memset(msg,' ',40);
-      printf(msg); /* erase the message */
-      return(0);
-   }
-   if ((fontptr = findfont(0)) == NULL) /* old bios, no font table? */
-   {
-      if (oktoprint == 0	       /* can't printf */
-	|| xdots > 640 || ydots > 200) /* not willing to trust char cell size */
-	 return(-1); /* sorry, message not displayed */
-      ysave = 8;
-      xsave = xdots;
-   }
-   else
-   {
-      xrepeat = (xdots >= 640) ? 2 : 1;
-      yrepeat = (ydots >= 300) ? 2 : 1;
-      xsave = strlen(msg) * xrepeat * 8;
-      ysave = yrepeat * 8;
-   }
-   if ((savearea = farmemalloc((long)xsave * ysave)) == NULL) /* worst case 10k */
-      return(-1); /* sorry, message not displayed */
-   fartmp = savearea;
-   for (i = 0; i < ysave; ++i)
-   {
-      get_line(i,0,xsave-1,buffer);
-      for (j = 0; j < xsave; ++j) /* copy it out to far memory */
-	 *(fartmp++) = buffer[j];
-   }
-   if (fontptr == NULL) /* bios must do it for us */
-   {
-      home();
-      printf(msg);
-   }
-   else /* generate the characters */
-      for (i = 0; i < 8; ++i)
-      {
-	 memset(buffer,0,640);
-	 bufptr = buffer;
-	 charnum = -1;
-	 while (msg[++charnum] != 0)
-	 {
-	    fontchar = *(fontptr + msg[charnum]*8 + i);
-	    for (j = 0; j < 8; ++j)
-	    {
-	       for (k = 0; k < xrepeat; ++k)
-	       {
-		  if ((fontchar & 0x80) != 0)
-		     *bufptr = 7; /* color 7 (mod andcolors), usually grey */
-		  ++bufptr;
-	       }
-	       fontchar <<= 1;
-	    }
-	 }
-	 for (j = 0; j < yrepeat; ++j)
-	    put_line(i*yrepeat+j,0,xsave-1,buffer);
-      }
-   while (!keypressed()) { } /* wait for a keystroke but don't eat it */
-   fartmp = savearea;
-   for (i = 0; i < ysave; ++i)
-   {
-      for (j = 0; j < xsave; ++j) /* copy back from far memory */
-	 buffer[j] = *(fartmp++);
-      put_line(i,0,xsave-1,buffer);
-   }
-   farmemfree(savearea);
-   return(0);
 }
 

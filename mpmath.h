@@ -5,11 +5,11 @@
 
 struct MP {
    int Exp;
-	unsigned long Mant;
+        unsigned long Mant;
 };
 
 struct MPC {
-	struct MP x, y;
+        struct MP x, y;
 };
 
 extern struct MP MPTrigTable[2][4][256], InvHalfPi, HalfPi, InvLn2, Ln2;
@@ -57,7 +57,7 @@ struct MP MPsub086(struct MP x, struct MP y);
 int MPcmp086(struct MP x, struct MP y);
 struct MP d2MP086(double x);
 double *MP2d086(struct MP m);
-struct MP fg2MP086(long x, int fg); 
+struct MP fg2MP086(long x, int fg);
 
 struct MP MPmul386(struct MP x, struct MP y);
 struct MP MPdiv386(struct MP x, struct MP y);
@@ -66,7 +66,7 @@ struct MP MPsub386(struct MP x, struct MP y);
 int MPcmp386(struct MP x, struct MP y);
 struct MP d2MP386(double x);
 double *MP2d386(struct MP m);
-struct MP fg2MP386(long x, int fg); 
+struct MP fg2MP386(long x, int fg);
 
 /* function pointer support added by Tim Wegner 12/07/89 */
 extern int        (*pMPcmp)(struct MP x, struct MP y);
@@ -82,9 +82,9 @@ void setMPfunctions(void);
 /* FPU routines */
 extern void FPUaptan387(double *y, double *x, double *atan);
 extern void FPUcplxmul(struct complex *x, struct complex *y,
-							  struct complex *z);
+                                                          struct complex *z);
 extern void FPUcplxdiv(struct complex *x, struct complex *y,
-							  struct complex *z);
+                                                          struct complex *z);
 extern void FPUsincos(double *Angle, double *Sin, double *Cos);
 extern void FPUsinhcosh(double *Angle, double *Sinh, double *Cosh);
 extern void FPUcplxlog(struct complex *x, struct complex *z);
@@ -105,9 +105,9 @@ int form_per_pixel(void);
 int fpFormulaSetup(void);
 int mpcFormulaSetup(void);
 int intFormulaSetup(void);
-/* char *FormStr, *FormName;	BDT commented these out */
+/* char *FormStr, *FormName;    BDT commented these out */
 
-long 
+long
    far RegFg2Float(long x, char FudgeFact),
    far RegFloat2Fg(long x, int Fudge),
    far RegDivFloat(long x, long y),
@@ -126,13 +126,16 @@ unsigned long far ExpFudged(long x, int Fudge);
 #define Fg2Float(x, f, z) (void)((*(long*)&z) = RegFg2Float(x, f))
 #define Float2Fg(x, f) RegFloat2Fg(*(long*)&x, f)
 #define fLog14(x, z) (void)((*(long*)&z) = \
-	RegFg2Float(LogFloat14(*(long*)&x), 16))
+        RegFg2Float(LogFloat14(*(long*)&x), 16))
 #define fExp14(x, z) (void)((*(long*)&z) = ExpFloat14(*(long*)&x));
 #define fSqrt14(x, z) fLog14(x, z); fShift(z, -1, z); fExp14(z, z)
 
+#ifndef _LCOMPLEX_DEFINED
 struct lcomplex {
    long x, y;
 };
+#define _LCOMPLEX_DEFINED
+#endif
 
 union Arg {
    struct complex d;
@@ -142,7 +145,7 @@ union Arg {
 
 extern union Arg *Arg1,*Arg2;
 
-extern void lStkSin(),lStkCos(),lStkSinh(),lStkCosh(),lStkLog(),lStkExp(),lStkSqr();  
-extern void dStkSin(),dStkCos(),dStkSinh(),dStkCosh(),dStkLog(),dStkExp(),dStkSqr();  
+extern void lStkSin(),lStkCos(),lStkSinh(),lStkCosh(),lStkLog(),lStkExp(),lStkSqr();
+extern void dStkSin(),dStkCos(),dStkSinh(),dStkCosh(),dStkLog(),dStkExp(),dStkSqr();
 
 #endif
