@@ -17,8 +17,8 @@ extern struct lcomplex lold, lnew, *longparm;
 extern llimit2;
 static int bbase;
 static long xpixel, ypixel;
-static long initjx, initjy, initmx, initmy, initz, djx, djy, dmx, dmy;
-static long jx, jy, mx, my, dx, dy, dz, initzx, initzy, xoffset, yoffset;
+static long initz, djx, djy, dmx, dmy;
+static long jx, jy, mx, my, xoffset, yoffset;
 static long jxmin, jxmax, jymin, jymax, mxmin, mxmax, mymin, mymax;
 static long x_per_inch, y_per_inch, inch_per_xdot, inch_per_ydot;
 struct Perspective {
@@ -174,7 +174,7 @@ int jb_per_pixel(void) {
    return(1);
 }
 
-static int n, zpixel, blank, plotted, color;
+static int n, zpixel, plotted, color;
 
 int zline(long x, long y) {
    xpixel = x;

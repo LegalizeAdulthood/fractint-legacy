@@ -55,7 +55,7 @@ void rotate(int direction)	/* rotate-the-palette routine */
 {
 int  kbdchar, more, last, next;
 int fkey, step, fstep, istep, jstep, oldstep;
-int incr, random, fromred, fromblue, fromgreen, tored, toblue, togreen;
+int incr, fromred, fromblue, fromgreen, tored, toblue, togreen;
 int i, changecolor, changedirection;
 int oldhelpmode;
 int rotate_max,rotate_size;
@@ -223,6 +223,18 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	 case 'c':                      /* for completeness' sake, the 'c' too */
 	 case 'C':
 	    pauserotate();		/* pause */
+	    break;
+	 case '>':			/* single-step */
+	 case '.':
+	 case '<':
+	 case ',':
+	    if (! paused)
+	       pauserotate();		/* pause */
+	    fkey = 0;
+	    if (kbdchar == '>' || kbdchar == '.')
+	       spindac(1,1);
+	    else
+	       spindac(-1,1);
 	    break;
 	 case 'd':                      /* load colors from "default.map" */
 	 case 'D':

@@ -150,6 +150,7 @@ public		gotrealdac		; loaddac worked, really got a dac
 public		reallyega		; "really an EGA" (faking a VGA) flag
 public		diskflag		; disk video active flag
 public		video_type		; video adapter type
+public		svga_type		; SuperVGA video adapter type
 public		mode7text		; for egamono and hgc
 public		textaddr		; text segment
 public		textsafe		; setfortext/setforgraphics logic
@@ -243,6 +244,21 @@ video_type	dw	0		; actual video adapter type:
 					;  11  = 8514/A (not yet checked)
 					;  12  = TIGA	(not yet checked)
 					;  13  = TARGA	(not yet checked)
+svga_type	dw	0		;  (forced) SVGA type
+					;   1 = ahead "A" type
+					;   2 = ATI
+					;   3 = C&T
+					;   4 = Everex
+					;   5 = Genoa
+					;   6 = Ncr
+					;   7 = Oak-Tech
+					;   8 = Paradise
+					;   9 = Trident
+					;  10 = Tseng 3000
+					;  11 = Tseng 4000
+					;  12 = Video-7
+					;  13 = ahead "B" type
+					;  14 = "null" type (for testing only)
 mode7text	dw	0		; nonzero for egamono and hgc
 textaddr	dw	0b800h		; b800 for mode 3, b000 for mode 7
 textsafe	dw	0		; 0 = default, runup chgs to 1
@@ -2047,13 +2063,13 @@ if @CodeSize
 bankseg dw	seg $nobank
 endif
 
-vesa_detect		dw	1	; set to 0 to disable VESA-detection
-vesa_granularity	db	0	; BDT VESA Granularity value
 vesa_bankswitch 	dd	$vesa_nullbank ; initially, do-nothing
 vesa_mapper		dd	$nobank
+vesa_detect		dw	1	; set to 0 to disable VESA-detection
 vesa_gran_offset	dw	0
 vesa_low_window 	dw	0
 vesa_high_window	dw	1
+vesa_granularity	db	0	; BDT VESA Granularity value
 
 	public	curbk
 
@@ -2671,6 +2687,65 @@ lbl:
 whichvga proc	near
 	push	bp			; save it around all the int 10s
 
+	cmp	svga_type,0		; was a SuperVGA adapter forced?
+	jne	type1_forced		;  yup - wade through the options
+	jmp	not_forced		;  nope - skip this section
+type1_forced:
+	cmp	svga_type,1		
+	jne	type2_forced
+	bkadr	aheada,$aheada,ahead_entries
+type2_forced:
+	cmp	svga_type,2		
+	jne	type3_forced
+	bkadr	ativga,$ativga,ati_entries
+type3_forced:
+	cmp	svga_type,3		
+	jne	type4_forced
+	bkadr	chipstech,$chipstech,chips_entries
+type4_forced:
+	cmp	svga_type,4		
+	jne	type5_forced
+	bkadr	everex,$everex,everex_entries
+type5_forced:
+	cmp	svga_type,5		
+	jne	type6_forced
+	bkadr	genoa,$genoa,genoa_entries
+type6_forced:
+	cmp	svga_type,6		
+	jne	type7_forced
+	bkadr	ncr,$ncr,ncr_entries
+type7_forced:
+	cmp	svga_type,7		
+	jne	type8_forced
+	bkadr	oaktech,$oaktech,oaktech_entries
+type8_forced:
+	cmp	svga_type,8		
+	jne	type9_forced
+	bkadr	paradise,$paradise,paradise_entries
+type9_forced:
+	cmp	svga_type,9		
+	jne	type10_forced
+	bkadr	trident,$trident,trident_entries
+type10_forced:
+	cmp	svga_type,10		
+	jne	type11_forced
+	bkadr	tseng,$tseng,tseng_entries
+type11_forced:
+	cmp	svga_type,11		
+	jne	type12_forced
+	bkadr	tseng4,$tseng4,tseng4_entries
+type12_forced:
+	cmp	svga_type,12		
+	jne	type13_forced
+	bkadr	video7,$video7,video7_entries
+type13_forced:
+	cmp	svga_type,13		
+	jne	type14_forced
+	bkadr	aheadb,$aheadb,ahead_entries
+type14_forced:
+	jmp	fini
+not_forced:
+
 	cmp	vesa_detect,0		; is VESA-detection disabled?
 	je	notvesa 		;  yup - skip this
 	mov	ax,4f00h		; check for VESA adapter
@@ -2889,10 +2964,11 @@ noct:	mov	ch,0
 not4:	mov	dx,3d4h 		;Test for Tseng 3000 or 4000
 	mov	ax,1f25h		;is the Overflow High register there?
 	call	$isport2
-	jz	yes4
-	jmp	nots
-yes4:	mov	dx,3cdh 		;test bank switch register
-	mov	al,0ffh
+        jnz     nots
+        mov     al,03fh                 ;bottom six bits only
+        jmp     short yes3
+yes4:   mov     al,0ffh
+yes3:   mov     dx,3cdh                 ;test bank switch register
 	call	$isport1
 	jnz	nots
 	bkadr	tseng,$tseng, tseng_entries		; Bert
@@ -3498,6 +3574,7 @@ normaline	proc	near		; Normal Line
 normal_line1:
 	push	ax			; save stop col
 	mov	al,[si] 		; retrieve the color
+	xor	ah,ah			; MCP 6-7-91
 	push	cx			; save the counter around the call
 	push	dx			; save column around the call
 	push	si			; save the pointer around the call also
@@ -4394,6 +4471,7 @@ targaMode:				; TARGA MODIFIED 2 June 89 - j mclain
 f8514mode:				; 8514 modes
 	call	open8514		; start the 8514a
 	jnc	f85ok
+	mov	goodmode,0		; oops - problems.
 	mov	dotmode, 0		; if problem starting use normal mode
 	jmp	dullnormalmode
 hgcmode:
@@ -5636,6 +5714,131 @@ disablevideo	proc	near		; wierd video trick to disable/enable
 	pop	dx			; restore DX and we done.
 	ret
 disablevideo	endp
+
+
+;***************** Shadow Video Routines, MCP 6-7-91 ***********
+
+.DATA
+
+extrn	AntiAliasing:WORD
+
+extrn Shadowing:WORD
+public ShadowColors
+
+ShadowRead	dw	?
+ShadowWrite	dw	?
+ShadowLineWrite dw	?
+ShadowLineRead	dw	?
+ShadowSwap	dd	?
+ShadowColors	dw	?
+
+.CODE
+
+; Passing this routine 0 turns off shadow, nonzero turns it on.
+ShadowVideo    proc	uses di si, state:WORD
+	mov	ax, state
+	cmp	ax, Shadowing
+	jne	SetShadowing
+	jmp	ExitShadowVideo
+
+SetShadowing:
+	mov	Shadowing, ax
+	or	ax, ax
+	jz	ShadowVideoOff
+
+	mov	cx, AntiAliasing
+	shl	xdots, cl
+	shl	ydots, cl
+	shl	sxdots, cl
+	shl	sydots, cl
+
+	cmp	ShadowColors, 0
+	jne	NoTColors
+
+	mov	colors, 256
+
+NoTColors:
+	mov	ax,offset diskwrite	; set up disk-vid write-a-dot routine
+	mov	bx,offset diskread	; set up disk-vid read-a-dot routine
+	mov	cx,offset normaline	; set up the normal linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	si, offset ShadowSwapFnct
+	mov	di, cs
+	jmp	SetShadowVideo
+
+ShadowVideoOff:
+	mov	cx, AntiAliasing
+	shr	xdots, cl
+	shr	ydots, cl
+	shr	sxdots, cl
+	shr	sydots, cl
+
+	mov	ax, ShadowColors
+	mov	colors, ax
+
+	mov	ax, ShadowWrite
+	mov	bx, ShadowRead
+	mov	cx, ShadowLineWrite
+	mov	dx, ShadowLineRead
+	mov	si, WORD PTR ShadowSwap
+	mov	di, WORD PTR ShadowSwap+2
+
+SetShadowVideo:
+	mov	dotwrite,ax		; save the results
+	mov	dotread,bx		;  ...
+	mov	linewrite,cx		;  ...
+	mov	lineread,dx		;  ...
+	mov	WORD PTR swapsetup, si
+	mov	WORD PTR swapsetup+2, di
+
+ExitShadowVideo:
+	ret
+ShadowVideo	ENDP
+
+
+SetupShadowVideo	PROC
+	mov	ax, dotwrite		; save the results
+	mov	ShadowWrite, ax
+	mov	ax, dotread		;  ...
+	mov	ShadowRead, ax
+	mov	ax, linewrite
+	mov	ShadowLineWrite, ax
+	mov	ax, lineread
+	mov	ShadowLineRead, ax
+	mov	ax, WORD PTR swapsetup
+	mov	WORD PTR ShadowSwap, ax
+	mov	ax, WORD PTR swapsetup+2
+	mov	WORD PTR ShadowSwap+2, ax
+	mov	ax, colors
+	mov	ShadowColors, ax
+
+	mov	Shadowing, 0
+	mov	ax, 1
+	push	ax
+	call	ShadowVideo
+	add	sp, 2
+
+	call	far ptr startdisk
+
+	ret
+SetupShadowVideo	ENDP
+
+
+; This routine makes sure the right routines are set for swapping what's
+;   really on the screen.
+ShadowSwapFnct		PROC
+	xor   ax, ax
+	push  ax
+	call  ShadowVideo
+	add   sp, 2
+	call  [ShadowSwap]
+	mov   ax, 1
+	push  ax
+	call  ShadowVideo
+	add   sp, 2
+	ret
+ShadowSwapFnct		ENDP
+
 
 ; ************** Function findfont(n) ******************************
 

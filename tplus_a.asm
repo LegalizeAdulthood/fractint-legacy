@@ -142,15 +142,24 @@ CorrectBank:
 
 CheckDepth2:
    dec	 cx
-   jnz	 Write4Bytes
+   jnz	 Read4Bytes
 
    mov	 cx, x
    shl	 cx, 1
    add	 bx, cx
    mov	 ax, es:[bx]
+
+   mov   dx, ax
+   mov   cl, 10
+   shr   dx, cl
+   mov   cl, 3
+   shl   dx, cl
+   shl   ax, cl
+   shl   ah, cl
+
    jmp	 ExitPlotBankedPixel
 
-Write4Bytes:
+Read4Bytes:
    mov	 cx, x
    shl	 cx, 1
    shl	 cx, 1
@@ -213,6 +222,15 @@ CheckDepth2:
    jnz	 Write4Bytes
 
    mov	 ax, Color
+   mov   cl, 3
+   shr   ah, cl
+   shr   ax, cl
+   mov   dx, Color+2
+   shr   dx, cl
+   mov   cx, 10
+   shl   dx, cl
+   or    ax, dx
+
    mov	 cx, x
    shl	 cx, 1
    add	 bx, cx

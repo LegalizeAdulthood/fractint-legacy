@@ -35,10 +35,9 @@ static	int prompt_valuestring(char *buf,struct fullscreenvalues *val);
 static	int prompt_checkkey(int curkey);
 static	int input_field_list(int attr,char *fld,int vlen,char **list,int llen,
 			     int row,int col,int (*checkkey)(int));
-static	int compare(void const *i,void const *j);
-static	void clear_line(int row,int start,int stop,int color);
 static	int select_fracttype(int t);
 static	int sel_fractype_help(int curkey, int choice);
+static	int get_corners(void);
 static	int edit_ifs_params(void );
 static	int select_type_params(int newfractype,int oldfractype);
 static	void set_default_parms(void);
@@ -76,6 +75,7 @@ extern int field_prompt(int options, char *hdg, char *instr, char *fld,
 extern int input_field(int options, int attr, char *fld,
 	     int len, int row, int col, int (*checkkey)(int) );
 extern int read_help_topic(int label_num, int off, int len, void far *buf);
+extern int Formula();
 
 static char funnyglasses_map_name[16];
 extern char temp[], temp1[256];   /* temporary strings	      */
@@ -109,6 +109,12 @@ extern	char ray_name[];
 extern	int	init3d[20];	/* '3d=nn/nn/nn/...' values */
 extern	double	xxmin,xxmax;	/* initial corner values    */
 extern	double	yymin,yymax;	/* initial corner values    */
+extern	unsigned char usemag;
+
+extern	int AntiAliasing;
+extern double zzmin, zzmax, ttmin, ttmax;
+extern int Transparent3D;
+
 extern	double	xx3rd,yy3rd;	/* initial corner values    */
 extern	int	invert; 	/* non-zero if inversion active */
 extern	double	inversion[3];	/* radius, xcenter, ycenter */
@@ -205,14 +211,21 @@ struct				   /* Allocate DTA and define structure */
 #define GETPARM    3
 
 /* --------------------------------------------------------------------- */
+extern char s_iter[];
+extern char s_real[];
+extern char s_mult[];
+extern char s_sum[];
+extern char s_imag[];
+extern char s_zmag[];
+extern char s_bof60[];
+extern char s_bof61[];
+extern char s_maxiter[];
 
 extern char gifmask[];
 char ifsmask[13]     = {"*.ifs"};
 char formmask[13]    = {"*.frm"};
 char lsysmask[13]    = {"*.l"};
 char commandmask[13] = {"*.par"};
-
-static crtcols = 80;		/* constant for now */
 
 void prompts_overlay() { }	/* for restore_active_ovly */
 
@@ -641,6 +654,9 @@ inpfldl_end:
 
 /* --------------------------------------------------------------------- */
 
+/* MCP 7-7-91, This is static code, but not called anywhere */
+#ifdef DELETE_UNUSED_CODE
+
 /* compare for sort of type table */
 static int compare(const void *i, const void *j)
 {
@@ -656,6 +672,8 @@ static void clear_line(int row, int start, int stop, int color) /* clear part of
    for(col=start;col<= stop;col++)
       putstring(row,col,color," ");
 }
+
+#endif
 
 /* --------------------------------------------------------------------- */
 
@@ -834,7 +852,7 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
    char *choices[12];
    int oldbailout;
    int promptnum;
-   char msg[81];
+   char msg[120];
    char *typename, *tmpptr;
    char bailoutmsg[50];
    int ret = 0;
@@ -848,30 +866,33 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
 
    ENTER_OVLY(OVLY_PROMPTS);
 
-   if (fractalspecific[curtype=fractype].name[0] == '*'
-     && (i = fractalspecific[curtype].tofloat) != NOFRACTAL
+   curtype = fractype;
+   if (curfractalspecific->name[0] == '*'
+     && (i = fractalspecific->tofloat) != NOFRACTAL
      && fractalspecific[i].name[0] != '*')
       curtype = i;
+   curfractalspecific = &fractalspecific[curtype];
 
-   if (curtype == IFS || curtype == IFS3D)
-      return ((caller) ? edit_ifs_params() : 0);
+   if (curtype == IFS || curtype == IFS3D) {
+      ret = ((caller) ? edit_ifs_params() : 0);
+      goto gfp_exit;
+      }
 
-   if (*(typename = fractalspecific[curtype].name) == '*')
+   if (*(typename = curfractalspecific->name) == '*')
       ++typename;
 
    for (numparams = 0; numparams < 4; numparams++) {
-      if (fractalspecific[curtype].param[numparams][0] == 0) break;
-      choices[numparams] = fractalspecific[curtype].param[numparams];
+      if (curfractalspecific->param[numparams][0] == 0) break;
+      choices[numparams] = curfractalspecific->param[numparams];
       paramvalues[numparams].type = 'd';
       paramvalues[numparams].uval.dval = param[numparams];
       }
 
-   numtrig = (fractalspecific[curtype].flags >> 6) & 7;
-   if(curtype==FORMULA || curtype==FFORMULA )
-   {
+   numtrig = (curfractalspecific->flags >> 6) & 7;
+   if(curtype==FORMULA || curtype==FFORMULA ) {
       extern char maxfn;
       numtrig = maxfn;
-   }
+      }
    promptnum = numparams;
 
    if ((i = numtrigfn) > 25) i = 25;
@@ -887,7 +908,7 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
       ++promptnum;
       }
 
-   if (fractalspecific[curtype].orbit_bailout)
+   if (curfractalspecific->orbit_bailout)
       if (potparam[0] != 0.0 && potparam[2] != 0.0) {
 	 paramvalues[promptnum].type = '*';
 	 choices[promptnum] = "Bailout: continuous potential (Y screen) value in use";
@@ -899,7 +920,7 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
 	 paramvalues[promptnum].uval.ival = oldbailout = bailout;
 	 ++promptnum;
 	 paramvalues[promptnum].type = '*';
-	 i = fractalspecific[curtype].orbit_bailout;
+	 i = curfractalspecific->orbit_bailout;
 	 tmpptr = typename;
 	 if (usr_biomorph != -1) {
 	    i = 100;
@@ -914,13 +935,13 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
       && (display3d > 0 || promptnum == 0)) {
        static char far msg[]={"Current type has no type-specific parameters"};
        stopmsg(20,msg);
-       return(0);
+       goto gfp_exit;
        }
 
    /* note: max of 9 prompt lines now, plus hdgs & instr of course */
 
    dstack[0] = 0;
-   if ((i = fractalspecific[curtype].helpformula) < -1) {
+   if ((i = curfractalspecific->helpformula) < -1) {
       if (i == -2) { /* special for formula */
 	 filename = FormFileName;
 	 entryname = FormName;
@@ -962,13 +983,23 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
       dstack[j+1] = 0;
       }
 
-   sprintf(msg,"Options for fractal type %s",typename);
-   oldhelpmode = helpmode;
-   helpmode = fractalspecific[curtype].helptext;
-   i = fullscreen_prompt(msg,promptnum,choices,paramvalues,0,0,dstack);
-   helpmode = oldhelpmode;
-   if (i < 0)
-      return(-1);
+   sprintf(msg,
+	   "Parameters for fractal type %s\n(Press F6 for corner parameters)",
+	   typename);
+   while (1) {
+      oldhelpmode = helpmode;
+      helpmode = curfractalspecific->helptext;
+      i = fullscreen_prompt(msg,promptnum,choices,paramvalues,0,0x40,dstack);
+      helpmode = oldhelpmode;
+      if (i < 0) {
+	 if (ret == 0)
+	    ret = -1;
+	 goto gfp_exit;
+	 }
+      if (i != F6) break;
+      if (get_corners() > 0)
+	 ret = 1;
+      }
 
    for ( i = 0; i < numparams; i++) {
       if (param[i] != paramvalues[i].uval.dval) {
@@ -986,7 +1017,7 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
       }
 
    if ((potparam[0] == 0.0 || potparam[2] == 0.0)
-     && fractalspecific[curtype].orbit_bailout) {
+     && curfractalspecific->orbit_bailout) {
       bailout = paramvalues[numparams+numtrig].uval.ival;
       if (bailout != 0 && (bailout < 4 || bailout > 32000))
 	 bailout = oldbailout;
@@ -994,6 +1025,8 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
 	 ret = 1;
       }
 
+gfp_exit:
+   curfractalspecific = &fractalspecific[fractype];
    EXIT_OVLY;
    return(ret);
 }
@@ -1173,8 +1206,8 @@ static long gfe_choose_entry(int type,char *title,char *filename,char *entryname
 static int check_gfe_key(int curkey,int choice)
 {
    char infhdg[60];
-   char far *infbuf, far *infptr;
-   int linect,linelen,c;
+   char far *infbuf;
+
    if (curkey == F6)
       return 0-F6;
    if (curkey == F2) {
@@ -1247,7 +1280,6 @@ static void format_parmfile_line(int choice,char *buf)
 
 int get_fract3d_params() /* prompt for 3D fractal parameters */
 {
-   char *s;
    int i,k,ret,oldhelpmode;
 static char *ifs3d_prompts[] = {
    "X-axis rotation in degrees",
@@ -1314,13 +1346,11 @@ int get_3d_params()	/* prompt for 3D parameters */
 {
    char *choices[10];
    int attributes[21];
-   char c;
-   int numprompts;
    int sphere;
    char *s;
    char *prompts3d[21];
    struct fullscreenvalues uvalues[21];
-   int i, j, k;
+   int i, k;
    int oldhelpmode;
 
    ENTER_OVLY(OVLY_PROMPTS);
@@ -1601,15 +1631,13 @@ return(0);
 static int get_light_params()
 {
    char *prompts3d[10];
-   double values[10];
    struct fullscreenvalues uvalues[10];
-   char *s;
+
    int k;
    int oldhelpmode;
 
    /* defaults go here */
 
-/* MRR */
    k = -1;
    prompts3d[++k]= "X value light vector";
    uvalues[k].type = 'i';
@@ -1677,7 +1705,6 @@ static int check_mapfile()
 {
    extern unsigned char dacbox[256][3];
    extern unsigned char olddacbox[256][3];
-   char msg[81];
    int askflag = 0;
    int i,oldhelpmode;
    strcpy(temp1,"*");
@@ -1720,9 +1747,9 @@ or '*' to use palette from the image about to be loaded.",
 static int get_funny_glasses_params()
 {
    char *prompts3d[10];
-   double values[10];
+
    struct fullscreenvalues uvalues[10];
-   char *s;
+
    int k;
    int oldhelpmode;
 
@@ -1946,19 +1973,11 @@ S to save your edits in a file, or ENTER to end ==>"};
 
 int get_toggles()
 {
-   int numcols; 		/* number of columns */
-   int startrow;		/* upper left corner of list */
-   int startcol;		/* upper left corner of list */
    char *choices[20];
-   char c;
-   int numprompts;
-   char *s;
    int oldhelpmode;
    char prevsavename[81];
-
    struct fullscreenvalues uvalues[25];
    int i, j, k;
-
    char old_usr_stdcalcmode;
    int old_maxit,old_inside,old_outside,old_soundflag;
    int old_logflag,old_biomorph,old_decomp;
@@ -1992,22 +2011,36 @@ int get_toggles()
    uvalues[k].uval.ival = old_maxit = maxit;
 
    k++;
-   choices[k] = "Inside Color (<nnn>, maxiter, bof60, bof61)";
+   choices[k] = "Inside Color (<nnn>, maxiter, zmag, bof60, bof61)";
    uvalues[k].type = 's';
-   if(inside == -60)
-      strcpy(uvalues[k].uval.sval,"bof60");
+   if(inside == -59)
+      strcpy(uvalues[k].uval.sval,s_zmag);
+   else if(inside == -60)
+      strcpy(uvalues[k].uval.sval,s_bof60);
    else if(inside == -61)
-      strcpy(uvalues[k].uval.sval,"bof61");
+      strcpy(uvalues[k].uval.sval,s_bof61);
    else if(inside == -1)
-      strcpy(uvalues[k].uval.sval,"maxiter");
+      strcpy(uvalues[k].uval.sval,s_maxiter);
    else
       sprintf(uvalues[k].uval.sval,"%d",inside);
    old_inside = inside;
 
    k++;
-   choices[k] = "Outside Color (-1 means none)";
-   uvalues[k].type = 'i';
-   uvalues[k].uval.ival = old_outside = outside;
+   choices[k] = "Outside Color (<nnn>,iter,real,imag,mult,summ)";
+   uvalues[k].type = 's';
+   if(outside == -1)
+      strcpy(uvalues[k].uval.sval,s_iter);
+   else if(outside == -2)
+      strcpy(uvalues[k].uval.sval,s_real);
+   else if(outside == -3)
+      strcpy(uvalues[k].uval.sval,s_imag);
+   else if(outside == -4)
+      strcpy(uvalues[k].uval.sval,s_mult);
+   else if(outside == -5)
+      strcpy(uvalues[k].uval.sval,s_sum);
+   else
+      sprintf(uvalues[k].uval.sval,"%d",outside);
+   old_outside = outside;
 
    k++;
    choices[k] = "Savename (.GIF implied)";
@@ -2049,6 +2082,11 @@ int get_toggles()
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = old_decomp = decomp[0];
 
+   k++;
+   choices[k] = "Antialiasing (0 to 8)";
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = AntiAliasing;
+
    oldhelpmode = helpmode;
    helpmode = HELPXOPTS;
    i = fullscreen_prompt("        Basic Options\n"
@@ -2078,17 +2116,30 @@ int get_toggles()
    if (maxit > 32767) maxit = 32767;
    if (maxit != old_maxit) j = 1;
 
-   if(strncmp(strlwr(uvalues[++k].uval.sval),"bof60",5)==0)
+   if(strncmp(strlwr(uvalues[++k].uval.sval),s_zmag,4)==0)
+      inside = -59;
+   else if(strncmp(strlwr(uvalues[k].uval.sval),s_bof60,5)==0)
       inside = -60;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),"bof61",5)==0)
+   else if(strncmp(strlwr(uvalues[k].uval.sval),s_bof61,5)==0)
       inside = -61;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),"maxiter",5)==0)
+   else if(strncmp(strlwr(uvalues[k].uval.sval),s_maxiter,5)==0)
       inside = -1;
    else
       inside = atoi(uvalues[k].uval.sval);
    if (inside != old_inside) j = 1;
 
-   outside = uvalues[++k].uval.ival;
+   if(strncmp(strlwr(uvalues[++k].uval.sval),s_real,4)==0)
+      outside = -2;
+   else if(strncmp(strlwr(uvalues[k].uval.sval),s_imag,4)==0)
+      outside = -3;
+   else if(strncmp(strlwr(uvalues[k].uval.sval),s_mult,4)==0)
+      outside = -4;
+   else if(strncmp(strlwr(uvalues[k].uval.sval),s_sum,4)==0)
+      outside = -5;
+   else if(strncmp(strlwr(uvalues[k].uval.sval),s_iter,4)==0)
+      outside = -1;
+   else
+      outside = atoi(uvalues[k].uval.sval);
    if (outside != old_outside) j = 1;
 
    strcpy(savename,uvalues[++k].uval.sval);
@@ -2110,6 +2161,12 @@ int get_toggles()
    decomp[0] = uvalues[++k].uval.ival;
    if (decomp[0] != old_decomp) j = 1;
 
+   ++k;
+   if(AntiAliasing != uvalues[k].uval.ival) j = 1;
+   AntiAliasing = uvalues[k].uval.ival;
+   if(AntiAliasing < 0) AntiAliasing = 0;
+   if(AntiAliasing > 8) AntiAliasing = 8;
+
    EXIT_OVLY;
    return(j);
 }
@@ -2120,13 +2177,7 @@ int get_toggles()
 
 int get_toggles2()
 {
-   int numcols; 		/* number of columns */
-   int startrow;		/* upper left corner of list */
-   int startcol;		/* upper left corner of list */
    char *choices[20];
-   char c;
-   int numprompts;
-   char *s;
    int oldhelpmode;
 
    struct fullscreenvalues uvalues[25];
@@ -2794,7 +2845,6 @@ static int filename_speedstr(int row, int col, int vid,
 {
    extern char speed_prompt[];
    char *prompt;
-   int i,match;
    if ( strchr(speedstring,':')
      || strchr(speedstring,'*') || strchr(speedstring,'*')
      || strchr(speedstring,'?')) {
@@ -2815,7 +2865,6 @@ static int filename_speedstr(int row, int col, int vid,
 
 static int isadirectory(char *s)
 {
-   int out;
    if(strchr(s,'*') || strchr(s,'?'))
       return(0); /* for my purposes, not a directory */
    if(findfirst(s) != 0) /* couldn't find it */
@@ -2974,4 +3023,181 @@ static int expand_dirname(char *dirname,char *drive)
    return(0);
 }
 
+static int get_corners()
+{
+   struct fullscreenvalues values[15];
+   char *prompts[15];
+   static char xprompt[]={"          X"};
+   static char yprompt[]={"          Y"};
+   static char zprompt[]={"          Z"};
+   int i,nump,prompt_ret;
+   int cmag,transp3d;
+   double Xctr,Yctr,Mag;
+   unsigned char ousemag;
+   double oxxmin,oxxmax,oyymin,oyymax,oxx3rd,oyy3rd;
+   double ozzmin,ozzmax,ottmin,ottmax;
+   /* note that hdg[15] is used for non-transparent heading: */
+   static char hdg[]={"Transparent 3d Image Coordinates"};
+   int oldhelpmode;
+
+   transp3d = (Transparent3D && fractalspecific[fractype].orbitcalc == Formula);
+   oldhelpmode = helpmode;
+   ousemag = usemag;
+   oxxmin = xxmin; oxxmax = xxmax;
+   oyymin = yymin; oyymax = yymax;
+   oxx3rd = xx3rd; oyy3rd = yy3rd;
+   ozzmin = zzmin; ozzmax = zzmax;
+   ottmin = ttmin; ottmax = ttmax;
+
+gc_loop:
+   for (i = 0; i < 15; ++i)
+      values[i].type = 'd'; /* most values on this screen are type d */
+   cmag = (!transp3d && usemag && cvtcentermag(&Xctr, &Yctr, &Mag));
+
+   if (cmag) {
+      values[0].uval.dval = Xctr;
+      prompts[0] = "Center X";
+      values[1].uval.dval = Yctr;
+      prompts[1] = "Center Y";
+      values[2].uval.dval = Mag;
+      prompts[2] = "Magnification";
+      values[3].type = '*';
+      prompts[3] = "";
+      values[4].type = '*';
+      prompts[4] = "Press F7 to switch to \"corners\" mode";
+      nump = 5;
+      }
+
+   else {
+      nump = 0;
+      values[nump].type = '*';
+      prompts[nump++] = "Top-Left Corner";
+      values[nump].uval.dval = xxmin;
+      prompts[nump++] = xprompt;
+      values[nump].uval.dval = yymax;
+      prompts[nump++] = yprompt;
+      if (transp3d) {
+	 values[nump].uval.dval = zzmin;
+	 prompts[nump++] = zprompt;
+	 }
+      values[nump].type = '*';
+      prompts[nump++] = "Bottom-Right Corner";
+      values[nump].uval.dval = xxmax;
+      prompts[nump++] = xprompt;
+      values[nump].uval.dval = yymin;
+      prompts[nump++] = yprompt;
+      if (transp3d) {
+	 values[nump].uval.dval = zzmax;
+	 prompts[nump++] = zprompt;
+	 }
+      if (transp3d) {
+	 values[nump].type = '*';
+	 prompts[nump++] = "Time Step";
+	 values[nump].uval.dval = ttmin;
+	 prompts[nump++] = "          From";
+	 values[nump].uval.dval = ttmax;
+	 prompts[nump++] = "          To";
+	 }
+      else {
+	 if (xxmin == xx3rd && yymin == yy3rd)
+	    xx3rd = yy3rd = 0;
+	 values[nump].type = '*';
+	 prompts[nump++] = "Bottom-left (zeros for top-left X, bottom-right Y)";
+	 values[nump].uval.dval = xx3rd;
+	 prompts[nump++] = xprompt;
+	 values[nump].uval.dval = yy3rd;
+	 prompts[nump++] = yprompt;
+	 values[nump].type = '*';
+	 prompts[nump++] = "Press F7 to switch to \"center-mag\" mode";
+	 }
+      }
+
+   values[nump].type = '*';
+   prompts[nump++] = "Press F4 to reset to type default values";
+
+   oldhelpmode = helpmode;
+   helpmode = HELPCOORDS;
+   prompt_ret = fullscreen_prompt((transp3d) ? hdg : &hdg[15],
+		     nump, prompts, values, 0,
+		     (transp3d) ? 0x10 : 0x90, /* function keys */
+		     NULL);
+   helpmode = oldhelpmode;
+
+   if (prompt_ret < 0) {
+      usemag = ousemag;
+      xxmin = oxxmin; xxmax = oxxmax;
+      yymin = oyymin; yymax = oyymax;
+      xx3rd = oxx3rd; yy3rd = oyy3rd;
+      zzmin = ozzmin; zzmax = ozzmax;
+      ttmin = ottmin; ttmax = ottmax;
+      return -1;
+      }
+
+   if (prompt_ret == F4) { /* reset to type defaults */
+      xx3rd = xxmin = curfractalspecific->xmin;
+      xxmax	    = curfractalspecific->xmax;
+      yy3rd = yymin = curfractalspecific->ymin;
+      yymax	    = curfractalspecific->ymax;
+      if (viewcrop && finalaspectratio != SCREENASPECT)
+	 aspectratio_crop(SCREENASPECT,finalaspectratio);
+      goto gc_loop;
+      }
+
+   if (cmag) {
+      if ( values[0].uval.dval != Xctr
+	|| values[1].uval.dval != Yctr
+	|| values[2].uval.dval != Mag) {
+	 double radius,width;
+	 radius = 1.0 / values[2].uval.dval;
+	 width = radius * (1.0 / SCREENASPECT);
+	 yymax	       = values[1].uval.dval + radius;
+	 yy3rd = yymin = values[1].uval.dval - radius;
+	 xxmax	       = values[0].uval.dval + width;
+	 xx3rd = xxmin = values[0].uval.dval - width;
+	 }
+      }
+
+   else {
+      nump = 1;
+      xxmin = values[nump++].uval.dval;
+      yymax = values[nump++].uval.dval;
+      if (transp3d)
+	 zzmin = values[nump++].uval.dval;
+      nump++;
+      xxmax = values[nump++].uval.dval;
+      yymin = values[nump++].uval.dval;
+      if (transp3d)
+	 zzmax = values[nump++].uval.dval;
+      nump++;
+      if (transp3d) {
+	 ttmin = values[nump++].uval.dval;
+	 ttmax = values[nump++].uval.dval;
+	 }
+      else {
+	 xx3rd = values[nump++].uval.dval;
+	 yy3rd = values[nump++].uval.dval;
+	 if (xx3rd == 0 && yy3rd == 0) {
+	    xx3rd = xxmin;
+	    yy3rd = yymin;
+	    }
+	 }
+      }
+
+   if (prompt_ret == F7) { /* toggle corners/center-mag mode */
+      if (usemag == 0)
+	 if (cvtcentermag(&Xctr, &Yctr, &Mag) == 0)
+	    stopmsg(0,"Corners rotated or stretched, can't use center-mag");
+	 else
+	    usemag = 1;
+      else
+	 usemag = 0;
+      goto gc_loop;
+      }
+
+   return((xxmin == oxxmin && xxmax == oxxmax
+	&& yymin == oyymin && yymax == oyymax
+	&& xx3rd == oxx3rd && yy3rd == oyy3rd
+	&& zzmin == ozzmin && zzmax == ozzmax
+	&& ttmin == ottmin && ttmax == ottmax) ? 0 : 1);
+}
 

@@ -303,10 +303,10 @@ void Print_Screen()
 	       */
 	    long ldist;
 	    int r,g,b;
-	    double gamma,gammadiv,dtmp;
+	    double gamma,gammadiv;
 	    unsigned char convert[256];
 	    unsigned char scale[64];
-	    int adj[3];
+
 	    unsigned char far *table_ptr;
 	    res = (res < 150) ? 90 : 180;   /* 90 or 180 dpi */
 	    if (Printer_SetScreen == 0) {
@@ -450,11 +450,12 @@ void Print_Screen()
 
 	case 5:   /***** PostScript *****/
 	case 6:   /***** PostScript Landscape *****/
-
+	    if (!((EPSFileType > 0) && (ptrid==5)))
+		Printer_printf("%%!PS-Adobe%s",EndOfLine);
 	    if ((EPSFileType > 0) &&	 /* Only needed if saving to .EPS */
 		(ptrid == 5))
 		{
-		Printer_printf("%%!PS-Adobe-2.0 EPSF-2.0%s",EndOfLine);
+		Printer_printf("%%!PS-Adobe-1.0 EPSF-2.0%s",EndOfLine);
 
 		if (EPSFileType==1)
 		    i=xdots+78;
@@ -549,7 +550,7 @@ void Print_Screen()
 		}
 
 	    else if (ptrid == 5)       /* To be used on WELL-BEHAVED .EPS */
-		Printer_printf("30 %d translate %d %d scale",
+		Printer_printf("30 %d translate %d %d scale%s",
 				    75 - ((Printer_Titleblock==1) ? 0 : 45),
 				    xdots,ydots,EndOfLine);
 
@@ -686,7 +687,6 @@ void Print_Screen()
 	    if (!pixels) break;
 	    fetched = 0;
 	    for (x = 0; (x < xdots && !keypressed()); ++x) {
-		int bitct,offset;
 		if (fetched == 0) {
 		    if ((fetched = xdots-x) > fetchrows)
 			fetched = fetchrows;
@@ -964,6 +964,9 @@ static int _fastcall printer(int c)
 	outp((LPTn==30) ? 0x3F8 : 0x2F8,c);
 	return(0);
 	}
+
+    /* MCP 7-7-91, If we made it down to here, we may as well error out. */
+    return(-1);
 }
 
 static void printer_reset()

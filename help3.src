@@ -832,16 +832,21 @@ to the angle the surface makes with an imaginary light source. You will be
 asked to enter the three coordinates of the vector pointing toward the
 light in a following parameter screen - see {Light Source Parameters}.
 
-Light source before transformation calculates the illumination before
-doing the coordinate transformations, and is slightly faster. If you
-generate a sequence of images where one rotation is progressively changed,
-the effect is as if the image and the light source are fixed in relation
-to each other and you orbit around the image.
+"Light source before transformation" uses the illumination direction without
+transforming it. The light source is fixed relative to your computer screen.
+If you generate a sequence of images with progressive rotation, the effect is
+as if you and the light source are fixed and the object is rotating. Therefore
+as the object rotates features of the object move in and out of the light.
+This fill option was incorrect prior to version 16.1, and has been changed.
 
-Light source after transformation applies the transformations first, then
-calculates the illumination. If you generate a sequence of images with
-progressive rotation as above the effect is as if you and the light source
-are fixed and the object is rotating.
+"Light source after transformation" applies the same transformation to both
+the light direction and the object. Since both the light direction and the
+object are transformed, if you generate a sequence of images with the rotation
+progressively changed, the effect is as if the image and the light source
+are fixed in relation to each other and you orbit around the image. The
+illumination of features on the object is constant, but you see the object
+from different angles. This fill option was correct in earlier Fractint
+versions and has not been changed.
 
 For ease of discussion we will refer to the following fill types by these
 numbers:

@@ -133,12 +133,10 @@ extern int ifs_type;
 static int t;
 static long l_dx,l_dy,l_dz,l_dt,l_a,l_b,l_c,l_d;
 static long l_adt,l_bdt,l_cdt,l_xdt,l_ydt;
-static long l_initx,l_inity,l_initz;
 static long initorbitlong[3];
 
 static double dx,dy,dz,dt,a,b,c,d;
 static double adt,bdt,cdt,xdt,ydt;
-static double initx,inity,initz;
 static double initorbit[3];
 extern int inside;
 
@@ -264,9 +262,15 @@ static int setup_convert_to_screen(struct affine *scrn_cnvt)
 static int l_setup_convert_to_screen(struct l_affine *l_cvt)
 {
    struct affine cvt;
-   setup_convert_to_screen(&cvt);
+
+   /* MCP 7-7-91, This function should return a something! */
+   if(setup_convert_to_screen(&cvt))
+      return(-1);
    l_cvt->a = cvt.a*fudge; l_cvt->b = cvt.b*fudge; l_cvt->c = cvt.c*fudge;
    l_cvt->d = cvt.d*fudge; l_cvt->e = cvt.e*fudge; l_cvt->f = cvt.f*fudge;
+
+   /* MCP 7-7-91 */
+   return(0);
 }
 
 /******************************************************************/
@@ -784,7 +788,7 @@ int orbit3dlongcalc()
    struct long3dvtinf inf;
    unsigned long maxct;
    int color;
-   int i,j,k;
+
    int ret;
 
    /* setup affine screen coord conversion */
@@ -879,12 +883,12 @@ int orbit3dfloatcalc()
    unsigned count;
    int oldcol,oldrow;
    int oldcol1,oldrow1;
-   double tmpx, tmpy, tmpz;
-   double tmp;
+
+
    extern int init3d[];
    unsigned long maxct;
    int color;
-   int i,j,k;
+
    int ret;
    struct float3dvtinf inf;
 
@@ -1035,7 +1039,7 @@ static int ifs3dfloat()
 
    double newx,newy,newz,r,sum;
 
-   int i,k;
+   int k;
    int ret;
 
    struct float3dvtinf inf;
@@ -1141,7 +1145,7 @@ int ifs()			/* front-end for ifs2d and ifs3d */
 int ifs2d()	/* IFS logic shamelessly converted to integer math */
 {
    FILE *fp;
-   long  *lifsptr;
+
    unsigned long maxct,ct;
    int col;
    int row;
@@ -1514,7 +1518,7 @@ static int long3dviewtransf(struct long3dvtinf *inf)
 
 static int float3dviewtransf(struct float3dvtinf *inf)
 {
-   int i,j;
+   int i;
    double tmpx, tmpy, tmpz;
    double tmp;
 

@@ -983,24 +983,6 @@ initasmvarsgo:
 
 	call	adapter_init		; call the video adapter init
 
-	push	es			; save ES for a tad
-	mov	ax,0			; reset ES to BIOS data area
-	mov	es,ax			;  ...
-	mov	dx,es:46ch		; obtain the current timer value
-delaystartuploop:
-	cmp	dx,es:46ch		; has the timer value changed?
-	je	delaystartuploop	;  nope.  check again.
-	mov	dx,es:46ch		; obtain the current timer value again
-	mov	ax,0			; clear the delay counter
-	mov	delaycount,55		; 55 millisecs = 1/18.2 secs
-delaytestloop:
-	call	delayamillisecond	; burn up a (fake) millisecond
-	inc	ax			; indicate another loop has passed
-	cmp	dx,es:46ch		; has the timer value changed?
-	je	delaytestloop		; nope.  burn up some more time.
-	mov	delaycount,ax		; save the results here
-	pop	es			; restore ES again
-
 				       ; first see if a mouse is installed
 
 	push	es			; (no, first check to ensure that
@@ -1038,6 +1020,27 @@ itsa386:
 nodebug:
 	call far ptr fputype		; what kind of an FPU do we have?
 	mov	fpu,ax			;  save the results
+
+	push	es			; save ES for a tad
+	mov	ax,0			; reset ES to BIOS data area
+	mov	es,ax			;  ...
+	mov	dx,es:46ch		; obtain the current timer value
+	cmp	cpu,386			; are we on a 386 or above?
+	jb	delaystartuploop	;  nope.  don't adjust anything
+	mov	delayloop, 256		;  yup.  slow down the timer loop
+delaystartuploop:
+	cmp	dx,es:46ch		; has the timer value changed?
+	je	delaystartuploop	;  nope.  check again.
+	mov	dx,es:46ch		; obtain the current timer value again
+	mov	ax,0			; clear the delay counter
+	mov	delaycount,55		; 55 millisecs = 1/18.2 secs
+delaytestloop:
+	call	delayamillisecond	; burn up a (fake) millisecond
+	inc	ax			; indicate another loop has passed
+	cmp	dx,es:46ch		; has the timer value changed?
+	je	delaytestloop		; nope.  burn up some more time.
+	mov	delaycount,ax		; save the results here
+	pop	es			; restore ES again
 
 initreturn:
 	 ret			       ; return to caller
@@ -2078,9 +2081,14 @@ xmmmoveextended endp
 ;				 ; unless at least a 287 already detected.
 ;
 ; Code adapted by Tim Wegner from IIT documentation and detect routine
-; sent by Jonathan Osuch and modified by Charles Marsden -- 01/29/91
+; sent by Jonathan Osuch and modified by Charles Marslett -- 01/29/91
 ;
+; The following routines were provided by IIT to implement a semaphore
+; system to protect the IIT extra registers from multi-tasking:
 ;
+; F4x4Check() 			 ; returns 1 if semaphore TSR loaded       	
+; F4x4Lock()			 ; returns 1 if semaphore free and locks
+; F4x4Free()			 ; frees locked semaphore
 
 .286
 .287
@@ -2147,32 +2155,96 @@ mult_vec_iit endp
 ;
 ; IITCoPro()
 ;
-; 910217 pb This routine commented out because we've discovered that IIT
-;	    matrix operations are a bad thing when multi-tasking - the
-;	    registers don't get saved/restored when task switching.  So,
-;	    IIT routines are used only if command FPU=IIT is specified.
-;
-;.data
-;testdata db 0FFh,0FFh,00h,00h,00h,00h,00h,00h,00h,00h
-;.code
-;
-;IITCoPro proc
-;	 finit
-;	 fld   tbyte ptr testdata
-;	 fstp  tbyte ptr dstack
-;	 fwait
-;	 mov   ax,word ptr dstack
-;	 or    ax,ax			 ; test for 1st word of result zero
-;	 mov   ax,1			 ; return 1 if next branch taken
-;	 jz    must_be_IIT		 ;  result was zero, is IIT
-;	 xor   ax,ax			 ; return 0
-;must_be_IIT:
-;	 ret
-;IITCoPro endp
+
+.data
+testdata db 0FFh,0FFh,00h,00h,00h,00h,00h,00h,00h,00h
+.code
+
+IITCoPro proc
+	 finit
+	 fld   tbyte ptr testdata
+	 fstp  tbyte ptr dstack
+	 fwait
+	 mov   ax,word ptr dstack
+	 or    ax,ax			 ; test for 1st word of result zero
+	 mov   ax,1			 ; return 1 if next branch taken
+	 jz    must_be_IIT		 ;  result was zero, is IIT
+	 xor   ax,ax			 ; return 0
+must_be_IIT:
+	 ret
+IITCoPro endp
 
 .8086
 .8087
+.model medium,C
+
+eIIT2fService		equ	0C0h		; user services: 0C0h - 0FFh
+
+; services provided by int 2F
+eInstallationCheck	equ	0		; <== must be zero
+eSetSemaphore		equ	1
+eClearSemaphore		equ	2
+
+.code
+F4x4Check	PROC	FAR
+; IIT F4x4 semaphore installation check
+	
+	inc	bp
+	push	bp
+	mov	bp, sp
+	mov	ax, (eIIT2fService SHL 8) + eInstallationCheck
+	mov	bx, 'II'
+	mov	cx, 'Ts'
+	mov	dx, 'em'
+	int	2Fh
+	cmp	ax, (eIIT2fService SHL 8) + 0FFh
+	jne	not_installed
+	cmp	bx, 'OK'
+	jne	not_installed
+	cmp	cx, ' I'
+	jne	not_installed
+	cmp	dx, 'IT'
+	jne	not_installed
+installed:
+	mov	ax, 1
+	pop	bp
+	dec	bp
+	ret
+not_installed:
+	xor	ax, ax
+	pop	bp
+	dec	bp
+	ret
+F4x4Check	ENDP
 
 
-		end
+F4x4Lock	PROC	FAR
+	inc	bp
+	push	bp
+	mov	bp, sp
+	mov	ax, (eIIT2fService SHL 8) + eSetSemaphore 
+	mov	bx, 'II'
+	mov	cx, 'Ts'
+	mov	dx, 'em'
+	int	2Fh
+	pop	bp
+	dec	bp
+	ret
+F4x4Lock	ENDP
+
+
+F4x4Free	PROC	FAR
+	inc	bp
+	push	bp
+	mov	bp, sp
+	mov	ax, (eIIT2fService SHL 8) + eClearSemaphore
+	mov	bx, 'II'
+	mov	cx, 'Ts'
+	mov	dx, 'em'
+	int	2Fh
+	pop	bp
+	dec	bp
+	ret
+F4x4Free	ENDP
+	END
 

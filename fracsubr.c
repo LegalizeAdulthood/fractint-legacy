@@ -119,6 +119,8 @@ void calcfracinit() /* initialize a *pile* of stuff for fractal calculation */
    int i;
    double ftemp;
 
+   floatflag	    = usr_floatflag;
+
 init_restart:
 
    /* the following variables may be forced to a different setting due to
@@ -127,7 +129,6 @@ init_restart:
    stdcalcmode	    = usr_stdcalcmode;
    periodicitycheck = usr_periodicitycheck;
    distest	    = usr_distest;
-   floatflag	    = usr_floatflag;
    biomorph	    = usr_biomorph;
 
    potflag = 0;
@@ -250,7 +251,7 @@ init_restart:
 expand_retry:
 	    if (integerfractal		/* integer fractal type? */
 	      && curfractalspecific->tofloat != NOFRACTAL)
-	       usr_floatflag = 1;	/* switch to floating pt */
+	       floatflag = 1;		/* switch to floating pt */
 	    else
 	       adjust_to_limits(2.0);	/* double the size */
 	    if (calc_status == 2)	/* due to restore of an old file? */

@@ -160,6 +160,13 @@ VECTOR view;	/* position of observer for perspective */
 VECTOR cross;
 VECTOR tmpcross;
 
+   /* MCP 7-7-91, We may as well initialize this to something in
+      order to keep BC++ from complaining. */
+   struct point oldlast =
+   {
+        0, 0, 0
+   };	                              /* old pixels */
+
 void line3d_overlay() {
 }	/* for restore_active_ovly */
 
@@ -192,14 +199,9 @@ int line3d(unsigned char pixels[], unsigned linelen)
    float twocosdeltatheta;
 
    int next; /* used by preview and grid */
-   struct f_point pt_1; /* Used for ray trace output */
-   struct f_point pt_2;
-   struct f_point pt_3;
-
    int col;			      /* current column (original GIF) */
    struct point cur;		      /* current pixels */
    struct point old;		      /* old pixels */
-   struct point oldlast;	      /* old pixels */
 
    static struct point bad;	      /* out of range value */
 
@@ -219,7 +221,7 @@ int line3d(unsigned char pixels[], unsigned linelen)
    VECTOR origin, direct;
    LVECTOR lv;			      /* long equivalent of v */
    LVECTOR lv0; 		      /* long equivalent of v */
-   int color;			      /* current decoded color */
+
    /* corners of transformed xdotx by ydots x colors box */
    double xmin, ymin, zmin, xmax, ymax, zmax;
    int i,j;
@@ -248,7 +250,6 @@ int line3d(unsigned char pixels[], unsigned linelen)
       float theta,theta1,theta2;	/* current,start,stop latitude */
       float phi1,phi2;			/* current start,stop longitude */
       float   deltatheta;		/* increment of latitude */
-
       outln_cleanup = line3d_cleanup;
 
       /* plot_setup();*/
@@ -272,7 +273,7 @@ int line3d(unsigned char pixels[], unsigned linelen)
       }
 
 
-      CO=RO=0;
+      CO_MAX=CO=RO=0;
 
       if (full_color && FILLTYPE >= 5)
       {
@@ -332,7 +333,7 @@ int line3d(unsigned char pixels[], unsigned linelen)
       {
 	 /* end of arrays if we use extra segement */
 	 check_extra += sizeof(struct minmax)*ydots;
-	 if(check_extra > 1L<<16) /* run out of extra segment? */
+	 if(check_extra > (1L<<16)) /* run out of extra segment? */
 	 {
 	    static struct minmax far *got_mem = NULL;
 	    /* not using extra segment so decrement check_extra */
@@ -359,7 +360,7 @@ int line3d(unsigned char pixels[], unsigned linelen)
 	 }
       }
 
-      if(debugflag == 2222 || check_extra > 1L<<16)
+      if(debugflag == 2222 || check_extra > (1L<<16))
       {
 	 char tmpmsg[70];
 	 static char far extramsg[] = {" of extra segment"};
@@ -431,7 +432,7 @@ int line3d(unsigned char pixels[], unsigned linelen)
       if (ZVIEWER != 0)
       {
 	 persp = 1;
-	 if(ZVIEWER < 80 || iit) /* force float */
+	 if(ZVIEWER < 80) /* force float */
 	    usr_floatflag |= 2; /* turn on second bit */
       }
 
@@ -475,7 +476,6 @@ int line3d(unsigned char pixels[], unsigned linelen)
       }
       else /* sphere stuff goes here */
       {
-	 float z;
 	 /* Sphere is on side - north pole on right. Top is -90 degrees
 	    latitude; bottom 90 degrees */
 
@@ -603,7 +603,10 @@ int line3d(unsigned char pixels[], unsigned linelen)
       /* Needed because sclz = -ROUGH/100 and light_direction is transformed
 	 in FILLTYPE 6 but not in 5. */
       if (FILLTYPE == 5 && !SPHERE)
+      {
 	 direct[2] = light_direction[2] = -ZLIGHT;
+	 direct[0] = -XLIGHT;
+      }
       else if (SPHERE)
       {
 	 light_direction[0] = -XLIGHT;
@@ -665,7 +668,7 @@ int line3d(unsigned char pixels[], unsigned linelen)
 	 f_lastrow[i] = f_bad;
       }
       got_status = 3;
-      if(iit)
+      if(iit>0)
       {
 	 load_mat(m); /* load matrix into iit registers */
 	 mult_vec = mult_vec_iit;
@@ -724,8 +727,8 @@ int line3d(unsigned char pixels[], unsigned linelen)
    /* Insure last line is drawn in preview and filltypes -1 and -2  */
    if ((RAY || preview || FILLTYPE < 0) && (currow != ydots-1))
       if (currow % localpreviewfactor) /* Draw mod preview lines */
-	 if ( !((FILLTYPE > 4) && (currow == 1))) /* Get init geometry in
-						     lightsource modes */
+	 if ( !(!RAY && (FILLTYPE > 4) && (currow == 1)))
+	    /* Get init geometry in lightsource modes */
 	    goto reallythebottom; /* skip over most of the line3d calcs */
 
    if (dotmode == 11)
@@ -792,8 +795,8 @@ int line3d(unsigned char pixels[], unsigned linelen)
 	 {
 	    if (col != lastdot) /* if this is not the last col */
 	       /* if not the 1st or mod factor col*/
-	       if (col % localpreviewfactor)
-		  if (!(FILLTYPE > 4 && col == 1))
+	       if (col % (int)(aspect * localpreviewfactor))
+		  if (!(!RAY && FILLTYPE > 4 && col == 1))
 		     goto loopbottom;
 	 }
 
@@ -1078,7 +1081,9 @@ int line3d(unsigned char pixels[], unsigned linelen)
 	    {
 	       fprintf (File_Ptr1, "% #4.4f % #4.4f % #4.4f R%dC%d\n",
 		  f_cur.x, f_cur.y, f_cur.color, RO, CO);
-	       if (CO++ > CO_MAX) CO_MAX = CO;
+	       if (CO > CO_MAX)
+		  CO_MAX = CO;
+	       CO++;
 	    }
 	    goto loopbottom;
 
@@ -1198,29 +1203,14 @@ int line3d(unsigned char pixels[], unsigned linelen)
 		  if(f_cur.color < bad_check || f_old.color < bad_check ||
 		     f_lastrow[col].color < bad_check)
 			break;
-		  if(FILLTYPE==5)
-		  {
-		     v1[0] = 1;
-		     v1[1] = 0;
-		     v1[2] = f_cur.color - f_old.color;
 
-		     v2[0] = 0;
-		     v2[1] = 1;
-		     v2[2] = f_lastrow[col].color - f_cur.color;
-		  }
-		  else if(FILLTYPE==6)
-		  {
-		     /* if(f_lastrow[col].color < bad_check)
-			break; already checked above */
+		  v1[0] = f_cur.x	 - f_old.x;
+		  v1[1] = f_cur.y	 - f_old.y;
+		  v1[2] = f_cur.color - f_old.color;
 
-		     v1[0] = f_cur.x	 - f_old.x;
-		     v1[1] = f_cur.y	 - f_old.y;
-		     v1[2] = f_cur.color - f_old.color;
-
-		     v2[0] = f_lastrow[col].x	  - f_cur.x;
-		     v2[1] = f_lastrow[col].y	  - f_cur.y;
-		     v2[2] = f_lastrow[col].color - f_cur.color;
-		  }
+		  v2[0] = f_lastrow[col].x	  - f_cur.x;
+		  v2[1] = f_lastrow[col].y	  - f_cur.y;
+		  v2[2] = f_lastrow[col].color - f_cur.color;
 
 		  cross_product (v1, v2, cross);
 
@@ -1364,6 +1354,7 @@ reallythebottom:
       if(preview && !SPHERE && showbox)
       {
 	 /* draw box to help visualize effect of rotations */
+	 plot = clipcolor;
 	 /* 1 means show box - xmin etc. do nothing here */
 	 corners(m,1,&xmin,&ymin,&zmin,&xmax,&ymax,&zmax);
       }
@@ -1734,7 +1725,6 @@ static void _fastcall T_clipcolor(int x,int y,int color)
 
 static void _fastcall interpcolor(int x,int y,int color)
 {
-   unsigned char R1, G, B;
    unsigned long H, S, V;
    unsigned char RGB[3];
    int D,d1,d2,d3;
@@ -1964,7 +1954,7 @@ static int R_H (R, G, B, H, S, V)
 unsigned char R,G,B;
 unsigned long *H, *S, *V;
 {
-   unsigned long	H1, R1, G1, B1, DENOM;
+   unsigned long	R1, G1, B1, DENOM;
    unsigned char MIN;
 
    *V = R;
@@ -2101,7 +2091,7 @@ static char far object[]  = {"OBJECT"};
 static char far triangle[] = {"TRIANGLE "};
 static char far l_tri[] = {"triangle"};
 static char far texture[] = {"TEXTURE\n"};
-static char far end_texture[] = {" END_TEXTURE\n"};
+/* static char far end_texture[] = {" END_TEXTURE\n"}; */
 static char far red[] = {"RED"};
 static char far green[] = {"GREEN"};
 static char far blue[] = {"BLUE"};
@@ -2122,7 +2112,6 @@ static int _fastcall RAY_Header(void)
 
 
 {  /* Open the ray tracing output file */
-   int i;
    check_writefile(ray_name,".ray");
    if ((File_Ptr1=fopen(ray_name,"w"))==NULL)
       return(-1); /* Oops, somethings wrong! */
@@ -2211,16 +2200,19 @@ float pt_t[3][3];
 	 c[i] = (float)(dacbox[c1][i] + dacbox[c2][i] + dacbox[c3][i])
 	     / (3 * 63);
 
-      if (pt_t[0][0]==pt_t[1][0] && /* get rid of degenerate triangles */
-	  pt_t[1][0]==pt_t[2][0] &&
-	  pt_t[2][0]==pt_t[0][0])
-	 if (pt_t[0][1]==pt_t[1][1] &&
-	     pt_t[1][1]==pt_t[2][1] &&
-	     pt_t[2][1]==pt_t[0][1])
-	    if (pt_t[0][2]==pt_t[1][2] &&
-		pt_t[1][2]==pt_t[2][2] &&
-		pt_t[2][2]==pt_t[0][2])
-		   return(0);
+      /* get rid of degenerate triangles: any two points equal */
+      if (pt_t[0][0] == pt_t[1][0] &&
+          pt_t[0][1] == pt_t[1][1] &&
+          pt_t[0][2] == pt_t[1][2] ||
+
+          pt_t[0][0] == pt_t[2][0] &&
+          pt_t[0][1] == pt_t[2][1] &&
+          pt_t[0][2] == pt_t[2][2] ||
+
+          pt_t[2][0] == pt_t[1][0] &&
+          pt_t[2][1] == pt_t[1][1] &&
+          pt_t[2][2] == pt_t[1][2])
+       return(0);
 
    /* Describe the triangle */
    if (RAY == 1)
@@ -2443,7 +2435,7 @@ int i,j;
       enddisk();
       updatesavename(light_name);
    }
-
    usr_floatflag &= 1; /* strip second bit */
 }
+
 

@@ -47,7 +47,7 @@ void vidmode_keyname(int k,char *buf);
 
 static int menu_checkkey(int curkey,int choice);
 
-int release=1630; /* this has 2 implied decimals; increment it every synch */
+int release=1611; /* this has 2 implied decimals; increment it every synch */
 
 /* fullscreen_choice options */
 #define CHOICERETURNKEY 1
@@ -263,14 +263,28 @@ void helptitle()
 {
    char msg[80],buf[10];
    setclear(); /* clear the screen */
+#ifdef WAITE
+   sprintf(msg,"Special FRACTINT  Version %d.%01d",release/100,(release%100)/10);
+#else
    sprintf(msg,"FRACTINT  Version %d.%01d",release/100,(release%100)/10);
+#endif
    if (release%10) {
       sprintf(buf,"%01d",release%10);
       strcat(msg,buf);
       }
+#ifdef WAITE /* realdos.c */
+   strcat(msg," for the Waite Group's Fractal Creations");
+#endif /* WAITE - realdos.c */
    putstringcenter(0,0,80,C_TITLE,msg);
+#ifdef WAITE
+   return;
+#endif
+/* uncomment next for production executable: */
+/* return; */
    if (debugflag == 3002) return;
-   putstring(0,3,C_TITLE_DEV, "Customized Version");
+   putstring(0,2,C_TITLE_DEV,"Development Version");
+/* replace above by next after creating production release, for release source */
+/* putstring(0,3,C_TITLE_DEV, "Customized Version"); */
    putstring(0,53,C_TITLE_DEV,"Not for Public Release");
 }
 
@@ -421,14 +435,13 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
    int topleftrow,topleftcol;
    int topleftchoice;
    int speedrow;  /* speed key prompt */
-   int f2instrow; /* F2 toggle instructions row */
    int boxitems;  /* boxwidth*boxdepth */
    int curkey,increment,rev_increment;
    int redisplay;
-   int i,j,k,color;
+   int i,j,k;
    char *charptr;
    char buf[81];
-   int speed_match;
+   int speed_match = 0;
    char curitem[81];
    char *itemptr;
    int ret,savelookatmouse;
@@ -791,7 +804,7 @@ int main_menu(int fullmenu)
    char *choices[44]; /* 2 columns * 22 rows */
    int attributes[44];
    int choicekey[44];
-   int i,j;
+   int i;
    int nextleft,nextright;
    int oldtabmode,oldhelpmode;
    oldtabmode = tabmode;
@@ -978,7 +991,7 @@ top:
 
 static int menu_checkkey(int curkey,int choice)
 {
-   int testkey, k;
+   int testkey;
    testkey = (curkey>='A' && curkey<='Z') ? curkey+('a'-'A') : curkey;
    if (strchr("@txyzvir3d",testkey) || testkey == INSERT
      || testkey == ESC || testkey == DELETE)
@@ -1314,8 +1327,17 @@ int savegraphics()
    else {
       swaptype = 2; /* use disk */
       swapblklen = 4096;
+
+   /* MCP 7-7-91, If 'memhandle' is an 'unsigned int', how is it ever going
+      to be equal to -1?
+
       if ((memhandle = open("FRACTINT.DSK",O_CREAT|O_WRONLY|O_BINARY,S_IWRITE))
 	 == -1) {
+   */
+      if ((memhandle = open("FRACTINT.DSK",O_CREAT|O_WRONLY|O_BINARY,S_IWRITE))
+	 == 0xffff) {
+
+
 dskfile_error:
 	 setvideotext(); /* text mode */
 	 setclear();
@@ -1442,7 +1464,6 @@ int load_fractint_cfg(int options)
    int commas[10];
    int textsafe2;
    char tempstring[150];
-   char *ptr;
 
    vidtbl = MK_FP(extraseg,0);
    cfglinenums = (int far *)(&vidtbl[MAXVIDEOMODES]);

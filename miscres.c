@@ -411,6 +411,7 @@ void set_trig_pointers(int which)
 
 int tab_display()	/* display the status of the current image */
 {
+   extern char floatflag;
    extern char usr_floatflag;
    extern double xxmin, xxmax, xx3rd, yymin, yymax, yy3rd;
    extern double param[4];
@@ -422,7 +423,7 @@ int tab_display()	/* display the status of the current image */
    extern char IFSName[];
    extern int  rseed;
    extern int  invert;
-   int row, i;
+   int row, i, j;
    double Xctr, Yctr, Magnification;
    char msg[81];
    char *msgptr;
@@ -475,9 +476,18 @@ int tab_display()	/* display the status of the current image */
       putstring(row+1,45,C_GENERAL_HI,"You are in color-cycling mode");
    row += 2;
 
-   i = 0;
-   if (usr_floatflag) {
-      putstring(row,45,C_GENERAL_HI,"Floating-point flag is activated");
+    i = j = 0;
+    if (display3d > 0) {
+       if (usr_floatflag)
+          j = 1;
+       }
+    else
+       if (floatflag)
+          j = (usr_floatflag) ? 1 : 2;
+    if (j) {
+       putstring(row,45,C_GENERAL_HI,"Floating-point");
+       putstring(-1,-1,C_GENERAL_HI,(j == 1) ? " flag is activated"
+                                             : " in use (required)");
       i = 1;
       }
    if (calc_status == 1 || calc_status == 2)
@@ -634,7 +644,7 @@ int endswithslash(char *fl)
 
 int ifsload()			/* read in IFS parameters */
 {
-   int i,j,k;
+   int i;
    FILE *ifsfile;
    char buf[201];
    char *bufptr;

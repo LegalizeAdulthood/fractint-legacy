@@ -364,7 +364,7 @@ static void _fastcall move_row(int fromrow,int torow,int col)
     }
 
 int init_pan_or_recalc(zoomout) /* decide to recalc, or to chg worklist & pan */
-{   int i,j,row,col,y,alignmask,direction,listfull;
+{   int i,j,row,col,y,alignmask,listfull;
     if (zwidth == 0.0)
 	return(0); /* no zoombox, leave calc_status as is */
     /* got a zoombox */
@@ -434,7 +434,7 @@ Cancel resumes old image, continue pans and calculates a new one."};
 
 static void _fastcall restart_window(int wknum)
 /* force a worklist entry to restart */
-{   int i,yfrom,yto,xfrom,xto;
+{   int yfrom,yto,xfrom,xto;
     if ((yfrom = worklist[wknum].yystart) < 0) yfrom = 0;
     if ((xfrom = worklist[wknum].xxstart) < 0) xfrom = 0;
     if ((yto = worklist[wknum].yystop) >= ydots) yto = ydots - 1;

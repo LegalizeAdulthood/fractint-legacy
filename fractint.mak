@@ -130,6 +130,8 @@ tplus.obj : tplus.c tplus.h
 
 tplus_a.obj : tplus_a.asm
 
+tp3d.obj : tp3d.c fractint.h
+
 slideshw.obj : slideshw.c
 	$(Optsize)
 
@@ -142,8 +144,8 @@ fractint.exe : fractint.obj help.obj loadfile.obj encoder.obj gifview.obj \
      video.obj tgaview.obj f16.obj fr8514a.obj loadfdos.obj \
      hgcfra.obj fpu087.obj fpu387.obj mpmath_c.obj mpmath_a.obj \
      lorenz.obj plot3d.obj jb.obj zoom.obj miscres.obj miscovl.obj \
-     fractint.hlp \
-     realdos.obj lsys.obj editpal.obj tplus.obj tplus_a.obj
+     realdos.obj lsys.obj editpal.obj tplus.obj tplus_a.obj tp3d.obj \
+     fractint.hlp
 #	link /ST:4096 /CO /NOE /SE:200 /PACKC /F /EXEPACK @fractint.lnk
 	link /ST:4096 /SE:200 /PACKC /F /EXEPACK /NOE @fractint.lnk
 	hc /a

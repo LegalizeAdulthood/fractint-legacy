@@ -33,7 +33,7 @@
   batch=yes		   Batch mode run (display image, save-to-disk, exit)
   autokey=play|record	   Playback or record keystrokes
   autokeyname=filename	   File for autokey mode, default AUTO.KEY
-  fpu=387|iit		   Assume 387 or IIT fpu is present
+  fpu=387|iit|noiit	   Assume 387 or IIT fpu is present or absent
   makedoc=filename	   Create Fractint documentation file
 
 {Calculation Mode Parameters}
@@ -87,7 +87,7 @@
 ~FF
 {Color Parameters}
   inside=nnn		   Fractal interior color (inside=0 for black)
-  outside=nnn		   Fractal exterior color (forces two-color images)
+  outside=nnn|iter|real|imag|mult|sum  Fractal exterior color options
   map=filename		   Use 'filename' as the default color map (vga/targa)
   colors=@filename|colorspec Sets current image color map from file or spec,
 			   vga or higher only
@@ -123,7 +123,12 @@
 {Video Parameters}
   video=xxx		   Begin with this video mode (Example: Video=F2)
   askvideo=no		   Skip the prompt for video mode when restoring files
-  adapter=hgc|cga|ega|egamono|mcga|vga	Assume this kind of adapter is present
+  adapter=hgc|cga|ega|egamono|mcga|vga
+                           Assume this (standard) video adapter is present
+  adapter=ATI|Everex|Trident|NCR|Video7|Genoa|Paradise|Chipstech|
+                           Tseng3000|Tseng4000|AheadA|AheadB|Oaktech
+                           Assume the named SuperVGA Chip set is present and
+                           enable its non-standard SuperVGA modes.
   textsafe=yes|no|bios|save  For use when images are not restored correctly on
 			   return from a text display
   exitmode=nn		   Sets the bios-supported videomode to use upon exit
@@ -363,17 +368,23 @@ AUTOKEYNAME=[filename]\
 Specifies the file name to be used in autokey mode. The default file name
 is AUTO.KEY.
 
-FPU=387|IIT\
+FPU=387|IIT|NOIIT\
 This parameter is useful if you have an unusual coprocessor chip. If you
-have a 80287 replacement chip with full 80387 functionality use "FPU=387".
-If you have an IIT floating point chip and want to use the chip's matrix
-multiplication routine to speed up 3-D transformations use "FPU=IIT".
-Since all IIT chips support 80387 instructions, setting "FPU=IIT" also
-enables use of 387 instructions. Warning: multi-tasking operating systems
-such as Windows and DesQView don't save the IIT chip extra registers, so
-if you run two programs at once that both use the matrix multiply feature,
-such as two copies of Fractint both doing a 3-D transformation, errors
-will result.
+have a 80287 replacement chip with full 80387 functionality use "FPU=387"
+to inform Fractint to take advantage of those extra 387 instructions.
+If you have the IIT fpu, but don't have IIT's 'f4x4int.com' TSR loaded,
+use "FPU=IIT" to force Fractint to use that chip's matrix multiplication
+routine automatically to speed up 3-D transformations (if you have an IIT
+fpu and have that TSR loaded, Fractint will auto-detect the presence of
+the fpu and TSR and use its extra capabilities automatically).
+Since all IIT chips support 80387 instructions, enabling the IIT code also
+enables Fractint's use of all 387 instructions.
+Setting "FPU=NOIIT" disables Fractint's IIT Auto-detect capability.
+Warning: multi-tasking operating systems such as Windows and DesQView
+don't automatically save the IIT chip extra registers, so running two
+programs at once that both use the IIT's matrix multiply feature but
+don't use the handshaking provided by that 'f4x4int.com' program,
+errors will result.
 
 MAKEDOC[=filename]\
 Create Fractint documentation file (for printing or viewing with a text
@@ -521,20 +532,38 @@ alone generate, will have to wait for "FRACTINT: The 3-MB Doc File."
 ;
 ~Topic=Color Parameters
 
-INSIDE=nnn|bof60|bof61|attractor\
-Set the color of the interior: for example, "inside=0" makes the M-set "lake"
-a stylish basic black. A setting of -1 makes inside=maxiter. Two more
-options reveal hidden structure inside the lake.  These are inside=bof61,
-and inside=bof62, named after the figures on pages 61 and 62 of "Beauty of
-Fractals".
-See {Inside=bof60|bof61} for a brilliant explanation of what these do!
+INSIDE=nnn|bof60|bof61|zmag|attractor\
+Set the color of the interior: for
+example, "inside=0" makes the M-set "lake" a stylish basic black. A setting of
+-1 makes inside=maxiter. Three more options reveal hidden structure inside the
+lake.  Inside=bof60 and inside=bof61, are named after the figures on pages 60
+and 61 of "Beauty of Fractals".  See {Inside=bof60|bof61|zmag} for a brilliant
+explanation of what these do!
+
+Inside=zmag is a method of coloring based on the magnitude of Z after the
+maximum iterations have been reached.  The affect along the edges of the
+Mandelbrot is like thin-metal welded sculpture.
+
 The inside=attractor option uses yet another scheme - see {Finite Attractors}.
 
-OUTSIDE=nnn\
-Set the color of the exterior: for example, "OUTSIDE=1" makes all points
-not INSIDE the fractal set to color 1 (blue). Note that defining an
-OUTSIDE color forces any image to be a two-color one: either a point is
-INSIDE the set, or it's OUTSIDE it.
+OUTSIDE=nnn|iter|real|imag|summ|mult\
+The classic method of coloring outside
+the fractal is to color according to how many iterations were required before
+Z reached the bailout value, usually 4. This is the method used when
+OUTSIDE=iter.
+
+However, when Z reaches bailout the real and imaginary components can be at
+very diferent values.  OUTSIDE=real and OUTSIDE=imag color using the iteration
+value plus the real or imaginary values.  OUTSIDE=summ uses the sum of all
+these values.  These options can give a startling 3d quality to otherwise flat
+images and can change some boring images to wonderful ones. OUTSIDE=mult
+colors by multiplying the iteration by real divided by imaginary. There was no
+mathematical reason for this, it just seemed like a good idea.
+
+Outside=nnn sets the color of the exterior to some number of your choosing:
+for example, "OUTSIDE=1" makes all points not INSIDE the fractal set to color
+1 (blue). Note that defining an OUTSIDE color forces any image to be a
+two-color one: either a point is INSIDE the set, or it's OUTSIDE it.
 
 MAP=[filename]\
 Reads in a replacement color map from [filename]. This map replaces the
@@ -752,11 +781,16 @@ doesn't support can leave your system in limbo, be careful about leaving
 the above two parameters in a command file to be used with future versions
 of Fractint, particularly for the super-VGA modes.
 
-ADAPTER=hgc|cga|ega|egamono|mcga|vga\
-Skips the video autodetect logic, assumes the specified kind of adapter is
-present. Use this parameter only if you encounter video problems without
-it. Specifying adapter=vga with an SVGA adapter may make its extended
-modes unusable with Fractint.
+ADAPTER=hgc|cga|ega|egamono|mcga|vga|ATI|Everex|Trident|NCR|Video7|Genoa|
+        Paradise|Chipstech|Tseng3000|Tseng4000|AheadA|AheadB|Oaktech\
+Bypasses Fractint's internal video autodetect logic and assumes that the
+specified kind of adapter is present. Use this parameter only if you
+encounter video problems without it.  Specifying adapter=vga with an SVGA
+adapter will make its extended modes unusable with Fractint.  All of the
+options after the "VGA" option specify specific SuperVGA chipsets which
+are capable of video resolutions higher than that of a "vanilla" VGA adapter.
+Note that Fractint cares about the Chipset your adapter uses internally,
+not the name of the company that sold it to you.
 
 VESADETECT=yes|no\
 Specify no to bypass VESA video detection logic. Try this if you encounter
@@ -1268,11 +1302,15 @@ SUPER-EGA AND SUPER-VGA MODES
 ~Format+,Online+
 
 Since
-version 12.0, we've used both John Bridges' SuperVGA Autodetecting logic
-*and* VESA adapter detection, so that many brand-specific SuperVGA
+Since version 12.0, we've used both John Bridges' SuperVGA Autodetecting
+logic *and* VESA adapter detection, so that many brand-specific SuperVGA
 modes have been combined into single video mode selection entries.
-There is now exactly one
-entry for SuperVGA 640x480x256 mode, for instance.
+There is now exactly one entry for SuperVGA 640x480x256 mode, for instance.
+ 
+If Fractint's automatic SuperVGA/VESA detection logic guesses wrong,
+and you know which SuperVGA chipset your video adapter uses, you can use
+the "adapter=" command-line option to force Fractint to assume the presence
+of a specific SuperVGA Chipset - see {Video Parameters} for details.
 ;
 ;
 ~Topic=8514/A
@@ -1299,7 +1337,7 @@ XGA MODES
 ~Format+,Online+
 
 The XGA adapter is supported using the VESA/SuperVGA Autodetect modes -
-the XGA looks like (yawn) just another SuperVGA adapter to Fractint.
+the XGA looks like just another SuperVGA adapter to Fractint.
 The supported XGA modes are 640x480x256, 1024x768x16, 1024x768x256,
 800x600x16, and 800x600x256.  Note that the 1024x768x256 mode requires
 a full 1MB of adapter memory, the 1024x768 modes require a high-rez

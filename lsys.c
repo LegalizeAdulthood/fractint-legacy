@@ -433,14 +433,13 @@ static char far *ruleptrs[MAXRULES];
 static int _fastcall readLSystemFile(char *str)
 {
    int c;
-   int scanrtn;
    char far **rulind;
    int err=0;
    int linenum,check=0;
    char inline[161],fixed[161],*word;
    FILE *infile;
    char msgbuf[481]; /* enough for 6 full lines */
-   char StrBuff[201];
+
 
    if (find_file_item(LFileName,str,&infile) < 0)
       return -1;

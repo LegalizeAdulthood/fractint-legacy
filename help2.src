@@ -375,7 +375,8 @@ SUMMARY OF FRACTAL TYPES
 ~OnlineFF
 {=HT_MARKS marksmandelpwr}
 ~Label=HF_MARKSMANDPWR
-    The marksmandelpwr formula type generalized.
+    The marksmandelpwr formula type generalized (it previously
+    had fn=sqr hard coded).
       z(0) = pixel, c = z(0) ^ (z(0) - 1):
       z(n+1) = c * fn(z(n)) + pixel,
     Parameters: real and imaginary pertubations of z(0), and fn

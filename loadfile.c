@@ -58,6 +58,7 @@ extern int    usr_distest;		/* non-zero if distance estimator   */
 extern int    distestwidth;
 extern int    init3d[20];		/* '3d=nn/nn/nn/...' values */
 extern char   usr_floatflag;		/* floating-point fractals? */
+extern char   floatflag;
 extern int    usr_biomorph;
 extern char   FormName[];
 extern char   LName[];
@@ -285,11 +286,14 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
 	 }
       }
    else {
-      int olddisplay3d,i;
+      int olddisplay3d,oldfloatflag,i;
       olddisplay3d = display3d;
-      display3d = loaded3d; /* for <tab> display during next */
+      oldfloatflag = floatflag;
+      display3d = loaded3d;      /* for <tab> display during next */
+      floatflag = usr_floatflag; /* ditto */
       i = get_video_mode(&read_info);
       display3d = olddisplay3d;
+      floatflag = oldfloatflag;
       if (i) {
 	 EXIT_OVLY;
 	 initmode = -1;
@@ -326,7 +330,6 @@ struct fractal_info *info;
    int scan_extend, block_type, block_len, data_len;
    int fractinf_len;
    int hdr_offset;
-   int i;
 
    if((fp = fopen(gif_file,"rb"))==NULL)
       return(-1);

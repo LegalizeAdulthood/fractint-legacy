@@ -17,7 +17,7 @@
    { Introduction }			    { Distribution of Fractint }
    { Conditions on Use }		    { Contacting the Authors }
    { Getting Started }			    { The Stone Soup Story }
-   { New Features in Version 16 }	    { A Word About the Authors }
+   { New Features in Version 16.11 }	    { A Word About the Authors }
 					  { A Plug for "Fractal Creations" }
    { Display Mode Commands }
    { Color Cycling Commands }		    { Using Fractint With a Mouse }
@@ -37,7 +37,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New features in Version 16", FF}
+{     , 0, "New features in Version 16.11", FF}
 
 {     , 0, "Introduction", "Conditions on Use", FF}
 
@@ -159,7 +159,7 @@
 
 {Appendix A, 0, Mathematics of the Fractal Types,
 		   "Summary of Fractal Types",
-		   "Inside=bof60|bof61",
+		   "Inside=bof60|bof61|zmag",
 		   "Finite Attractors",
 		   "Trig Identities", FF}
 
@@ -230,184 +230,77 @@ documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in Version 16
+~Topic=New Features in Version 16.11
 
-New integrated online help / fractint.doc system from Ethan Nagel. There is
-  no longer a fractint.doc file included - all documentation is available
-  online.  To create a printable fractint.doc file see {Startup Parameters}.
+AARRGGHH!! Version 16.11 was released 24 hours after version 16.1 because
+  of a couple of buglets we inadvertantly introduced in 16.1.  What follows
+  is a list of what's new in 16.1/16.11 - to see the new features in 16.0
+  and earlier releases, see {Revision History} for details.
 
-Over 350 screens of online help! Try pressing <F1> just about anywhere!
+Older Tseng-3000-based Video adapters should correctly be auto-detected
+  again.  But, if they (or your other SuperVGA Video adapters) aren't
+  correctly auto-detected, cheer up because there are...
 
-New "autokey" feature supports recording and playback of keystrokes.  Type
-  "demo" to run the included demo.bat and demo.key files, which run a
-  great demonstration of Fractint using the autokey feature.
-  See {Autokey Mode} for details.
+New "adapter=" options to force the selection of specific SuperVGA adapter
+  types when Fractint's internal SuperVGA Auto-detection logic fails.
+  See {Video Parameters} for details.
 
-New <@> command executes a saved set of commands.  The <b> command has
-  changed to write the current image's parameters as a named set of
-  commands in a structured file.  Saved sets of commands can subsequently
-  be executed with the <@> command.  See {Parameter Save/Restore Commands}.
-  A default "fractint.par" file is included with the release which has
-  parameters for some nice images, use the <@> command to explore these.
+If the floating-point math option has not been selected, but floating-point
+  math has been automatically set because of deep zooming, integer math is
+  now re-selected again when a new fractal type is selected or the 
+  current fractal type is un-zoomed back to the point where integer math
+  is again possible.
 
-New <z> command allows changing fractal type-specific parameters without
-  going back through the <t> (fractal type selection) screen (and thus
-  without losing the current image location)
-~OnlineFF
+The Acrospin interface has been fixed to eliminate the creation of line
+  descriptions when no points for them were defined. Acrospin complained
+  about these and the line definitions had to be edited out.
 
-Ray tracer interface from Marc Reinig, generates 3d transform output for a
-  number of ray tracers; see {"Interfacing with Ray Tracing Programs"}
+~onlineFF
+ 
+The 3D "Light Source before Transfomation" fill type, which was handled
+  incorrectly up through version 16.0, has been fixed. The documentation
+  for both light source fill options has been corrected.
 
-Selection of video modes and structure of "fractint.cfg" have changed. If
-  you have a customized fractint.cfg file, you'll have to rebuild it based
-  on this release's version. You can customize the assignment of your
-  favorite video modes to function keys, see {Video Mode Function Keys}.
-  <delete> is a new command key which goes directly to video mode selection.
+Fractint now survives being modified by McAfee's "SCAN /AV" option.
 
-New "cyclerange" option (command line and <y> options screen) from Hugh
-  Steele. Limits color cycling to a specified range of colors.
-  New palette editor <o> command can also be used to set the range.
+The <Z> fractal type parameters screen now has a sub-screen which can be
+  used to directly enter image coordinates.  Use <F6> from the <Z> screen
+  to get the new corners screen.
 
-Improved {Distance Estimator Method} algorithm from Phil Wilson. Just the
-  edge of the set can be displayed; the width of the "edge" can be controlled;
-  the outside points can optionally be colored with the normal color scheme
+New "inside=zmag" option, which colors inside pixels according to the
+  magnititude of the orbit point when maxiter was reached.  
 
-New "ranges=" option from Norman Hills. This option lets you specify which
-  range of escape time iteration counts gets mapped to each color number,
-  allowing much finer tuning that the "logmap" option.
-  See {Logarithmic Palettes and Color Ranges} for details.
-~OnlineFF
+New "outside=real|imag|mult|summ" options provide variations of coloring
+  depending on the real and imaginary components of the last orbit value.
+  The older (default) "Outside=-1" value has been replaced with the more 
+  meaningful phrase "outside=iter", which does the same thing.
 
-type=formula definitions can use "variable functions" to select
-  sin, cos, sinh, cosh, exp, log, etc at run time;
-  new built-ins tan, tanh, cotan, cotanh, and flip
-  are available with type=formula; see Type {Formula}
+The GIF Decoder now survives reading GIF files with a local color map
+  (although it cheerfully ignores that local color map).
 
-New <w> command in palette editing mode to convert image to greyscale
+~onlineFF
 
-; @@@ hotlink?
-New fractal type "fn+fn(pix)", a generalization of one of JM Richard-
-  Collard's formulas
+Improved IIT support.  Fractint now detects the IIT FPU automatically.
+  If this happens, and the IIT 'f4x4int.com' TSR is loaded, Fractint
+  now uses the extra capabilities of that chip automatically.  If Fractint
+  detects the IIT FPU but IIT's TSR is not loaded, you can still force
+  Fractint to use the extra features of that FPU with the "fpu=iit" option.
 
-All "fn" fractal types (e.g. fn*fn) can now use new functions tan, tanh,
-  cotan, cotanh, recip, and ident; bug in prior cos function fixed, new
-  function cosxx (conjugate of cos) is the old erroneous cos calculation
-  for compatibility
+New '>' and '<' command-keys in color-cycling mode force a cycling pause,
+  disable random colorizing, and single-step one color rotation, so you
+  can fine-tune your image colors.
 
-New L-Systems from Herb Savage
-
-New IFS types from Alex Matulich
-
-Many new formulas in fractint.frm, including a large group from
-JM Richard-Collard
-
-New color maps (neon, royal, volcano, blues, headache) from Daniel Egnor
-
-IFS type has changed to use a single file containing named entries
-  (instead of a separate xxx.ifs file per type); the <z> command brings up
-  IFS editor (used to be <i> command).	See {=HT_IFS Barnsley IFS Fractals}.
-
-Initial orbit parameter added to Gingerbreadman fractal type
-
-From Scott Taylor:\
-  Support for plotters using HP-GL; see {Plotter Parameters}\
-  Lots of new PostScript halftones; see {PostScript Parameters}\
-  "printer=PS[L]/0/..." for full page PostScript; see {PostScript Parameters}\
-  Option to drive printer ports directly (faster); see {Printer Parameters}\
-  Option to change printer end of line control chars; see {Printer Parameters}
-
-Much improved support for PaintJet printers; see {PaintJet Parameters}
-
-Support for XGA video adapter
-~Doc-
-(see {XGA})
-~Doc+
-
-Support for Targa+ video adapter
-~Doc-
-(see {Targa+})
-~Doc+
-
-16 color VGA mode enhancements:\
-  Now use the first 16 colors of .map files to be more predictable\
-  Palette editor now works with these modes\
-  Color cycling now works properly with these modes
-
-Targa video adapter fixes; Fractint now uses (and requires) the "targa"
-  and "targaset" environment variables for Targa systems
-~Doc-
-  (see {Targa})
-~Doc+
-
-"vesadetect=no" parameter to bypass use of VESA video driver; try
-  this if you encounter video problems with a VESA driver
-
-Upgraded video adapter detect and handling from John Bridges; autodetect
-  added for NCR, Trident 8900, Tseng 4000, Genoa (this code
-  is from a beta release of VGAKIT, we're not sure it all works yet)
-
-Zoom box is included in saved/printed images (but, is not recognized as
-  anything special when such an image is restored)
-
-The colors numbers reserved by the palette editor are now selectable with
-  the new <v> palette editing mode command
-
-Option to use IIT floating point chip's special matrix arithmetic for
-  faster 3D transforms; see "fpu=" in {Startup Parameters}
-
-Disk video cache increased to 64k; disk video does less seeking when
-  running to real disk
-
-Faster floating point code for 287 and higher fpus, for types mandel,
-  julia, barnsleyj1/m1/j2/m2, lambda, manowar, from Chuck Ebbert
-
-"filename=.xxx" can be used to set default <r> function file mask;
-  see "filename=" in {File Parameters}
-
-Selection of type formula or lsys now goes directly to entry selection
-  (file selection step is now skipped); to change to a different file, use
-  <F6> from the entry selection screen
-
-Three new values have been added to the textcolors= parameter; if you use
-  this parameter you should update it by inserting values for the new 6th,
-  7th, 9th, and 13th positions; see "textcolors=" in {Color Parameters}
-
-The formula type's imag() function has changed to return the result as
-  a real number
-
-Fractal type-specific parameters (entered after selecting a new fractal
-  type with <T>) now restart at their default values each time you select
-  a new fractal type
-
-Floating point input fields can now be entered in scientific notation (e.g.
-  11.234e-20). Entering the letters "e" and "p" in the first column causes
-  the numbers e=2.71828... and pi=3.14159... to be entered.
-
-Generalized type manzpwr to take a complex exponent per Lee Skinner's
-   request.
-
-New option "orbitsave=yes" to create files for the Acrospin program for
-   some types (see {Barnsley IFS Fractals}, {Orbit Fractals},
-   {=@ACROSPIN Acrospin})
-
-Bug fixes:\
-  Problem with Hercules adapter auto-detection repaired.\
-  Problems with VESA video adapters repaired (we're not sure we've got them
-    all yet...)\
-  3D transforms fixed to work at high resolutions (> 1000 dots).\
-  3D parameters no longer clobbered when restoring non-3D images.\
-  L-Systems fixed to not crash when order too high for available memory.\
-  PostScript EPS file fixes.\
-  Bad leftmost pixels with floating point at 2048 dot resolution fixed.\
-  3D transforms fixed to use current <x> screen float/integer setting.\
-  Restore of images using inversion fixed.\
-  Error in "cos" function (used with "fn" type fractals) fixed; prior
-    incorrect function still available as "cosxx" for compatibility
-
-The old 3D=nn/nn/nn/... form of specifying 3D transform parameters is no
-  longer supported.
-
-The Fractint source code is now Microsoft C6.00A compatible.
+;Transparent 3D and Antialiasing stuff, not documented yet, some initial
+;notes:
+;  new command line parms:\
+;    solidcore=y|n		 y\
+;    antialias=0...8		 0\
+;    transparent3d=n|y		 n\
+;    corecolor=nnn/nnn/nnn	 128/128/128\
+;    mdcorners=nnn/nnn/nnn/nnn	 -1.5/1.5/0/0\
+;    numframes=nnn		 1\
+;  antialiasing can be modified on X screen
+;  new keywords "xy" and "dt" in formulas
 ;
 ;
 ;
@@ -727,6 +620,8 @@ This command lets you modify the parameters which are requested when you
 select a new fractal type with the <T> command, without having to repeat
 that selection. You can enter "e" or "p" in column one of the input fields
 to get the numbers e and pi (2.71828... and 3.14159...).\
+From the fractal parameters screen, you can press <F6> to bring up a
+sub parameter screen for the coordinates of the image's corners.
 With the IFS fractal type, <Z> brings up the IFS editor (see
 {=HT_IFS Barnsley IFS Fractals}).
 
@@ -1051,6 +946,27 @@ chip.
    Color cycling range - see{ Color Cycling Commands }\
 ;
 ;
+~Topic=Image Coordinates Screen, Label=HELPCOORDS
+; This topic is online context-sensitive only.
+
+You can directly enter corner coordinates on this screen instead of
+using the zoom box to move around.  You can also use <F4> to reset
+the coordinates to the defaults for the current fractal type.
+
+There are two formats for the display: corners or center-mag.  You can
+toggle between the two by using <F6>.
+
+In corners mode, corner coordinate values are entered directly.  Usually
+only the top-left and bottom-right corners need be specified - the
+bottom left corner can be entered as zeros to default to an ordinary
+unrotated rectangular area.  For rotated or skewed images, the bottom
+left corner must also be specified.
+
+Center-mag mode can only be used with unrotated unstretched images.
+In this mode the image area is described by entering the coordinates for
+the center of the rectangle, and its magnification factor.
+;
+;
 ;
 ~Topic=Interrupting and Resuming
 
@@ -1306,6 +1222,10 @@ Leave color-cycling mode.
 Begin cycling the palette by shifting each color to the next "contour."
 <+> cycles the colors in one direction, <-> in the other.
 
+'<' or '>'\
+Force a color-cycling pause, disable random colorizing, and single-step
+through a one color-cycle.  For "fine-tuning" your image colors. 
+
 Cursor up/down\
 Increase/decrease the cycling speed. High speeds may cause a harmless
 flicker at the top of the screen.
@@ -1379,6 +1299,7 @@ file (.MAP assumed).  See {Palette Maps}.
   1  thru 9	   Cycle through 'nn' colors between screen updates (default=1)
   Enter 	   Randomly (re)-select all new colors	[TRY THIS ONE!]
   Spacebar	   Pause until another key is hit
+  < or >           Pause and single-step through one color-cycle
 * SF1 thru AF10    Pause and re-set the Palette to one of 30 fixed sequences
   d or a	   pause and load the palette from DEFAULT.MAP or ALTERN.MAP
   l		   load palette from a map file

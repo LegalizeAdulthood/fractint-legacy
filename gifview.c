@@ -181,11 +181,25 @@ int gifview()
 	    break;
 	 }
 
-	 width	= buffer[4] | buffer[5] << 8;
+	 width	= buffer[4] | (buffer[5] << 8);
 	 if (pot16bit) width >>= 1;
-	 height = buffer[6] | buffer[7] << 8;
+	 height = buffer[6] | (buffer[7] << 8);
 
-	 /* Setup the color palette for the image */
+         /* Skip local color palette */
+         if((buffer[8] & 0x80)==0x80) {      /* local map? */
+             int numcolors;    /* make this local */
+             planes = (buffer[8] & 0x0F) + 1;
+             numcolors = 1 << planes;
+             /* skip local map */
+             for (i = 0; i < numcolors; i++) {
+                for (j = 0; j < 3; j++) {
+                   if ((k = get_byte()) < 0) {
+                      close_file();
+                      return(-1);
+                      }
+                   }
+                }
+             }
 
 	 if (calc_status == 1) /* should never be so, but make sure */
 	    calc_status = 0;

@@ -64,7 +64,7 @@ struct MP *MPdiv386(struct MP x, struct MP y);
 struct MP *MPadd386(struct MP x, struct MP y);
 struct MP *MPsub386(struct MP x, struct MP y);
 int MPcmp386(struct MP x, struct MP y);
-struct MP d2MP386(double x);
+struct MP *d2MP386(double x);
 double *MP2d386(struct MP m);
 struct MP *fg2MP386(long x, int fg);
 

@@ -26,6 +26,7 @@ static void setup287code();
 #define PUTTHEMHERE 1		/* stuff common external arrays here */
 
 #include "fractint.h"
+#include "mpmath.h"
 #include "fractype.h"
 #include "helpdefs.h"
 
@@ -34,6 +35,9 @@ int	adapter;		/* Video Adapter chosen from list in ...h */
 extern char gifmask[];
 extern int TPlusErr;
 
+extern int Transparent3D, far NewTPFractal, tpdepth;
+extern char far *TrueColorAutoDetect(void);
+extern int AntiAliasing, Shadowing;
 extern int pot16bit;		/* save 16 bit values for continuous potential */
 extern int disk16bit;		/* disk video up & running with 16 bit values */
 extern int video_type;		/* coded value indicating video adapter type */
@@ -207,6 +211,8 @@ int calc_status; /* -1 no fractal		    */
 		 /*  4 completed		    */
 long calctime;
 
+int max_colors;				/* maximum palette size */
+extern int max_kbdcount;		/* governs keyboard-check speed */
 
 
 void main(int argc, char *argv[])
@@ -220,7 +226,7 @@ void main(int argc, char *argv[])
    int	   zoomoff;			/* = 0 when zoom is disabled	*/
    int	   kbdchar;			/* keyboard key-hit value	*/
    int	   kbdmore;			/* continuation variable	*/
-   int	   i, j, k, l;			/* temporary loop counters	*/
+   int	   i, k;			/* temporary loop counters	*/
    double  ftemp;			/* fp temp			*/
    int	   savedac;			/* save-the-Video DAC flag	*/
 
@@ -263,6 +269,20 @@ restart:				/* insert key re-starts here */
    if (fpu >= 287 && debugflag != 72)	/* Fast 287 math */
       setup287code();
 
+   /* IIT math coprocessor chip logic */
+   if(iit == 0 && fpu)
+      if(IITCoPro())
+         iit = 3;  /* detect iit chip */
+   if(iit < 0) iit = 0;  /* user wants chip turned off */
+   if(iit>0)
+   {
+      if(F4x4Check())
+         iit = 2;    /* semaphore TSR is installed */
+      else if(iit == 3)
+         iit = 0;    /* we detetct chip but no tsr - don't use */
+      /* else user forced iit == 1 */
+   }
+
    adapter_detect();			/* check what video is really present */
    if (debugflag >= 9002 && debugflag <= 9100) /* for testing purposes */
       if (video_type > (debugflag-9000)/2)     /* adjust the video value */
@@ -279,6 +299,9 @@ restart:				/* insert key re-starts here */
 
    if (badconfig < 0)			/* fractint.cfg bad, no msg yet */
       bad_fractint_cfg_msg();
+
+   max_colors = 256;                    /* the Windows version is lower */
+   max_kbdcount=(cpu==386) ? 80 : 30;   /* check the keyboard this often */
 
    if (showfile && initmode < 0) {
       intro();				/* display the credits screen */
@@ -447,10 +470,12 @@ imagestart:				/* calc/display a new image */
 
 	 memcpy(olddacbox,dacbox,256*3); /* save the DAC */
 	 diskisactive = 1;		/* flag for disk-video routines */
+
 	 if (overlay3d) {
 	    unstackscreen();		/* restore old graphics image */
 	    overlay3d = 0;
 	    }
+
 	 else {
 	    setvideomode(axmode,bxmode,cxmode,dxmode); /* switch video modes */
 	    if (goodmode == 0) {
@@ -467,7 +492,40 @@ imagestart:				/* calc/display a new image */
 	       setvideotext(); /* switch to text mode */
 	       goto restorestart;
 	       }
+
+	    if(Transparent3D && curfractalspecific->orbitcalc == Formula) {
+	       char far *ErrMsg;
+	       if((ErrMsg = TrueColorAutoDetect()) != ((char far*)0)) {
+		  stopmsg(0, ErrMsg);
+		  Transparent3D = 0;
+		  }
+	       else {
+		  tpdepth = 0;
+		  NewTPFractal = 1;
+		  }
+	       }
+	    else if(AntiAliasing) {
+	       if(dotmode != 11) {
+		  static char far DiskVidError[] =
+		    "Anti-aliasing resolution too high, try a lower value or lower\n\
+screen resolution.";
+		  /* Ensure the absolute resolution is < 2048 */
+		  if(AntiAliasing >= 8 ||
+		     ((long)xdots << AntiAliasing) > 2048)
+		     goto AntiAliasError;
+		  if(!colors)
+		     TrueColorAutoDetect();
+		  if(SetupShadowVideo() != 0) {
+AntiAliasError:
+		     stopmsg(0, DiskVidError);
+		     initmode = -1;
+		     setvideotext(); /* switch to text mode */
+		     goto restorestart;
+		     }
+		  }
+	       }
 	    }
+
 	 diskisactive = 0;		/* flag for disk-video routines */
 	 if (savedac || colorpreloaded) {
 	    memcpy(dacbox,olddacbox,256*3); /* restore the DAC */
@@ -479,7 +537,7 @@ imagestart:				/* calc/display a new image */
 	       far_memcpy((char far *)dacbox,mapdacbox,768);
 	       spindac(0,1);
 	       }
-	    else if (dotmode == 11 && colors == 256) {
+	    else if ((dotmode == 11 && colors == 256) || !colors) {
 	       /* disk video, setvideomode via bios didn't get it right, so: */
 	       ValidateLuts("default"); /* read the default palette file */
 	       }
@@ -540,7 +598,23 @@ imagestart:				/* calc/display a new image */
 	 else				/* regular gif/fra input file */
 	    outln = out_line;
 	 if(filetype == 0)
+	 {
+	    if(iit == 2 && usr_floatflag != 0)
+           if(F4x4Lock()==0)
+              iit = -1;  /* semaphore not free - no iit */
+    	if(debugflag==2224)
+	 	{
+	    	char buf[80];
+	    	sprintf(buf,"iit=%d floatflag=%d",iit,usr_floatflag);
+        	stopmsg(4,(char far *)buf);
+     	}
+
 	    i = funny_glasses_call(gifview);
+	    if(iit == 2)
+           F4x4Free();      /* unlock semaphore */
+        else if(iit == -1)
+           iit = 2;         /* semaphore operating */
+     }
 	 else
 	    i = funny_glasses_call(tgaview);
 	 if(outln_cleanup)		/* cleanup routine defined? */
@@ -624,12 +698,21 @@ imagestart:				/* calc/display a new image */
 	   && (curfractalspecific->flags&NORESUME) == 0) {
 	    savebase = readticker(); /* calc's start time */
 	    saveticks = (long)initsavetime * 1092; /* bios ticks/minute */
-	    if ((saveticks & 65535) == 0)
+	    if ((saveticks & 65535L) == 0)
 	       ++saveticks; /* make low word nonzero */
 	    finishrow = -1;
 	    }
-	 if ((i = calcfract()) == 0)	/* draw the fractal using "C" */
+
+	 if(Transparent3D && curfractalspecific->orbitcalc == Formula)
+	    i = Transp3DFnct();
+	 else {
+	    i = calcfract();	/* draw the fractal using "C" */
+	    if(AntiAliasing && i == 0)
+	       AntiAliasPass();
+	    }
+	 if (i == 0)
 	    buzzer(0); /* finished!! */
+
 	 saveticks = 0; 		/* turn off autosave timer */
 	 if (dotmode == 11 && i == 0) /* disk-video */
 	    dvid_status(0,"Image has been completed");
@@ -1267,4 +1350,5 @@ static void setup287code()
    ORBPTR(MANOWARFP)	  = ORBPTR(MANOWARJFP)	 = FManOWarfpFractal;
    ORBPTR(MANDELLAMBDAFP) = ORBPTR(LAMBDAFP)	 = FLambdaFPFractal;
 }
+
 

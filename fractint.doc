@@ -1,339 +1,216 @@
 
-                      Fractint Version 16.0                         Page 1
+                      Fractint Version 16.11                        Page 1
 
-        New features in Version 16.............................4
+        New features in Version 16.11..........................4
 
-        Introduction...........................................8
+        Introduction...........................................6
 
-  1.    Fractint Commands.....................................10
-  1.1     Getting Started.....................................10
-  1.2     Plotting Commands...................................10
-  1.3     Zoom box Commands...................................13
-  1.4     Color Cycling Commands..............................15
-  1.5     Palette Editing Commands............................16
-  1.6     Image Save/Restore Commands.........................19
-  1.7     Print Command.......................................20
-  1.8     Parameter Save/Restore Commands.....................20
-  1.9     "3D" Commands.......................................22
-  1.10    Interrupting and Resuming...........................22
-  1.11    View Window.........................................23
-  1.12    Video Mode Function Keys............................24
-  1.13    Hints...............................................25
+  1.    Fractint Commands......................................8
+  1.1     Getting Started......................................8
+  1.2     Plotting Commands....................................8
+  1.3     Zoom box Commands...................................11
+  1.4     Color Cycling Commands..............................13
+  1.5     Palette Editing Commands............................14
+  1.6     Image Save/Restore Commands.........................17
+  1.7     Print Command.......................................18
+  1.8     Parameter Save/Restore Commands.....................18
+  1.9     "3D" Commands.......................................20
+  1.10    Interrupting and Resuming...........................20
+  1.11    View Window.........................................21
+  1.12    Video Mode Function Keys............................22
+  1.13    Hints...............................................23
 
-  2.    Fractal Types.........................................26
-  2.1     The Mandelbrot Set..................................26
-  2.2     Julia Sets..........................................27
-  2.3     Newton domains of attraction........................28
-  2.4     Newton..............................................29
-  2.5     Complex Newton......................................30
-  2.6     Lambda Sets.........................................30
-  2.7     Mandellambda Sets...................................30
-  2.8     Plasma Clouds.......................................31
-  2.9     Lambdafn............................................32
-  2.10    Mandelfn............................................32
-  2.11    Barnsley Mandelbrot/Julia Sets......................33
-  2.12    Barnsley IFS Fractals...............................33
-  2.13    Sierpinski Gasket...................................35
-  2.14    Quartic Mandelbrot/Julia............................35
-  2.15    Distance Estimator..................................36
-  2.16    Pickover Mandelbrot/Julia Types.....................36
-  2.17    Pickover Popcorn....................................36
-  2.18    Peterson Variations.................................37
-  2.19    Unity...............................................37
-  2.20    Scott Taylor / Lee Skinner Variations...............38
-  2.21    Kam Torus...........................................38
-  2.22    Bifurcation.........................................39
-  2.23    Orbit Fractals......................................40
-  2.24    Lorenz Attractors...................................41
-  2.25    Rossler Attractors..................................42
-  2.26    Henon Attractors....................................42
-  2.27    Pickover Attractors.................................43
-  2.28    Gingerbreadman......................................43
-  2.29    Test................................................43
-  2.30    Formula.............................................44
-  2.31    Julibrots...........................................45
-  2.32    Diffusion Limited Aggregation.......................47
-  2.33    Magnetic Fractals...................................47
-  2.34    L-Systems...........................................49
+  2.    Fractal Types.........................................24
+  2.1     The Mandelbrot Set..................................24
+  2.2     Julia Sets..........................................25
+  2.3     Newton domains of attraction........................26
+  2.4     Newton..............................................27
+  2.5     Complex Newton......................................28
+  2.6     Lambda Sets.........................................28
+  2.7     Mandellambda Sets...................................28
+  2.8     Plasma Clouds.......................................29
+  2.9     Lambdafn............................................30
+  2.10    Mandelfn............................................30
+  2.11    Barnsley Mandelbrot/Julia Sets......................31
+  2.12    Barnsley IFS Fractals...............................31
+  2.13    Sierpinski Gasket...................................33
+  2.14    Quartic Mandelbrot/Julia............................33
+  2.15    Distance Estimator..................................34
+  2.16    Pickover Mandelbrot/Julia Types.....................34
+  2.17    Pickover Popcorn....................................34
+  2.18    Peterson Variations.................................35
+  2.19    Unity...............................................35
+  2.20    Scott Taylor / Lee Skinner Variations...............36
+  2.21    Kam Torus...........................................36
+  2.22    Bifurcation.........................................37
+  2.23    Orbit Fractals......................................38
+  2.24    Lorenz Attractors...................................39
+  2.25    Rossler Attractors..................................40
+  2.26    Henon Attractors....................................40
+  2.27    Pickover Attractors.................................41
+  2.28    Gingerbreadman......................................41
+  2.29    Test................................................41
+  2.30    Formula.............................................42
+  2.31    Julibrots...........................................43
+  2.32    Diffusion Limited Aggregation.......................45
+  2.33    Magnetic Fractals...................................45
+  2.34    L-Systems...........................................47
 
-                      Fractint Version 16.0                         Page 2
+                      Fractint Version 16.11                        Page 2
 
-  3.    Doodads, Bells, and Whistles..........................51
-  3.1     Drawing Method......................................51
-  3.2     Palette Maps........................................51
-  3.3     Autokey Mode........................................52
-  3.4     Distance Estimator Method...........................54
-  3.5     Inversion...........................................55
-  3.6     Decomposition.......................................56
-  3.7     Logarithmic Palettes and Color Ranges...............56
-  3.8     Biomorphs...........................................58
-  3.9     Continuous Potential................................58
-  3.10    Starfields..........................................60
+  3.    Doodads, Bells, and Whistles..........................49
+  3.1     Drawing Method......................................49
+  3.2     Palette Maps........................................49
+  3.3     Autokey Mode........................................50
+  3.4     Distance Estimator Method...........................52
+  3.5     Inversion...........................................53
+  3.6     Decomposition.......................................54
+  3.7     Logarithmic Palettes and Color Ranges...............54
+  3.8     Biomorphs...........................................56
+  3.9     Continuous Potential................................56
+  3.10    Starfields..........................................58
 
-  4.    "3D" Images...........................................62
-  4.1     3D Mode Selection...................................62
-  4.2     Select Fill Type Screen.............................65
-  4.3     Stereo 3D Viewing...................................66
-  4.4     Rectangular Coordinate Transformation...............67
-  4.5     3D Color Parameters.................................68
-  4.6     Light Source Parameters.............................68
-  4.7     Spherical Projection................................69
-  4.8     3D Overlay Mode.....................................70
-  4.9     Special Note for CGA or Hercules Users..............70
-  4.10    Making Terrains.....................................71
-  4.11    Making 3D Slides....................................72
-  4.12    Interfacing with Ray Tracing Programs...............73
+  4.    "3D" Images...........................................60
+  4.1     3D Mode Selection...................................60
+  4.2     Select Fill Type Screen.............................63
+  4.3     Stereo 3D Viewing...................................64
+  4.4     Rectangular Coordinate Transformation...............65
+  4.5     3D Color Parameters.................................66
+  4.6     Light Source Parameters.............................66
+  4.7     Spherical Projection................................68
+  4.8     3D Overlay Mode.....................................68
+  4.9     Special Note for CGA or Hercules Users..............69
+  4.10    Making Terrains.....................................69
+  4.11    Making 3D Slides....................................70
+  4.12    Interfacing with Ray Tracing Programs...............71
 
-  5.    Command Line Parameters, Parameter Files, Batch Mode..75
-  5.1     Using the DOS Command Line..........................75
-  5.2     Setting Defaults (SSTOOLS.INI File).................75
-  5.3     Parameter Files and the <@> Command.................76
-  5.4     General Parameter Syntax............................77
-  5.5     Startup Parameters..................................77
-  5.6     Calculation Mode Parameters.........................78
-  5.7     Fractal Type Parameters.............................79
-  5.8     Image Calculation Parameters........................79
-  5.9     Color Parameters....................................81
-  5.10    Doodad Parameters...................................83
-  5.11    File Parameters.....................................83
-  5.12    Video Parameters....................................85
-  5.13    Sound Parameters....................................87
-  5.14    Printer Parameters..................................87
-  5.15    PostScript Parameters...............................88
-  5.16    PaintJet Parameters.................................89
-  5.17    Plotter Parameters..................................90
-  5.18    3D Parameters.......................................90
-  5.19    Batch Mode..........................................91
+  5.    Command Line Parameters, Parameter Files, Batch Mode..73
+  5.1     Using the DOS Command Line..........................73
+  5.2     Setting Defaults (SSTOOLS.INI File).................73
+  5.3     Parameter Files and the <@> Command.................74
+  5.4     General Parameter Syntax............................75
+  5.5     Startup Parameters..................................75
+  5.6     Calculation Mode Parameters.........................76
+  5.7     Fractal Type Parameters.............................77
+  5.8     Image Calculation Parameters........................77
+  5.9     Color Parameters....................................79
+  5.10    Doodad Parameters...................................81
+  5.11    File Parameters.....................................82
+  5.12    Video Parameters....................................83
+  5.13    Sound Parameters....................................85
+  5.14    Printer Parameters..................................85
+  5.15    PostScript Parameters...............................86
+  5.16    PaintJet Parameters.................................87
+  5.17    Plotter Parameters..................................88
+  5.18    3D Parameters.......................................88
+  5.19    Batch Mode..........................................90
 
-  6.    Hardware Support......................................94
-  6.1     Notes on Video Modes, "Standard" and Otherwise......94
-  6.2     "Disk-Video" Modes..................................96
-  6.3     Customized Video Modes, FRACTINT.CFG................97
+  6.    Hardware Support......................................92
+  6.1     Notes on Video Modes, "Standard" and Otherwise......92
+  6.2     "Disk-Video" Modes..................................94
+  6.3     Customized Video Modes, FRACTINT.CFG................95
 
-  7.    Common Problems.......................................99
+  7.    Common Problems.......................................98
 
-                      Fractint Version 16.0                         Page 3
+                      Fractint Version 16.11                        Page 3
 
-  8.    Fractals and the PC..................................102
-  8.1     A Little History...................................102
-  8.1.1     Before Mandelbrot................................102
-  8.1.2     Who Is This Guy, Anyway?.........................103
-  8.2     A Little Code......................................104
-  8.2.1     Periodicity Logic................................104
-  8.2.2     Limitations of Integer Math (And How We Cope)....104
-  8.2.3     The Fractint "Fractal Engine" Architecture.......105
+  8.    Fractals and the PC..................................101
+  8.1     A Little History...................................101
+  8.1.1     Before Mandelbrot................................101
+  8.1.2     Who Is This Guy, Anyway?.........................102
+  8.2     A Little Code......................................103
+  8.2.1     Periodicity Logic................................103
+  8.2.2     Limitations of Integer Math (And How We Cope)....103
+  8.2.3     The Fractint "Fractal Engine" Architecture.......104
 
-  Appendix A Mathematics of the Fractal Types................108
+  Appendix A Mathematics of the Fractal Types................107
 
-  Appendix B Stone Soup With Pixels: The Authors.............119
+  Appendix B Stone Soup With Pixels: The Authors.............118
 
-  Appendix C GIF Save File Format............................125
+  Appendix C GIF Save File Format............................124
 
-  Appendix D An Unabashed Plug for "Fractal Creations".......126
+  Appendix D An Unabashed Plug for "Fractal Creations".......125
 
-  Appendix E Bibliography....................................127
+  Appendix E Bibliography....................................126
 
-  Appendix F Other Programs..................................128
+  Appendix F Other Programs..................................127
 
-  Appendix G Revision History................................129
+  Appendix G Revision History................................128
 
-  Appendix H Version13 to Version 14 Type Mapping............137
+  Appendix H Version13 to Version 14 Type Mapping............138
 
-                      Fractint Version 16.0                         Page 4
+                      Fractint Version 16.11                        Page 4
 
- New features in Version 16
+ New features in Version 16.11
 
-  New integrated online help / fractint.doc system from Ethan Nagel. There
-    is no longer a fractint.doc file included - all documentation is
-    available online.  To create a printable fractint.doc file see Startup
-    Parameters (p. 77).
+  AARRGGHH!! Version 16.11 was released 24 hours after version 16.1
+    because of a couple of buglets we inadvertantly introduced in 16.1.
+    What follows is a list of what's new in 16.1/16.11 - to see the new
+    features in 16.0 and earlier releases, see Revision History (p. 128)
+    for details.
 
-  Over 350 screens of online help! Try pressing <F1> just about anywhere!
+  Older Tseng-3000-based Video adapters should correctly be auto-detected
+    again.  But, if they (or your other SuperVGA Video adapters) aren't
+    correctly auto-detected, cheer up because there are...
 
-  New "autokey" feature supports recording and playback of keystrokes.
-    Type "demo" to run the included demo.bat and demo.key files, which run
-    a great demonstration of Fractint using the autokey feature.  See
-    Autokey Mode (p. 52) for details.
+  New "adapter=" options to force the selection of specific SuperVGA
+    adapter types when Fractint's internal SuperVGA Auto-detection logic
+    fails.  See Video Parameters (p. 83) for details.
 
-  New <@> command executes a saved set of commands.  The <b> command has
-    changed to write the current image's parameters as a named set of
-    commands in a structured file.  Saved sets of commands can
-    subsequently be executed with the <@> command.  See Parameter
-    Save/Restore Commands (p. 20).  A default "fractint.par" file is
-    included with the release which has parameters for some nice images,
-    use the <@> command to explore these.
+  If the floating-point math option has not been selected, but floating-
+    point math has been automatically set because of deep zooming, integer
+    math is now re-selected again when a new fractal type is selected or
+    the current fractal type is un-zoomed back to the point where integer
+    math is again possible.
 
-  New <z> command allows changing fractal type-specific parameters without
-    going back through the <t> (fractal type selection) screen (and thus
-    without losing the current image location)
+  The Acrospin interface has been fixed to eliminate the creation of line
+    descriptions when no points for them were defined. Acrospin complained
+    about these and the line definitions had to be edited out.
 
-  Ray tracer interface from Marc Reinig, generates 3d transform output for
-    a number of ray tracers; see "Interfacing with Ray Tracing Programs"
-    (p. 73)
 
-  Selection of video modes and structure of "fractint.cfg" have changed.
-    If you have a customized fractint.cfg file, you'll have to rebuild it
-    based on this release's version. You can customize the assignment of
-    your favorite video modes to function keys, see Video Mode Function
-    Keys (p. 24).  <delete> is a new command key which goes directly to
-    video mode selection.
+  The 3D "Light Source before Transfomation" fill type, which was handled
+    incorrectly up through version 16.0, has been fixed. The documentation
+    for both light source fill options has been corrected.
 
-  New "cyclerange" option (command line and <y> options screen) from Hugh
-    Steele. Limits color cycling to a specified range of colors.  New
-    palette editor <o> command can also be used to set the range.
+  Fractint now survives being modified by McAfee's "SCAN /AV" option.
 
-  Improved Distance Estimator Method (p. 54) algorithm from Phil Wilson.
-    Just the edge of the set can be displayed; the width of the "edge" can
-    be controlled; the outside points can optionally be colored with the
-    normal color scheme
+  The <Z> fractal type parameters screen now has a sub-screen which can be
+    used to directly enter image coordinates.  Use <F6> from the <Z>
+    screen to get the new corners screen.
 
-  New "ranges=" option from Norman Hills. This option lets you specify
-    which range of escape time iteration counts gets mapped to each color
-    number, allowing much finer tuning that the "logmap" option.  See
-    Logarithmic Palettes and Color Ranges (p. 56) for details.
+  New "inside=zmag" option, which colors inside pixels according to the
+    magnititude of the orbit point when maxiter was reached.
 
-  type=formula definitions can use "variable functions" to select sin,
-    cos, sinh, cosh, exp, log, etc at run time; new built-ins tan, tanh,
-    cotan, cotanh, and flip are available with type=formula; see Type
-    Formula (p. 44)
+  New "outside=real|imag|mult|summ" options provide variations of coloring
+    depending on the real and imaginary components of the last orbit
+    value.  The older (default) "Outside=-1" value has been replaced with
+    the more meaningful phrase "outside=iter", which does the same thing.
+
+  The GIF Decoder now survives reading GIF files with a local color map
+    (although it cheerfully ignores that local color map).
+
+
+  Improved IIT support.  Fractint now detects the IIT FPU automatically.
+    If this happens, and the IIT 'f4x4int.com' TSR is loaded, Fractint now
+    uses the extra capabilities of that chip automatically.  If Fractint
+    detects the IIT FPU but IIT's TSR is not loaded, you can still force
+    Fractint to use the extra features of that FPU with the "fpu=iit"
+    option.
 
-                      Fractint Version 16.0                         Page 5
+                      Fractint Version 16.11                        Page 5
 
-  New <w> command in palette editing mode to convert image to greyscale
+  New '>' and '<' command-keys in color-cycling mode force a cycling
+    pause, disable random colorizing, and single-step one color rotation,
+    so you can fine-tune your image colors.
 
-  New fractal type "fn+fn(pix)", a generalization of one of JM Richard-
-    Collard's formulas
-
-  All "fn" fractal types (e.g. fn*fn) can now use new functions tan, tanh,
-    cotan, cotanh, recip, and ident; bug in prior cos function fixed, new
-    function cosxx (conjugate of cos) is the old erroneous cos calculation
-    for compatibility
-
-  New L-Systems from Herb Savage
-
-  New IFS types from Alex Matulich
-
-  Many new formulas in fractint.frm, including a large group from JM
-  Richard-Collard
-
-  New color maps (neon, royal, volcano, blues, headache) from Daniel Egnor
-
-  IFS type has changed to use a single file containing named entries
-    (instead of a separate xxx.ifs file per type); the <z> command brings
-    up IFS editor (used to be <i> command).  See Barnsley IFS Fractals
-    (p. 33).
-
-  Initial orbit parameter added to Gingerbreadman fractal type
-
-  From Scott Taylor:
-    Support for plotters using HP-GL; see Plotter Parameters (p. 90)
-    Lots of new PostScript halftones; see PostScript Parameters (p. 88)
-    "printer=PS[L]/0/..." for full page PostScript; see PostScript
-    Parameters (p. 88)
-    Option to drive printer ports directly (faster); see Printer
-    Parameters (p. 87)
-    Option to change printer end of line control chars; see Printer
-    Parameters (p. 87)
-
-  Much improved support for PaintJet printers; see PaintJet Parameters
-  (p. 89)
-
-  Support for XGA video adapter
-
-  Support for Targa+ video adapter
-
-  16 color VGA mode enhancements:
-    Now use the first 16 colors of .map files to be more predictable
-    Palette editor now works with these modes
-    Color cycling now works properly with these modes
-
-  Targa video adapter fixes; Fractint now uses (and requires) the "targa"
-    and "targaset" environment variables for Targa systems
-
-  "vesadetect=no" parameter to bypass use of VESA video driver; try this
-    if you encounter video problems with a VESA driver
 
-                      Fractint Version 16.0                         Page 6
-
-  Upgraded video adapter detect and handling from John Bridges; autodetect
-    added for NCR, Trident 8900, Tseng 4000, Genoa (this code is from a
-    beta release of VGAKIT, we're not sure it all works yet)
-
-  Zoom box is included in saved/printed images (but, is not recognized as
-    anything special when such an image is restored)
-
-  The colors numbers reserved by the palette editor are now selectable
-    with the new <v> palette editing mode command
-
-  Option to use IIT floating point chip's special matrix arithmetic for
-    faster 3D transforms; see "fpu=" in Startup Parameters (p. 77)
-
-  Disk video cache increased to 64k; disk video does less seeking when
-    running to real disk
-
-  Faster floating point code for 287 and higher fpus, for types mandel,
-    julia, barnsleyj1/m1/j2/m2, lambda, manowar, from Chuck Ebbert
-
-  "filename=.xxx" can be used to set default <r> function file mask; see
-    "filename=" in File Parameters (p. 83)
-
-  Selection of type formula or lsys now goes directly to entry selection
-    (file selection step is now skipped); to change to a different file,
-    use <F6> from the entry selection screen
-
-  Three new values have been added to the textcolors= parameter; if you
-    use this parameter you should update it by inserting values for the
-    new 6th, 7th, 9th, and 13th positions; see "textcolors=" in Color
-    Parameters (p. 81)
-
-  The formula type's imag() function has changed to return the result as a
-    real number
-
-  Fractal type-specific parameters (entered after selecting a new fractal
-    type with <T>) now restart at their default values each time you
-    select a new fractal type
-
-  Floating point input fields can now be entered in scientific notation
-    (e.g.  11.234e-20). Entering the letters "e" and "p" in the first
-    column causes the numbers e=2.71828... and pi=3.14159... to be
-    entered.
-
-  Generalized type manzpwr to take a complex exponent per Lee Skinner's
-     request.
-
-  New option "orbitsave=yes" to create files for the Acrospin program for
-     some types (see Barnsley IFS Fractals (p. 33), Orbit Fractals
-     (p. 40), Acrospin (p. 128))
-
-  Bug fixes:
-    Problem with Hercules adapter auto-detection repaired.
-    Problems with VESA video adapters repaired (we're not sure we've got
-      them all yet...)
-    3D transforms fixed to work at high resolutions (> 1000 dots).
-    3D parameters no longer clobbered when restoring non-3D images.
-
-                      Fractint Version 16.0                         Page 7
-
-    L-Systems fixed to not crash when order too high for available memory.
-    PostScript EPS file fixes.
-    Bad leftmost pixels with floating point at 2048 dot resolution fixed.
-    3D transforms fixed to use current <x> screen float/integer setting.
-    Restore of images using inversion fixed.
-    Error in "cos" function (used with "fn" type fractals) fixed; prior
-      incorrect function still available as "cosxx" for compatibility
-
-  The old 3D=nn/nn/nn/... form of specifying 3D transform parameters is no
-    longer supported.
-
-  The Fractint source code is now Microsoft C6.00A compatible.
-
-                      Fractint Version 16.0                         Page 8
+                      Fractint Version 16.11                        Page 6
 
  Introduction
 
   FRACTINT plots and manipulates images of "objects" -- actually, sets of
   mathematical points -- that have fractal dimension.  See "Fractals and
-  the PC" (p. 102) for some historical and mathematical background on
+  the PC" (p. 101) for some historical and mathematical background on
   fractal geometry, a discipline named and popularized by mathematician
   Benoit Mandelbrot. For now, these sets of points have three important
   properties:
@@ -383,10 +260,10 @@
   other fractal plotter close to the present version for speed,
   versatility, and all-around wonderfulness. (If you have, tell us so we
   can steal somebody else's ideas instead of each other's.)  See The Stone
-  Soup Story (p. 119) and A Word About the Authors (p. 120) for
-  information about the authors, and see Contacting the Authors (p. 121)
+  Soup Story (p. 118) and A Word About the Authors (p. 119) for
+  information about the authors, and see Contacting the Authors (p. 120)
 
-                      Fractint Version 16.0                         Page 9
+                      Fractint Version 16.11                        Page 7
 
   for how to contribute your own ideas and code.
 
@@ -410,10 +287,10 @@
    **********************************************************************
 
   Source code for Fractint is also freely available - see Distribution of
-  Fractint (p. 121).  See the FRACTSRC.DOC file included with the source
+  Fractint (p. 120).  See the FRACTSRC.DOC file included with the source
   for conditions on use.  (In most cases we just want credit.)
 
-                      Fractint Version 16.0                        Page 10
+                      Fractint Version 16.11                        Page 8
 
  1. Fractint Commands
 
@@ -422,7 +299,7 @@
 
   To start the program, enter FRACTINT at the DOS prompt. The program
   displays an initial "credits" screen. If Fractint doesn't start
-  properly, please see Common Problems (p. 99).
+  properly, please see Common Problems (p. 98).
 
   Hitting <Enter> gets you from the initial screen to the main menu. You
   can select options from the menu by moving the highlight with the cursor
@@ -438,8 +315,8 @@
     Otherwise, monochrome:             <F6>
 
   After the initial Mandelbrot image has been displayed, try zooming into
-  it (see Zoom Box Commands (p. 13)) and color cycling (see Color Cycling
-  Commands (p. 15)).  Once you're comfortable with these basics, start
+  it (see Zoom Box Commands (p. 11)) and color cycling (see Color Cycling
+  Commands (p. 13)).  Once you're comfortable with these basics, start
   exploring other functions from the main menu.
 
   Help is available from the menu and at most other points in Fractint by
@@ -470,7 +347,7 @@
   Display a help screen. The function keys available in help mode are
   displayed at the bottom of the help screen.
 
-                      Fractint Version 16.0                        Page 11
+                      Fractint Version 16.11                        Page 9
 
   <M> or <Esc>
   Return from a displayed image to the main menu.
@@ -480,7 +357,7 @@
 
   <Delete>
   Same as choosing "select video mode" from the main menu.  Goes to the
-  "select video mode" screen.  See Video Mode Function Keys (p. 24).
+  "select video mode" screen.  See Video Mode Function Keys (p. 22).
 
   <\> (previously <Home>)
   Redraw the previous image. The program tracks 25 sets of previous
@@ -503,40 +380,40 @@
   Select a fractal type. Move the cursor to your choice (or type the first
   few letters of its name) and hit <Enter>. Next you will be prompted for
   any parameters used by the selected type - hit <Enter> for the defaults.
-  See Fractal Types (p. 26) for a list of supported types.
+  See Fractal Types (p. 24) for a list of supported types.
 
   <X>
   Select a number of eXtended options. Brings up a full-screen menu of
   options, any of which you can change at will.  These options are:
-    "passes=" - see Drawing Method (p. 51)
+    "passes=" - see Drawing Method (p. 49)
     Floating point toggle - see <F> key description below
-    "maxiter=" - see Image Calculation Parameters (p. 79)
-    "inside=" and "outside=" - see Color Parameters (p. 81)
-    "logmap=" - see Logarithmic Palettes and Color Ranges (p. 56)
-    "biomorph=" - see Biomorphs (p. 58)
-    "decomp=" - see Decomposition (p. 56)
-    "sound=" option - see Sound Parameters (p. 87)
-    "overwrite=" option - see File Parameters (p. 83)
-    "savename=" filename - see File Parameters (p. 83)
+    "maxiter=" - see Image Calculation Parameters (p. 77)
+    "inside=" and "outside=" - see Color Parameters (p. 79)
+    "logmap=" - see Logarithmic Palettes and Color Ranges (p. 54)
+    "biomorph=" - see Biomorphs (p. 56)
+    "decomp=" - see Decomposition (p. 54)
+    "sound=" option - see Sound Parameters (p. 85)
+    "overwrite=" option - see File Parameters (p. 82)
+    "savename=" filename - see File Parameters (p. 82)
 
   <F>
   Toggles the use of floating-point algorithms (see "Limitations of
-  Integer Math (And How We Cope)" (p. 104)).  Whether floating point is in
+  Integer Math (And How We Cope)" (p. 103)).  Whether floating point is in
   use is shown on the <Tab> status screen.  The floating point option can
   also be turned on and off using the "X" options screen.  If you have a
   non-Intel floating point chip which supports the full 387 instruction
-  set, see the "FPU=" command in Startup Parameters (p. 77) to get the
+  set, see the "FPU=" command in Startup Parameters (p. 75) to get the
   most out of your chip.
 
-                      Fractint Version 16.0                        Page 12
+                      Fractint Version 16.11                       Page 10
 
   <Y>
   More options which we couldn't fit under the <X> command:
-    "finattract=" - see Finite Attractors (p. 115)
-    "potential=" parameters - see Continuous Potential (p. 58)
-    "invert=" parameters - see Inversion (p. 55)
-    "distest=" parameters - see Distance Estimator Method (p. 54)
-    "cyclerange=" - see Color Cycling Commands (p. 15)
+    "finattract=" - see Finite Attractors (p. 114)
+    "potential=" parameters - see Continuous Potential (p. 56)
+    "invert=" parameters - see Inversion (p. 53)
+    "distest=" parameters - see Distance Estimator Method (p. 52)
+    "cyclerange=" - see Color Cycling Commands (p. 13)
 
   <Z>
   Modify the parameters specific to the currently selected fractal type.
@@ -544,23 +421,25 @@
   select a new fractal type with the <T> command, without having to repeat
   that selection. You can enter "e" or "p" in column one of the input
   fields to get the numbers e and pi (2.71828... and 3.14159...).
-  With the IFS fractal type, <Z> brings up the IFS editor (see Barnsley
-  IFS Fractals (p. 33)).
+  From the fractal parameters screen, you can press <F6> to bring up a sub
+  parameter screen for the coordinates of the image's corners.  With the
+  IFS fractal type, <Z> brings up the IFS editor (see Barnsley IFS
+  Fractals (p. 31)).
 
   <+> or <->
   Switch to color-cycling mode and begin cycling the palette by shifting
-  each color to the next "contour."  See Color Cycling Commands (p. 15).
+  each color to the next "contour."  See Color Cycling Commands (p. 13).
   <C>
   Switch to color-cycling mode but do not start cycling.  The normally
   black "overscan" border of the screen changes to white.  See Color
-  Cycling Commands (p. 15).
+  Cycling Commands (p. 13).
 
   <E>
-  Enter Palette-Editing Mode.  See Palette Editing Commands (p. 16).
+  Enter Palette-Editing Mode.  See Palette Editing Commands (p. 14).
 
   <Spacebar>
   Toggle between Mandelbrot set images and their corresponding Julia-set
-  images. Read the notes in Fractal Types, Julia Sets (p. 27) before
+  images. Read the notes in Fractal Types, Julia Sets (p. 25) before
   trying this option if you want to see anything interesting.
 
   <Enter>
@@ -571,20 +450,20 @@
   <I>
   Modify 3D transformation parameters used with 3D fractal types such as
   "Lorenz3D" and 3D "IFS" definitions, including the selection of "funny
-  glasses" (p. 66) red/blue 3D.
+  glasses" (p. 64) red/blue 3D.
 
   <A>
   Convert the current image into a fractal 'starfield'.  See Starfields
-  (p. 60).
+  (p. 58).
 
   <O> (the letter, not the number)
   If pressed while an image is being generated, toggles the display of
   intermediate results -- the "orbits" Fractint uses as it calculates
   values for each point. Slows the display a bit, but shows you how clever
   the program is behind the scenes. (See "A Little Code" in "Fractals and
-  the PC" (p. 102).)
+  the PC" (p. 101).)
 
-                      Fractint Version 16.0                        Page 13
+                      Fractint Version 16.11                       Page 11
 
   <Insert>
   Restart at the "credits" screen and reset most variables to their
@@ -641,7 +520,7 @@
   zoom box. Moving the mouse left or right while holding the right button
   down performs the same function.
 
-                      Fractint Version 16.0                        Page 14
+                      Fractint Version 16.11                       Page 12
 
   <Ctrl><Page Up>, <Ctrl><Page Down>
   These commands change the zoom box's "aspect ratio", stretching or
@@ -692,7 +571,7 @@
   but do not support rotation and skewing - nothing happens when you try
   it.
 
-                      Fractint Version 16.0                        Page 15
+                      Fractint Version 16.11                       Page 13
 
  1.4 Color Cycling Commands
 
@@ -733,6 +612,10 @@
   Begin cycling the palette by shifting each color to the next "contour."
   <+> cycles the colors in one direction, <-> in the other.
 
+  '<' or '>'
+  Force a color-cycling pause, disable random colorizing, and single-step
+  through a one color-cycle.  For "fine-tuning" your image colors.
+
   Cursor up/down
   Increase/decrease the cycling speed. High speeds may cause a harmless
   flicker at the top of the screen.
@@ -744,13 +627,13 @@
   <1> through <9>
   Causes the screen to be updated every 'n' color cycles (the default is
   1).  Handy for slower computers.
+
+                      Fractint Version 16.11                       Page 14
 
   <Enter>
   Randomly selects a function key (F2 through F10) and then updates ALL
   the screen colors prior to displaying them for instant, random colors.
   Hit this over and over again (we do).
-
-                      Fractint Version 16.0                        Page 16
 
   <Spacebar>
   Pause cycling with white overscan area. Cycling restarts with any
@@ -782,11 +665,11 @@
 
   <L>
   Pause and load an external color map (.MAP file).  Several .MAP files
-  are supplied with Fractint.  See Palette Maps (p. 51).
+  are supplied with Fractint.  See Palette Maps (p. 49).
 
   <S>
   Pause, prompt for a filename, and save the current palette to the named
-  file (.MAP assumed).  See Palette Maps (p. 51).
+  file (.MAP assumed).  See Palette Maps (p. 49).
 
 
  1.5 Palette Editing Commands
@@ -803,14 +686,14 @@
   use the cursor keys to position the frame outline, and <Pageup> and
   <Pagedn> to change its size.  (The upper and lower limits on the size
   depend on the current video mode.)  When the frame is positioned where
+
+                      Fractint Version 16.11                       Page 15
+
   you want it, hit Enter to display the current palette in the frame.
 
   Note that the palette frame shows R(ed) G(reen) and B(lue) values for
   two color registers at the top.  The active color register has a solid
   frame, the inactive register's frame is dotted.  Within the active
-
-                      Fractint Version 16.0                        Page 17
-
   register, the active color component is framed.
 
   Using the commands described below, you can assign particular colors to
@@ -862,10 +745,11 @@
   Select the other color register as the active one.  In the default
   'auto' mode this results in the now-inactive register being set to
   remember the color under the cursor, and the now-active register
+
+                      Fractint Version 16.11                       Page 16
+
   changing from whatever it had previously remembered to now follow the
   color.
-
-                      Fractint Version 16.0                        Page 18
 
   <,> <.>
   Rotate the palette one step.  By default colors 1 through 255 inclusive
@@ -882,7 +766,7 @@
   <C>
   Enter Color-Cycling Mode.  When you invoke color-cycling from here, it
   will subsequently return to palette-editing when you <Esc> from it.  See
-  Color Cycling Commands (p. 15).
+  Color Cycling Commands (p. 13).
 
   <=>
   Create a smoothly shaded range of colors between the colors selected by
@@ -919,13 +803,13 @@
 
   <L>
   Pause and load an external color map (.MAP file).  See Palette Maps
-  (p. 51).
+  (p. 49).
 
-                      Fractint Version 16.0                        Page 19
+                      Fractint Version 16.11                       Page 17
 
   <S>
   Pause, prompt for a filename, and save the current palette to the named
-  file (.MAP assumed).  See Palette Maps (p. 51).
+  file (.MAP assumed).  See Palette Maps (p. 49).
 
   <\>
   Move or resize the palette frame.  The frame outline is drawn - it can
@@ -978,7 +862,7 @@
   A save operation can be interrupted by pressing any key. If you
   interrupt, you'll be asked whether to keep or discard the partial file.
 
-                      Fractint Version 16.0                        Page 20
+                      Fractint Version 16.11                       Page 18
 
   <R> restores an image previously saved with <S>, or an ordinary GIF
   file.  After pressing <R> you are shown the file names in the current
@@ -1014,11 +898,11 @@
   Print the current fractal image on your (Laserjet, Paintjet, Epson-
   compatible, PostScript, or HP-GL) printer.
 
-  See "Setting Defaults (SSTOOLS.INI File)" (p. 75) and "Printer
-  Parameters" (p. 87) for how to let Fractint know about your printer
+  See "Setting Defaults (SSTOOLS.INI File)" (p. 73) and "Printer
+  Parameters" (p. 85) for how to let Fractint know about your printer
   setup.
 
-  "Disk-Video" Modes (p. 96) can be used to generate images for printing
+  "Disk-Video" Modes (p. 94) can be used to generate images for printing
   at higher resolutions than your screen supports.
 
 
@@ -1035,9 +919,9 @@
   (Actually, it can also be used to set non-image parameters such as
   SOUND, but at this point we're interested in images. Other uses of
   parameter files are discussed in "Parameter Files and the <@> Command"
-  (p. 76).)
+  (p. 74).)
 
-                      Fractint Version 16.0                        Page 21
+                      Fractint Version 16.11                       Page 19
 
   When you hit <@>, Fractint displays the names of the entries in the
   currently selected parameter file.  The default parameter file,
@@ -1064,8 +948,8 @@
     your images are kept separate from the ones released with new versions
     of Fractint. You can use the PARMFILE= command in SSTOOLS.INI to set
     the default parameter file name to "myimages" or whatever.  (See
-    "Setting Defaults (SSTOOLS.INI File)" (p. 75) and "parmfile=" in
-    "File Parameters" (p. 83).)
+    "Setting Defaults (SSTOOLS.INI File)" (p. 73) and "parmfile=" in
+    "File Parameters" (p. 82).)
 
     Name:  The name you want to assign to the entry, to be displayed when
     the <@> command is used.
@@ -1095,7 +979,7 @@
        compressed, so if that's used a lot in an image the color
        information won't be as bulky.
 
-                      Fractint Version 16.0                        Page 22
+                      Fractint Version 16.11                       Page 20
 
     # of colors:  This only matters if "Record colors?" is set to "yes".
     It specifies the number of colors to record. Recording less colors
@@ -1108,7 +992,7 @@
 
  1.9 "3D" Commands
 
-  See "3D" Images (p. 62) for details of these commands.
+  See "3D" Images (p. 60) for details of these commands.
 
   <3>
   Restore a saved image as a 3D "landscape", translating its color
@@ -1154,7 +1038,7 @@
   category above, there may be a lag while nothing visible happens.  This
   is because most cases of resume restart at the beginning of a screen
 
-                      Fractint Version 16.0                        Page 23
+                      Fractint Version 16.11                       Page 21
 
   line.  If unsure, you can check whether calculation has resumed with the
   <Tab> key.
@@ -1165,7 +1049,7 @@
   calculating.  It is resumable unless there is a note under the fractal
   type saying it is not.
 
-  The Batch Mode (p. 91) section discusses how to resume in batch mode.
+  The Batch Mode (p. 90) section discusses how to resume in batch mode.
 
   To <R>estore and resume a "formula", "lsystem", or "ifs" type fractal
   your "formulafile", "lfile", or "ifsfile" must contain the required
@@ -1213,7 +1097,7 @@
   This parameter affects what happens when you change the aspect ratio. If
   set to "no", then when you change aspect ratio, the prior image will be
 
-                      Fractint Version 16.0                        Page 24
+                      Fractint Version 16.11                       Page 22
 
   squeezed or stretched to fit into the new shape. If set to "yes", the
   prior image is "cropped" to avoid squeezing or stretching.
@@ -1271,19 +1155,19 @@
   the mode currently selected by the key and press the keypad (gray) <->
   key.
 
-                      Fractint Version 16.0                        Page 25
+                      Fractint Version 16.11                       Page 23
 
   A note about the "select video modes" screen: the video modes which are
   displayed with a 'B' suffix in the number of colors are modes which have
   no custom programming - they use the BIOS and are S-L-O-W ones.
 
-  See "Video Adapter Notes" (p. 94) for comments about particular
+  See "Video Adapter Notes" (p. 92) for comments about particular
   adapters.
 
-  See "Disk-Video" Modes (p. 96) for a description of these non-display
+  See "Disk-Video" Modes (p. 94) for a description of these non-display
   modes.
 
-  See "Customized Video Modes, FRACTINT.CFG" (p. 97) for information
+  See "Customized Video Modes, FRACTINT.CFG" (p. 95) for information
   about adding your own video modes.
 
 
@@ -1323,13 +1207,13 @@
   create a parameter file entry with the "recipe" for a given image, and
   next time use the <@> command to re-plot it.
 
-                      Fractint Version 16.0                        Page 26
+                      Fractint Version 16.11                       Page 24
 
  2. Fractal Types
 
   A list of the fractal types and their mathematics can be found in the
-  Summary of Fractal Types (p. 108).  Some notes about how Fractint
-  calculates them are in "A Little Code" in "Fractals and the PC" (p. 102)
+  Summary of Fractal Types (p. 107).  Some notes about how Fractint
+  calculates them are in "A Little Code" in "Fractals and the PC" (p. 101)
   .
 
   Fractint starts by default with the Mandelbrot set. You can change that
@@ -1382,7 +1266,7 @@
   others, it grows without limit. The Mandelbrot set you see at the start
   -- the solid-colored lake (blue by default), the blue circles sprouting
 
-                      Fractint Version 16.0                        Page 27
+                      Fractint Version 16.11                       Page 25
 
   from it, and indeed every point of that color -- is the set of all
   points C for which the value of Z is less than 2 after 150 iterations
@@ -1437,11 +1321,11 @@
 
   These sets were named for mathematician Gaston Julia, and can be
   generated by a simple change in the iteration process described for the
-  Mandelbrot Set (p. 26).  Start with a specified value of C, "C-real + i
+  Mandelbrot Set (p. 24).  Start with a specified value of C, "C-real + i
   * C-imaginary"; use as the initial value of Z "x-coordinate + i * y-
   coordinate"; and repeat the same iteration, Z(n+1) = Z(n)^2 + C.
 
-                      Fractint Version 16.0                        Page 28
+                      Fractint Version 16.11                       Page 26
 
   There is a Julia set corresponding to every point on the complex plane
   -- an infinite number of Julia sets. But the most visually interesting
@@ -1463,7 +1347,7 @@
   set as an "index" of all the Julia sets' origins that Mandelbrot noticed
   its properties.
 
-  The relationship between the Mandelbrot (p. 26) set and Julia set can
+  The relationship between the Mandelbrot (p. 24) set and Julia set can
   hold between other sets as well.  Many of Fractint's types are
   "Mandelbrot/Julia" pairs (sometimes called "M-sets" or "J-sets". All
   these are generated by equations that are of the form z(k+1) =
@@ -1475,7 +1359,7 @@
   sets, the parameter c is the complex number corresponding to the screen
   pixel. The value z(0) is c plus a perturbation equal to the values of
   the first two parameters.  See the discussion of Mandellambda Sets
-  (p. 30).  This approach may or may not be the "standard" way to create
+  (p. 28).  This approach may or may not be the "standard" way to create
   "Mandelbrot" sets out of "Julia" sets.
 
   Some equations have additional parameters.  These values is entered as
@@ -1500,7 +1384,7 @@
   works very well -- unless you are unlucky enough to pick a value that is
   on a line BETWEEN two actual roots. In that case, the sequence explodes
 
-                      Fractint Version 16.0                        Page 29
+                      Fractint Version 16.11                       Page 27
 
   into chaos, with results that diverge more and more wildly as you
   continue the iteration.
@@ -1531,7 +1415,7 @@
 
   (type=newton)
 
-  The generating formula here is identical to that for newtbasin (p. 28),
+  The generating formula here is identical to that for newtbasin (p. 26),
   but the coloring scheme is different. Pixels are colored not according
   to the root that would be "converged on" if you started using Newton's
   formula from that point, but according to the iteration when the value
@@ -1551,7 +1435,7 @@
   "params=4."  Other values are 3 through 10. 8 has twice the symmetry and
   is faster. As with newtbasin, an FPU helps.
 
-                      Fractint Version 16.0                        Page 30
+                      Fractint Version 16.11                       Page 28
 
  2.5 Complex Newton
 
@@ -1559,8 +1443,8 @@
 
   Well, hey, "Z^n - 1" is so boring when you can use "Z^a - b" where "a"
   and "b" are complex numbers!  The new "complexnewton" and "complexbasin"
-  fractal types are just the old "newton" (p. 29) and "newtbasin"
-  (p. 28) fractal types with this little added twist.  When you select
+  fractal types are just the old "newton" (p. 27) and "newtbasin"
+  (p. 26) fractal types with this little added twist.  When you select
   these fractal types, you are prompted for four values (the real and
   imaginary portions of "a" and "b").  If "a" has a complex portion, the
   fractal has a discontinuity along the negative axis - relax, we finally
@@ -1591,7 +1475,7 @@
 
   (type=mandellambda)
 
-  This type is the "Mandelbrot equivalent" of the lambda (p. 30) set.  A
+  This type is the "Mandelbrot equivalent" of the lambda (p. 28) set.  A
   comment is in order here. Almost all the Fractint "Mandelbrot" sets are
   created from orbits generated using formulas like z(n+1) = f(z(n),C),
   with z(0) and C initialized to the complex value corresponding to the
@@ -1608,7 +1492,7 @@
   in Fractint are still calculated OUR way!  (Fortunately for us, for the
   classic Mandelbrot Set these two methods are the same!)
 
-                      Fractint Version 16.0                        Page 31
+                      Fractint Version 16.11                       Page 29
 
   Well now, folks, apart from questions of faithfulness to fractals named
   in the literature (which we DO take seriously!), if a formula makes a
@@ -1617,7 +1501,7 @@
   keeping us accurate!
 
   (See description of "initorbit=" command in Image Calculation Parameters
-  (p. 79) for a way to experiment with different orbit intializations).
+  (p. 77) for a way to experiment with different orbit intializations).
 
 
  2.8 Plasma Clouds
@@ -1633,10 +1517,10 @@
   video mode supports, the better.  The result, believe it or not, is a
   fractal landscape viewed as a contour map, with colors indicating
   constant elevation.  To see this, save and view with the <3> command
-  (see "3D" Images (p. 62)) and your "cloud" will be converted to a
+  (see "3D" Images (p. 60)) and your "cloud" will be converted to a
   mountain!
 
-  You've GOT to try color cycling (p. 15) on these (hit "+" or "-").  If
+  You've GOT to try color cycling (p. 13) on these (hit "+" or "-").  If
   you haven't been hypnotized by the drawing process, the writhing colors
   will do it for sure. We have now implemented subliminal messages to
   exploit the user's vulnerable state; their content varies with your bank
@@ -1658,9 +1542,9 @@
   floating-point math.
 
   Saved plasma-cloud screens are EXCELLENT starting images for fractal
-  "landscapes" created with the "3D" commands (p. 22).
+  "landscapes" created with the "3D" commands (p. 20).
 
-                      Fractint Version 16.0                        Page 32
+                      Fractint Version 16.11                       Page 30
 
  2.9 Lambdafn
 
@@ -1700,7 +1584,7 @@
   mandelsinh, mandelcos, and mandelexp. Same comment about our lapses into
   the old terminology as above!
 
-  These are "pseudo-Mandelbrot" mappings for the LambdaFn (p. 32) Julia
+  These are "pseudo-Mandelbrot" mappings for the LambdaFn (p. 30) Julia
   functions.  They map to their corresponding Julia sets via the spacebar
   command in exactly the same fashion as the original M/J sets.  In
   general, they are interesting mainly because of that property (the
@@ -1719,7 +1603,7 @@
   to version 14, and you wish to update the fractal information in the
   "*.fra" file, simply read the files and save again. You can do this in
 
-                      Fractint Version 16.0                        Page 33
+                      Fractint Version 16.11                       Page 31
 
   batch mode via a command line like:
 
@@ -1729,7 +1613,7 @@
   image to a version 14 "type=lambdafn function=sin" GIF89a image.  We do
   not promise to keep this "backward compatibility" past version 14 - if
   you want to keep the fractal information in your *.fra files accurate,
-  we recommend conversion.  See GIF Save File Format (p. 125).
+  we recommend conversion.  See GIF Save File Format (p. 124).
 
 
  2.11 Barnsley Mandelbrot/Julia Sets
@@ -1738,7 +1622,7 @@
 
   Michael Barnsley has written a fascinating college-level text, "Fractals
   Everywhere," on fractal geometry and its graphic applications. (See
-  Bibliography (p. 127).) In it, he applies the principle of the M and J
+  Bibliography (p. 126).) In it, he applies the principle of the M and J
   sets to more general functions of two complex variables.
 
   We have incorporated three of Barnsley's examples in Fractint. Their
@@ -1778,7 +1662,7 @@
   Fern and 3dfern are good ones to start with. You can press <F6> at the
   selection screen if you want to select a different .IFS file you've
 
-                      Fractint Version 16.0                        Page 34
+                      Fractint Version 16.11                       Page 32
 
   written.
 
@@ -1794,7 +1678,7 @@
   appreciate 3D IFS images, since your monitor is presumably 2D, we have
   added rotation, translation, and perspective capabilities. These share
   values with the same variables used in Fractint's other 3D facilities;
-  for their meaning see "Rectangular Coordinate Transformation" (p. 67).
+  for their meaning see "Rectangular Coordinate Transformation" (p. 65).
   You can enter these values from the command line using:
 
   rotation=xrot/yrot/zrot       (try 30/30/30)
@@ -1808,7 +1692,7 @@
   changes the picture -- your "point of view" is moved.
 
   A truly wild variation of 3D may be seen by entering "2" for the stereo
-  mode (see "Stereo 3D Viewing" (p. 66)), putting on red/blue "funny
+  mode (see "Stereo 3D Viewing" (p. 64)), putting on red/blue "funny
   glasses", and watching the fern develop with full depth perception right
   there before your eyes!
 
@@ -1836,7 +1720,7 @@
   often it is used), which add up to one. Fractint supports up to 32
   functions, although usually three or four are enough.
 
-                      Fractint Version 16.0                        Page 35
+                      Fractint Version 16.11                       Page 33
 
   3D IFS definitions are a bit different.  The name is followed by (3D) in
   the definition file, and each line of the definition contains 13
@@ -1854,12 +1738,12 @@
   with Fractint.
 
   The program FDESIGN can be used to design IFS fractals - see FDESIGN
-  (p. 128).
+  (p. 127).
 
   You can save the points in your IFS fractal in the file ORBITS.RAW which
   is overwritten each time a fractal is generated. The program Acrospin
   can read this file and will let you view the fractal from in any angle
-  using the cursor keys. See Acrospin (p. 128).
+  using the cursor keys. See Acrospin (p. 127).
 
 
  2.13 Sierpinski Gasket
@@ -1895,7 +1779,7 @@
   of boring at first (the area between the "inside" and the "outside" of
   the set is pretty thin, and it tends to take a few zooms to get to any
 
-                      Fractint Version 16.0                        Page 36
+                      Fractint Version 16.11                       Page 34
 
   interesting sections), but it looks nice once you get there. The Julia
   sets look nice right from the start.
@@ -1912,12 +1796,12 @@
   are only hiding!  They are equivalent to the mandel and julia types with
   the "distest=" option selected with a predetermined value.
 
-  The Distance Estimator Method (p. 54) can be used to produce higher
+  The Distance Estimator Method (p. 52) can be used to produce higher
   quality images of M and J sets, especially suitable for printing in
   black and white.
 
   If you have some *.fra files made with the old types demm/demj, you may
-  want to convert them to the new form.  See the Mandelfn (p. 32) section
+  want to convert them to the new form.  See the Mandelfn (p. 30) section
   for directions to carry out the conversion.
 
 
@@ -1930,7 +1814,7 @@
   These types have been explored by Clifford A. Pickover, of the IBM
   Thomas J. Watson Research center. As implemented in Fractint, they are
   regular Mandelbrot/Julia set pairs that may be plotted with or without
-  the "biomorph" (p. 58) option Pickover used to create organic-looking
+  the "biomorph" (p. 56) option Pickover used to create organic-looking
   beasties (see below). These types are produced with formulas built from
   the functions z^z, z^n, sin(z), and e^z for complex z. Types with
   "power" or "pwr" in their name have an exponent value as a third
@@ -1952,7 +1836,7 @@
   Here is another Pickover idea. This one computes and plots the orbits of
   the dynamic system defined by:
 
-                      Fractint Version 16.0                        Page 37
+                      Fractint Version 16.11                       Page 35
 
            x(n+1) = x(n) - h*sin(y(n)+tan(3*y(n))
            y(n+1) = y(n) - h*sin(x(n)+tan(3*x(n))
@@ -2008,7 +1892,7 @@
 
   produces the fractal called Unity.
 
-                      Fractint Version 16.0                        Page 38
+                      Fractint Version 16.11                       Page 36
 
   One of its interesting features is the "ghost lines." The iteration loop
   bails out when it reaches the number 1 to within the resolution of a
@@ -2022,7 +1906,7 @@
   the algorithm. The same thing happens with other lines in the fractal,
   such as those around |x| = |y| = (1/2)^(1/2) = .7071
 
-  Try some other tortuous approximations using the TEST stub (p. 43) and
+  Try some other tortuous approximations using the TEST stub (p. 41) and
   let us know what you come up with!
 
 
@@ -2067,7 +1951,7 @@
   also see the KAM Torus head into some chaotic territory that Scott
   Taylor wanted to hide from you by setting the defaults the way he did,
 
-                      Fractint Version 16.0                        Page 39
+                      Fractint Version 16.11                       Page 37
 
   but now we have revealed all!
 
@@ -2126,7 +2010,7 @@
   described above.  He found that the ratios of lengths of adjacent areas
   of bifurcation were four and a bit.  These ratios vary, but, as the
 
-                      Fractint Version 16.0                        Page 40
+                      Fractint Version 16.11                       Page 38
 
   growth rate increases, they tend to a limit of 4.669+.  This helped him
   guess where bifurcation points would be, and saved lots of time.
@@ -2169,17 +2053,17 @@
   Orbit Fractals are generated by plotting an orbit path in two or three
   dimensional space.
 
-  See Lorenz Attractors (p. 41), Rossler Attractors (p. 42), Henon
-  Attractors (p. 42), Pickover Attractors (p. 43), and Gingerbreadman
-  (p. 43).
+  See Lorenz Attractors (p. 39), Rossler Attractors (p. 40), Henon
+  Attractors (p. 40), Pickover Attractors (p. 41), and Gingerbreadman
+  (p. 41).
 
   The orbit trajectory for these types can be saved in the file ORBITS.RAW
   by invoking Fractint with the "orbitsave=yes" command-line option.  This
   file will be overwritten each time you generate a new fractal, so rename
   it if you want to save it.  A nifty program called Acrospin can read
-  these files and rapidly rotate them in 3-D - see Acrospin (p. 128).
+  these files and rapidly rotate them in 3-D - see Acrospin (p. 127).
 
-                      Fractint Version 16.0                        Page 41
+                      Fractint Version 16.11                       Page 39
 
  2.24 Lorenz Attractors
 
@@ -2238,7 +2122,7 @@
   to see the attractor from different angles.- and while you're at it, use
   a non-zero perspective point Try 100 and see what happens when you get
 
-                      Fractint Version 16.0                        Page 42
+                      Fractint Version 16.11                       Page 40
 
   *inside* the Lorenz orbits.  Here comes one - Duck!  While you are at
   it, turn on the sound with the "X". This way you'll at least hear it
@@ -2264,7 +2148,7 @@
   can say is we used the same calculus-teacher-defeating trick of
   multiplying the equations by "dt" to solve the differential equation and
   generate the orbit.  This time we will skip straight to the orbit
-  generator - if you followed what we did above with type Lorenz (p. 41)
+  generator - if you followed what we did above with type Lorenz (p. 39)
   you can easily reverse engineer the differential equations.
 
                xnew = x - y*dt -   z*dt
@@ -2294,7 +2178,7 @@
                xnew =  1 + y - a*x*x
                ynew =  b*x
 
-                      Fractint Version 16.0                        Page 43
+                      Fractint Version 16.11                       Page 41
 
   The default parameters are a=1.4 and b=.3.
 
@@ -2353,7 +2237,7 @@
   guys.) Be sure to include an explanation of your algorithm and the
   parameters supported, preferably formatted as you see here to simplify
 
-                      Fractint Version 16.0                        Page 44
+                      Fractint Version 16.11                       Page 42
 
   folding it into the documentation.
 
@@ -2412,7 +2296,7 @@
             3              * (multiplication), / (division)
             4              + (addition), - (subtraction)
 
-                      Fractint Version 16.0                        Page 45
+                      Fractint Version 16.11                       Page 43
 
             5              = (assignment)
             6              < (less than), <= (less than or equal to)
@@ -2471,7 +2355,7 @@
        z(2) = (z(1) * z(1)) + c
        z(3) = . . . .
 
-                      Fractint Version 16.0                        Page 46
+                      Fractint Version 16.11                       Page 44
 
   I refer to the 'a' and 'ib' components of 'c' as the Mandelbrot 'x' and
   'y'.
@@ -2529,7 +2413,7 @@
   and those equal or greater to be opaque.  The farther away the apparent
   pixel is the dimmer the color.
 
-                      Fractint Version 16.0                        Page 47
+                      Fractint Version 16.11                       Page 45
 
   The remainder of the parameters are needed to construct the red/blue
   picture so that the fractal appears with the desired depth and proper
@@ -2588,7 +2472,7 @@
   aiming to spot Real phase-transitions by finding the intersections of
   lines representing Complex phase-transitions with the Real Axis.  The
 
-                      Fractint Version 16.0                        Page 48
+                      Fractint Version 16.11                       Page 46
 
   first people to try this were two physicists called Yang and Lee, who
   found the situation a bit more complex than first expected, as the phase
@@ -2637,12 +2521,12 @@
   spurred the development of Finite Attractor logic in Fractint.  Without
   this code you can still generate these fractals, but you usually end up
   with a pretty boring image that is mostly deep blue "lake", courtesy of
-  Fractint's standard Periodicity Logic (p. 104).  See Finite Attractors
-  (p. 115) for more information on this aspect of Fractint internals.
+  Fractint's standard Periodicity Logic (p. 103).  See Finite Attractors
+  (p. 114) for more information on this aspect of Fractint internals.
 
   (Thanks to Kevin Allen for Magnetic type documentation above).
 
-                      Fractint Version 16.0                        Page 49
+                      Fractint Version 16.11                       Page 47
 
  2.34 L-Systems
 
@@ -2701,7 +2585,7 @@
       - Decrease angle
       | Try to turn 180 degrees. (If angle is odd, the turn
 
-                      Fractint Version 16.0                        Page 50
+                      Fractint Version 16.11                       Page 48
 
         will be the largest possible turn less than 180 degrees.)
 
@@ -2733,7 +2617,7 @@
   ignored for drawing purposes, but can be used to achieve complex
   translations.
 
-                      Fractint Version 16.0                        Page 51
+                      Fractint Version 16.11                       Page 49
 
  3. Doodads, Bells, and Whistles
 
@@ -2792,7 +2676,7 @@
      DEFAULT.MAP   the VGA start-up values
      FIRESTRM.MAP  general purpose, muted fire colors
 
-                      Fractint Version 16.0                        Page 52
+                      Fractint Version 16.11                       Page 50
 
      GAMMA1.MAP and GAMMA2.MAP  Lee Crocker's response to ALTERN.MAP
      GLASSES1.MAP  used with 3d glasses modes
@@ -2849,7 +2733,7 @@
 
     WAIT <nnn.n> -- wait nnn.n seconds before continuing
 
-                      Fractint Version 16.0                        Page 53
+                      Fractint Version 16.11                       Page 51
 
     CALCWAIT -- pause until the current fractal calculation or file save
     or restore is finished. This command makes demo files more robust
@@ -2906,7 +2790,7 @@
     DO pause when you want the viewer to see what is happening during
     playback.
 
-                      Fractint Version 16.0                        Page 54
+                      Fractint Version 16.11                       Page 52
 
     When done recording, clean up your mydemo.key file. Insert a CALCWAIT
     after each keystroke which triggers something that takes a variable
@@ -2965,7 +2849,7 @@
   in their usual colors.  Setting to a value greater than one causes the
   outside points to be displayed as contours, colored according to their
 
-                      Fractint Version 16.0                        Page 55
+                      Fractint Version 16.11                       Page 53
 
   distance from the inside of the set.  Use a higher value for narrower
   color bands, a lower value for wider ones.  1000 is a good value to
@@ -2991,7 +2875,7 @@
   if a high "maxiter" value is used.  One way of dealing with this is to
   leave it turned off while you find and frame an image.  Then hit <B> to
   save the current image information in a parameter file (see Parameter
-  Save/Restore Commands (p. 20)).  Use an editor to change the parameter
+  Save/Restore Commands (p. 18)).  Use an editor to change the parameter
   file entry, adding "distest=1", "video=something" to select a high-
   resolution monochrome disk-video mode, "maxiter=1000", and "inside=0".
   Run the parameter file entry with the <@> command when you won't be
@@ -3013,7 +2897,7 @@
   outside, and vice-versa. This is known to mathematicians as inverting
   (or if you want to get precise, "everting") the plane, and is something
   they can contemplate without getting a headache. John Milnor (also
-  mentioned in connection with the Distance Estimator Method (p. 54)),
+  mentioned in connection with the Distance Estimator Method (p. 52)),
   made his name in the 1950s with a method for everting a seven-
   dimensional sphere, so we have a lot of catching up to do.
 
@@ -3022,7 +2906,7 @@
   line, but at a distance of (3 * radius) from the origin. An outside
   point at 4 times the radius is mapped inside at 1/4 the radius.
 
-                      Fractint Version 16.0                        Page 56
+                      Fractint Version 16.11                       Page 54
 
   The inversion parameters on the <Y> options screen allow entry of the
   radius and center coordinates of the inversion circle. A default choice
@@ -3030,7 +2914,7 @@
   currently on the screen.  The default values for Xcenter and Ycenter use
   the coordinates currently mapped to the center of the screen.
 
-  Try this one out with a Newton (p. 29) plot, so its radial "spokes"
+  Try this one out with a Newton (p. 27) plot, so its radial "spokes"
   will give you something to hang on to. Plot a Newton-method image, then
   set the inversion radius to 1, with default center coordinates. The
   center "explodes" to the periphery.
@@ -3080,7 +2964,7 @@
   count of 150, your image will run through the 16-color palette 150/16 =
   9.375 times.
 
-                      Fractint Version 16.0                        Page 57
+                      Fractint Version 16.11                       Page 55
 
   When you use Logarithmic palettes, the entire range of iteration values
   is compressed to map to one span of the color range.  This results in
@@ -3139,7 +3023,7 @@
         2      11 to 30
         3      31 to 35, 41 to 45, 51 to 55, and 61 to 65
 
-                      Fractint Version 16.0                        Page 58
+                      Fractint Version 16.11                       Page 56
 
         4      36 to 40, 46 to 50, and 56 to 60
         5      66 to 79
@@ -3150,7 +3034,7 @@
 
  3.8 Biomorphs
 
-  Related to Decomposition (p. 56) are the "biomorphs" invented by
+  Related to Decomposition (p. 54) are the "biomorphs" invented by
   Clifford Pickover, and discussed by A. K. Dewdney in the July 1989
   "Scientific American", page 110.  These are so-named because this
   coloring scheme makes many fractals look like one-celled animals.  The
@@ -3179,7 +3063,7 @@
 
   Fractint's images are usually calculated by the "level set" method,
   producing bands of color corresponding to regions where the calculation
-  gives the same value. When "3D" transformed (see "3D" Images (p. 62)),
+  gives the same value. When "3D" transformed (see "3D" Images (p. 60)),
   most images other than plasma clouds are like terraced landscapes: most
   of the surface is either horizontal or vertical.
 
@@ -3195,7 +3079,7 @@
   when the modulus bailout was exceeded, at the "iterations" iteration.
   Clear as mud, right?
 
-                      Fractint Version 16.0                        Page 59
+                      Fractint Version 16.11                       Page 57
 
   Fortunately, you don't have to understand all the details. However,
   there ARE a few points to understand. First, Fractint's criterion for
@@ -3254,7 +3138,7 @@
      didn't specify an extension in "savename".
    o The image can be used as input to a subsequent <3> command to get the
 
-                      Fractint Version 16.0                        Page 60
+                      Fractint Version 16.11                       Page 58
 
      promised smoother effect.
    o If you happen to view the saved image with a GIF viewer other than
@@ -3313,7 +3197,7 @@
   we can create more stars in areas that have higher color values.  At
   100% Clumpiness a color value of 255 will change the average of finding
 
-                      Fractint Version 16.0                        Page 61
+                      Fractint Version 16.11                       Page 59
 
   a star at that location to 50:50.  A lower clumpiness values will lower
   the amount of probability weighting.  To create a spiral galaxy draw
@@ -3330,7 +3214,7 @@
   Starfields can only be shown in 256 colors.  Fractint will automatically
   try to load ALTERN.MAP and abort if the map file cannot be found.
 
-                      Fractint Version 16.0                        Page 62
+                      Fractint Version 16.11                       Page 60
 
  4. "3D" Images
 
@@ -3388,7 +3272,7 @@
   cursor keys to move through the menu. When you're satisfied press
   <Enter>.
 
-                      Fractint Version 16.0                        Page 63
+                      Fractint Version 16.11                       Page 61
 
   Preview Mode: Preview mode provides a rapid look at your transformed
      image using by skipping a lot of rows and filling the image in. Good
@@ -3412,7 +3296,7 @@
   Spherical Projection: The next question asks if you want a sphere
      projection. This will take your image and map it onto a plane if you
      answer "no" or a sphere if you answer "yes" as described above. Try
-     it and you'll see what we mean.  See Spherical Projection (p. 69).
+     it and you'll see what we mean.  See Spherical Projection (p. 68).
 
   Stereo:
 
@@ -3447,11 +3331,11 @@
      may do the same as the first image. You can then take the two images
      and convert them to a stereo image pair as outlined by Bruce Goren
 
-                      Fractint Version 16.0                        Page 64
+                      Fractint Version 16.11                       Page 62
 
      (see below).
 
-     Also see Stereo 3D Viewing (p. 66).
+     Also see Stereo 3D Viewing (p. 64).
 
   Ray Tracing Output:
 
@@ -3462,7 +3346,7 @@
      to be usable by many other products.
 
      One other option is supported: ACROSPIN.  This is not a ray tracer,
-     but the same Fractint options apply - see Acrospin (p. 128).
+     but the same Fractint options apply - see Acrospin (p. 127).
 
      Option values:
         0  disables the creation of ray tracing output
@@ -3491,7 +3375,7 @@
      If BRIEF is selected, a default color is assigned at the begining of
      the file and is used for all triangles.
 
-     Also see Interfacing with Ray Tracing Programs (p. 73).
+     Also see Interfacing with Ray Tracing Programs (p. 71).
 
   Brief output:
 
@@ -3503,7 +3387,7 @@
 
   Output File Name:
 
-                      Fractint Version 16.0                        Page 65
+                      Fractint Version 16.11                       Page 63
 
      This is a ray tracing sub-option, used to specify the name of the
      file to be written.  The default name is FRACT001.RAY.  The name is
@@ -3546,20 +3430,27 @@
   according to the angle the surface makes with an imaginary light source.
   You will be asked to enter the three coordinates of the vector pointing
   toward the light in a following parameter screen - see Light Source
-  Parameters (p. 68).
+  Parameters (p. 66).
 
-  Light source before transformation calculates the illumination before
-  doing the coordinate transformations, and is slightly faster. If you
-  generate a sequence of images where one rotation is progressively
-  changed, the effect is as if the image and the light source are fixed in
-  relation to each other and you orbit around the image.
+  "Light source before transformation" uses the illumination direction
+  without transforming it. The light source is fixed relative to your
+  computer screen.  If you generate a sequence of images with progressive
+  rotation, the effect is as if you and the light source are fixed and the
+  object is rotating. Therefore as the object rotates features of the
+  object move in and out of the light.  This fill option was incorrect
+  prior to version 16.1, and has been changed.
 
-  Light source after transformation applies the transformations first,
-  then calculates the illumination. If you generate a sequence of images
-  with progressive rotation as above the effect is as if you and the light
-  source are fixed and the object is rotating.
+  "Light source after transformation" applies the same transformation to
+  both the light direction and the object. Since both the light direction
+  and the object are transformed, if you generate a sequence of images
+  with the rotation progressively changed, the effect is as if the image
+  and the light source are fixed in relation to each other and you orbit
 
-                      Fractint Version 16.0                        Page 66
+                      Fractint Version 16.11                       Page 64
+
+  around the image. The illumination of features on the object is
+  constant, but you see the object from different angles. This fill option
+  was correct in earlier Fractint versions and has not been changed.
 
   For ease of discussion we will refer to the following fill types by
   these numbers:
@@ -3589,7 +3480,7 @@
 
   The "Funny Glasses" (stereo 3D) parameter screen is presented only if
   you select a non-zero stereo option in the prior 3D parameters.  (See 3D
-  Mode Selection (p. 62).)  We suggest you definitely use defaults at
+  Mode Selection (p. 60).)  We suggest you definitely use defaults at
   first on this screen.
 
   When you look at an image with both eyes, each eye sees the image in
@@ -3610,13 +3501,13 @@
   floating mystically in front of the screen, but grizzled old 3D veterans
   look upon such antics with disdain, and believe the image should be
   safely inside the monitor where it belongs!
+
+                      Fractint Version 16.11                       Page 65
 
   Left and Right Red and Blue image crop (% of screen also) help keep the
   visible part of the right image the same as the visible part of the left
   by cropping them. If there is too much in the field of either eye that
   the other doesn't see, the stereo effect can be ruined.
-
-                      Fractint Version 16.0                        Page 67
 
   Red and Blue brightness factor. The generally available red/blue-green
   glasses, made for viewing on ink on paper and not the light from a CRT,
@@ -3668,15 +3559,14 @@
   perspective calculations, which allows use of a faster algorithm.
   Perspective distance is not available if you have selected a ray tracing
   option.
+
+                      Fractint Version 16.11                       Page 66
 
   For non-zero values, picture a box with the original X-Y plane of your
   flat fractal on the bottom, and your 3D fractal inside. A perspective
   value of 100% places your eye right at the edge of the box and yields
   fairly severe distortion, like a close view through a wide-angle lens.
   200% puts your eye as far from the front of the box as the back is
-
-                      Fractint Version 16.0                        Page 68
-
   behind.  300% puts your eye twice as far from the front of the box as
   the back is, etc. Try about 150% for reasonable results. Much larger
   values put you far away for even less distortion, while values smaller
@@ -3696,7 +3586,7 @@
  4.5 3D Color Parameters
 
   You are asked for a range of "transparent" colors, if any. This option
-  is most useful when using the 3D Overlay Mode (p. 70).  Enter the color
+  is most useful when using the 3D Overlay Mode (p. 68).  Enter the color
   range (minimum and maximum value) for which you do not want to overwrite
   whatever may already be on the screen. The default is no transparency
   (overwrite everything).
@@ -3728,16 +3618,17 @@
   the screen in relation to the untransformed image. It is important to
   remember that these coordinates are scaled the same as your image. Thus,
   "1,1,1" positions the light to come from a direction of equal distances
+
+                      Fractint Version 16.11                       Page 67
+
   to the right, below and in front of each pixel on the original image.
   However, if the x,y,z scale is set to 90,90,30 the result will be from
   equal distances to the right and below each pixel but from only 1/3 the
   distance in front of the screen i.e.. it will be low in the sky, say,
   afternoon or morning.
-
-                      Fractint Version 16.0                        Page 69
 
   Then you are asked for a smoothing factor. Unless you used Continuous
-  Potential (p. 58) when generating the starting image, the illumination
+  Potential (p. 56) when generating the starting image, the illumination
   when using light source fills may appear "sparkly", like a sandy beach
   in bright sun. A smoothing factor of 2 or 3 will allow you to see the
   large-scale shapes better.
@@ -3772,14 +3663,15 @@
   file is sky blue instead of black.
 
   You'll probably want to adjust the final colors for monochrome fill
-  types using light source via color cycling (p. 15).  Try one of the
+  types using light source via color cycling (p. 13).  Try one of the
   more continuous palettes (<F8> through <F10>), or load the GRAY palette
   with the <A>lternate-map command.
 
   Now, lie down for a while in a quiet room with a damp washcloth on your
   forehead. Feeling better? Good -- because it's time to go back almost to
   the top of the 3D options and just say yes to:
-
+
+                      Fractint Version 16.11                       Page 68
 
  4.7 Spherical Projection
 
@@ -3791,8 +3683,6 @@
   longitude 180 degrees (top) to 0 degrees (bottom) and latitude -90
   (left) to latitude 90 (right). By changing them you can map the image to
   a piece of the hemisphere or wrap it clear around the globe.
-
-                      Fractint Version 16.0                        Page 70
 
   The next entry is for a radius factor that controls the over-all size of
   the globe. All the rest of the entries are the same as in the landscape
@@ -3814,7 +3704,7 @@
 
  4.8 3D Overlay Mode
 
-  While the <3> command (see "3D" Images (p. 62)) creates its image on a
+  While the <3> command (see "3D" Images (p. 60)) creates its image on a
   blank screen, the <O> command draws a second image over an existing
   displayed image. This image can be any restored image from a <R> command
   or the result of a just executed <3> command. So you can do a landscape,
@@ -3839,6 +3729,9 @@
   or pretty as Fractint on a 386/16 PC with S-VGA graphics. Now, a lot of
   the difference has to do with the incredible progress of micro-processor
   power since then, so a lot of the credit should go to Intel rather than
+
+                      Fractint Version 16.11                       Page 69
+
   to our highly tuned code. OK, twist our arms -- it IS awfully good code.
 
 
@@ -3847,8 +3740,6 @@
   If you are one of those unfortunates with a CGA or Hercules 2-color
   monochrome graphics, it is now possible for you to make 3D projection
   images.
-
-                      Fractint Version 16.0                        Page 71
 
   Try the following unfortunately circuitous approach. Invoke Fractint,
   making sure you have set askvideo=yes. Use a disk-video mode to create a
@@ -3879,7 +3770,7 @@
   given point on the surface. Since there can be 256 different colors in
   the original image and 256 levels of light, you can now generate an
   image with *lots* of colors. To convert it to a GIF if you can't view
-  Targa files directly, you can use PICLAB (see Other Programs (p. 128)),
+  Targa files directly, you can use PICLAB (see Other Programs (p. 127)),
   and the following commands:
 
       SET PALETTE 256
@@ -3897,6 +3788,9 @@
   large, 3 bytes per pixel. So make sure to use a disk with enough space.
   The file is created using Fractint's disk-video caching, but is always
   created on real disk (expanded or extended memory is not used.) Try the
+
+                      Fractint Version 16.11                       Page 70
+
   following settings of the new variables in sequence to get a feel for
   the effect of each one:
       ;use this with any filltype
@@ -3906,9 +3800,6 @@
       ;now add this using filltype 5 or 6
       ambient=20; adjusting this changes the contrast
       filltype=6
-
-                      Fractint Version 16.0                        Page 72
-
       smoothing=2; makes the light not quite as granular as the terrain
 
       ;now add the following, and this is where it gets slow
@@ -3954,6 +3845,8 @@
   used a perspective value of 150 and shifted the camera -15 and +15 on
   the X-axis for the left and right views. All other values were left to
   the defaults.
+
+                      Fractint Version 16.11                       Page 71
 
   "The images are captured on a Matrix 3000 film recorder -- basically a
   box with a high-resolution (1400 lines) black and white TV and a 35mm
@@ -3965,9 +3858,6 @@
   "Each frame is exposed three times, once through each of the red, blue,
   and green filters to create a color image from computer video without
   the scan-lines which normally result from photographing television
-
-                      Fractint Version 16.0                        Page 73
-
   screens.  The aspect ratio of the resulting images led me to mount the
   chips using the 7-sprocket Busch-European Emde masks. The best source of
   Stereo mounting and viewing supplies I know of is an outfit called Reel
@@ -3980,7 +3870,7 @@
  4.12 Interfacing with Ray Tracing Programs
 
   (Also see "Ray Tracing Output", "Brief", and "Output File Name" in "3D
-  Mode Selection" (p. 62).)
+  Mode Selection" (p. 60).)
 
   Fractint allows you to save your 3d transforms in files which may be fed
   to a ray tracer (or to "Acrospin").  However, they are not ready to be
@@ -4014,6 +3904,9 @@
   to a non zero value, no triangle which lies entirely at or below the
   current setting of WATERLINE is written to the ray tracing file.  These
   may be replaced by a simple plane in the syntax of the ray tracer you
+
+                      Fractint Version 16.11                       Page 72
+
   are using.
 
   Fractint's coordinate system has the origin of the x-y plane at the
@@ -4023,8 +3916,6 @@
   positive y up.  Increasing values of the color index are out of the
   screen and in the +z direction. The color index 0 will be found in the
   xy plane at z=-1.
-
-                      Fractint Version 16.0                        Page 74
 
   When x- y- and zscale are set to 100, the surface created by the
   triangles will fall within a box of +/- 1.0 in all 3 directions.
@@ -4051,7 +3942,7 @@
   COMPOSITE/END_COMPOSITE pairs, ie. containing no triangle info.  These
   are harmless, but may be edited out of the file if desired.
 
-                      Fractint Version 16.0                        Page 75
+                      Fractint Version 16.11                       Page 73
 
  5. Command Line Parameters, Parameter Files, Batch Mode
 
@@ -4108,7 +3999,7 @@
   label [fractint], and ignores any lines it finds in the file belonging
   to any other label. If an SSTOOLS.INI file looks like this:
 
-                      Fractint Version 16.0                        Page 76
+                      Fractint Version 16.11                       Page 74
 
     [fractint]
     sound=off      ; (for home use only)
@@ -4163,11 +4054,11 @@
       of parameters describing each.
 
     o To save image parameters for later use in batch mode - see Batch
-      Mode (p. 91).
+      Mode (p. 90).
 
-                      Fractint Version 16.0                        Page 77
+                      Fractint Version 16.11                       Page 75
 
-  See "Parameter Save/Restore Commands" (p. 20) for details about the <@>
+  See "Parameter Save/Restore Commands" (p. 18) for details about the <@>
   and <B> commands.
 
 
@@ -4206,7 +4097,7 @@
 
   @FILENAME/GROUPNAME
   Like @FILENAME, but reads a named group of parameters from a parameter
-  file.  See "Parameter Files and the <@> Command" (p. 76).
+  file.  See "Parameter Files and the <@> Command" (p. 74).
 
   FILENAME=[name]
   Causes Fractint to read the named file, which must either have been
@@ -4218,34 +4109,40 @@
   name.
 
   BATCH=yes
-  See Batch Mode (p. 91).
+  See Batch Mode (p. 90).
 
   AUTOKEY=play|record
   Specifying "play" runs Fractint in playback mode - keystrokes are read
   from the autokey file (see next parameter) and interpreted as if they're
 
-                      Fractint Version 16.0                        Page 78
+                      Fractint Version 16.11                       Page 76
 
   being entered from the keyboard.
   Specifying "record" runs in recording mode - all keystrokes are recorded
   in the autokey file.
-  See also Autokey Mode (p. 52).
+  See also Autokey Mode (p. 50).
 
   AUTOKEYNAME=[filename]
   Specifies the file name to be used in autokey mode. The default file
   name is AUTO.KEY.
 
-  FPU=387|IIT
+  FPU=387|IIT|NOIIT
   This parameter is useful if you have an unusual coprocessor chip. If you
   have a 80287 replacement chip with full 80387 functionality use
-  "FPU=387".  If you have an IIT floating point chip and want to use the
-  chip's matrix multiplication routine to speed up 3-D transformations use
-  "FPU=IIT".  Since all IIT chips support 80387 instructions, setting
-  "FPU=IIT" also enables use of 387 instructions. Warning: multi-tasking
-  operating systems such as Windows and DesQView don't save the IIT chip
-  extra registers, so if you run two programs at once that both use the
-  matrix multiply feature, such as two copies of Fractint both doing a 3-D
-  transformation, errors will result.
+  "FPU=387" to inform Fractint to take advantage of those extra 387
+  instructions.  If you have the IIT fpu, but don't have IIT's
+  'f4x4int.com' TSR loaded, use "FPU=IIT" to force Fractint to use that
+  chip's matrix multiplication routine automatically to speed up 3-D
+  transformations (if you have an IIT fpu and have that TSR loaded,
+  Fractint will auto-detect the presence of the fpu and TSR and use its
+  extra capabilities automatically).  Since all IIT chips support 80387
+  instructions, enabling the IIT code also enables Fractint's use of all
+  387 instructions.  Setting "FPU=NOIIT" disables Fractint's IIT Auto-
+  detect capability.  Warning: multi-tasking operating systems such as
+  Windows and DesQView don't automatically save the IIT chip extra
+  registers, so running two programs at once that both use the IIT's
+  matrix multiply feature but don't use the handshaking provided by that
+  'f4x4int.com' program, errors will result.
 
   MAKEDOC[=filename]
   Create Fractint documentation file (for printing or viewing with a text
@@ -4259,7 +4156,7 @@
 
   PASSES=1|2|guess|btm
   Selects single-pass, dual-pass, solid-Guessing mode, or the Boundary
-  Tracing algorithm.  See Drawing Method (p. 51).
+  Tracing algorithm.  See Drawing Method (p. 49).
 
   FLOAT=yes
   Most fractal types have both a fast integer math and a floating point
@@ -4269,13 +4166,13 @@
   looks best with high bailout values not possible with our integer math
   implementation), you may prefer to use floating point. Just add
   "float=yes" to the command line to do so.  Also see "Limitations of
-  Integer Math (And How We Cope)" (p. 104).
+  Integer Math (And How We Cope)" (p. 103).
 
   SYMMETRY=xxx
   Forces symmetry to None, Xaxis, Yaxis, XYaxis, Origin, or Pi symmetry.
   Useful for debugging.
 
-                      Fractint Version 16.0                        Page 79
+                      Fractint Version 16.11                       Page 77
 
  5.7 Fractal Type Parameters
 
@@ -4286,7 +4183,7 @@
   Set optional (required, for some fractal types) values used in the
   calculations. These numbers typically represent the real and imaginary
   portions of some startup value, and are described in detail as needed in
-  Fractal Types (p. 26).
+  Fractal Types (p. 24).
   (Example: FRACTINT TYPE=julia PARAMS=-0.48/0.626 would wait at the
   opening screen for you to select a video mode, but then proceed straight
   to the Julia set for the stated x (real) and y (imaginary) coordinates.)
@@ -4323,7 +4220,7 @@
   question and should be colored [insidecolor]') from the default 150.
   Values range from 10 to 32000 (super-high iteration limits like 30000
   are useful when using logarithmic palettes).  See The Mandelbrot Set
-  (p. 26) for a description of the iteration method of calculating
+  (p. 24) for a description of the iteration method of calculating
   fractals.
   "maxiter=" can also be used to adjust the number of orbits plotted for
   3D "attractor" fractal types such as lorenz3d and kamtorus.
@@ -4334,7 +4231,7 @@
   than the default values of (for type=mandel) -2.0/2.0/-1.5/1.5. When you
   specify four values (the usual case), this defines a rectangle: x-
 
-                      Fractint Version 16.0                        Page 80
+                      Fractint Version 16.11                       Page 78
 
   coordinates are mapped to the screen, left to right, from xmin to xmax,
   y-coordinates are mapped to the screen, bottom to top, from ymin to
@@ -4356,7 +4253,7 @@
   BAILOUT=nnn
   Over-rides the default bailout criterion for escape-time fractals. Can
   also be set from the parameters screen after selecting a fractal type.
-  See description of bailout in The Mandelbrot Set (p. 26).
+  See description of bailout in The Mandelbrot Set (p. 24).
 
   RESET
   Causes Fractint to reset all calculation related parameters to their
@@ -4373,11 +4270,11 @@
   "initorbit=pixel" is the default for most types; this command
   initializes the orbit to the complex number corresponding to the screen
   pixel. The command "initorbit=nnn/nnn" uses the entered value as the
-  initializer. See the discussion of the Mandellambda Sets (p. 30) for
+  initializer. See the discussion of the Mandellambda Sets (p. 28) for
   more on this topic.
 
   PERIODICITY=no|show|nnn
-  Controls periodicity checking (see Periodicity Logic (p. 104)).  "no"
+  Controls periodicity checking (see Periodicity Logic (p. 103)).  "no"
   turns it off, "show" lets you see which pixels were painted as "inside"
   due to being caught by periodicity.  Specifying a number causes a more
   conservative periodicity test (each increase of 1 divides test tolerance
@@ -4393,31 +4290,51 @@
   define, let alone generate, will have to wait for "FRACTINT: The 3-MB
   Doc File."
 
-                      Fractint Version 16.0                        Page 81
+                      Fractint Version 16.11                       Page 79
 
  5.9 Color Parameters
 
-  INSIDE=nnn|bof60|bof61|attractor
+  INSIDE=nnn|bof60|bof61|zmag|attractor
   Set the color of the interior: for example, "inside=0" makes the M-set
-  "lake" a stylish basic black. A setting of -1 makes inside=maxiter. Two
-  more options reveal hidden structure inside the lake.  These are
-  inside=bof61, and inside=bof62, named after the figures on pages 61 and
-  62 of "Beauty of Fractals".  See Inside=bof60|bof61 (p. 115) for a
-  brilliant explanation of what these do!  The inside=attractor option
-  uses yet another scheme - see Finite Attractors (p. 115).
+  "lake" a stylish basic black. A setting of -1 makes inside=maxiter.
+  Three more options reveal hidden structure inside the lake.
+  Inside=bof60 and inside=bof61, are named after the figures on pages 60
+  and 61 of "Beauty of Fractals".  See Inside=bof60|bof61|zmag (p. 114)
+  for a brilliant explanation of what these do!
 
-  OUTSIDE=nnn
-  Set the color of the exterior: for example, "OUTSIDE=1" makes all points
-  not INSIDE the fractal set to color 1 (blue). Note that defining an
-  OUTSIDE color forces any image to be a two-color one: either a point is
-  INSIDE the set, or it's OUTSIDE it.
+  Inside=zmag is a method of coloring based on the magnitude of Z after
+  the maximum iterations have been reached.  The affect along the edges of
+  the Mandelbrot is like thin-metal welded sculpture.
+
+  The inside=attractor option uses yet another scheme - see Finite
+  Attractors (p. 114).
+
+  OUTSIDE=nnn|iter|real|imag|summ|mult
+  The classic method of coloring outside the fractal is to color according
+  to how many iterations were required before Z reached the bailout value,
+  usually 4. This is the method used when OUTSIDE=iter.
+
+  However, when Z reaches bailout the real and imaginary components can be
+  at very diferent values.  OUTSIDE=real and OUTSIDE=imag color using the
+  iteration value plus the real or imaginary values.  OUTSIDE=summ uses
+  the sum of all these values.  These options can give a startling 3d
+  quality to otherwise flat images and can change some boring images to
+  wonderful ones. OUTSIDE=mult colors by multiplying the iteration by real
+  divided by imaginary. There was no mathematical reason for this, it just
+  seemed like a good idea.
+
+  Outside=nnn sets the color of the exterior to some number of your
+  choosing: for example, "OUTSIDE=1" makes all points not INSIDE the
+  fractal set to color 1 (blue). Note that defining an OUTSIDE color
+  forces any image to be a two-color one: either a point is INSIDE the
+  set, or it's OUTSIDE it.
 
   MAP=[filename]
   Reads in a replacement color map from [filename]. This map replaces the
   default color map of your video adapter. Requires a VGA or higher
   adapter.  The difference between this argument and an alternate map read
   in via <L> in color-command mode is that this one applies to the entire
-  run.  See Palette Maps (p. 51).
+  run.  See Palette Maps (p. 49).
 
   COLORS=@filename|colorspecification
   Sets colors for the current image, like the <L> function in color
@@ -4425,12 +4342,14 @@
   with COLORS= do not replace the default - when you next select a new
   video mode, colors will revert to their defaults.
   COLORS=@filename tells Fractint to use a color map file named
-  "filename".  See Palette Maps (p. 51).
+  "filename".  See Palette Maps (p. 49).
   COLORS=colorspecification specifies the colors directly. The value of
   "colorspecification" is rather long (768 characters for 256 color
   modes), and its syntax is not documented here. This form of the COLORS=
   command is not intended for manual use - it exists for use by the <B>
   command when saving the description of a nice image.
+
+                      Fractint Version 16.11                       Page 80
 
   CYCLERANGE=nnn/nnn
   Sets the range of color numbers to be animated during color cycling.
@@ -4451,9 +4370,6 @@
   hexadecimal value; 1st digit is background color (from 0 to 7), 2nd
   digit is foreground color (from 0 to F).
   Color values are:
-
-                      Fractint Version 16.0                        Page 82
-
       0 black     8 gray
       1 blue      9 light blue
       2 green     A light green
@@ -4491,6 +4407,9 @@
     disk video:
      22  background around box
      23  high intensity information
+
+                      Fractint Version 16.11                       Page 81
+
      24  low intensity information
     diagnostic messages:
      25  error
@@ -4506,33 +4425,32 @@
                 1F/1E/2F/5F/07/0D/71/70/78/0F/
                 70/0E/0F/4F/20/17/20/28/0F/07
   (In a real command file, all values must be on one line.)
-
-                      Fractint Version 16.0                        Page 83
+
 
  5.10 Doodad Parameters
 
   LOGMAP=yes|old|n
   Selects a compressed relationship between escape-time iterations and
-  palette colors.  See "Logarithmic Palettes and Color Ranges" (p. 56)
+  palette colors.  See "Logarithmic Palettes and Color Ranges" (p. 54)
   for details.
 
   RANGES=nn/nn/nn/...
   Specifies ranges of escape-time iteration counts to be mapped to each
-  color number.  See "Logarithmic Palettes and Color Ranges" (p. 56) for
+  color number.  See "Logarithmic Palettes and Color Ranges" (p. 54) for
   details.
 
   DISTEST=nnn/nnn
   A nonzero value in the first parameter enables the distance estimator
   method. The second parameter specifies the "width factor", defaults to
-  71.  See "Distance Estimator Method" (p. 54) for details.
+  71.  See "Distance Estimator Method" (p. 52) for details.
 
   DECOMP=2|4|8|16|32|64|128|256
   Invokes the corresponding decomposition coloring scheme.  See
-  Decomposition (p. 56) for details.
+  Decomposition (p. 54) for details.
 
   BIOMORPH=nnn
   Turn on biomorph option; set affected pixels to color nnn.  See
-  Biomorphs (p. 58) for details.
+  Biomorphs (p. 56) for details.
 
   POTENTIAL=maxcolor[/slope[/modulus[/16bit]]]
   Enables the "continuous potential" coloring mode for all fractal types
@@ -4541,19 +4459,22 @@
   curve, the modulus "bailout" value, and whether 16 bit values are to be
   calculated.  Example: "POTENTIAL=240/2000/40/16bit". The Mandelbrot and
   Julia types ignore the modulus bailout value and use their own hardwired
-  value of 4.0 instead.  See Continuous Potential (p. 58) for details.
+  value of 4.0 instead.  See Continuous Potential (p. 56) for details.
 
   INVERT=nn/nn/nn
   Turns on inversion. The parameters are radius of inversion, x-coordinate
   of center, and y-coordinate of center. -1 as the first parameter sets
   the radius to 1/6 the smaller screen dimension; no x/y parameters
   defaults to center of screen. The values are displayed with the <Tab>
-  command.  See Inversion (p. 55) for details.
+
+                      Fractint Version 16.11                       Page 82
+
+  command.  See Inversion (p. 53) for details.
 
   FINATTRACT=no|yes
   Another option to show coloring inside some Julia "lakes" to show escape
   time to finite attractors. Works with lambda, magnet types, and possibly
-  others.  See Finite Attractors (p. 115) for more information.
+  others.  See Finite Attractors (p. 114) for more information.
 
 
  5.11 File Parameters
@@ -4565,16 +4486,13 @@
   OVERWRITE=no|yes
   Sets the savename overwrite flag (default is 'no'). If 'yes', saved
   files will over-write existing files from previous sessions; otherwise
-
-                      Fractint Version 16.0                        Page 84
-
   the automatic incrementing of FRACTnnn.GIF will find the first unused
   filename.
 
   SAVETIME=nnn
   Tells Fractint to automatically do a save every nnn minutes while a
   calculation is in progress.  This is mainly useful with long batches -
-  see Batch Mode (p. 91).
+  see Batch Mode (p. 90).
 
   GIF87a=YES
   Backward-compatibility switch to force creation of GIF files in the
@@ -4582,7 +4500,7 @@
   format which permits storage of fractal information within the format.
   GIF87a=YES is only needed if you wish to view Fractint images with a GIF
   decoder that cannot accept the newer format.  See GIF Save File Format
-  (p. 125).
+  (p. 124).
 
   PARMFILE=[parmfilename]
   Specifies the default parameter file to be used by the <@> and <B>
@@ -4607,6 +4525,8 @@
   You might want to specify this parameter and the SAVENAME= parameter in
   your SSTOOLS.INI file if you keep your fractal images separate from
   other .GIF files by using a different suffix for them.
+
+                      Fractint Version 16.11                       Page 83
 
   ORBITSAVE=yes
   Causes the file ORBITS.RAW to be opened and the points generated by
@@ -4615,10 +4535,9 @@
   rapidly in response to cursor-key commands. The filename ORBITS.RAW is
   fixed and will be overwritten each time a new fractal is generated with
   this option.
-  (see Barnsley IFS Fractals (p. 33) Orbit Fractals (p. 40) Acrospin
-  (p. 128));
-
-                      Fractint Version 16.0                        Page 85
+  (see Barnsley IFS Fractals (p. 31) Orbit Fractals (p. 38) Acrospin
+  (p. 127));
+
 
  5.12 Video Parameters
 
@@ -4628,7 +4547,7 @@
   obtain the current VIDEO= values (key assignments) from the "select
   video mode" screens inside Fractint. If you want to do a batch run with
   a video mode which isn't currently assigned to a key, you'll have to
-  modify the key assignments - see "Video Mode Function Keys" (p. 24).
+  modify the key assignments - see "Video Mode Function Keys" (p. 22).
 
   ASKVIDEO=yes|no
   If "no," this eliminates the prompt asking you if a file to be restored
@@ -4639,11 +4558,17 @@
   the above two parameters in a command file to be used with future
   versions of Fractint, particularly for the super-VGA modes.
 
-  ADAPTER=hgc|cga|ega|egamono|mcga|vga
-  Skips the video autodetect logic, assumes the specified kind of adapter
-  is present. Use this parameter only if you encounter video problems
-  without it. Specifying adapter=vga with an SVGA adapter may make its
-  extended modes unusable with Fractint.
+
+  ADAPTER=hgc|cga|ega|egamono|mcga|vga|ATI|Everex|Trident|NCR|Video7|Genoa|
+          Paradise|Chipstech|Tseng3000|Tseng4000|AheadA|AheadB|Oaktech
+  Bypasses Fractint's internal video autodetect logic and assumes that the
+  specified kind of adapter is present. Use this parameter only if you
+  encounter video problems without it.  Specifying adapter=vga with an
+  SVGA adapter will make its extended modes unusable with Fractint.  All
+  of the options after the "VGA" option specify specific SuperVGA chipsets
+  which are capable of video resolutions higher than that of a "vanilla"
+  VGA adapter.  Note that Fractint cares about the Chipset your adapter
+  uses internally, not the name of the company that sold it to you.
 
   VESADETECT=yes|no
   Specify no to bypass VESA video detection logic. Try this if you
@@ -4659,6 +4584,9 @@
   another.  So, we've implemented a fast way which works on most adapters
   in most modes as the default, and added this parameter for use when the
   default approach doesn't work.
+
+                      Fractint Version 16.11                       Page 84
+
   If you experience the following problems, please fool around with this
   parameter to try to fix the problem:
     o Garbled image, or lines or dashes on image, when returning to image
@@ -4676,9 +4604,6 @@
       choice is fast but uses chunky and colorless characters. If it turns
       out to be the best choice for you, you might want to also specify
       "textcolors=mono" for a more consistent appearance in text screens.
-
-                      Fractint Version 16.0                        Page 86
-
     bios: This saves memory in the same way as textsafe=yes, but uses the
       adapter's BIOS routines to save/restore the graphics state.  This
       approach is fast and ought to work on all adapters. Sadly, we've
@@ -4699,7 +4624,7 @@
           "yourvid.c" code.
   If you want to tune Fractint to use different "textsafe" options for
   different video modes, see "Customized Video Modes, FRACTINT.CFG"
-  (p. 97).  (E.g. you might want to use the slower textsafe=save approach
+  (p. 95).  (E.g. you might want to use the slower textsafe=save approach
   just for a few high-resolution modes which have problems with
   textsafe=yes.)
 
@@ -4718,6 +4643,8 @@
   For TARGA+ adapters. Setting this to 'yes' will configure the adapter to
   a non-interlaced mode whenever possible.  It should only be used with a
   multisynch monitor. The default is no, i.e. interlaced.
+
+                      Fractint Version 16.11                       Page 85
 
   MAXCOLORRES=8|16|24
   For TARGA+ adapters. This determines the number of bits to use for color
@@ -4731,8 +4658,7 @@
   640x400 video mode with a pixel zoom of 1.  Using the 640x400 video mode
   with a zoom of 3 would lower the resolution by 8, which is 2 raised to
   the 3rd power, for a full screen resolution of 80x50 pixels.
-
-                      Fractint Version 16.0                        Page 87
+
 
  5.13 Sound Parameters
 
@@ -4776,6 +4702,9 @@
     LaserJet: 75, 150, 300
     PaintJet: 90, 180
     PostScript: 10 through 600, or special value 0 to print full page to
+
+                      Fractint Version 16.11                       Page 86
+
     within about .4" of the edges (in portrait mode, width is full page and
     height is adjusted to 3:4 aspect ratio)
     Plotter: 1 to 10 for 1/Nth of page (e.g. 2 for 1/2 page)
@@ -4790,9 +4719,6 @@
   Port=1,2,3,etc.
   Baud=115,150,300,600,1200,2400,4800,9600
   Options: 7,8 | 1,2 | e,n,o (any order).
-
-                      Fractint Version 16.0                        Page 88
-
   Example: comport=1/9600/n81 for COM1 set to 9600, no parity, 8 bits per
   character, 1 stop bit.
 
@@ -4835,6 +4761,9 @@
   third option chooses the halftone 'spot' style. Good default frequencies
   are between 60 and 80; Good default angles are 45 and 0; the default
   style is 0. If the halftone= option is not specified, Fractint will
+
+                      Fractint Version 16.11                       Page 87
+
   print using the printer's default halftone screen, which should have
   been already set to do a fine job on the printer.
   Current halftone styles:
@@ -4849,9 +4778,6 @@
       8 Diamond
       9 Line
      10 Microwaves
-
-                      Fractint Version 16.0                        Page 89
-
      11 Ellipse
      12 Rounded Box
      13 Custom
@@ -4893,6 +4819,8 @@
   playing with the following parameter.  Fair warning: this is a very
   tricky business and you may find it a very frustrating business trying
   to get it right.
+
+                      Fractint Version 16.11                       Page 88
 
   HALFTONE=r/g/b
   (The parameter name is not appropriate - we appropriated a PostScript
@@ -4908,9 +4836,6 @@
   1.6.  (A note from Pieter Branderhorst: I wrote this stuff to come out
   reasonably on my monitor/printer.  I'm a bit suspicious of the guns on
   my monitor; if the colors seem ridiculously wrong on your system you
-
-                      Fractint Version 16.0                        Page 90
-
   might start by trying halftone=17/17/17.)
 
 
@@ -4953,6 +4878,9 @@
   forces a restore to be performed in 3D mode (handy when used with
   'batch=yes' for batch-mode 3D images). If specified, 3D=Yes should come
   before any other 3d parameters on the command line or in a parameter
+
+                      Fractint Version 16.11                       Page 89
+
   file entry.
   The options below override the 3D defaults:
   PREVIEW=yes                Turns on 3D 'preview' default mode
@@ -4967,9 +4895,6 @@
   CONVERGE=nn                Determines the overall image separation
   CROP=nn/nn/nn/nn           Trims the edges off stereo pairs
   BRIGHT=nn/nn               Compensates funny glasses filter parameters
-
-                      Fractint Version 16.0                        Page 91
-
   LONGITUDE=nn/nn            Longitude minimum and maximum
   LATITUDE=nn/nn             Latitude minimum and maximum
   RADIUS=nn                  Radius scale factor
@@ -5011,6 +4936,8 @@
   objects when using full color in light source FILLTYPES. Works only in
   the "y" direction currently, so don't use it with much y rotation. Try
   "rotation=85/0/0". 0 disables.
+
+                      Fractint Version 16.11                       Page 90
 
   LIGHTNAME=<filename>
   The name of the Targa-24 file to be created when using full color with
@@ -5026,9 +4953,6 @@
   want to hit a key and do something else until the final images are safe
   on disk.  To do this, start Fractint with the BATCH=yes parameter.  To
   set up a batch run with the parameters required for a particular image
-
-                      Fractint Version 16.0                        Page 92
-
   you might:
     o Find an interesting area.  Note the parameters from the <Tab>
       display.  Then use an editor to write a batch file.
@@ -5071,6 +4995,9 @@
   say "savetime=60", and a power failure occurs during the calculation,
   you'll have lost at most an hour of work on the image.  You can resume
   calculation from the save file as above.  Automatic saves triggered by
+
+                      Fractint Version 16.11                       Page 91
+
   SAVETIME do not increment the save file name. The same file is
   overwritten by each auto save until the image completes.  But note that
   Fractint does not directly over-write save files.  Instead, each save
@@ -5085,16 +5012,13 @@
       fractint batch=yes filename=xxx savename=xxx savetime=60
   While this batch is running, hit <S> (almost any key actually) to tell
   fractint to save what it has done so far and give your machine back.
-
-                      Fractint Version 16.0                        Page 93
-
   Kick off the batch again when you have another time slice for it.
 
   The SAVETIME= parameter, and batch resumes of partial calculations, only
   work with fractal types which can be resumed.  See "Interrupting and
-  Resuming" (p. 22) for information about non-resumable types.
+  Resuming" (p. 20) for information about non-resumable types.
 
-                      Fractint Version 16.0                        Page 94
+                      Fractint Version 16.11                       Page 92
 
  6. Hardware Support
 
@@ -5147,13 +5071,19 @@
 
   SUPER-EGA AND SUPER-VGA MODES
 
-  Since version 12.0, we've used both John Bridges' SuperVGA Autodetecting
-  logic *and* VESA adapter detection, so that many brand-specific SuperVGA
-  modes have been combined into single video mode selection entries.
-  There is now exactly one entry for SuperVGA 640x480x256 mode, for
-  instance.
+  Since Since version 12.0, we've used both John Bridges' SuperVGA
+  Autodetecting logic *and* VESA adapter detection, so that many brand-
+  specific SuperVGA modes have been combined into single video mode
+  selection entries.  There is now exactly one entry for SuperVGA
+  640x480x256 mode, for instance.
 
-                      Fractint Version 16.0                        Page 95
+                      Fractint Version 16.11                       Page 93
+
+  If Fractint's automatic SuperVGA/VESA detection logic guesses wrong, and
+  you know which SuperVGA chipset your video adapter uses, you can use the
+  "adapter=" command-line option to force Fractint to assume the presence
+  of a specific SuperVGA Chipset - see Video Parameters (p. 83) for
+  details.
 
   8514/A MODES
 
@@ -5173,8 +5103,8 @@
   XGA MODES
 
   The XGA adapter is supported using the VESA/SuperVGA Autodetect modes -
-  the XGA looks like (yawn) just another SuperVGA adapter to Fractint.
-  The supported XGA modes are 640x480x256, 1024x768x16, 1024x768x256,
+  the XGA looks like just another SuperVGA adapter to Fractint.  The
+  supported XGA modes are 640x480x256, 1024x768x16, 1024x768x256,
   800x600x16, and 800x600x256.  Note that the 1024x768x256 mode requires a
   full 1MB of adapter memory, the 1024x768 modes require a high-rez
   monitor, and the 800x600 modes require a multisynching monitor such as
@@ -5194,7 +5124,7 @@
   them smoothed away yet.  Also, the TARGA boards have an entirely
   different color-map scheme than the VGA cards, and at the moment they
   cannot be run through the color-cycling menu. The "MAP=" argument (see
-  Color Parameters (p. 81)), however, works with both TARGA and VGA
+  Color Parameters (p. 79)), however, works with both TARGA and VGA
   boards and enables you to redefine the default color maps with either
   board.
 
@@ -5205,11 +5135,13 @@
   Fractint) must be in the same directory as Fractint.  The video modes
   with names containing "True Color Autodetect" can be used with the
   Targa+.  You might want to use the command line parameters "tplus=",
-  "noninterlaced=", "maxcolorres=", and "pixelzoom=" (see Video Parameters
-  (p. 85)) in your SSTOOLS.INI file to modify Fractint's use of the
-  adapter.
 
-                      Fractint Version 16.0                        Page 96
+                      Fractint Version 16.11                       Page 94
+
+  "noninterlaced=", "maxcolorres=", and "pixelzoom=" (see Video Parameters
+  (p. 83)) in your SSTOOLS.INI file to modify Fractint's use of the
+  adapter.
+
 
  6.2 "Disk-Video" Modes
 
@@ -5238,7 +5170,7 @@
   The zoom box is disabled during disk-video modes (you couldn't see where
   it is anyway).  So is the orbit display feature.
 
-  Color Cycling (p. 15) can be used during disk-video modes, but only to
+  Color Cycling (p. 13) can be used during disk-video modes, but only to
   load or save a color palette.
 
   When using real disk for your disk-video, Fractint will not generate
@@ -5259,6 +5191,8 @@
   distributed with Microsoft Windows 286/386 and 3.0.  If you have
   problems using the extended memory, try rebooting with just himem.sys
   loaded and see if that clears up the problem.
+
+                      Fractint Version 16.11                       Page 95
 
   If you are running background disk-video fractals under Windows 3, and
   you don't have a lot of real memory (over 2Mb), you might find it best
@@ -5267,9 +5201,6 @@
   Try this if your disk goes crazy when generating background images,
   which are supposedly using extended or expanded memory.  This problem
   can occur because, to multi-task, sometimes Windows must page an
-
-                      Fractint Version 16.0                        Page 97
-
   application's expanded or extended memory to disk, in big chunks.
   Fractint's own cached disk access may be faster in such cases.
 
@@ -5319,6 +5250,9 @@
   1. Key assignment. F2 to F10, SF1 to SF10, CF1 to CF10, or AF1 to AF10.
      Blank if no key is assigned to the mode.
   2. The name of the adapter/video mode (25 chars max, no leading blanks).
+
+                      Fractint Version 16.11                       Page 96
+
      The adapter is set up for that mode via INT 10H, with:
   3. AX = this,
   4. BX = this,
@@ -5326,9 +5260,6 @@
   6. DX = this (hey, having all these registers wasn't OUR idea!)
   7. An encoded value describing how to write to your video memory in that
      mode. Currently available codes are:
-
-                      Fractint Version 16.0                        Page 98
-
     1) Use the BIOS (INT 10H, AH=12/13, AL=color) (last resort - SLOW!)
     2) Pretend it's a (perhaps super-res) EGA/VGA
     3) Pretend it's an MCGA
@@ -5377,6 +5308,8 @@
   special flags that we used to tell the program to custom-program the VGA
   adapter, and are NOT undocumented BIOS calls. Maybe they should be, but
   they aren't.
+
+                      Fractint Version 16.11                       Page 97
 
   If you have a fancy adapter and a new video mode that works on it, and
   it is not currently supported, PLEASE GET THAT INFORMATION TO US!  We
@@ -5386,7 +5319,7 @@
   program says it is UNTESTED, please get that information to us also.
   Thanks in advance!
 
-                      Fractint Version 16.0                        Page 99
+                      Fractint Version 16.11                       Page 98
 
  7. Common Problems
 
@@ -5397,11 +5330,13 @@
   Hang during startup:
     There might be a problem with Fractint's video detection logic and
     your particular video adapter. Try running with "fractint adapter=xxx"
-    where xxx is hgc, cga, ega, egamono, mcga, or vga.  Note that when
-    Fractint is started with adapter=xxx, you may not be able to use the
-    highest resolution modes supported by your adapter.  If this solves
-    the problem, create an SSTOOLS.INI file with the "adapter=xxx" command
-    in it so that the fix will apply to every run.
+    where xxx is cga, ega, egamono, mcga, or vga.  If "adapter=vga" works,
+    and you really have a SuperVGA adapter capable of higher video modes,
+    there are other "adapter=" options for a number of SuperVGA chipsets -
+    please see the full selection in Video Parameters (p. 83) for
+    details.  If this solves the problem, create an SSTOOLS.INI file with
+    the "adapter=xxx" command in it so that the fix will apply to every
+    run.
     Another possible cause:  If you install the latest Fractint in say
     directory "newfrac", then run it from another directory with the
     command "\newfrac\fractint", *and* you have an older version of
@@ -5409,13 +5344,13 @@
     get.  See the notes under the "Cannot find FRACTINT.EXE message"
     problem for the reason.
     Another possibility: try one of the "textsafe" parameter choices
-    described in Video Parameters (p. 85).
+    described in Video Parameters (p. 83).
 
   Scrambled image when returning from a text mode display:
     If an image which has been partly or completely generated gets partly
     destroyed when you return to it from the menu, help, or the
     information display, please try the various "textsafe" parameter
-    options - see Video Parameters (p. 85) for details.  If this cures
+    options - see Video Parameters (p. 83) for details.  If this cures
     the problem, create an SSTOOLS.INI file with the "textsafe=xxx"
     command so that the fix will apply to every run.
 
@@ -5425,7 +5360,7 @@
     down (i.e., 1 out of 4), are a symptom of an image which should be
     calculated with more conservative periodicity checking than the
     default.  See the Periodicity parameter under Image Calculation
-    Parameters (p. 79).
+    Parameters (p. 77).
 
   Black bar at top of screen during color cycling on 8086/8088 machines:
     (This might happen intermittently, not every run.)
@@ -5439,11 +5374,11 @@
     If you are using a VESA driver with your video adapter, the first
     thing to try is the "vesadetect=no" parameter. If that fixes the
     problem, add it to your SSTOOLS.INI file to make the fix permanent.
+
+                      Fractint Version 16.11                       Page 99
 
     It may help to explicitly specify your type of adapter - see the
-    "adapter=" parameter in Video Parameters (p. 85).
-
-                      Fractint Version 16.0                       Page 100
+    "adapter=" parameter in Video Parameters (p. 83).
 
     We've had one case where a video driver for Windows does not work
     properly with Fractint.  If running under Windows, DesqView, or some
@@ -5453,10 +5388,10 @@
     Max".
 
     We've had one report of an EGA adapter which got scrambled images in
-    all modes until "textsafe=no" was used (see Video Parameters (p. 85)
+    all modes until "textsafe=no" was used (see Video Parameters (p. 83)
     ).
 
-    Also, see Video Adapter Notes (p. 94) for information about enhanced
+    Also, see Video Adapter Notes (p. 92) for information about enhanced
     video modes - Fractint makes only limited attempts to verify that a
     video mode you request is actually supported by your adapter.
 
@@ -5495,15 +5430,14 @@
     rename or delete it.  If that isn't the problem either, then the
     FRACTINT.CFG included in the FRAINT.EXE release file has probably been
     changed or deleted. Best reinstall Fractint to get a fresh copy.
+
+                      Fractint Version 16.11                      Page 100
 
   Some other program doesn't like GIF files created by Fractint:
     Fractint generates nice clean GIF89A spec files, honest! But telling
     this to the other program isn't likely to change its mind. Instead,
     try an option which might get around the problem: run Fractint with
     the command line option "gif87a=yes" and then save an image. Fractint
-
-                      Fractint Version 16.0                       Page 101
-
     will store the image in the older GIF87A format, without any fractal
     parameters in it (so you won't be able to load the image back into
     Fractint and zoom into it - the fractal type, coordinates, etc. are
@@ -5513,9 +5447,9 @@
   Disk video mode performance:
     This won't be blindingly fast at the best of times, but there are
     things which can slow it down and can be tuned.  See "Disk-Video"
-    Modes (p. 96) for details.
+    Modes (p. 94) for details.
 
-                      Fractint Version 16.0                       Page 102
+                      Fractint Version 16.11                      Page 101
 
  8. Fractals and the PC
 
@@ -5571,7 +5505,7 @@
   curves, there were also strange, "chaotic" orbits that never became
   periodic and predictable.
 
-                      Fractint Version 16.0                       Page 103
+                      Fractint Version 16.11                      Page 102
 
   Other investigators trying to understand fluctuating, "noisy" phenomena
   -- the flooding of the Nile, price series in economics, the jiggling of
@@ -5627,7 +5561,7 @@
   before are useful approximations of tree bark and lung tissue, clouds
   and galaxies.
 
-                      Fractint Version 16.0                       Page 104
+                      Fractint Version 16.11                      Page 103
 
   Mandelbrot was named an IBM Fellow in 1974, and continues to work at the
   IBM Watson Research Center. He has also been a visiting professor and
@@ -5643,7 +5577,7 @@
   traditional bane of plotting programs. It sucks up the most computer
   time because it always reaches the iteration limit -- and yet the most
   interesting areas are invariably right at the edge the lake.  (See The
-  Mandelbrot Set (p. 26) for a description of the iteration process.)
+  Mandelbrot Set (p. 24) for a description of the iteration process.)
 
   Thanks to Mark Peterson for pointing out (well, he more like beat us
   over the head until we paid attention) that the iteration values in the
@@ -5686,7 +5620,7 @@
   PC. The disadvantage is an accuracy limit. Integer math represents
   numbers like 1.00 as 32-bit integers of the form [1.00 * (2^29)]
 
-                      Fractint Version 16.0                       Page 105
+                      Fractint Version 16.11                      Page 104
 
   (approximately a range of 500,000,000) for the Mandelbrot and Julia
   sets. Other integer fractal types use a bitshift of 24 rather than 29,
@@ -5742,9 +5676,9 @@
   plane, and, point by point, calculating a color corresponding to that
   point.  Furthermore, the color calculation is often done by iterating a
   function over and over until some bailout condition is met.  (See The
-  Mandelbrot Set (p. 26) for a description of the iteration process.)
+  Mandelbrot Set (p. 24) for a description of the iteration process.)
 
-                      Fractint Version 16.0                       Page 106
+                      Fractint Version 16.11                      Page 105
 
   In implementing such a scheme, there are three fractal-specific
   calculations that take place within a framework that is pretty much the
@@ -5803,53 +5737,53 @@
   distribute comfortably as a single compressed file, and because many
   downloaders have no intention of ever modifying it, Fractint is now
 
-                      Fractint Version 16.0                       Page 107
+                      Fractint Version 16.11                      Page 106
 
   distributed as two files: one containing FRACTINT.EXE, auxiliary files
   and this document, and another containing complete source code
   (including a .MAK file and MAKEFRAC.BAT).  See Distribution of Fractint
-  (p. 121).
+  (p. 120).
 
-                      Fractint Version 16.0                       Page 108
+                      Fractint Version 16.11                      Page 107
 
  Appendix A Mathematics of the Fractal Types
 
   SUMMARY OF FRACTAL TYPES
 
-  barnsleyj1 (p. 33)
+  barnsleyj1 (p. 31)
         z(0) = pixel;
         z(n+1) = (z-1)*c if real(z) >= 0, else
         z(n+1) = (z+1)*modulus(c)/c
       Two parameters: real and imaginary parts of c
-  barnsleyj2 (p. 33)
+  barnsleyj2 (p. 31)
         z(0) = pixel;
         if real(z(n)) * imag(c) + real(c) * imag(z((n)) >= 0
            z(n+1) = (z(n)-1)*c
         else
            z(n+1) = (z(n)+1)*c
       Two parameters: real and imaginary parts of c
-  barnsleyj3 (p. 33)
+  barnsleyj3 (p. 31)
         z(0) = pixel;
         if real(z(n) > 0 then z(n+1) = (real(z(n))^2 - imag(z(n))^2 - 1)
            + i * (2*real(z((n)) * imag(z((n))) else
         z(n+1) = (real(z(n))^2 - imag(z(n))^2 - 1 + real(c) * real(z(n))
                + i * (2*real(z((n)) * imag(z((n)) + imag(c) * real(z(n))
       Two parameters: real and imaginary parts of c.
-  barnsleym1 (p. 33)
+  barnsleym1 (p. 31)
         z(0) = c = pixel;
         if real(z) >= 0 then
           z(n+1) = (z-1)*c
         else
           z(n+1) = (z+1)*modulus(c)/c.
       Parameters are perturbations of z(0)
-  barnsleym2 (p. 33)
+  barnsleym2 (p. 31)
         z(0) = c = pixel;
         if real(z)*imag(c) + real(c)*imag(z) >= 0
           z(n+1) = (z-1)*c
         else
           z(n+1) = (z+1)*c
       Parameters are perturbations of z(0)
-  barnsleym3 (p. 33)
+  barnsleym3 (p. 31)
         z(0) = c = pixel;
         if real(z(n) > 0 then z(n+1) = (real(z(n))^2 - imag(z(n))^2 - 1)
            + i * (2*real(z((n)) * imag(z((n))) else
@@ -5857,37 +5791,37 @@
            + i * (2*real(z((n)) * imag(z((n)) + imag(c) * real(z(n))
       Parameters are pertubations of z(0)
 
-  bifurcation (p. 39)
+  bifurcation (p. 37)
       Pictoral representation of a population growth model.
         Let P = new population, p = oldpopulation, r = growth rate
         The model is: P = p +  r*p*(1-p).
       No parameters.
-  bif+sinpi (p. 39)
+  bif+sinpi (p. 37)
       Bifurcation variation: model is: P = p + r*sin(PI*p).
       No parameters.
-  bif=sinpi (p. 39)
+  bif=sinpi (p. 37)
       Bifurcation variation: model is: P = r*sin(PI*p).
       No parameters.
 
-                      Fractint Version 16.0                       Page 109
+                      Fractint Version 16.11                      Page 108
 
-  biflambda (p. 39)
+  biflambda (p. 37)
       Bifurcation variation: model is: P = r*p*(1-p)P.
       No parameters.
 
-  cmplxmarksjul (p. 37)
+  cmplxmarksjul (p. 35)
       A generalization of the marksjulia fractal.
         z(0) = pixel;
         z(n+1) = (c^exp)*z(n) + c.
       Four parameters: real and imaginary parts of c and exp.
-  cmplxmarksmand (p. 37)
+  cmplxmarksmand (p. 35)
       A generalization of the marksmandel fractal.
         z(0) = c = pixel;
         z(n+1) = (c^exp)*z(n) + c.
       Four parameters: real and imaginary parts of
       perturbation of z(0) and exp.
 
-  complexnewton, complexbasin (p. 30)
+  complexnewton, complexbasin (p. 28)
       Newton fractal types extended to complex degrees. Complexnewton
       colors pixels according to the number of iterations required to
       escape to a root. Complexbasin colors pixels according to which
@@ -5897,95 +5831,95 @@
         z(n+1) = ((p - 1) * z(n)^p + r)/(p * z(n)^(p - 1)).
       Four parameters: real & imaginary parts of degree p and root r
 
-  diffusion (p. 47)
+  diffusion (p. 45)
       Diffusion Limited Aggregation.  Randomly moving points
       accumulate.  One parameter: border width (default 10)
 
-  fn+fn(pix) (p. 38)
+  fn+fn(pix) (p. 36)
         c = z(0) = pixel;
         z(n+1) = fn1(z) + p*fn2(c)
       Six parameters: real and imaginary parts of the perturbation
       of z(0) and factor p, and the functions fn1, and fn2.
 
-  fn(z*z) (p. 38)
+  fn(z*z) (p. 36)
         z(0) = pixel;
         z(n+1) = fn(z(n)*z(n))
       One parameter: the function fn.
 
-  fn*fn (p. 38)
+  fn*fn (p. 36)
         z(0) = pixel; z(n+1) = fn1(n)*fn2(n)
       Two parameters: the functions fn1 and fn2.
 
-  fn*z+z (p. 38)
+  fn*z+z (p. 36)
         z(0) = pixel; z(n+1) = p1*fn(z(n))*z(n) + p2*z(n)
       Six parameters: the real and imaginary components of
       p1 and p2, and the functions fn1 and fn2.
 
-  fn+fn (p. 38)
+  fn+fn (p. 36)
         z(0) = pixel;
         z(n+1) = p1*fn1(z(n))+p2*fn2(z(n))
       Six parameters: The real and imaginary components of
       p1 and p2, and the functions fn1 and fn2.
 
-                      Fractint Version 16.0                       Page 110
+                      Fractint Version 16.11                      Page 109
 
-  formula (p. 44)
+  formula (p. 42)
       Formula interpreter - write your own formulas as text files!
 
-  gingerbread (p. 43)
+  gingerbread (p. 41)
       Orbit in two dimensions defined by:
         x(n+1) = 1 - y(n) + |x(n)|
         y(n+1) = x(n)
       Two parameters: initial values of x(0) and y(0).
 
-  henon (p. 42)
+  henon (p. 40)
       Orbit in two dimensions defined by:
         x(n+1) = 1 + y(n) - a*x(n)*x(n)
         y(n+1) = b*x(n)
       Two parameters: a and b
 
-  Barnsley IFS (p. 33)
+  Barnsley IFS (p. 31)
       Barnsley IFS fractals.
 
-  julfn+exp (p. 36)
+  julfn+exp (p. 34)
       A generalized Clifford Pickover fractal.
         z(0) = pixel;
         z(n+1) = fn(z(n)) + e^z(n) + c.
       Three parameters: real & imaginary parts of c, and fn
 
-  julfn+zsqrd (p. 36)
+  julfn+zsqrd (p. 34)
         z(0) = pixel;
         z(n+1) = fn(z(n)) + z(n)^2 + c
       Three parameters: real & imaginary parts of c, and fn
 
-  julia (p. 27)
+  julia (p. 25)
       Classic Julia set fractal.
         z(0) = pixel; z(n+1) = z(n)^2 + c.
       Two parameters: real and imaginary parts of c.
 
-  julia4 (p. 35)
+  julia4 (p. 33)
       Fourth-power Julia set fractals, a special case
       of julzpower kept for speed.
         z(0) = pixel;
         z(n+1) = z(n)^4 + c.
       Two parameters: real and imaginary parts of c.
 
-  julibrot (p. 45)
+  julibrot (p. 43)
       'Julibrot' 4-dimensional fractals.
 
-  julzpower (p. 36)
+  julzpower (p. 34)
         z(0) = pixel;
         z(n+1) = z(n)^m + c.
       Three parameters: real & imaginary parts of c, exponent m
 
-  julzzpwr (p. 36)
+  julzzpwr (p. 34)
         z(0) = pixel;
         z(n+1) = z(n)^z(n) + z(n)^m + c.
       Three parameters: real & imaginary parts of c, exponent m
 
-                      Fractint Version 16.0                       Page 111
+                      Fractint Version 16.11                      Page 110
 
-  kamtorus, kamtorus3d (p. 38)
+  kamtorus, kamtorus3d (p. 36)
       Series of orbits superimposed.
       3d version has 'orbit' the z dimension.
         x(0) = y(0) = orbit/3;
@@ -5995,18 +5929,18 @@
       Parameters: a, step size, stop value for 'orbit', and
       points per orbit.
 
-  lambda (p. 30)
+  lambda (p. 28)
       Classic Lambda fractal. 'Julia' variant of Mandellambda.
         z(0) = pixel;
         z(n+1) = lambda*z(n)*(1 - z(n)^2).
       Two parameters: real and imaginary parts of lambda.
 
-  lambdafn (p. 32)
+  lambdafn (p. 30)
         z(0) = pixel;
         z(n+1) = lambda * fn(z(n)).
       Three parameters: real, imag portions of lambda, and fn
 
-  lorenz, lorenz3d (p. 41)
+  lorenz, lorenz3d (p. 39)
       Lorenz attractor - orbit in three dimensions.
       In 2d the x and y components are projected to form the image.
         z(0) = y(0) = z(0) = 1;
@@ -6015,125 +5949,126 @@
         z(n+1) = z(n) + (-c*z(n)*dt) + (x(n)*y(n)*dt)
       Parameters are dt, a, b, and c.
 
-  lsystem (p. 49)
+  lsystem (p. 47)
       Using a turtle-graphics control language and starting with
       an initial axiom string, carries out string substitutions the
       specified number of times (the order), and plots the resulting.
 
-  magnet1j (p. 47)
+  magnet1j (p. 45)
         z(0) = pixel;
                   / z(n)^2 + (c-1) \
         z(n+1) = | ---------------- | ^ 2
                   \ 2*z(n) + (c-2) /
       Parameters: the real and imaginary parts of c
-  magnet1m (p. 47)
+  magnet1m (p. 45)
         z(0) = 0; c = pixel;
                   / z(n)^2 + (c-1) \
         z(n+1) = | ---------------- | ^ 2
                   \ 2*z(n) + (c-2) /
       Parameters: the real & imaginary parts of perturbation of z(0)
-  magnet2j (p. 47)
+  magnet2j (p. 45)
         z(0) = pixel;
                   / z(n)^3 + 3*(C-1)*z(n) + (C-1)*(C-2)         \
         z(n+1) = |  -------------------------------------------- | ^ 2
                    3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) - 1 /
       Parameters: the real and imaginary parts of c
 
-                      Fractint Version 16.0                       Page 112
+                      Fractint Version 16.11                      Page 111
 
-  magnet2m (p. 47)
+  magnet2m (p. 45)
         z(0) = 0; c = pixel;
                   / z(n)^3 + 3*(C-1)*z(n) + (C-1)*(C-2)         \
         z(n+1) = |  -------------------------------------------- | ^ 2
                    3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) - 1 /
       Parameters: the real and imaginary parts of perturbation of z(0)
 
-  mandel (p. 26)
+  mandel (p. 24)
       Classic Mandelbrot set fractal.
         z(0) = c = pixel;
         z(n+1) = z(n)^2 + c.
       Two parameters: real & imaginary perturbations of z(0)
 
-  mandel4 (p. 35)
+  mandel4 (p. 33)
       Special case of mandelzpower kept for speed.
         z(0) = c = pixel;
         z(n+1) = z(n)^4 + c.
       Parameters: real & imaginary perturbations of z(0)
 
-  mandelfn (p. 32)
+  mandelfn (p. 30)
         z(0) = c = pixel;
         z(n+1) = c*fn(z(n)).
       Parameters: real & imaginary perturbations of z(0), and fn
 
-  mandellambda (p. 30)
+  mandellambda (p. 28)
         z(0) = .5; lambda = pixel;
         z(n+1) = lambda*z(n)*(1 - z(n)^2).
       Parameters: real & imaginary perturbations of z(0)
 
-  manfn+exp (p. 36)
+  manfn+exp (p. 34)
       'Mandelbrot-Equivalent' for the julfn+exp fractal.
         z(0) = c = pixel;
         z(n+1) = fn(z(n)) + e^z(n) + C.
       Parameters: real & imaginary perturbations of z(0), and fn
 
-  manfn+zsqrd (p. 36)
+  manfn+zsqrd (p. 34)
       'Mandelbrot-Equivalent' for the Julfn+zsqrd fractal.
         z(0) = c = pixel;
         z(n+1) = fn(z(n)) + z(n)^2 + c.
       Parameters: real & imaginary perturbations of z(0), and fn
 
-  manowar (p. 38)
+  manowar (p. 36)
         c = z1(0) = z(0) = pixel;
         z(n+1) = z(n)^2 + z1(n) + c;
         z1(n+1) = z(n);
       Parameters: real & imaginary perturbations of z(0)
-  manowar (p. 38)
+  manowar (p. 36)
         z1(0) = z(0) = pixel;
         z(n+1) = z(n)^2 + z1(n) + c;
         z1(n+1) = z(n);
       Parameters: real & imaginary perturbations of z(0)
 
-  manzpower (p. 36)
+  manzpower (p. 34)
       'Mandelbrot-Equivalent' for julzpower.
         z(0) = c = pixel;
         z(n+1) = z(n)^exp + c; try exp = e = 2.71828...
 
-                      Fractint Version 16.0                       Page 113
+                      Fractint Version 16.11                      Page 112
 
       Parameters: real & imaginary perturbations of z(0), real &
       imaginary parts of exponent exp.
 
-  manzzpwr (p. 36)
+  manzzpwr (p. 34)
       'Mandelbrot-Equivalent' for the julzzpwr fractal.
         z(0) = c = pixel
         z(n+1) = z(n)^z(n) + z(n)^exp + C.
       Parameters: real & imaginary perturbations of z(0), and exponent
 
-  marksjulia (p. 37)
+  marksjulia (p. 35)
       A variant of the julia-lambda fractal.
         z(0) = pixel;
         z(n+1) = (c^exp)*z(n) + c.
       Parameters: real & imaginary parts of c, and exponent
-  marksmandel (p. 37)
+  marksmandel (p. 35)
       A variant of the mandel-lambda fractal.
         z(0) = c = pixel;
         z(n+1) = (c^exp)*z(n) + c.
       Parameters: real & imaginary perturbations of z(0), and exponent
 
-  marksmandelpwr (p. 37)
-      The marksmandelpwr formula type generalized.
+  marksmandelpwr (p. 35)
+      The marksmandelpwr formula type generalized (it previously
+      had fn=sqr hard coded).
         z(0) = pixel, c = z(0) ^ (z(0) - 1):
         z(n+1) = c * fn(z(n)) + pixel,
       Parameters: real and imaginary pertubations of z(0), and fn
 
-  newtbasin (p. 28)
+  newtbasin (p. 26)
       Based on the Newton formula for finding the roots of z^p - 1.
       Pixels are colored according to which root captures the orbit.
         z(0) = pixel;
         z(n+1) = ((p-1)*z(n)^p + 1)/(p*z(n)^(p - 1)).
       Two parameters: the polynomial degree p, and a flag to turn
       on color stripes to show alternate iterations.
-  newton (p. 29)
+  newton (p. 27)
       Based on the Newton formula for finding the roots of z^p - 1.
       Pixels are colored according to the iteration when the orbit
       is captured by a root.
@@ -6141,23 +6076,23 @@
         z(n+1) = ((p-1)*z(n)^p + 1)/(p*z(n)^(p - 1)).
       One parameter: the polynomial degree p.
 
-  pickover (p. 43)
+  pickover (p. 41)
       Orbit in three dimensions defined by:
         x(n+1) = sin(a*y(n)) - z(n)*cos(b*x(n))
         y(n+1) = z(n)*sin(c*x(n)) - cos(d*y(n))
         z(n+1) = sin(x(n))
       Parameters: a, b, c, and d.
 
-  plasma (p. 31)
+  plasma (p. 29)
       Random, cloud-like formations.  Requires 4 or more colors.
       A recursive algorithm repeatedly subdivides the screen and
       colors pixels according to an average of surrounding pixels
       and a random color, less random as the grid size decreases.
       One parameter: 'graininess' (.5 to 50, default = 2).
 
-                      Fractint Version 16.0                       Page 114
+                      Fractint Version 16.11                      Page 113
 
-  popcorn (p. 36)
+  popcorn (p. 34)
       The orbits in two dimensions defined by:
         x(0) = xpixel, y(0) = ypixel;
         x(n+1) = x(n) - h*sin(y(n) + tan(3*y(n))
@@ -6165,14 +6100,14 @@
       are plotted for each screen pixel and superimposed.
       One parameter: step size h.
 
-  popcornjul (p. 36)
+  popcornjul (p. 34)
       Conventional Julia using the popcorn formula:
         x(0) = xpixel, y(0) = ypixel;
         x(n+1) = x(n) - h*sin(y(n) + tan(3*y(n))
         y(n+1) = y(n) - h*sin(x(n) + tan(3*x(n))
       One parameter: step size h.
 
-  rossler3D (p. 42)
+  rossler3D (p. 40)
       Orbit in three dimensions defined by:
         x(0) = y(0) = z(0) = 1;
         x(n+1) = x(n) - y(n)*dt -   z(n)*dt
@@ -6180,42 +6115,42 @@
         z(n+1) = z(n) + b*dt + x(n)*z(n)*dt - c*z(n)*dt
       Parameters are dt, a, b, and c.
 
-  sierpinski (p. 35)
+  sierpinski (p. 33)
       Sierpinski gasket - Julia set producing a 'Swiss cheese triangle'
         z(n+1) = (2*x,2*y-1) if y > .5;
             else (2*x-1,2*y) if x > .5;
             else (2*x,2*y)
       No parameters.
 
-  spider (p. 38)
+  spider (p. 36)
         c(0) = z(0) = pixel;
         z(n+1) = z(n)^2 + c(n);
         c(n+1) = c(n)/2 + z(n+1)
       Parameters: real & imaginary perturbation of z(0)
 
-  sqr(1/fn) (p. 38)
+  sqr(1/fn) (p. 36)
         z(0) = pixel;
         z(n+1) = (1/fn(z(n))^2
       One parameter: the function fn.
 
-  sqr(fn) (p. 38)
+  sqr(fn) (p. 36)
         z(0) = pixel;
         z(n+1) = fn(z(n))^2
       One parameter: the function fn.
 
-  test (p. 43)
+  test (p. 41)
       'test' point letting us (and you!) easily add fractal types via
       the c module testpt.c.  Default set up is a mandelbrot fractal.
       Four parameters: user hooks (not used by default testpt.c).
 
-  tetrate (p. 38)
+  tetrate (p. 36)
         z(0) = c = pixel;
         z(n+1) = c^z(n)
       Parameters: real & imaginary perturbation of z(0)
 
-                      Fractint Version 16.0                       Page 115
+                      Fractint Version 16.11                      Page 114
 
-  tim's_error (p. 37)
+  tim's_error (p. 35)
       A serendipitous coding error in marksmandelpwr brings to life
       an ancient pterodactyl!  (Try setting fn to sqr.)
         z(0) = pixel, c = z(0) ^ (z(0) - 1):
@@ -6225,7 +6160,7 @@
         z(n+1) = tmp + pixel;
       Parameters: real & imaginary pertubations of z(0) and function fn
 
-  unity (p. 37)
+  unity (p. 35)
         z(0) = pixel;
         x = real(z(n)), y = imag(z(n))
         One = x^2 + y^2;
@@ -6234,7 +6169,7 @@
         z(n+1) = x + i*y
       No parameters.
 
-  INSIDE=BOF60|BOF61
+  INSIDE=BOF60|BOF61|ZMAG
 
   Here is an *ATTEMPTED* explanation of what the inside=bof60 and
   inside=bof61 options do. This explanation is hereby dedicated to Adrian
@@ -6263,15 +6198,19 @@
   the best we can do! Improved explanations will be accepted for the next
   edition!
 
+  inside=zmag is similar. This option colors inside pixels according to
+  the magnitude of the orbit point when maxiter was reached, using the
+  formula color = (x^2 + y^2) * maxiter/2 + 1.
+
   FINITE ATTRACTORS
+
+                      Fractint Version 16.11                      Page 115
 
   Many of Fractint's fractals involve the iteration of functions of
   complex numbers until some "bailout" value is exceeded, then coloring
   the associated pixel according to the number of iterations performed.
   This process identifies which values tend to infinity when iterated, and
   gives us a rough measure of how "quickly" they get there.
-
-                      Fractint Version 16.0                       Page 116
 
   In dynamical terms, we say that "Infinity is an Attractor", as many
   initial values get "attracted" to it when iterated.  The set of all
@@ -6322,6 +6261,8 @@
   Critical Value of the fractal's function.  If the iteration doesn't bail
   out before exceeding twice the iteration limit, it is almost certain
   that we have a Finite Attractor - we assume that we have.
+
+                      Fractint Version 16.11                      Page 116
 
   Next we define a small circle around it and, after each iteration, as
   well as testing for the usual bailout value being exceeded, we test to
@@ -6329,8 +6270,6 @@
   according to the number of iterations performed.  Result - a nicely
   colored-in lake that displays the Level Sets of the Basin of Attraction
   of the Finite Attractor.  Sometimes !
-
-                      Fractint Version 16.0                       Page 117
 
   First exception : This does not work for the lakes of Mandel-types.
   Every point in a Mandel-type is, in effect, a single point plucked from
@@ -6380,6 +6319,8 @@
      cos(x+iy)  = cos(x)cosh(y) - isin(x)sinh(y)
      sinh(x+iy) = sinh(x)cos(y) + icosh(x)sin(y)
      cosh(x+iy) = cosh(x)cos(y) + isinh(x)sin(y)
+
+                      Fractint Version 16.11                      Page 117
 
      cosxx(x+iy) = cos(x)cosh(y) + isin(x)sinh(y)
        (cosxx is present in Fractint to provide compatibility with a bug
@@ -6387,8 +6328,6 @@
 
      ln(x+iy) = (1/2)ln(x*x + y*y) + i(arctan(y/x) + 2kPi)
                                       (k = 0, +-1, +-2, +-....)
-
-                      Fractint Version 16.0                       Page 118
 
                        sin(2x)               sinh(2y)
      tan(x+iy) = ------------------  + i------------------
@@ -6414,7 +6353,7 @@
               = e^x * (cos(y) + isin(y))
               = (e^x * cos(y)) + i(e^x * sin(y))
 
-                      Fractint Version 16.0                       Page 119
+                      Fractint Version 16.11                      Page 118
 
  Appendix B Stone Soup With Pixels: The Authors
 
@@ -6473,7 +6412,7 @@
   at IBM. Or without the example of other Mandelplotters for the PC. Or
   without those wizards who first realized you could perform Mandelbrot
 
-                      Fractint Version 16.0                       Page 120
+                      Fractint Version 16.11                      Page 119
 
   calculations using integer math (it wasn't us - we just recognize good
   algorithms when we steal--uhh--see them).  Or those graphics experts who
@@ -6529,7 +6468,7 @@
   implementations, the formula compiler, and the "Julibrot" intrinsic 3D
   fractals - in other words, most of the truly original ideas in Fractint!
 
-                      Fractint Version 16.0                       Page 121
+                      Fractint Version 16.11                      Page 120
 
   Mark's knowledge of higher mathematics and programming was achieved
   almost entirely through self-study.  Mark has written several magazine
@@ -6587,7 +6526,7 @@
   directly if they know the user ID (i.e., Bert Tyler can be reached as
   73477.433@compuserve.com).
 
-                      Fractint Version 16.0                       Page 122
+                      Fractint Version 16.11                      Page 121
 
   Just remember that CIS charges by the minute, so it costs us a little
   bit to read a message -- don't kill us with kindness. And don't send all
@@ -6641,11 +6580,15 @@
   (714) 831-7665
   (7-12pm PST & weekends)
 
+  John W. Bridges         (Author GRASP/Pictor, Imagetools, PICEM, VGAKIT)
+  2810 Serang Place Costa Mesa
+  California 92626-4827   [73307,606] on CIS, GENIE:JBRIDGES BIX:JBRIDGES
+
+                      Fractint Version 16.11                      Page 122
+
   Michael D. Burkey       burkey@sun9.math.utk.edu on Internet
   6600 Crossgate Rd.
   Knoxville, TN 37912
-
-                      Fractint Version 16.0                       Page 123
 
   Lee Daniel Crocker      [73407,2030] on CIS
   5506 Camden Ave #D3     lcrocker on BIX
@@ -6696,13 +6639,13 @@
 
   Marc Reinig             [72410,77] on CIS
   3415 Merrill Rd.        marco@sun.com!daver!cypress on Usenet
-  Aptos, CA. 95003        abu on BIX
+  Aptos, CA. 95003
   (408) 475-2132
+
+                      Fractint Version 16.11                      Page 123
 
   Prof. JM Richard-Collard mpi@frmop53.bitnet on BitNet
                            mpi@cnuvx1.cnusc.fr on Internet
-
-                      Fractint Version 16.0                       Page 124
 
   Lee H. Skinner
   P.O. Box 14944
@@ -6728,7 +6671,7 @@
   Brooklyn, NY 11217
   (718) 624-5272
 
-                      Fractint Version 16.0                       Page 125
+                      Fractint Version 16.11                      Page 124
 
  Appendix C GIF Save File Format
 
@@ -6779,7 +6722,7 @@
   GIF and "Graphics Interchange Format" are trademarks of Compuserve
   Incorporated, an H&R Block Company.
 
-                      Fractint Version 16.0                       Page 126
+                      Fractint Version 16.11                      Page 125
 
  Appendix D An Unabashed Plug for "Fractal Creations"
 
@@ -6804,7 +6747,7 @@
   includes Fractint version 15.11 but is also an excellent companion to
   later versions of Fractint.
 
-                      Fractint Version 16.0                       Page 127
+                      Fractint Version 16.11                      Page 126
 
  Appendix E Bibliography
 
@@ -6849,7 +6792,7 @@
      bragging, so let's just call it:  THE definitive companion to
      Fractint!
 
-                      Fractint Version 16.0                       Page 128
+                      Fractint Version 16.11                      Page 127
 
  Appendix F Other Programs
 
@@ -6886,12 +6829,134 @@
      P O Box 26871                        800-227-6248
      Salt Lake City, UT  84126-0871
 
-                      Fractint Version 16.0                       Page 129
+                      Fractint Version 16.11                      Page 128
 
  Appendix G Revision History
 
   Features first appearing in:
   ===========================
+
+  Version 16.0, 6/91
+
+    Integrated online help / fractint.doc system from Ethan Nagel.  To
+      create a printable fractint.doc file see Startup Parameters (p. 75)
+      .
+    Over 350 screens of online help! Try pressing <F1> just about
+    anywhere!
+    New "autokey" feature.  Type "demo" to run the included demo.bat and
+      demo.key files for a great demonstration of Fractint.
+    New <@> command executes a saved set of commands.  The <b> command has
+      changed to write the current image's parameters as a named set of
+      commands in a structured file.  Saved sets of commands can
+      subsequently be executed with the <@> command.  A default
+      "fractint.par" file is included with the release.
+    New <z> command allows changing fractal type-specific parameters
+      without going back through the <t> (fractal type selection) screen.
+    Ray tracer interface from Marc Reinig, generates 3d transform output
+      for a number of ray tracers
+    Selection of video modes and structure of "fractint.cfg" have changed.
+      If you have a customized fractint.cfg file, you'll have to rebuild
+      it based on this release's version. You can customize the assignment
+      of your favorite video modes to function keys.  <delete> is a new
+      command key which goes directly to video mode selection.
+    New "cyclerange" option (command line and <y> options screen) from
+      Hugh Steele. Limits color cycling to a specified range of colors.
+    Improved Distance Estimator Method (p. 52) algorithm from Phil
+    Wilson.
+    New "ranges=" option from Norman Hills.  See Logarithmic Palettes and
+      Color Ranges (p. 54) for details.
+    type=formula definitions can use "variable functions" to select sin,
+      cos, sinh, cosh, exp, log, etc at run time; new built-ins tan, tanh,
+      cotan, cotanh, and flip are available with type=formula
+    New <w> command in palette editing mode to convert image to greyscale
+    All "fn" fractal types (e.g. fn*fn) can now use new functions tan,
+      tanh, cotan, cotanh, recip, and ident; bug in prior cos function
+      fixed, new function cosxx (conjugate of cos) is the old erroneous
+      cos calculation
+    New L-Systems from Herb Savage
+    New IFS types from Alex Matulich
+    Many new formulas in fractint.frm, including a large group from JM
+      Richard-Collard
+    New color maps (neon, royal, volcano, blues, headache) from Daniel
+    Egnor
+    IFS type has changed to use a single file containing named entries
+      (instead of a separate xxx.ifs file per type); the <z> command
+      brings up IFS editor (used to be <i> command).
+    Initial orbit parameter added to Gingerbreadman fractal type
+    Much improved support for PaintJet printers
+    From Scott Taylor:
+      Support for plotters using HP-GL
+      Lots of new PostScript halftones
+
+                      Fractint Version 16.11                      Page 129
+
+      "printer=PS[L]/0/..." for full page PostScript
+      Option to drive printer ports directly (faster)
+      Option to change printer end of line control chars
+    Support for XGA video adapter
+    Support for Targa+ video adapter
+    16 color VGA mode enhancements:
+      Now use the first 16 colors of .map files to be more predictable
+      Palette editor now works with these modes
+      Color cycling now works properly with these modes Targa video
+    adapter fixes; Fractint now uses (and requires) the "targa"
+      and "targaset" environment variables for Targa systems
+    "vesadetect=no" parameter to bypass use of VESA video driver; try
+      this if you encounter video problems with a VESA driver Upgraded
+    video adapter detect and handling from John Bridges; autodetect
+      added for NCR, Trident 8900, Tseng 4000, Genoa (this code is from a
+      beta release of VGAKIT, we're not sure it all works yet)
+    Zoom box is included in saved/printed images (but, is not recognized
+      as anything special when such an image is restored)
+    The colors numbers reserved by the palette editor are now selectable
+      with the new <v> palette editing mode command
+    Option to use IIT floating point chip's special matrix arithmetic for
+      faster 3D transforms
+    Disk video cache increased to 64k; disk video does less seeking when
+      running to real disk
+    Faster floating point code for 287 and higher fpus, for types mandel,
+      julia, barnsleyj1/m1/j2/m2, lambda, manowar, from Chuck Ebbert
+    "filename=.xxx" can be used to set default <r> function file mask
+    Selection of type formula or lsys now goes directly to entry selection
+      (file selection step is now skipped); to change to a different file,
+      use <F6> from the entry selection screen
+    Three new values have been added to the textcolors= parameter; if you
+      use this parameter you should update it by inserting values for the
+      new 6th, 7th, 9th, and 13th positions
+    The formula type's imag() function has changed to return the result as
+      a real number
+    Fractal type-specific parameters (entered after selecting a new
+      fractal type with <T>) now restart at their default values each time
+      you select a new fractal type
+    Floating point input fields can now be entered in scientific notation
+      (e.g.  11.234e-20). Entering the letters "e" and "p" in the first
+      column causes the numbers e=2.71828... and pi=3.14159... to be
+      entered.
+    Generalized type manzpwr with complex exponent per Lee Skinner's
+    request
+    New option "orbitsave=yes" to create files for Acrospin for some types
+    Bug fixes:
+      Problem with Hercules adapter auto-detection repaired.
+      Problems with VESA video adapters repaired (we're not sure we've got
+        them all yet...)
+      3D transforms fixed to work at high resolutions (> 1000 dots).
+      3D parameters no longer clobbered when restoring non-3D images.
+      L-Systems fixed to not crash when order too high for available
+      memory.
+      PostScript EPS file fixes.
+      Bad leftmost pixels with floating point at 2048 dot resolution
+      fixed.
+
+                      Fractint Version 16.11                      Page 130
+
+      3D transforms fixed to use current <x> screen float/integer setting.
+      Restore of images using inversion fixed.
+      Error in "cos" function (used with "fn" type fractals) fixed; prior
+        incorrect function still available as "cosxx" for compatibility
+    Old 3D=nn/nn/nn/... form of 3D transform parameters no longer
+    supported
+    Fractint source code now Microsoft C6.00A compatible.
+
 
   Version 15.11, 3/91, companion to Fractal Creations, not for general
   release
@@ -6940,13 +7005,13 @@
       time is lost.
     3d photographer's mode now allows the first image to be saved to disk
     textcolors=mono|12/34/56/... -- allows setting user interface colors
+
+                      Fractint Version 16.11                      Page 131
+
     Code (again!) compilable under TC++ (we think!)
     .TIW files (from v9.3) are no longer supported as input to 3D
       transformations
     bug fixes:
-
-                      Fractint Version 16.0                       Page 130
-
       multiple restores (msc 6.0, fixed in 14.0r)
       repeating 3d loads problem; slow 3d loads of images with float=yes
       map= is now a real substitute for default colors
@@ -6999,11 +7064,12 @@
       things with disk video, including solid guessing, 3d, and plasma.
     Logarithmic palette changed to use all colors.  It now matches regular
       palette except near the "lake".  "logmap=old" gets the old way.
+
+                      Fractint Version 16.11                      Page 132
+
     New "savetime=nnn" parameter to save checkpoints during long
     calculations.
     Calculation time is shown in <Tab> display.
-
-                      Fractint Version 16.0                       Page 131
 
     Kevin Allen, of Antipodean origin, did the following:
     Made Bifurcation/Verhulst into a generalized Fractal Engine (like
@@ -7055,11 +7121,10 @@
       Along with a few new 3D options.
     New "INITORBIT=" command to allow alternate Mandelbrot set orbit
       initialization.
-
+
+                      Fractint Version 16.11                      Page 133
 
   Version 13.0, 5/90
-
-                      Fractint Version 16.0                       Page 132
 
     F1 was made the help key.
       Use F1 for help
@@ -7115,11 +7180,11 @@
     Added floating point option to all remaining fractal types.
     Real (funny glasses) 3D - Now with "real-time" lorenz3D!!
     Non-Destructive <TAB> - Check out what your fractal parameters are
+
+                      Fractint Version 16.11                      Page 134
+
       without stopping the generation of a fractal image
     New Cross-Hair mode for changing individual palette colors (VGA only)
-
-                      Fractint Version 16.0                       Page 133
-
     Zooming beyond the limits of Integer algorithms (with automatic
       switchover to a floating-point algorithm when you zoom in "too far")
     New 'inside=bof60', 'inside=bof61' ("Beauty of Fractals, Page nn")
@@ -7174,11 +7239,11 @@
     Command-line options for 3D parameters
     Spherical 3D calculations 5x faster
     3D now clips properly to screen edges and works at extreme perspective
+
+                      Fractint Version 16.11                      Page 135
+
     "RSEED=" argument for reproducible plasma clouds
     Faster plasma clouds (by 40% on a 386)
-
-                      Fractint Version 16.0                       Page 134
-
     Sensitivity to "continuous potential" algorithm for all types except
       plasma and IFS
     Palette-map <S>ave and Restore (<M>) commands
@@ -7233,11 +7298,11 @@
     Restore now loads .GIF files (as plasma clouds)
     TARGA video modes and color-map file options (Joe McLain)
     30 new color-cycling palette options (<Shft><F1> to <Alt><F10>)
+
+                      Fractint Version 16.11                      Page 136
+
     "Disk-video, RAM-video, EMS-video" modes
     Lambda sets now use integer math (with 80386 speedups)
-
-                      Fractint Version 16.0                       Page 135
-
     "WARN=yes" argument to prevent over-writing old .GIF files
 
 
@@ -7290,9 +7355,8 @@
 
     Video table
     CPU type detector
-
 
-                      Fractint Version 16.0                       Page 136
+                      Fractint Version 16.11                      Page 137
 
   Version 2.0, 10/10/88
 
@@ -7303,7 +7367,7 @@
 
     The original, blindingly fast, 386-specific 32-bit integer algorithm
 
-                      Fractint Version 16.0                       Page 137
+                      Fractint Version 16.11                      Page 138
 
  Appendix H Version13 to Version 14 Type Mapping
 
@@ -7359,7 +7423,7 @@
 
   LAMBDACOSH              LAMBDAFN FUNCTION=COSH
 
-                      Fractint Version 16.0                       Page 138
+                      Fractint Version 16.11                      Page 139
 
   LAMBDAEXP               LAMBDAFN FUNCTION=EXP
 
@@ -7415,7 +7479,7 @@
 
   SCOTTCOSH PARAMS=nnn    FN+FN FUNCTION=COSH/SQR BAILOUT=nnn+3
 
-                      Fractint Version 16.0                       Page 139
+                      Fractint Version 16.11                      Page 140
 
   SCOTTLPC PARAMS=nnn     FN+FN FUNCTION=LOG/COS BAILOUT=nnn+3
 

@@ -285,7 +285,8 @@ Ent2 {; Scott Taylor
 
 LeeMandel1(XYAXIS) {; Kevin Lee
   z=Pixel:
-   c=sqr(pixel)/z, c=z+c, z=sqr(z),
+;; c=sqr(pixel)/z, c=z+c, z=sqr(z),  this line was an error in v16
+   c=sqr(pixel)/z, c=z+c, z=sqr(c),
     |z|<4
   }
 
@@ -627,5 +628,33 @@ ZZa(XAXIS) { ; Prof Jm using Newton-Raphson method
    z2=(((z-1)/z)+log(z))*z1;
    z=z-((z1-1)/z2) ,
     .001 <= |solution-z1|
+  }
+
+
+comment {
+  You should note that for the Transparent 3D fractals the x, y, z, and t
+  coordinates correspond to the 2D slices and not the final 3D True Color
+  image.  To relate the 2D slices to the 3D image, swap the x- and z-axis,
+  i.e. a 90 degree rotation about the y-axis.
+			    -Mark Peterson 6-2-91
+  }
+
+MandelXAxis(XAXIS) {	; for Transparent3D
+  z = zt,		; Define Julia axes as depth/time and the
+  c = xy:		;   Mandelbrot axes as width/height for each slice.
+			;   This corresponds to Mandelbrot axes as
+			;   height/depth and the Julia axes as width
+			;   time for the 3D image.
+   z = Sqr(z) + c
+    LastSqr <= 4;
+  }
+
+OldJulibrot(ORIGIN) {		    ; for Transparent3D
+  z = real(zt) + flip(imag(xy)),    ; These settings coorespond to the
+  c = imag(zt) + flip(real(xy)):    ;	Julia axes as height/width and
+				    ;	the Mandelbrot axes as time/depth
+				    ;	for the 3D image.
+   z = Sqr(z) + c
+    LastSqr <= 4;
   }
 

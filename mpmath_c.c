@@ -57,7 +57,7 @@ struct MP MPCmod(struct MPC x) {
 }
 
 struct MPC MPCmul(struct MPC x, struct MPC y) {
-   struct MPC z, t;
+   struct MPC z;
 
         z.x = *pMPsub(*pMPmul(x.x, y.x), *pMPmul(x.y, y.y));
         z.y = *pMPadd(*pMPmul(x.x, y.y), *pMPmul(x.y, y.x));
@@ -186,7 +186,7 @@ extern int debugflag, fpu;
 
 struct complex ComplexPower(struct complex x, struct complex y) {
    struct complex z, cLog, t;
-   double dist, e2x, siny, cosy;
+   double e2x, siny, cosy;
 
    FPUcplxlog(&x, &cLog);
    FPUcplxmul(&cLog, &y, &t);
@@ -232,7 +232,7 @@ extern int LogFlag;
 
 void SetupLogTable(void) {
    float l, f, c, m;
-   unsigned n, x, prev, limit, lf;
+   unsigned n, prev, limit, lf;
 
    if (LogFlag > -2) {
       lf = (LogFlag > 1) ? LogFlag : 0;
@@ -315,7 +315,7 @@ int ComplexNewtonSetup(void) {
 
 int ComplexNewton(void) {
    struct complex cd1;
-   double dist, mod, Angle, e2x;
+
 
    /* new = ((cdegree-1) * old**cdegree) + croot
             ----------------------------------
@@ -344,7 +344,7 @@ int ComplexNewton(void) {
 
 int ComplexBasin(void) {
    struct complex cd1;
-   double dist, mod, Angle, e2x;
+   double mod;
 
    /* new = ((cdegree-1) * old**cdegree) + croot
             ----------------------------------

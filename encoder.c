@@ -319,7 +319,7 @@ return 0;
 
 int encoder()
 {
-int i, j, ydot, xdot, color, outcolor1, outcolor2;
+int i, ydot, xdot, color, outcolor1, outcolor2;
 int width;
 int rownum, rowlimit;
 unsigned int hashentry;

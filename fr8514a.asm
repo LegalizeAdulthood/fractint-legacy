@@ -61,12 +61,12 @@ amode		dw	18, 9 dup(?)
 ;svpaldata	dw	769
 ;		db	769 dup(?)
 
-oops		db	13,10
-		db	"Couldn't find the 8514/A interface"
-		db	13,10
-		db	"(Maybe you forgot to load HDILOAD)"
-		db	13,10
-		db	"$"
+;oops		db	13,10
+;		db	"Couldn't find the 8514/A interface"
+;		db	13,10
+;		db	"(Maybe you forgot to load HDILOAD)"
+;		db	13,10
+;		db	"$"
 
 .CODE
 
@@ -200,14 +200,15 @@ ydotsok:
 	ret
 
 afinotfound:				; No 8514/A interface found
-	mov	ax,03h			; reset to text mode
-	int	10h
-	mov	dx,offset oops		; error out
-	mov	ah,9			; sending the message
-	int	21h
-	mov	ax,4c00h		; end the program
-	int	21h
-	ret				; should never get here!
+;	mov	ax,03h			; reset to text mode
+;	int	10h
+;	mov	dx,offset oops		; error out
+;	mov	ah,9			; sending the message
+;	int	21h
+;	mov	ax,4c00h		; end the program
+;	int	21h
+	stc				; flag bad mode
+	ret				;  and bail out
 
 open8514	endp
 

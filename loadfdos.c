@@ -129,13 +129,13 @@ static struct vidinf *vidptr;
 
 int get_video_mode(struct fractal_info *info)
 {
-   int kbdchar;
+
    struct vidinf vid[MAXVIDEOMODES];
    int i,j;
    int gotrealmode;
    double ftemp,ftemp2;
    unsigned tmpflags;
-   int choicerow,topsubscr,displayflag;
+
    int tmpxdots,tmpydots;
    float tmpreduce;
    char *nameptr;

@@ -382,8 +382,8 @@ static int near floatbailout()
    if (fabs(old.x) >= 6.4e2) return(1);
 
 #define LONGEXPBAILOUT()  \
-   if (labs(lold.y) >= 1000L<<bitshift) return(1);\
-   if (labs(lold.x) >=	8L<<bitshift) return(1);
+   if (labs(lold.y) >= (1000L<<bitshift)) return(1);\
+   if (labs(lold.x) >=	  (8L<<bitshift)) return(1);
 
 #if 0
 /* this define uses usual trig instead of fast trig */
@@ -447,7 +447,7 @@ void cpower(CMPLX *base, int exp, CMPLX *result)
     }
 }
 /* long version */
-static long lxt, lyt, lt1, lt2;
+static long lxt, lyt, lt2;
 lcpower(LCMPLX *base, int exp, LCMPLX *result, int bitshift)
 {
     static long maxarg;
@@ -536,7 +536,6 @@ int NewtonFractal()
     static char start=1;
     if(start)
     {
-       printf("c version");
        start = 0;
     }
     cpower(&old, degree-1, &tmp);
@@ -2183,7 +2182,7 @@ MandelSetup()		/* Mandelbrot Routine */
 {
    if (debugflag != 90 && ! invert && decomp[0] == 0 && rqlim <= 4.0
        && bitshift == 29 && potflag == 0
-       && biomorph == -1 && inside != -60
+       && biomorph == -1 && inside != -60 && inside != -59
        && inside != -61 && outside == -1 && useinitorbit != 1)
       calctype = calcmand; /* the normal case - use CALCMAND */
    else
@@ -2199,7 +2198,7 @@ JuliaSetup()		/* Julia Routine */
 {
    if (debugflag != 90 && ! invert && decomp[0] == 0 && rqlim <= 4.0
        && bitshift == 29 && potflag == 0
-       && biomorph == -1 && inside != -60
+       && biomorph == -1 && inside != -60 && inside != -59
        && inside != -61 && outside == -1 && !finattract)
       calctype = calcmand; /* the normal case - use CALCMAND */
    else
@@ -2827,8 +2826,12 @@ static char recoeftrg1[] = "Real Coefficient First Function";
 static char imcoeftrg1[] = "Imag Coefficient First Function";
 static char recoeftrg2[] = "Real Coefficient Second Function";
 static char imcoeftrg2[] = "Imag Coefficient Second Function";
+
+/* MCP 7-7-91
 static char recoefsqr[] = "Real Coefficient Square Term";
 static char imcoefsqr[] = "Imag Coefficient Square Term";
+*/
+
 static char recoef2nd[] = "Real Coefficient Second Term";
 static char imcoef2nd[] = "Imag Coefficient Second Term";
 

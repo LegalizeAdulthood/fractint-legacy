@@ -77,8 +77,6 @@ unsigned char	temp[81];
 
 int SetColorPaletteName( char * fn )
 {
-	char msg[200];
-	int  i;
 	if( ValidateLuts( fn ) != 0)
 		return 1;
 	if( mapdacbox == NULL && (mapdacbox = farmemalloc(768L)) == NULL) {

@@ -27,6 +27,9 @@
 extern far_strlen( char far *);                   /* TIW 03-31-91 */
 extern far_strnicmp(char far *, char far *,int);  /* TIW 03-31-91 */
 
+extern int Transparent3D;                         /* MCP 5-30-91 */
+void TranspPerPixel(int MathType, union Arg far *xy, union Arg far *zt);
+
 void findpath(char *filename, char *fullpathname);
 void far *farmemalloc(long bytestoalloc);
 void farmemfree(void far *farptr);
@@ -57,7 +60,7 @@ struct PEND_OP {
 static struct PEND_OP far *o;
 
 static void parser_allocate(void);
-static void free_workarea();
+static void free_workarea(void);
 
 union Arg *Arg1, *Arg2;
 /* PB 910417 removed unused "a" array */
@@ -998,9 +1001,9 @@ void (far *isfunct(char *Str, int Len))(void) {
          if(far_strlen(FnctList[n].s) == Len) {        /* TIW 03-31-91 added far */
             if(!far_strnicmp(FnctList[n].s, Str, Len)) {  /* TIW 03-31-91 added far */
                /* count function variables */
-               if(functnum = whichfn(Str, Len))      /* TIW 04-22-91 */
-                   if(functnum > maxfn)              /* TIW 04-22-91 */
-                      maxfn = functnum;              /* TIW 04-22-91 */
+               if((functnum = whichfn(Str, Len)) != 0)    /* TIW 04-22-91 */
+                   if(functnum > maxfn)                  /* TIW 04-22-91 */
+                      maxfn = functnum;                  /* TIW 04-22-91 */
                return(*FnctList[n].ptr);
             }
          }
@@ -1019,11 +1022,13 @@ void RecSortPrec(void) {
 }
 
 static char *Constants[] = {
-   "pixel",
-   "p1",
-   "p2",
-   "z",
-   "LastSqr",
+   "pixel",        /* v[0] */
+   "p1",           /* v[1] */
+   "p2",           /* v[2] */
+   "z",            /* v[3] */
+   "LastSqr",      /* v[4] */
+   "xy",           /* v[5] */
+   "zt",           /* v[6] */
 };
 
 struct SYMETRY {
@@ -1164,6 +1169,9 @@ int ParseStr(char *Str) {
       v[vsp].s = Constants[vsp];
       v[vsp].len = strlen(Constants[vsp]);
    }
+
+   v[6].a.d.x = v[6].a.d.y = 0.0;
+
    switch(MathType) {
       case D_MATH:
          v[1].a.d.x = param[0];
@@ -1490,19 +1498,28 @@ int form_per_pixel(void) {
    Arg1 = &s[0];
    Arg2 = Arg1;
    Arg2--;
-   switch(MathType) {
-      case D_MATH:
-         old.x = new.x = v[0].a.d.x = dx0[col]+dShiftx;
-         old.y = new.y = v[0].a.d.y = dy0[row]+dShifty;
-         break;
-      case M_MATH:
-         v[0].a.m.x = *d2MP(old.x = new.x = dx0[col]+dShiftx);
-         v[0].a.m.y = *d2MP(old.y = new.y = dy0[row]+dShifty);
-         break;
-      case L_MATH:
-         lold.x = lnew.x = v[0].a.l.x = lx0[col]+lShiftx;
-         lold.y = lnew.y = v[0].a.l.y = ly0[row]+lShifty;
-         break;
+   if(Transparent3D)
+   {
+      TranspPerPixel(MathType, &v[5].a, &v[6].a);
+      v[0].a = v[5].a;
+   }
+   else
+   {
+      switch(MathType)
+      {
+         case D_MATH:
+              v[5].a.d.x = (v[0].a.d.x = dx0[col]+dShiftx);
+              v[5].a.d.x = (v[0].a.d.y = dy0[row]+dShifty);
+              break;
+         case M_MATH:
+              v[5].a.m.x = (v[0].a.m.x = *d2MP(dx0[col]+dShiftx));
+              v[5].a.m.x = (v[0].a.m.y = *d2MP(dy0[row]+dShifty));
+              break;
+         case L_MATH:
+              v[5].a.l.x = (v[0].a.l.x = lx0[col]+lShiftx);
+              v[5].a.l.x = (v[0].a.l.y = ly0[row]+lShifty);
+              break;
+      }
    }
 
    if(LastInitOp)

@@ -26,7 +26,6 @@ tgaview()
 {
    int i;
    int cs;
-   unsigned numcolors;
    unsigned int width;
    struct fractal_info info;
    FILE *t16_open();
@@ -59,7 +58,7 @@ tgaview()
 outlin16(unsigned int *buffer,int linelen)
 {
     extern int rowcount;
-    int i,color;
+    int i;
     for(i=0;i<linelen;i++)
        putcolor(i,rowcount,buffer[i]>>8);
     rowcount++;

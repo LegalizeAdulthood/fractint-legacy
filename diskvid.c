@@ -26,6 +26,8 @@ extern int diskflag;
 
 int disk16bit=0;	   /* storing 16 bit values for continuous potential */
 
+extern int Shadowing, AntiAliasing;
+
 static int timetodisplay;
 static FILE *fp = NULL;
 static int disktarga;
@@ -149,7 +151,7 @@ int targa_startdisk(FILE *targafp,int overhead)
 
 static int _fastcall near common_startdisk(int newrowsize, int newcolsize)
 {
-   int i,j,success;
+   int i,success;
    long memorysize;
    unsigned int far *fwd_link;
    struct cache far *ptr1;
@@ -379,7 +381,7 @@ int readdisk(unsigned int col, unsigned int row)
    if (cur_offset != (offset & (0L-BLOCKLEN))) /* same entry as last ref? */
       findload_cache(offset & (0L-BLOCKLEN));
    return (cur_cache->pixel[col_subscr]);
-   }
+}
 
 void targa_readdisk(unsigned int col, unsigned int row,
 		    unsigned char *red, unsigned char *green, unsigned char *blue)
@@ -418,7 +420,13 @@ void writedisk(unsigned int col, unsigned int row, unsigned int color)
       cur_cache->pixel[col_subscr] = color;
       cur_cache->dirty = 1;
       }
-   }
+   if (Shadowing) {
+      unsigned Mask;
+      Mask = (1 << AntiAliasing) - 1;
+      if(!(col & Mask) && !(row & Mask))
+	 ShadowPutColor(col, row, color);
+      }
+}
 
 void targa_writedisk(unsigned int col, unsigned int row,
 		    unsigned char red, unsigned char green, unsigned char blue)
@@ -573,10 +581,21 @@ write_stuff:
       case 3:
 	 for (i = 0; i < BLOCKLEN/8; ++i) {
 	    (*put_char)((unsigned char)
-			(((((((*pixelptr << 1 | *(pixelptr+1)) << 1
-			| *(pixelptr+2)) << 1 | *(pixelptr+3)) << 1
-			| *(pixelptr+4)) << 1 | *(pixelptr+5)) << 1
-			| *(pixelptr+6)) << 1 | *(pixelptr+7)));
+			((((((((((((((*pixelptr
+                        << 1)
+                        | *(pixelptr+1) )
+                        << 1)
+			| *(pixelptr+2) )
+                        << 1)
+                        | *(pixelptr+3) )
+                        << 1)
+			| *(pixelptr+4) )
+                        << 1)
+                        | *(pixelptr+5) )
+                        << 1)
+			| *(pixelptr+6) )
+                        << 1)
+                        | *(pixelptr+7)));
 	    pixelptr += 8;
 	    }
 	 break;

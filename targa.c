@@ -313,7 +313,7 @@ static void _fastcall near SetDispReg(int reg, int value)
 	 */
 	TSetMode( ((targa.mode|(~MSK_REGWRITE))     /* turn on write bit */
 				   & MSK_BIT9	   )	 /* turn off Bit 9 */
-			   | (value&0x0100)>>1); /* set bit 9 for value */
+			   | ((value&0x0100)>>1)); /* set bit 9 for value */
 	OUTPORTB(DRREG, value); /* select sync register */
  }
 
@@ -416,7 +416,6 @@ static void _fastcall SetVertShift(int preshift)
 
 static void _fastcall SetOverscan(int mode)
 {
-int temp;
 long tempColor;
 
 	targa.ovrscnOn = mode;

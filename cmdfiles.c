@@ -1,4 +1,3 @@
-
 /*
 	Command-line / Command-File Parser Routines
 	This module is linked as an overlay, use ENTER_OVLY and EXIT_OVLY.
@@ -41,11 +40,11 @@ extern int  makedoc_msg_func(int,int);
 char	temp1[256];		/* temporary strings	    */
 char	readname[80];		/* name of fractal input file */
 char	gifmask[13] = {""};
-char	PrintName[80];		/* Name for print-to-file */
+char	PrintName[80]={"fract001.prn"}; /* Name for print-to-file */
+char	savename[80]={"fract001"};      /* save files using this name */
+char	autoname[80]={"auto.key"};      /* record auto keystrokes here */
 int	potflag=0;		/* continuous potential enabled? */
 int	pot16bit;		/* store 16 bit continuous potential values */
-char	savename[80];		/* save files using this name */
-char	autoname[80];		/* record auto keystrokes here */
 int	gif87a_flag;		/* 1 if GIF87a format, 0 otherwise */
 int	askvideo;		/* flag for video prompting */
 char	floatflag;
@@ -87,10 +86,24 @@ int	colorstate;		/* 0, dacbox matches default (bios or map=) */
 				/* 2, dacbox matches the colorfile map	    */
 int	colorpreloaded; 	/* if dacbox preloaded for next mode select */
 char	colorfile[80];		/* from last <l> <s> or colors=@filename    */
+
+/* TARGA+ variables */
 int	TPlusFlag;		/* Use the TARGA+ if found  */
 int	MaxColorRes;		/* Default Color Resolution if available */
 int	PixelZoom;		/* TPlus Zoom Level */
 int	NonInterlaced;		/* Non-Interlaced video flag */
+
+/* 3D Transparency Variables, MCP 5-30-91 */
+double xcoord, ycoord, zcoord, tcoord;
+double zzmin, zzmax;		/* initial depth corner values */
+double ttmin, ttmax;		/* initial time coordinates */
+int Transparent3D, SolidCore, MultiDrawing;
+int tpdepth, tptime;
+unsigned CoreRed, CoreGreen, CoreBlue, NumFrames;
+
+/* AntiAliasing variables, MCP 6-6-91 */
+int AntiAliasing, Shadowing;
+
 int	orbitsave = 0;		/* for IFS and LORENZ to output acrospin file */
 extern	int invert;
 extern int fractype;		/* fractal type 	    */
@@ -131,6 +144,7 @@ int	LogFlag;		/* Logarithmic palette flag: 0 = no */
 unsigned char exitmode = 3;	/* video mode on exit */
 
 extern int video_type;
+extern int svga_type;           /* for forcing a specific SVGA adapter */
 extern int mode7text;
 extern int textsafe;
 extern int vesa_detect;
@@ -211,6 +225,16 @@ unsigned char txtcolor[]={
       };
 
 extern int active_system;
+/* start of string literals cleanup */
+char s_iter[]    = "iter";
+char s_real[]    = "real";
+char s_mult[]     = "mult";
+char s_sum[]     = "summ";
+char s_imag[]    = "imag";
+char s_zmag[]    = "zmag";
+char s_bof60[]   = "bof60";
+char s_bof61[]   = "bof61";
+char s_maxiter[] =  "maxiter";
 
 
 void cmdfiles_overlay() { }	/* for restore_active_ovly */
@@ -223,7 +247,7 @@ void cmdfiles_overlay() { }	/* for restore_active_ovly */
 
 int cmdfiles(int argc,char *argv[])
 {
-   int	   i, j, k, l;
+   int	   i;
    char    curarg[141];
    char    tempstring[101];
    char    *sptr;
@@ -294,7 +318,7 @@ int load_commands(FILE *infile)
 {
    /* when called, file is open in binary mode, positioned at the */
    /* '(' or '{' following the desired parameter set's name       */
-   int ret,c;
+   int ret;
    ENTER_OVLY(OVLY_CMDFILES);
    initcorners = initparams = 0; /* reset flags for type= */
    ret = cmdfile(infile,2);
@@ -306,11 +330,6 @@ int load_commands(FILE *infile)
 static void initvars_run()		/* once per run init */
 {
    init_rseed = (int)time(NULL);
-/* after v16, move following initializations to static init */
-   strcpy(savename,"fract001");         /* initial save filename  */
-   strcpy(light_name,"light001.tga");   /* initial light filename */
-   strcpy(PrintName,"fract001.prn");    /* initial print-to-file  */
-   strcpy(autoname,"auto.key");         /* initial auto filename  */
 }
 
 static void initvars_restart()		/* <ins> key init */
@@ -354,6 +373,21 @@ static void initvars_restart()		/* <ins> key init */
    MaxColorRes = 8;
    PixelZoom = 0;
    NonInterlaced = 0;
+
+   Transparent3D = 0;
+   SolidCore = 1;
+   CoreRed   = 128;
+   CoreGreen = 128;
+   CoreBlue  = 128;
+   zzmin = -1.5;
+   zzmax = 1.5;
+   ttmin = 0.0;
+   ttmax = 0.0;
+   NumFrames = 1;
+   tpdepth = tptime = 0;
+
+   AntiAliasing = 0;
+   Shadowing = 0;
 
    Printer_Type = 2;			/* assume an IBM/EPSON	  */
    Printer_Resolution = 60;		/* assume low resolution  */
@@ -530,10 +564,10 @@ static int next_command(char *cmdbuf,int maxlen,
 
 static int next_line(FILE *handle,char *linebuf,int mode)
 {
-   int i,toolssection;
+   int toolssection;
    char tmpbuf[10];
    toolssection = 0;
-   while ((i = file_gets(linebuf,512,handle)) >= 0) {
+   while (file_gets(linebuf,512,handle) >= 0) {
       if (mode == 1 && linebuf[0] == '[') {     /* check for [fractint] */
 	 strncpy(tmpbuf,&linebuf[1],9);
 	 tmpbuf[9] = 0;
@@ -642,21 +676,42 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	 }
 
       if (strcmp(variable,"adapter") == 0 ) {   /* adapter==?     */
+
+         if (strncmp(value,"aheada",6) == 0) svga_type = 1;
+         if (strncmp(value,"ati"   ,3) == 0) svga_type = 2;
+         if (strncmp(value,"chi"   ,3) == 0) svga_type = 3;
+         if (strncmp(value,"eve"   ,3) == 0) svga_type = 4;
+         if (strncmp(value,"gen"   ,3) == 0) svga_type = 5;
+         if (strncmp(value,"ncr"   ,3) == 0) svga_type = 6;
+         if (strncmp(value,"oak"   ,3) == 0) svga_type = 7;
+         if (strncmp(value,"par"   ,3) == 0) svga_type = 8;
+         if (strncmp(value,"tri"   ,3) == 0) svga_type = 9;
+         if (strncmp(value,"tseng3",6) == 0) svga_type = 10;
+         if (strncmp(value,"tseng4",6) == 0) svga_type = 11;
+         if (strncmp(value,"vid"   ,3) == 0) svga_type = 12;
+         if (strncmp(value,"aheadb",6) == 0) svga_type = 13;
+         if (strncmp(value,"null"  ,4) == 0) svga_type = 14; /* for testing only */
+         if (svga_type != 0) return 3;
+
 	 video_type = 5;			/* assume video=vga */
 	 if (strcmp(value,"egamono") == 0) {
 	    video_type = 3;
 	    mode7text = 1;
 	    }
-	 else if (charval == 'h') {             /* video = hgc */
+	 else if (strcmp(value,"hgc")) {             /* video = hgc */
 	    video_type = 1;
 	    mode7text = 1;
 	    }
-	 else if (charval == 'e')               /* video = ega */
+	 else if (strcmp(value,"ega"))               /* video = ega */
 	    video_type = 3;
-	 else if (charval == 'c')               /* video = cga */
+	 else if (strcmp(value,"cga"))               /* video = cga */
 	    video_type = 2;
-	 else if (charval == 'm')               /* video = mcga */
+	 else if (strcmp(value,"mcga"))              /* video = mcga */
 	    video_type = 4;
+	 else if (strcmp(value,"vga"))               /* video = vga */
+	    video_type = 5;
+	 else
+	    goto badarg;
 	 return 3;
 	 }
 
@@ -688,8 +743,13 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	    iit = 1;
 	    return 0;
 	    }
+	 if (strcmp(value,"noiit") == 0) {
+	    iit = -2;
+	    return 0;
+	    }
 	 if (strcmp(value,"387") == 0) {
 	    fpu = 387;
+	    iit = -2;
 	    return 0;
 	    }
 	 goto badarg;
@@ -810,6 +870,49 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       return 0;
       }
 
+   if(strcmp(variable, "solidcore") == 0) {
+      SolidCore = yesnoval;
+      return(0);
+      }
+
+   if(strcmp(variable, "antialias") == 0) {
+      if(numval < 0 || numval > 8)
+	 goto badarg;
+      AntiAliasing = numval;
+      return(0);
+      }
+
+   if(strcmp(variable, "transparent3d") == 0) {
+      Transparent3D = yesnoval;
+      return(0);
+      }
+
+   if(strcmp(variable, "corecolor") == 0) {
+      if(floatparms != totparms || totparms != 3)
+	 goto badarg;
+      CoreRed	= (int)floatval[0];
+      CoreGreen = (int)floatval[1];
+      CoreBlue	= (int)floatval[2];
+      return(0);
+      }
+
+   if(strcmp(variable, "mdcorners") == 0) {
+      if(floatparms != totparms || totparms < 2 || totparms > 4)
+	 goto badarg;
+      zzmin = floatval[0];
+      zzmax = floatval[1];
+      if(totparms >= 3)
+	 ttmin = floatval[2];
+      if(totparms == 4)
+	 ttmax = floatval[3];
+      return(0);
+      }
+
+   if(strcmp(variable, "numframes") == 0) {
+      NumFrames = numval;
+      return(0);
+      }
+
    if (strcmp(variable,"autokeyname") == 0) {   /* autokeyname=? */
       strcpy(autoname,value);
       return 0;
@@ -838,11 +941,13 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       }
 
    if (strcmp(variable,"inside") == 0 ) {       /* inside=? */
-      if(strcmp(value,"bof60")==0)
+      if(strcmp(value,s_zmag)==0)
+	 inside = -59;
+      else if(strcmp(value,s_bof60)==0)
 	 inside = -60;
-      else if(strcmp(value,"bof61")==0)
+      else if(strcmp(value,s_bof61)==0)
 	 inside = -61;
-      else if(strcmp(value,"maxiter")==0)
+      else if(strcmp(value,s_maxiter)==0)
 	 inside = -1;
       else if(numval == NONNUMERIC)
 	 goto badarg;
@@ -868,12 +973,25 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       }
 
    if (strcmp(variable,"outside") == 0 ) {      /* outside=? */
-      if(numval < -1 || numval > 255) goto badarg;
-      outside = numval;
+      if(strcmp(value,s_iter)==0)
+	 outside = -1;
+      if(strcmp(value,s_real)==0)
+	 outside = -2;
+      else if(strcmp(value,s_imag)==0)
+	 outside = -3;
+      else if(strcmp(value,s_mult)==0)
+	 outside = -4;
+      else if(strcmp(value,s_sum)==0)
+	 outside = -5;
+
+      else if(numval == NONNUMERIC)
+	 goto badarg;
+      else if(numval < -5 || numval > 255) goto badarg;
+      else outside = numval;
       return 1;
       }
 
-   if (strcmp(variable,"maxiter") == 0) {       /* maxiter=? */
+   if (strcmp(variable,s_maxiter) == 0) {       /* maxiter=? */
       if (numval < 2 || numval > 32767) goto badarg;
       maxit = numval;
       return 1;
@@ -1166,7 +1284,9 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	    case '2':  l |= 4;  break;
 	    }
 	 }
+#ifndef WINFRACT
       _bios_serialcom(0,numval-1,l);
+#endif
       return 0;
       }
 
@@ -1549,8 +1669,14 @@ static int parse_colors(char *value)
    int i,j,k;
    if (*value == '@') {
       if (strlen(value) > 80 || ValidateLuts(&value[1]) != 0) goto badcolor;
-      strcpy(colorfile,&value[1]);
-      colorstate = 2;
+      if (display3d) {
+        mapset = 1;
+        strcpy(MAP_name,&value[1]);
+        }
+      else {
+        strcpy(colorfile,&value[1]);
+        colorstate = 2;
+        }
       }
    else {
       int smooth;
@@ -1575,11 +1701,10 @@ static int parse_colors(char *value)
 	       else			k -= ('_'-36);
 	       dacbox[i][j] = k;
 	       if (smooth) {
-		  double step;
-		  int diff,start,spread,cnum,dir;
+		  int start,spread,cnum;
 		  start = i - (spread = smooth + 1);
 		  cnum = 0;
-		  if ((diff = k - (int)dacbox[start][j]) == 0) {
+		  if ((k - (int)dacbox[start][j]) == 0) {
 		     while (++cnum < spread)
 			dacbox[start+cnum][j] = k;
 		     }

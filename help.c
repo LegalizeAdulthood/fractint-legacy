@@ -1537,8 +1537,13 @@ int init_help(void)
 	 {
 	 if ( (help_file = open(path, O_RDONLY|O_BINARY)) != -1 )
 	    {
-	    lseek(help_file, -10L, SEEK_END);
-	    read(help_file, (char *)&hs, 10);
+	    long help_offset;
+	    for (help_offset = -10L; help_offset >= -128L; help_offset--)
+	       {
+	       lseek(help_file, help_offset, SEEK_END);
+	       read(help_file, (char *)&hs, 10);
+	       if (hs.sig == HELP_SIG)  break;
+	       }
 
 	    if ( hs.sig != HELP_SIG )
 	       {

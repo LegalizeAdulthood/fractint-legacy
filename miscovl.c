@@ -22,6 +22,7 @@ int  select_video_mode(int);
 
 static void write_batch_parms(FILE *,char *,int);
 static void put_parm(char *parm,...);
+
 static void put_parm_line(void);
 static int getprec(double,double,double);
 static void put_float(int,double,int);
@@ -136,6 +137,14 @@ int  fullscreen_choice(
 
 void miscovl_overlay() { }	/* for restore_active_ovly */
 
+extern char s_real[];
+extern char s_imag[];
+extern char s_mult[];
+extern char s_sum[];
+extern char s_zmag[];
+extern char s_bof60[];
+extern char s_bof61[];
+extern char s_maxiter[];
 
 static FILE *parmfile;
 
@@ -406,16 +415,30 @@ static void write_batch_parms(FILE *batch,char *colorinf,int maxcolor)
       if (inside != 1) {
 	 put_parm(" inside=");
 	 if (inside == -1)
-	    put_parm( "maxiter");
+	    put_parm( s_maxiter);
+	 else if (inside == -59)
+	    put_parm(s_zmag);
 	 else if (inside == -60)
-	    put_parm("bof60");
+	    put_parm(s_bof60);
 	 else if (inside == -61)
-	    put_parm("bof61");
+	    put_parm(s_bof61);
 	 else
 	    put_parm( "%d",inside);
 	 }
       if (outside != -1)
-	 put_parm(" outside=%d",outside);
+      {
+	 put_parm(" outside=");
+	 if (outside == -2)
+	    put_parm(s_real);
+	 else if (outside == -3)
+	    put_parm(s_imag);
+	 else if (outside == -4)
+	    put_parm(s_mult);
+	 else if (outside == -5)
+	    put_parm(s_sum);
+	 else
+	    put_parm( "%d",outside);
+	  }
 
       if(LogFlag) {
 	 put_parm( " logmap=");
@@ -1101,4 +1124,5 @@ static void update_fractint_cfg()
    unlink(cfgname);	    /* success assumed on these lines	    */
    rename(outname,cfgname); /* since we checked earlier with access */
 }
+
 
