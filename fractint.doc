@@ -1,9 +1,17 @@
 
-                      Fractint Version 12.0
+                      Fractint Version 13.0
+
+ *************************************************************************
+ *            WARNING          WARNING             WARNING               *
+ *              >> F1, not 'h', is now the HELP key!!! <<                *
+ *      For Help at any time, press the F1 key                           *
+ *      For EGA 320x200x16 video mode, press the F9 (not F1) key         *
+ *      For EGA 640x200x16 video mode, press the CF4 (not F9) key        *
+ *************************************************************************
 
 CONTENTS
 
-New Features in Version 12.0
+New Features in Version 13.0
 
 Introduction
 
@@ -32,9 +40,14 @@ Introduction
      Unity
      Bifurcation
      Lorenz, Lorenz3d
+     Rossler
+     Henon
+     Pickover
+     Gingerbreadman
      Test Stub
      Formula
      Julibrots
+     Diffusion
 
     Doodads, Bells and Whistles
      "3D" Images
@@ -68,32 +81,73 @@ Appendix A: Mathematics of the Fractal Types
 Appendix B: Stone Soup with Pixels
 Appendix C: Revision History
 Appendix D: Bibliography
+Appendix E: Other Recommended Fractal Programs
 
 
+NEW FEATURES IN VERSION 13.0
 
-NEW FEATURES IN VERSION 12.0
+F1 is now the HELP KEY!!!
+  Use F1 for help
+  Use F9 for EGA 320x200x16 video mode
+  Use CF4 for EGA 640x200x16 mode (if anybody uses that mode)
 
-New SuperVGA Autodetecting and VESA Video modes (you tell us the
-  resolution you want, and we'll figure out how to do it)
-New Full-Screen Entry for most prompting
-New Fractal formula interpreter ('type=formula') - roll your own
-  fractals without using a "C" compiler!
-New 'Julibrot' fractal type
-Added floating point option to all remaining fractal types.
-Real (funny glasses) 3D - Now with "real-time" lorenz3D!!
-Non-Destructive <TAB> - Check out what your fractal parameters are
-  without stopping the generation of a fractal image
-New Cross-Hair mode for changing individual palette colors (VGA only)
-Zooming beyond the limits of Integer algorithms (with automatic
-  switchover to a floating-point algorithm when you zoom in "too far")
-New 'inside=bof60', 'inside=bof61' ("Beauty of Fractals, Page nn") options
-New starmap ('a' - for astrology? astronomy?) transformation option
-Restrictions on the options available when using Expanded Memory
-  "Disk/RAM" video mode have been removed 
-And a lot of other nice little clean-up features that we've already
-  forgotten that we've added...
-Added capability to create 3D projection images (just barely) for people
-  with 2 or 4 color video boards.
+Speed!!  More speed!!  We've gotten faster!!
+
+Super-Solid-guessing (three or more passes) from Pieter Branderhorst
+  (replaces the old solid-guessing mode)
+
+New Boundary Tracing option from David Guenther
+  ("fractint passes=btm", or use the new 'x' options screen)
+
+New "outside=nnn" option sets all points not "inside" the fractal
+  to color "nnn" (and generates a two-color image).
+
+New 'x' option from the main menu brings up a full-screen menu of many
+  popular options and toggle switches
+
+New "Speed Key" feature for fractal type selection (either use the
+  cursor keys for point-and-shoot, or just start typing the name of
+  your favorite fractal type)
+
+New "Attractor" fractals (Henon, Rossler, Pickover, Gingerbread)
+
+New diffusion fractal type by Adrian Mariano
+
+New "type=formula" formulas from Scott Taylor and Lee H. Skinner.
+
+New "sound=" options for attractor fractals
+  Sound=x  plays speaker tones according to the 'x' attractor value
+  Sound=y  plays speaker tones according to the 'y' attractor value
+  Sound=z  plays speaker tones according to the 'z' attractor value
+  (These options are best invoked with the floating-point algorithm
+  flag set.)
+ 
+New "hertz=" option for adjusting the "sound=x/y/z" output.
+
+Printer support for color printers (printer=color) from Kurt Sowa
+
+New video modes:
+  Trident 4000 and Oak Technologies SuperVGA support from John Bridges
+  Improved 8514/A support (the zoom-box keeps up with the cursor keys now!)
+  Tandy 1000 640x200x16 mode from Brian Corbino (which does not, as yet,
+     work with the F1(help) and TAB functions)
+
+The Julibrot fractal type and the Starmap option now automatically
+  verify that they have been selected with a 256-color palette, and
+  search for, and use, the appropriate GLASSESn.MAP or ALTERN.MAP
+  palette map when invoked.  *You* were supposed to be doing that
+  manually all along, but *you* probably never read the docs, huh?
+
+Bug Fixes for Version 12.0:
+
+  TAB key now works after R(estore) commands
+
+  PS/2 Model 30 (MCGA) adapters should be able to select 320x200x256
+    mode again (we think)
+ 
+  Everex video adapters should work with the Autodetect modes again
+    (we think)
+
 
 INTRODUCTION
 
@@ -174,7 +228,7 @@ details.
 
                       Plotting Commands
 
-<H> or <?>
+<F1> or <?>
 Bring up a help screen. The Escape key brings you back.
 
 Function keys & various combinations (see help screens)
@@ -225,16 +279,28 @@ to see anything interesting.
 < or >
 Lower or raise the maximum iteration count (the number of times the
 program carries out its basic calculation before assigning colors). See
-Sec. 2.
+Sec. 2.  (Note: the maximum iteration count can now also be selected
+explicitly using the "X" options screen.)
 
-<1>, <2,> or <G>
+<1>, <2>, or <G>
 Select single-pass, dual-pass, or solid-guessing (default) mode, then
-redraw the screen. Single-pass mode draws the screen pixel by pixel;
-dual-pass generates a "coarse" screen first as a preview using 2x2-
+redraw the screen. Single-pass mode draws the screen pixel by pixel.
+Dual-pass generates a "coarse" screen first as a preview using 2x2-
 pixel boxes, and then generates the rest of the dots with a second
-pass. Solid-guessing performs the same first coarse pass, and then
-performs the second pass only for blocks that aren't surrounded by a
-single color. It can guess wrong, but it sure guesses quickly!
+pass. Solid-guessing performs from two to four visible passes - more
+passes in higher resolution video modes. Its first visible pass is
+actually two passes - one pixel per 4x4, 8x8, or 16x16 pixel box
+(depending on number of passes) is generated, and the guessing logic
+is applied to fill in the blocks at the next level (2x2, 4x4, or 8x8).
+Subsequent passes fill in the display at the next finer resolution,
+skipping blocks which are surrounded by the same color. Solid-guessing
+can guess wrong, but it sure guesses quickly!  Note: these options,
+along with the Boundary-Tracing alternative, can now also be selected
+using the "X" options screen.  Boundary Tracing, which only works
+with fractal types (such as the Mandelbrot set, but not the Newton
+type) that do not contain "islands" of colors, finds a color "boundary",
+traces it around the screen, and then "blits" in the color over the
+enclosed area.
 
 <B>
 Create a batch file, FRABATCH.BAT, that will start FRACTINT with the
@@ -245,6 +311,15 @@ FRABATCH.BAT already exists, a new line is appended to it.
 Select a fractal type. Move the cursor to your choice and hit <Enter>.
 You will be prompted for any parameters that type may require.
 
+<X>
+Select any number of eXtended options. Brings up a full-screen menu of
+options, any number of which you can change at will.  This list currently
+includes the F(loating point algorithm) toggle, the image generation
+algorithm (passes = 1, 2, solid-guessing, or boundary tracing), the
+"maxiter=" iteration maximum, the "inside=" and "outside=" colors, the
+Logarithmic Palettes option, the Biomorph and Decomposition
+algorithms, the "sound=" option, and the "warn=" option.
+
 <E>
 Call up an editor that modifies, saves and restores various parameters.
 Currently you can change the coefficients used in plotting the Barnsley 
@@ -254,7 +329,8 @@ red/blue 3D.
 
 <F>
 Toggles the use of floating-point algorithms. Their use is shown on the
-<Tab> status screen. 
+<Tab> status screen.   (Note: the floating point algorithms option can
+now also be turned on and off using the "X" options screen.)
 
 <I>
 Apply the inversion process (Sec. 3) and redraw the screen. Not appli-
@@ -262,13 +338,16 @@ cable to all fractal types.
 
 <N> or <L>
 Select normal (the default) or logarithmic palette mapping and redraw
-the screen. (See Sec. 3 for details.)
+the screen. (See Sec. 3 for details.)   (Note: the Logarithmic palette
+option can now also be turned on and off using the "X" options screen.)
 
 <Q>
 Apply the quaternary or binary decomposition coloring scheme (see Sec.
 3) and redraw the screen. Not applicable to all fractal types.
 (Note that the decomposition scheme can now select 8, 16, 32, 64, 128,
 and 256-way decomposition, but we're stuck with <Q> for Quaternary.)
+(Note: the Decomposition option can now also be turned on and off
+using the "X" options screen.)
 
 <O> (the letter, not the number)
 If pressed while an image is being generated, toggle the display of
@@ -320,16 +399,16 @@ Cursor up/down
 Increase/decrease the cycling speed. High speeds may cause a harmless
 flicker at the top of the screen.
 
-<F1> through <F10>
+<F2> through <F10>
 Switches from simple rotation to color selection using randomly-gener-
-ated color bands of short (F1) to long (F10) duration.
+ated color bands of short (F2) to long (F10) duration.
 
 <1> through <9>
 Causes the screen to be updated every 'n' color cycles (the default is
 1). Handy for slower computers.
 
 <Enter>
-Randomly selects a function key (F1 through F10) and then updates ALL
+Randomly selects a function key (F2 through F10) and then updates ALL
 the screen colors prior to displaying them for instant, random colors.
 Hit this over and over again (we do).
 
@@ -432,7 +511,8 @@ moving down the screen's edges. The default filename is FRACT001.FRA;
 multiple saves in a session are automatically incremented 002, 003...
 If you have files left over from previous sessions and want the program
 to keep incrementing rather than starting at 001 again and overwriting,
-see Sec. 3 for the "WARN=yes" argument.
+see Sec. 3 for the "WARN=yes" argument (or set it with the "X" option
+screen).
 
 <R>
 Restore an image previously saved with <S>, or a .GIF image (See Sec.
@@ -986,7 +1066,8 @@ are the real and imaginary parts of f(z). The variable c is
 sometimes called lambda for historical reasons.
 
 
-PETERSON VARIATIONS (type=marksmandel, marksjulia, mandellambda)
+PETERSON VARIATIONS (type=marksmandel, marksjulia, mandellambda, 
+                          cmplxmarksmand, cmplxmarksjul)
 
 These fractal types are contributions of Mark Peterson. MarksMandel and
 MarksJulia are two families of fractal types that are linked in the
@@ -999,10 +1080,10 @@ with the spacebar toggle. The basic equation for these sets is:
 where Z(0) = 0.0 and lambda is (x + iy) for MarksMandel. For
 MarksJulia, Z(0) = (x + iy) and lambda is a constant (taken from the
 MarksMandel spacebar toggle, if that method is used). The exponent is a
-positive integer. We call these "families" because each value of the
-exponent yields a different MarksMandel set, which turns out to be a
-kinda-polygon with (exponent+1) sides. The exponent value is the third
-parameter, after the "initialization warping" values. Typically one
+positive integer or a complex number. We call these "families" because 
+each value of the exponent yields a different MarksMandel set, which turns 
+out to be a kinda-polygon with (exponent+1) sides. The exponent value is the 
+third parameter, after the "initialization warping" values. Typically one
 would use null warping values, and specify the exponent with something
 like "PARAMS=0/0/4", which creates an unwarped, pentagonal MarksMandel
 set.
@@ -1090,16 +1171,33 @@ wings" - the official term is "sensitive dependence on initial conditions")
 eventually reduces the best weather forecast to rubble.
 
 The lorenz attractor is the plot of the orbit of a dynamic system 
-consisting of three non-linear differential equations.  The orbit 
-is made up of two spirals at an angle to each other in three 
-dimensions. We change the orbit color as time goes on to add a little 
+consisting of three first order non-linear differential equations.  
+The solution to the differential equation is vector-valued function of
+one variable.  If you think of the variable as time, the solution traces an
+orbit.  The orbit is made up of two spirals at an angle to each other in 
+three dimensions. We change the orbit color as time goes on to add a little 
 dazzle to the image.  The equations are:
 
-             x = x + (-a * x * dt) + (a * y * dt)
-             y = y + (b * x * dt) - (y * dt) - (z * x * dt)
-             z = z + (-c * z * dt) + (x * y * dt)
+                dx/dt = -a*x + a*y
+                dy/dt =  b*x - y   -z*x
+                dz/dt = -c*z + x*y
+
+We solve these differential equations approximately using a method known as
+the first order taylor series.  Calculus teachers everywhere will kill us
+for saying this, but you treat the notation for the derivative dx/dt as though
+it really is a fraction, with "dx" the small change in x that happens when the
+time changes "dt".  So multiply through the above equations by dt, and you
+will have the change in the orbit for a small time step. We add these changes
+to the old vector to get the new vector after one step. This gives us:
+
+             xnew = x + (-a*x*dt) + (a*y*dt)
+             ynew = y + (b*x*dt) - (y*dt) - (z*x*dt)
+             znew = z + (-c*z*dt) + (x*y*dt)
 
              (default values: dt = .02, a = 5, b = 15, c = 1)
+
+We connect the successive points with a line, project the resulting 3D orbit 
+onto the screen, and voila! The Lorenz Attractor!
 
 We have added two versions of the Lorenz Attractor.  "Type=lorenz"
 is the Lorenz attractor as seen in everyday 2D.  "Type=lorenz3d"
@@ -1114,8 +1212,9 @@ Hint: the default perspective values (x = 60, y = 30, z = 0) aren't the
 best ones to use for fun Lorenz Attractor viewing.  Experiment a bit - 
 start with rotation values of 0/0/0 and then change to 20/0/0 and 40/0/0 
 to see the attractor from different angles.- and while you're at it, use a
-non-zero perspective point (try 100 and see what happens when you get
-*inside* the Lorenz orbits.  Here comes one - Duck!)
+non-zero perspective point Try 100 and see what happens when you get
+*inside* the Lorenz orbits.  Here comes one - Duck!  While you are at it,
+turn on the sound with the "X". This way you'll at least hear it coming!
 
 Different Lorenz attractors can be created using different 
 parameters. Four parameters are used. The first is the time-step (dt). 
@@ -1125,6 +1224,72 @@ connect successive orbit values. The 2nd, third, and fourth parameters
 are cofficients used in the differential equation (a, b, and c). The 
 default values are 5, 15, and 1. Try changing these a little at a 
 time to see the result.
+
+
+ROSSLER ATTRACTORS (type=rossler3D)
+
+This fractal is named after the German Otto Rossler, a non-practicing medical 
+doctor who approached chaos with a bemusedly philosophical attitude.  He would 
+see strange attractors as philosophical objects.  His fractal namesake looks 
+like a band of ribbon with a fold in it. All we can say is we used the same 
+calculus-teacher-defeating trick of multiplying the equations by "dt" to 
+solve the differential equation and generate the orbit.  This time we will 
+skip straight to the orbit generator -if you followed what we did above with 
+Lorenz you can easily reverse engineer the differential equations.
+
+             xnew = x - y*dt -   z*dt
+             ynew = y + x*dt + a*y*dt 
+             znew = z + b*dt + x*z*dt - c*z*dt
+
+Default parameters are dt = .04, a = .2, b = .2, c = 5.7
+
+
+HENON ATTRACTORS (type=henon)
+
+Michel Henon was an astronomer at Nice observatory in southern France.  He
+came to the subject of fractals via investigations of the orbits of 
+astronomical objects.  The strange attractor most often linked with Henon's
+name comes not from a differential equation, but from the world of discrete
+mathematics - difference equations. The Henon map is an example of a
+very simple dynamic system that exhibits strange behavior. The orbit traces 
+out a characteristic banana shape, but on close inspection, the shape is made
+up of thicker and thinner parts.  Upon magnification, the thicker bands
+resolve to still other thick and thin components.  And so it goes forever!  
+The equations that generate this strange pattern perform the mathematical
+equivalent of repeated stretching and folding, over and over again.
+
+             xnew =  1 + y - a*x*x
+             ynew =  b*x
+
+The default parameters are a=1.4 and b=.3.
+
+
+PICKOVER ATTRACTORS (type=pickover)
+
+Clifford A. Pickover of the IBM Thomas J. Watson Research center is such
+a creative source for fractals that we attach his name to this one only 
+with great trepidation.  Probably tomorrow he'll come up with another one
+and we'll be back to square one trying to figure out a name!
+
+This one is the three dimensional orbit defined by:
+
+             xnew = sin(a*y) - z*cos(b*x)
+             ynew = z*sin(c*x) - cos(d*y)
+             znew = sin(x)
+
+Default parameters are: a = 2.24, b = .43, c = -.65, d = -2.43
+
+
+GINGERBREADMAN FRACTAL (type=gingerbread)
+
+This simple fractal is a charming example stolen from "Science of Fractal
+Images", p. 149.  Look closely, and you will see that the gingerbreadman
+contains infinitely many copies of himself at all different scales.
+
+             xnew = 1 - y + |x|
+             ynew = x
+
+There are no parameters.
 
 
 TEST (type=test)
@@ -1196,7 +1361,8 @@ complex with an imaginary value of zero.
           Precedence
           --------------------------------------------
           1              sin(), cos(), sinh(), cosh(), sqr(),
-                         log(), exp(), abs()
+                         log(), exp(), abs(), conj(), real(),
+                         imag()
           2              - (negation), ^ (power)
           3              * (multiplication), / (division)
           4              + (addition), - (subtraction)
@@ -1323,9 +1489,30 @@ is used to compensate for this fact.  If the image appears reddish
 through the glasses raise this value until the image appears to be in
 shades of grey.  If it appears bluish lower the ratio.
 
-Currently the Julibrots can only be shown in 256 red/blue colors for
-viewing through red/blue funny glasses.  Be sure to select the proper
-map file.
+Julibrots can only be shown in 256 red/blue colors for viewing in either
+stero-graphic (red/blue funny glasses) or grey-scaled.  FRACTINT
+automatically loads either GLASSES1.MAP or ALTERN.MAP as appropriate.
+
+DIFFUSION LIMITED AGGREGATION (type=diffusion)
+
+This type begins with a single point in the center of the screen.  Subsequent 
+points move around randomly until coming into contact with the first point, at 
+which time their locations are fixed and they are colored randomly.  This 
+process repeats until the fractals reaches the edge of the screen.  Use the 
+show orbits function to see the points' random motion.
+
+One unfortunate problem is that on a large screen, this process will tend to 
+take eons.  To speed things up, the points are restricted to a box around the 
+initial point.  The first and only parameter to diffusion contains the size of 
+the border between the fractal and the edge of the box.  If you make this 
+number small, the fractal will look more solid and will be generated more 
+quickly.
+
+Diffusion was inspired by a Scientific American article a couple of years back 
+which includes actual pictures of real physical phenomena that behave like 
+this.
+
+Thanks to Adrian Mariano for providing the diffusion code and documentation. 
 
 
 "3D" IMAGES
@@ -1933,7 +2120,8 @@ the program will create a bell curve based on the value of ratio of
 Dim stars to bright stars.  After calculating the bell curve the curve
 is folded in half and the peak used to represent the number of dim stars.
 
-Starfields are calculated for proper display using the ALTERN.MAP.
+Starfields can only be shown in 256 colors.  FRACTINT will automatically
+try to load ALTERN.MAP and abort if the map file cannot be found.
 
 
 3. Command-Line Arguments, Batch Mode, and SSTOOLS.INI
@@ -1955,7 +2143,12 @@ individual argument may NOT include spaces). Either upper or lower
 case may be used, and arguments can be in any order. To make your file 
 more readable, you may replace the spaces with Returns.
 
-Argument
+Some terminology:
+COMMAND=nnn               enter a number in place of "nnn"
+COMMAND=[filename]        you supply filename
+COMMAND=yes|no|whatever   means choose one of "yes", "no", and "whatever" 
+COMMAND=1st[/2nd[/3rd]] - the slash-separated parameters "2nd" and
+                          "3rd" are optional 
 
 FILENAME=[name]
 Causes FRACTINT to read the named file, which must either have been 
@@ -1973,14 +2166,27 @@ resumes reading its own command line -- i.e., "FRACTINT MAXITER=250
 line, as FRACTINT is not clever enough to deal with multiple 
 indirection.
 
-PASSES=1, 2, or g
-Selects single-pass, dual-pass, or solid-Guessing mode. Again, the 
-first two take the same total time to finish the display, while solid-
-guessing is faster at the risk of errors for a few pixels.
+PASSES=1|2|guess|btm
+Selects single-pass, dual-pass, solid-Guessing mode, or the Boundary
+Tracing algorithm.  Again, the first two take the same total time to
+finish the display, while solid-guessing is faster at the risk of
+errors for a few pixels.  Boundary tracing is sometimes faster, 
+sometimes slower, and doesn't work for some fractal types at all
+(like the Newton fractals).
 
-INSIDE=nnn
+INSIDE=nnn|bof60|bof61
 Set the color of the interior: for example, "INSIDE=0" makes the M-set 
-a stylish basic black. A setting of -1 makes inside=maxiter.
+a stylish basic black. A setting of -1 makes inside=maxiter. We have 
+added two more options, inside=bof61 and inside=bof62, which reveal
+more of the hidden structure inside the "lake".  These options are named
+after the figures on pages 61 and 62 of "Beauty of Fractals". See appendix
+for a brilliant explanation of what these do!
+
+OUTSIDE=nnn
+Set the color of the exterior: for example, "OUTSIDE=1" makes all  
+points not INSIDE the fractal set to color 1 (blue). Note that
+defining an OUTSIDE color forces any image to be a two-color one:
+either a point is INSIDE the set, or it's OUTSIDE it.
 
 MAXITER=nnn
 Reset the iteration maximum (the number of iterations at which the 
@@ -2001,7 +2207,7 @@ Handy for batch runs. (Example: VIDEO=F4 for IBM 16-color VGA.)
 screens inside Fractint.  We don't duplicate them here only because 
 they change so darned often!)
 
-ASKVIDEO=[yes/no]
+ASKVIDEO=yes|no
 If "no," this eliminates the prompt asking you if a file to be 
 restored is OK for your current video hardware.
 
@@ -2015,7 +2221,7 @@ SAVENAME=[name]
 Set the filename to use when you <S>ave a screen. The default filename 
 is FRACT001. The .FRA extension is optional (Example: SAVENAME=myfile)
 
-WARN=[yes/no]
+WARN=yes|no
 Sets the savename warning flag (default is 'no'). If 'yes', saved 
 files will NOT over-write existing files from previous sessions; 
 instead the automatic incrementing of FRACTnnn.FRA will continue.
@@ -2038,7 +2244,7 @@ Begin with these coordinates as the range of x and y coordinates,
 rather than the default values of (for type=mandel) -2.0/2.0/-1.5/1.5. 
 (Example: corners=-0.739/-0.736/0.288/0.291).
 
-POTENTIAL=maxcolor [/slope[/modulus[/potfile]]]
+POTENTIAL=maxcolor[/slope[/modulus[/potfile]]]
 Establishes the "continuous potential" coloring mode for all fractal 
 types except plasma clouds, IFS and IFS3D. The four arguments define 
 the maximum color value, the slope of the potential curve, the modulus 
@@ -2055,17 +2261,17 @@ A detailed discussion of why a TRULY random number may be impossible
 to define, let alone generate, will have to wait for "FRACTINT: The 3-
 MB Doc File."
 
-DECOMP=2/4/8/16/32/64/128/256
+DECOMP=2|4|8|16|32|64|128|256
 Invokes the corresponding decomposition coloring scheme.
 
 LOGMAP=yes Switches the default color palette-map selection from 
 normal (continu-ous) to logarithmic.
 
-IFS=filename
+IFS=[filename]
 Use the IFS coded values in [filename] to generate Barnsley IFS 
 fractal images. The default extension is .IFS. See Sec. 2 for details.
 
-IFS3D=filename
+IFS3D=[filename]
 Use the IFS coded values in [filename] to generate Barnsley IFS3D 
 fractals.
 
@@ -2129,8 +2335,9 @@ command line to do so.
 PRINTER=type[/resolution[/port#]]
 Defines your printer setup. Currently legal printer types (only the
 first two characters are needed): [HP] LaserJet, [EP]son-compatible,
-and [IB]M-compatible (which is identical to the Epson driver at the
-moment). The default printer type is the Epson/IBM. Resolution is in
+[IB]M-compatible (which is identical to the Epson driver at the
+moment), and [CO]lor (equivalent to the Star Micronics printer).
+The default printer type is the Epson/IBM. Resolution is in
 DPI, and currently available values are 60, 120, and 240 for the
 Epson/IBM and 75, 150, and 300 for the LaserJet (the default value is
 the lowest resolution). Legal printer port values are 1, 2, and 3 (for
@@ -2143,7 +2350,7 @@ Sets the speed of color cycling. Technically, the number of DAC regis-
 ters updated during a single vertical refresh cycle. Legal values are 1
 - 256, default is 55.
 
-MAP=filename
+MAP=[filename]
 Reads in a replacement color map from [filename]. This map replaces the
 default video color map of your VGA or TARGA card. The file must be in
 the format described in Sec. 4. The difference between this argument
@@ -2159,12 +2366,12 @@ and/or hard disk.  This is useful where you may *technically* have
 enough RAM for a particular video mode, but you may want to use it 
 later for something else (like shelling to DOS).
 
-FORMULAFILE=formulafilename
+FORMULAFILE=[formulafilename]
 Lets you specify the default formula file for type=formula fractals
 (the default is FRACTINT.FRM).  Handy if you want to generate one
 of these fractal types in batch mode.
 
-FORMULANAME=formulaname
+FORMULANAME=[formulaname]
 Lets you specify the default formula name for type=formula fractals
 (the default is no formula at all).  Required if you want to generate
 one of these fractal types in batch mode, as this is the only way to
@@ -2174,14 +2381,23 @@ specify a formula name in that case.
 As usual, indicates the rest of the command line (or the rest of the
 individual line inside command files) is a comment.
 
-SOUND=off
+SOUND=off|x|y|z
 We're all MUCH too busy to waste time with FRACTINT at work, and no
-doubt you are too, so this is included only for use at home, to avoid
+doubt you are too, so "sound=off" included only for use at home, to avoid
 waking the kids or your Significant Other, late at night. (By the way,
 didn't you tell yourself "just one more zoom on LambdaSine" an hour
 ago?) Suggestions for a "boss" hot-key will be cheerfully ignored, as
 this sucker is getting big enough without including a spreadsheet
-screen too. Grow up and get a task-switcher.
+screen too. The "sound=x/y/x" options are for the "attractor"
+fractals, like the Lorenz fractals - they play with the sound on your
+PC speaker as they are generating an image, based on the X or Y or Z
+co-ordinate they are displaying at the moment.  At the moment, 
+"sound=x" (or y or z) really doesn't work very well when using an
+integer algorithm - try it with the floating-point toggle set, instead.
+
+HERTZ=nnn
+Adjusts the sound produced by the "sound=x/y/z" option.  Legal values
+are 200 through 10000.
 
 
                            BATCH MODE
@@ -2412,7 +2628,7 @@ NOTES ON MODES, "STANDARD" AND OTHERWISE
 FRACTINT uses a video adapter table in the "C" program for everything
 it needs to know about any particular adapter/mode combination. This
 table can contain information for up to 98 adapter/mode combinations,
-and is automatically tied to 84 keys (F1-F10, their Control/ Shift/Alt
+and is automatically tied to 84 keys (F2-F10, their Control/ Shift/Alt
 variants, and many Alt-x keypad combos) when the program is running.
 The table entries, and the function keys they are tied to, are dis-
 played as part of the help screens.
@@ -2921,12 +3137,15 @@ Sierpinski                  Z(n+1) = (2x, 2y - 1) if y > .5
 MandelLambda, Lambda        Z(n+1) = (C) * (Z(n)^2) + C
 MarksMandel, MarksJulia     Z(n+1) = (C^(Period-1)) * (Z(n)^2) + C
                             ("Period" is a parameter)
+Cmplxmarksmand,Cmplxmarksjul Same as MarksMandel and MarksJulia except period    
+                            parameter is complex rather than real
 Unity                       (see the Unity section for details)
 ifs, ifs3D                  (see the IFS section for details)
 Mandel4, Julia4             Z(n+1) = Z(n)^4 + C
 Test                        (as distributed, as simple Mandelbrot fractal)
 Mansinzsqrd, Julsinzsqrd    Z(n+1) = Z(n)^2 + sin(Z(n)) + C
 Manzpower, Julzpower        Z(n+1) = Z(n)^M + C (M is a parameter)
+Mandel4/Julia4              Special case of manzpower and julzpower (M=4)
 Manzzpwr, Julzzpwr          Z(n+1) = Z(n)^Z(n) + Z(n)^M + C
 Mansinexp, Julsinexp        Z(n+1) = sin(Z(n)) + e^(Z(n)) + C
 popcorn                     Z(n+1) = x(n+1) + i * y(n+1), where
@@ -2936,15 +3155,65 @@ demm, demj                  (Mandelbrot, Julia fractals calculated and
                             colored using the "Distance Estimator" method
 Bifurcation                 (see the Bifurcation section for details)
 Lorenz, Lorenz3d            Lorenz Attractor - orbits of differential
-                            equation
-                            x = x + (-a * x * dt) + (a * y * dt)
-                            y = y + (b * x * dt) - (y * dt) - (z * x * dt)
-                            z = z + (-c * z * dt) + (x * y * dt)
+                            equation:
+                            dx/dt = -a*x + a*y
+                            dy/dt =  b*x - y   -z*x
+                            dz/dt = -c*z + x*y
+                            Solution generated by 1st order Taylor series:
+                            xnew = x + (-a*x*dt) + (a*y*dt)
+                            ynew = y + (b*x*dt) - (y*dt) - (z*x*dt)
+                            znew = z + (-c*z*dt) + (x*y*dt)
                             (defaults: dt = .02, a = 5, b = 15, c = 1)
                             (Lorenz3D is the Lorenz Attractor with the
                             addition of 3D perspective transformations
                             as specified by the IFS <E>ditor's
                             transformation option)
+Rossler3d                   Orbit is solution to differential equation:
+                            dx/dt = -y -z
+                            dy/dt = x + a*y
+                            dz/dt = b + x*z - c*z
+                            Solution via first order Taylor series:
+                            xnew = x - y*dt -   z*dt
+                            ynew = y + x*dt + a*y*dt 
+                            znew = z + b*dt + x*z*dt - c*z*dt
+                            Default params are dt= .04, a= .2, b= .2, c= 5.7
+Henon                       Orbit generated by:
+                            xnew =  1 + y - a*x*x
+                            ynew =  b*x
+                            The default parameters are a=1.4 and b=.3.
+Pickover                    Orbit generated by:
+                            xnew = sin(a*y) - z*cos(b*x)
+                            ynew = z*sin(c*x) - cos(d*y)
+                            znew = sin(x)
+                            Default params are: a=2.24, b=.43, c=-.65, d=-2.43
+Gingerbreadman              Orbit generated by:
+                            xnew = 1 - y + |x|
+                            ynew = x
+Diffusion                   See diffusion type description
+Julibrot                    Same as Mandel and Julia - see type description
+
+Here is an *ATTEMPTED* explanation of what the inside=bof60 and inside=bof61
+options do. This explanation is hereby dedicated to Adrian Mariano, who
+badgered it out of us! For the *REAL* explanation, see "Beauty of Fractals",
+page 62. Let p(z) be the function that is repeatedly iterated to generate a
+fractal using the escape-time algorithm.  For example, p(z) = z^2+c in the
+case of a Julia set. Then let pk(z) be the result of iterating the function
+p for k iterations. (The "k" should be shown as a superscript.) We could
+also use the notation pkc(z) when the function p has a parameter c, as it
+does in our example.  Now hold your breath and get your thinking cap on:
+Define a(c) = inf{|pck(0)|:k=1,2,3,...}. In English - a(c) is the greatest 
+lower bound of the images of zero of as many iterations as you like. Put
+another way, a(c) is the closest to the origin any point in the orbit 
+starting with 0 gets. Then the index (c) is the value of k (the iteration)
+when that closest point was achieved.  Since there may be more than one,
+index(c) is the least such. Got it?  Good, because the "Beauty of Fractals"
+explanation of this, is, ahhhh, *TERSE* ! Now for the punch line.
+Inside=bof60 colors the lake alternating shades according to the level sets
+of a(c).  Each band represents solid areas of the fractal where the closest
+value of the orbit to the origin is the same. Inside=bof61 show domains where
+index(c) is constant.  That is, areas where the iteration when the orbit 
+swooped closest to the origin has the same value. Well, folks, that's the 
+best we can do! Improved explanations will be accepted for the next edition!
 
 The following trig identities are invaluable for coding fractals that
 use complex-valued transcendental functions.
@@ -3126,10 +3395,9 @@ Villanova, PA 19085
 (215) 525-6355
  
 Timothy Wegner          [71320,675] on CIS
-MITRE                   nmittiw@mwibm.mitre.org on Internet
-1120 Nasa #1            twegner@mwunix.mitre.org on Internet
-Houston, TX 77058
-(713) 522-7933
+4714 Rockwood           nmittiw@mwvm.mitre.org on Internet
+Houston, TX 77004       twegner@mwunix.mitre.org on Internet
+(713) 747-7543
 
 Mark C. Peterson        [70441,3353] on CIS
 253 West St., H
@@ -3142,6 +3410,12 @@ Laguna Hills, CA, 92656
 (714) 831-7665
 (7-12pm PST & weekends)
 
+Pieter Branderhorst     [72611,2257] on CIS
+Amthor Computer Consultants
+3915 Bedford Rd.
+Victoria, B.C., Canada V8N 4K6
+(604) 477-1197
+ 
 Lee Daniel Crocker      [73407,2030] on CIS
 1380 Jewett Avenue      lcrocker on BIX
 Pittsburg, CA 94565     ames!pacbell!sactoh0!siva!lee on Usenet
@@ -3156,6 +3430,10 @@ Richard Finegold        [76701,153] on CIS
 1414 179th Ave NE       richg@blake.acs.washington.edu on InterNET
 Bellevue, WA 98008      uw-beaver!blake!richg on UseNET
 (206) 746-2694          
+ 
+David Guenther          [70531,3525] on CIS
+50 Rockview Drive
+Irvine, CA 92715
 
 Michael L. Kaufman      [71610,431] on CIS
 2247 Ridge Ave, #2K     (also accessible via EXEC-PC bbs)
@@ -3203,6 +3481,30 @@ APPENDIX C
 
 Features first appearing in:
 ===========================
+
+Version 12.0, 3/90
+
+New SuperVGA Autodetecting and VESA Video modes (you tell us the
+  resolution you want, and we'll figure out how to do it)
+New Full-Screen Entry for most prompting
+New Fractal formula interpreter ('type=formula') - roll your own
+  fractals without using a "C" compiler!
+New 'Julibrot' fractal type
+Added floating point option to all remaining fractal types.
+Real (funny glasses) 3D - Now with "real-time" lorenz3D!!
+Non-Destructive <TAB> - Check out what your fractal parameters are
+  without stopping the generation of a fractal image
+New Cross-Hair mode for changing individual palette colors (VGA only)
+Zooming beyond the limits of Integer algorithms (with automatic
+  switchover to a floating-point algorithm when you zoom in "too far")
+New 'inside=bof60', 'inside=bof61' ("Beauty of Fractals, Page nn") options
+New starmap ('a' - for astrology? astronomy?) transformation option
+Restrictions on the options available when using Expanded Memory
+  "Disk/RAM" video mode have been removed 
+And a lot of other nice little clean-up features that we've already
+  forgotten that we've added...
+Added capability to create 3D projection images (just barely) for people
+  with 2 or 4 color video boards.
 
 Version 11.0, 1/90
 
@@ -3403,3 +3705,26 @@ PEITGEN, Heinz-Otto & RICHTER, Peter: "The Beauty of Fractals,"
     THE coffee-table book of fractal images, knowledgeable on computer
     graphics as well as the mathematics they portray.
 
+PEITGEN, Heinz-Otto & SAUPE, Ditmar: "The Science of Fractal Images,"
+  Springer-Verlag, 1988.
+    A fantastic work, with a few nice pictures, but mostly filled
+    with *equations*!!!
+
+
+
+APPENDIX E
+
+                               OTHER FRACTAL PROGRAMS
+
+
+(This section is new, and pathetically small because we added it at the
+last minute.  Please help us out, here...)
+
+
+FDESIGN, by Doug Nelson (CIS ID 70431,3374) - a freeware IFS fractal
+  generator available from Compuserve in COMART Lib 15, and probably
+  on your local BBS.  This program requires a VGA adapter and a Microsoft-
+  compatible mouse, but it generates IFS fractals in a *much* more
+  intuitive fashion than Fractint.  It can also (beginning with version 
+  3.0) save its IFS formulas in Fractint-style .IFS files.
+  

@@ -4,7 +4,7 @@
  interpreter:
  
  1) The fractal name through the open curly bracket must be on a single line.
- 2) There is a current hard-coded limit of 20 formulas per formula file, only
+ 2) There is a current hard-coded limit of 30 formulas per formula file, only
     because of restrictions in the prompting routines.
  3) Formulas must currently be less than 200 characters long. 
  3) Comments, like this one, are set up using dummy formulas with no 
@@ -71,19 +71,50 @@
  { Parameter 1 controls the depth - larger numbers give more detail & colors. }
  { My favorite range is between 20-30, but smaller numbers are faster.        }
 
-   ScottSin { z = pixel: z = sin(z) + sqr(z), |z| < (p1+3) }
+ ScottSin(XAXIS) { z = pixel, TEST = (p1+3): z = sin(z) + sqr(z), |z|<TEST }
 
-   ScottSinH { z = pixel: z = sinh(z) + sqr(z), |z| < (p1+3) }
+ ScottSinH(XAXIS) { z = pixel, TEST = (p1+3): z = sinh(z) + sqr(z), |z|<TEST }
 
-   ScottCos(XYAXIS) { z = pixel: z = cos(z) + sqr(z), |z| < (p1+3) }
-   
-   ScottCosH(XYAXIS) { z = pixel: z = cosh(z) + sqr(z), |z| < (p1+3) }
+ ScottCos(XYAXIS) { z = pixel, TEST = (p1+3): z = cos(z) + sqr(z), |z|<TEST }
+ 
+ ScottCosH(XYAXIS) { z = pixel, TEST = (p1+3): z = cosh(z) + sqr(z), |z|<TEST }
 
-   ScottSZSA { z = pixel: z = sin(z*z), |z| < (p1+3) }
-   
-   ScottSZSB { z = pixel: z = sin(z)*sin(z), |z| < (p1+3) }
+ ScottSZSA(XYAXIS) { z = pixel, TEST = (p1+3): z = sin(z*z), |z|<TEST }
+ 
+ ScottSZSB(XYAXIS) { z = pixel, TEST = (p1+3): z = sin(z)*sin(z), |z|<TEST }
 
-   ScottCZSA { z = pixel: z = cos(z*z), |z| < (p1+3) }
-   
-   ScottCZSB { z = pixel: z = cos(z)*cos(z), |z| < (p1+3) }
+ ScottCZSA(XYAXIS) { z = pixel, TEST = (p1+3): z = cos(z*z), |z|<TEST }
+ 
+ ScottCZSB(XYAXIS) { z = pixel, TEST = (p1+3): z = cos(z)*cos(z), |z|<TEST }
 
+ ScottLTS(XAXIS) { z = pixel, TEST = (p1+3): z = log(z)*sin(z), |z|<TEST }
+ 
+ ScottLTC(XAXIS) { z = pixel, TEST = (p1+3): z = log(z)*cos(z), |z|<TEST }
+
+ ScottLPC(XAXIS) { z = pixel, TEST = (p1+3): z = log(z)+cos(z), |z|<TEST }
+ 
+ ScottLPS { z = pixel, TEST = (p1+3): z = log(z)+sin(z), |z|<TEST }
+ 
+ ScottSIC(XYAXIS) { z = pixel, TEST = (p1+3): z = sqr(1/cos(z)), |z|<TEST }
+ 
+ ScottSIS { z = pixel, TEST = (p1+3): z = sqr(1/sin(z)), |z|<TEST }
+
+ ScottZSZZ(XAXIS) { z = pixel, TEST = (p1+3): z = (z*sin(z))+z, |z|<TEST }
+
+ ScottZCZZ(XYAXIS) { z = pixel, TEST = (p1+3): z = (z*cos(z))+z, |z|<TEST }
+
+
+ { Formulas from this point on are the contrubutions of Lee H. Skinner }
+
+ { Tetration formula of Ackerman's Generalized Exponential }
+
+ Tetrate(XAXIS) { c = z = pixel: z = c ^ z, |z| <= (P1+3) }
+
+ { from expansion module 2 of Fractal Magic 5.0 (Lee stole it - not me!) }
+
+ Spider(XAXIS) { c = z = pixel: z = z * z + c; c = c / 2 + z, |z| <= 4 }
+
+ { "Dragonland" from EGA Fractal Master.  Default corners should really be }
+ {  -2/4/-2.25/2.25  Not symmetrical to x=1, although it is close!         }
+
+ Mandelglass(XAXIS) { z = (0.5, 0.0): z = pixel * z * (1 - z), |z| <= 4 }
