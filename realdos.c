@@ -47,7 +47,7 @@ void vidmode_keyname(int k,char *buf);
 
 static int menu_checkkey(int curkey,int choice);
 
-int release=1611; /* this has 2 implied decimals; increment it every synch */
+int release=1632; /* this has 2 implied decimals; increment it every synch */
 
 /* fullscreen_choice options */
 #define CHOICERETURNKEY 1
@@ -272,19 +272,9 @@ void helptitle()
       sprintf(buf,"%01d",release%10);
       strcat(msg,buf);
       }
-#ifdef WAITE /* realdos.c */
-   strcat(msg," for the Waite Group's Fractal Creations");
-#endif /* WAITE - realdos.c */
    putstringcenter(0,0,80,C_TITLE,msg);
-#ifdef WAITE
-   return;
-#endif
-/* uncomment next for production executable: */
-/* return; */
    if (debugflag == 3002) return;
-   putstring(0,2,C_TITLE_DEV,"Development Version");
-/* replace above by next after creating production release, for release source */
-/* putstring(0,3,C_TITLE_DEV, "Customized Version"); */
+   putstring(0,3,C_TITLE_DEV, "Customized Version");
    putstring(0,53,C_TITLE_DEV,"Not for Public Release");
 }
 
