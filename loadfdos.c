@@ -145,7 +145,7 @@ int get_video_mode(struct fractal_info *info)
 	&& info->videomodebx == videoentry.videomodebx
 	&& info->videomodecx == videoentry.videomodecx
 	&& info->videomodedx == videoentry.videomodedx
-	&& info->dotmode     == videoentry.dotmode) {
+	&& info->dotmode%100 == videoentry.dotmode%100) {
 	 initmode = i;
 	 break;
 	 }
@@ -179,12 +179,12 @@ int get_video_mode(struct fractal_info *info)
 	 tmpflags |= VI_CBIG;
       if (i == initmode)
 	 tmpflags -= VI_EXACT;
-      if (videoentry.dotmode == 11) {
+      if (videoentry.dotmode%100 == 11) {
 	 tmpflags |= VI_DISK2;
 	 if ((tmpflags & (VI_SBIG+VI_SSMALL+VI_VBIG+VI_VSMALL)) != 0)
 	    tmpflags |= VI_DISK1;
 	 }
-      if (fileaspectratio != 0 && videoentry.dotmode != 11
+      if (fileaspectratio != 0 && videoentry.dotmode%100 != 11
 	&& (tmpflags & VI_VSMALL) == 0) {
 	 ftemp = vid_aspect(filexdots,fileydots);
 	 if ( ftemp < fileaspectratio * 0.98
@@ -282,7 +282,7 @@ Press F1 for help, ");
       while (1) {
 	 tmpxdots = (filexdots + skipxdots - 1) / skipxdots;
 	 tmpydots = (fileydots + skipydots - 1) / skipydots;
-	 if (fileaspectratio == 0 || videoentry.dotmode == 11)
+	 if (fileaspectratio == 0 || videoentry.dotmode%100 == 11)
 	    break;
 	 /* reduce further if that improves aspect */
 	 if ((ftemp = vid_aspect(tmpxdots,tmpydots)) > fileaspectratio) {

@@ -38,7 +38,7 @@ extern	float	finalaspectratio;	/* for view shape and rotation */
 extern	int	viewxdots,viewydots;	/* explicit view sizing */
 extern	int	colors; 		/* maximum colors available */
 extern	int	dotmode;		/* so we can detect disk-video */
-extern	char overwrite;			/* overwrite on/off */
+extern	char overwrite; 		/* overwrite on/off */
 extern	int	resave_flag;		/* resaving after a timed save */
 extern	int	timedsave;		/* if doing an auto save */
 extern	int	disk16bit;		/* 16 bit continuous potential */
@@ -393,6 +393,7 @@ else /* must risk loss of precision if numbers low */
    i = (((double)ydots / (double)xdots) / finalaspectratio) * 64 - 14.5;
 if (i < 1)   i = 1;
 if (i > 255) i = 255;
+if (gif87a_flag) i = 0;    /* for some decoders which can't handle aspect */
 fputc(i,out);				/* pixel aspect ratio */
 
 if (colors == 256) {			/* write out the 256-color palette */
@@ -668,7 +669,7 @@ static void setup_save_info(struct fractal_info *save_info)
    save_info->videomodebx     = videoentry.videomodebx;
    save_info->videomodecx     = videoentry.videomodecx;
    save_info->videomodedx     = videoentry.videomodedx;
-   save_info->dotmode	      = videoentry.dotmode;
+   save_info->dotmode	      = videoentry.dotmode % 100;
    save_info->xdots	      = videoentry.xdots;
    save_info->ydots	      = videoentry.ydots;
    save_info->colors	      = videoentry.colors;

@@ -142,7 +142,8 @@ public		paldata, stbuff 		; 8514A arrays, (FR8514A.ASM)
 ; Keep db lengths even so that word alignment is preserved for speed.
 
 block		label	byte		; encoder(266)
-suffix		dw	2048 dup(0)	; decoder(4k), vidswitch(256)
+suffix		dw	2048 dup(0)	; decoder(4k), vidswitch(256),
+					; savegraphics/restoregraphics(4k)
 
 teststring	label	byte		; encoder(100)
 dstack		dw	2048 dup(0)	; decoder(4k), solidguess(4k), btm(2k)

@@ -350,10 +350,10 @@ static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or 
    while (!done) {
 
       putstring(promptrow+curchoice, promptcol, C_PROMPT_HI, prompts[curchoice]);
-      putstring(promptrow+curchoice, valuecol, C_PROMPT_INPUT+INVERSE, "               ");
+      putstring(promptrow+curchoice, valuecol, C_PROMPT_INPUT, "               ");
 
       i = input_field( (values[curchoice].type == 'd') ? 1 : 0,
-	     C_PROMPT_INPUT+INVERSE, temp2[curchoice], 15,
+	     C_PROMPT_INPUT, temp2[curchoice], 15,
 	     promptrow+curchoice,valuecol,prompt_checkkey);
 
       putstring(promptrow+curchoice, promptcol, C_PROMPT_LO, prompts[curchoice]);
@@ -1388,7 +1388,7 @@ save your edits in a file, or ENTER to end ==>"};
       promptrow = textrow;
       promptcol = textcol + textcbase + 1;
       temp1[0] = textcbase = 0;
-      if (input_field(0,C_GENERAL_INPUT+INVERSE,temp1,2,promptrow,promptcol,NULL) < 0
+      if (input_field(0,C_GENERAL_INPUT,temp1,2,promptrow,promptcol,NULL) < 0
 	|| temp1[0] == 0)
 	 break; /* ESCAPE or ENTER */
 
@@ -1431,7 +1431,7 @@ save your edits in a file, or ENTER to end ==>"};
 		    sprintf(msg,"Probability");
 	    putstring(promptrow+2,25,C_GENERAL_HI,msg);
 	    sprintf(temp1,"%6.2f",(float)initarray[(i*totcols)+j]);
-	    if (input_field(1,C_GENERAL_INPUT+INVERSE,temp1,6,
+	    if (input_field(1,C_GENERAL_INPUT,temp1,6,
 			    textrow,textcol+1,NULL) < 0)
 	       break;
 	    initarray[(i*totcols)+j] = atof(temp1);
@@ -1610,7 +1610,10 @@ int get_toggles()
       usr_floatflag = 0;
    if (usr_floatflag != oldvalues[k]) j = 2;
 
-   maxit = uvalues[++k].uval.dval;
+   ++k;
+   maxit = uvalues[k].uval.dval;
+   if (uvalues[k].uval.dval < 2) maxit = 2;
+   if (uvalues[k].uval.dval > 32767) maxit = 32767;
    if (maxit != oldvalues[k] && j < 1) j = 1;
 
    if(strncmp(strlwr(uvalues[++k].uval.sval),"bof60",5)==0)
@@ -1653,7 +1656,8 @@ int get_toggles()
    LogFlag = uvalues[++k].uval.dval;
    if (LogFlag != oldvalues[k] && j < 1) j = 1;
 
-   usr_distest = uvalues[++k].uval.dval;
+   ++k;
+   usr_distest = (uvalues[k].uval.dval > 32000) ? 32000 : uvalues[k].uval.dval;
    if (usr_distest != oldvalues[k]) j = 2;
 
    decomp[0] = uvalues[++k].uval.dval;
@@ -2006,14 +2010,19 @@ int get_starfield_params(void) {
 void goodbye()			/* we done.  Bail out */
 {
    extern unsigned char exitmode;
+   extern int mode7text;
+   extern int made_dsktemp;
    union REGS r;
    static char goodbyemessage[]={"   Thank You for using FRACTINT"};
    setvideomode(3,0,0,0);
-   r.h.al = exitmode;
+   r.h.al = (mode7text == 0) ? exitmode : 7;
    r.h.ah = 0;
    int86(0x10, &r, &r);
    printf("\n\n\n%s\n",goodbyemessage); /* printf takes far pointer */
    movecursor(6,0);
+   discardgraphics(); /* if any emm/xmm tied up there, release it */
+   if (made_dsktemp)
+      remove("FRACTINT.DSK");
    exit(0);
 }
 

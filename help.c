@@ -346,7 +346,7 @@ while (1) {
 	for (i = j; i < maxvideomode && i < j + 12; i++) {
 		fromvideotable(i);
 		strcpy(accessmethod," ");
-		if (videoentry.dotmode == 1)
+		if (videoentry.dotmode % 100 == 1)
 			accessmethod[0] = 'B';
 #ifdef __TURBOC__
 		sprintf(msg,"%-6.6s %-25.25s%5d x%4d%5d %1.1s  %-25.25s\n",

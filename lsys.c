@@ -394,11 +394,11 @@ static char far *drawLSys(char far *command,char far **rules,char depth)
 	    break;
 	 case '>':
 	    curcolor-=getnumber(&command);
-	    curcolor%=colors;
+	    if ((curcolor &= colors-1) == 0) curcolor = colors-1;
 	    break;
 	 case '<':
 	    curcolor+=getnumber(&command);
-	    curcolor%=colors;
+	    if ((curcolor &= colors-1) == 0) curcolor = 1;
 	    break;
 	 }
       command++;

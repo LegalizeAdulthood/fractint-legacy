@@ -101,7 +101,8 @@ char FormFileName[80];		/* file to find (type=)formulas in */
 char FormName[40];		/* Name of the Formula (if not null) */
 
 extern int video_type;
-extern int no_color_text;
+extern int mode7text;
+extern int textsafe;
 
 extern int   viewwindow;
 extern float viewreduction;
@@ -541,7 +542,7 @@ static int cmdarg(char *curarg) 	/* process a single argument */
 		return(0);
 		}
 	if (strcmp(variable,"maxiter") == 0) {          /* maxiter=?    */
-		if (numval < 10 || numval > 32000) argerror(curarg);
+		if (numval < 2 || numval > 32767) argerror(curarg);
 		maxit = numval;
 		return(0);
 		}
@@ -582,22 +583,37 @@ static int cmdarg(char *curarg) 	/* process a single argument */
 		return(0);
 		}
 	if (strcmp(variable,"adapter") == 0 ) {         /* adapter==?     */
+		slash = strchr(curarg,'=');
 		video_type = 5; 			/* assume video=vga */
-		if (charval == 'e')                     /* video = ega */
+		if (strcmp(&slash[1],"egamono") == 0) {
 			video_type = 3;
-		if (charval == 'c')                     /* video = cga */
+			mode7text = 1;
+			}
+		else if (charval == 'h') {              /* video = hgc */
+			video_type = 1;
+			mode7text = 1;
+			}
+		else if (charval == 'e')                /* video = ega */
+			video_type = 3;
+		else if (charval == 'c')                /* video = cga */
 			video_type = 2;
-		if (charval == 'm')                     /* video = mcga */
+		else if (charval == 'm')                /* video = mcga */
 			video_type = 4;
 		return(0);
 		}
 
 	if (strcmp(variable,"textsafe") == 0 ) {        /* textsafe==?     */
 		if (first_init) {
-		    if (charval == 'n')
-			no_color_text = 1;
-		    if (charval == 'y')
-			no_color_text = -1;
+		    if (charval == 'n') /* no */
+			textsafe = 2;
+		    else if (charval == 'y') /* yes */
+			textsafe = 1;
+		    else if (charval == 'b') /* bios */
+			textsafe = 3;
+		    else if (charval == 's') /* save */
+			textsafe = 4;
+		    else
+			argerror(curarg);
 		    }
 		return(0);
 		}
@@ -611,11 +627,16 @@ static int cmdarg(char *curarg) 	/* process a single argument */
 		if (strcmp(&slash[1],"mono") == 0) {
 		   for (k = 0; k < sizeof(textcolor); ++k)
 		      textcolor[k] = BLACK*16+WHITE;
-		   C_PROMPT_INPUT = C_CHOICE_CURRENT = C_GENERAL_INPUT
-			   = C_AUTHDIV1 = C_AUTHDIV2 = WHITE*16+BLACK;
-		   C_TITLE = C_HELP_HDG = C_PROMPT_HI = C_CHOICE_SP_KEYIN
+		/* C_PROMPT_INPUT = C_CHOICE_CURRENT = C_GENERAL_INPUT
+			   = C_AUTHDIV1 = C_AUTHDIV2 = WHITE*16+BLACK; */
+		   textcolor[9] = textcolor[10] = textcolor[16]
+			   = textcolor[23] = textcolor[24] = WHITE*16+BLACK;
+		/* C_TITLE = C_HELP_HDG = C_PROMPT_HI = C_CHOICE_SP_KEYIN
 			   = C_GENERAL_HI = C_DVID_HI = C_STOP_ERR
-			   = C_STOP_INFO = BLACK*16+L_WHITE;
+			   = C_STOP_INFO = BLACK*16+L_WHITE; */
+		   textcolor[0] = textcolor[2] = textcolor[8] = textcolor[12]
+			   = textcolor[13] = textcolor[18] = textcolor[20]
+			   = textcolor[21] = BLACK*16+L_WHITE;
 		   }
 		else {
 		   k = 0;
@@ -911,7 +932,7 @@ static int cmdarg(char *curarg) 	/* process a single argument */
 		    Printer_Type=5;
 		    slash=strchr(curarg,'=');
 		    if ((slash=strchr(slash,'/'))==NULL)
-		       slash = strchr(slash,'\0');
+		       slash = &curarg[strlen(curarg)];
 		    slash--;
 		    if (*slash=='h' || *slash=='l')
 		       Printer_Type=6;
@@ -1361,6 +1382,7 @@ int readconfig()	/* search for, read, decode fractint.cfg file */
    char tempstring[101];
    FILE *cfgfile;
    int count, i, j, ax, bx, cx, dx, dotmode, xdots, ydots, colors, commas[10];
+   int textsafe2;
    ENTER_OVLY(OVLY_CMDFILES);
    findpath("fractint.cfg",tempstring); /* look for FRACTINT.CFG */
    if (tempstring[0] == 0			     /* can't find the file */
@@ -1389,8 +1411,11 @@ int readconfig()	/* search for, read, decode fractint.cfg file */
       xdots	  = atoi(&tempstring[commas[5]]);
       ydots	  = atoi(&tempstring[commas[6]]);
       colors	  = atoi(&tempstring[commas[7]]);
+      textsafe2   = dotmode / 100;
+      dotmode	 %= 100;
       if (  i >= 0 || j != 0 ||
 	    dotmode < 0 || dotmode > 30 ||
+	    textsafe2 < 0 || textsafe2 > 4 ||
 	    xdots < 160 || xdots > 2048 ||
 	    ydots < 160 || ydots > 2048 ||
 	    (colors != 2 && colors != 4 && colors != 16 && colors != 256)
@@ -1410,7 +1435,7 @@ int readconfig()	/* search for, read, decode fractint.cfg file */
       videoentry.videomodebx =	 bx;
       videoentry.videomodecx =	 cx;
       videoentry.videomodedx =	 dx;
-      videoentry.dotmode     =	 dotmode;
+      videoentry.dotmode     =	 textsafe2 * 100 + dotmode;
       videoentry.xdots	     =	 xdots;
       videoentry.ydots	     =	 ydots;
       videoentry.colors      =	 colors;

@@ -499,34 +499,35 @@ extern	void   zrot(double, MATRIX);
 #define L_MAGENTA 13
 #define YELLOW	  14
 #define L_WHITE   15
-#define INVERSE 0x8000 /* when 640x200x2 mode in use, inverse */
+#define INVERSE 0x8000 /* when 640x200x2 text or mode 7, inverse */
+#define BRIGHT	0x4000 /* when mode 7, bright */
 /* and their use: */
 extern unsigned char textcolor[];
-#define C_TITLE 	  textcolor[0]
+#define C_TITLE 	  textcolor[0]+BRIGHT
 #define C_TITLE_DEV	  textcolor[1]
-#define C_HELP_HDG	  textcolor[2]
+#define C_HELP_HDG	  textcolor[2]+BRIGHT
 #define C_HELP_BODY	  textcolor[3]
 #define C_HELP_INSTR	  textcolor[4]
 #define C_PROMPT_BKGRD	  textcolor[5]
 #define C_PROMPT_LO	  textcolor[6]
 #define C_PROMPT_MED	  textcolor[7]
-#define C_PROMPT_HI	  textcolor[8]
-#define C_PROMPT_INPUT	  textcolor[9]
-#define C_CHOICE_CURRENT  textcolor[10]
+#define C_PROMPT_HI	  textcolor[8]+BRIGHT
+#define C_PROMPT_INPUT	  textcolor[9]+INVERSE
+#define C_CHOICE_CURRENT  textcolor[10]+INVERSE
 #define C_CHOICE_SP_INSTR textcolor[11]
-#define C_CHOICE_SP_KEYIN textcolor[12]
-#define C_GENERAL_HI	  textcolor[13]
+#define C_CHOICE_SP_KEYIN textcolor[12]+BRIGHT
+#define C_GENERAL_HI	  textcolor[13]+BRIGHT
 #define C_GENERAL_MED	  textcolor[14]
 #define C_GENERAL_LO	  textcolor[15]
-#define C_GENERAL_INPUT   textcolor[16]
+#define C_GENERAL_INPUT   textcolor[16]+INVERSE
 #define C_DVID_BKGRD	  textcolor[17]
-#define C_DVID_HI	  textcolor[18]
+#define C_DVID_HI	  textcolor[18]+BRIGHT
 #define C_DVID_LO	  textcolor[19]
-#define C_STOP_ERR	  textcolor[20]
-#define C_STOP_INFO	  textcolor[21]
+#define C_STOP_ERR	  textcolor[20]+BRIGHT
+#define C_STOP_INFO	  textcolor[21]+BRIGHT
 #define C_TITLE_LOW	  textcolor[22]
-#define C_AUTHDIV1	  textcolor[23]
-#define C_AUTHDIV2	  textcolor[24]
+#define C_AUTHDIV1	  textcolor[23]+INVERSE
+#define C_AUTHDIV2	  textcolor[24]+INVERSE
 #define C_PRIMARY	  textcolor[25]
 #define C_CONTRIB	  textcolor[26]
 

@@ -170,7 +170,7 @@ helpmessagecredits label byte
  db " Mike Gelvin      [73337,520] Mandelbrot speedups",10
  db " Lawrence Gozum   [73437,2372] Tseng 640x400x256 Video Mode",10
  db " David Guenther   [70531,3525] Boundary Tracing algorithm",10
- db " Mike Kaufman     [71610,431] mouse support, other features",10
+ db " Mike Kaufman     [kaufman@eecs.nwu.edu] mouse support, other features",10
  db " Adrian Mariano   [theorem@blake.acs.washington.edu] Diffusion & L-Systems",10
  db " Chris Martin     Paintjet printer support",10
  db " Joe McLain       [75066,1257] TARGA Support, color-map files",10
@@ -499,17 +499,14 @@ helpmessagecmdline5 label byte
  db "askvideo=no                Skip the prompt for video mode when restoring",10
  db "                           files when possible (but your adapter had better",10
  db "                           support the required mode...)",10
- db "adapter=cga|ega|mcga|vga   Skip the autodetect logic, assume this kind of",10
- db "                           adapter is present",10
- db "textsafe=no                If return from menu, prompt, or help to an image",10
- db "                           garbles the image, try specifying this",10
- db "textsafe=yes               To get rid of the irritating flicker on EGA/VGA",10
- db "                           during FRACTINT startup, try specifying this.",10
- db "                           Remove it if you find that images are scrambled",10
- db "                           when returning to them from the menu",10
+ db "adapter=hgc|cga|ega|egamono|mcga|vga",10
+ db "                           Skip the autodetect logic, assume this kind of",10
+ db "                           adapter is present; see full documentation",10
+ db "textsafe=yes|no|bios|save  For use when images are not restored correctly on",10
+ db "                           return from a text display; see full documentation",10
  db "exitmode=nn                Sets the bios-supported videomode to use upon exit",10
  db "                           (if not mode 3) - nn is the mode in hexadecimal",10
- db "textcolors=aa/bb/cc/...    Set text screen colors.",10
+ db "textcolors=aa/bb/cc/...    Set text screen colors, see full documentation",10
  db "textcolors=mono            Set text screen colors to simple black and white",10
  db 0
 
@@ -518,7 +515,7 @@ helpmessagecmdline6 label byte
  db "printer=type[/res[/lpt#]]  Set the printer type, dots/inch, and port#",10
  db "                           types: IBM, EPSON, CO (Star Micronix),",10
  db "                                  HP (LaserJet), PA (Paintjet),",10
- db "                                  PSH (PostScript portrait), PSL (landscape)",10
+ db "                                  PS (PostScript portrait), PSL (landscape)",10
  db "                           port# 1-3 for LPTn, 11-14 for COMn",10
  db "                           Optional 4th parameter /-1 prints to file instead",10
  db "                           of port; default first filename is fract001.prn",10
@@ -570,7 +567,7 @@ helpmessagecmdline8 label byte
  db "xyadjust=nnn/nnn           Sets 3D X and Y adjustment defaults,",10
  db "randomize=nnn              smoothes 3d color transitions between elevations",10
  db "fullcolor=yes              allows creation of full color .TGA image with",10
- db "                           light source fill types. See the Docs.",10
+ db "                           light source fill types. See full documentation",10
  db "ambient=nnn                sets depth of shadows and contrast when using",10
  db "                           light source fill types",10
  db "haze=nnn                   sets amount of haze for distant objct if fullcolor=1",10

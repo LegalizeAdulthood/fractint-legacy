@@ -18,7 +18,9 @@ timer.
 90	fractals.c	force generic code for fn+fn etc types
 200	fractint.c	time encoder
 420	diskvid.c	don't use extended/expanded mem (force disk)
+420	realdos.c	  same for screen save (force disk)
 422	diskvid.c	don't use expanded mem (force extended or disk)
+422	realdos.c	  same for screen save (force extended or disk)
 870	fractint.c	set fpu to max 87
 1010	fractals.c	force fp for newton & newtbasin (no mpc math)
 1234	fractint.c	force larger integer arithmetic bitshift value

@@ -99,6 +99,8 @@ static unsigned char (*get_char)(),disk_getc(),exp_getc(),ext_getc();
 static void (*doseek)(),disk_seek(),exp_seek(),ext_seek();
 void dvid_status(int,char *);
 
+int made_dsktemp = 0;
+
 int startdisk()
 {
    if (!diskisactive)
@@ -280,12 +282,12 @@ static int common_startdisk(int newrowsize, int newcolsize)
       putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,"Using your Disk Drive");
    if (disktarga == 0) {
       if ((fp = fopen("FRACTINT.DSK","w+b")) != NULL) {
+	 made_dsktemp = 1;
 	 while (--memorysize >= 0) /* "clear the screen" (write to the disk) */
 	    putc(0,fp);
 	 if (ferror(fp)) {
 	    stopmsg(0,"*** insufficient free disk space ***");
 	    fclose(fp);
-	    remove("FRACTINT.DSK");
 	    fp = NULL;
 	    rowsize = 0;
 	    return(-1);
@@ -317,8 +319,6 @@ void enddisk()
 	    if (cache_lru->dirty)
 	       write_cache_lru();
       fclose(fp);
-      if (disktarga == 0)
-	 remove("FRACTINT.DSK");
       }
    if (charbuf != NULL)
       farmemfree((void far *)charbuf);

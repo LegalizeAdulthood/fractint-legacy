@@ -5,6 +5,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <dos.h>
+#include <sys\types.h>
+#include <sys\stat.h>
+#include <fcntl.h>
 #include "fractint.h"
 #include "fractype.h"
 
@@ -32,6 +35,8 @@ int  input_field(int options, int attr, char *fld, int len, int row, int col, in
 int  field_prompt(int options, char *hdg, char *instr, char *fld, int len, int (*checkkey)() );
 int  thinking(int options, char *msg);
 void clear_screen(void);
+int  savegraphics(void);
+void restoregraphics(void),discardgraphics(void);
 
 static int menu_checkkey(int curkey);
 
@@ -80,6 +85,7 @@ extern int  color_dark,color_medium,color_bright;
 extern int  lookatmouse;
 extern unsigned char dacbox[256][3];
 extern int  reallyega;
+extern int  extraseg;
 
 
 /* int stopmsg(flags,message) displays message and waits for a key:
@@ -263,7 +269,7 @@ void helptitle()
    char msg[80],buf[10];
    setclear(); /* clear the screen */
    sprintf(msg,"FRACTINT  Version %d.%01d",release/100,(release%100)/10);
-   if (release%100) {
+   if (release%10) {
       sprintf(buf,"%01d",release%10);
       strcat(msg,buf);
       }
@@ -299,6 +305,7 @@ static int saverc[MAXSCREENS+1];
 static FILE *savescf=NULL;
 static char scsvfile[]="fractscr.tmp";
 extern int text_type;
+extern int textaddr;
 
 void stackscreen()
 {
@@ -314,9 +321,9 @@ void stackscreen()
 	 exit(1);
 	 }
 #ifdef __TURBOC__
-      vidmem = MK_FP(0xB800,0);
+      vidmem = MK_FP(textaddr,0);
 #else
-      FP_SEG(vidmem)=0xB800;
+      FP_SEG(vidmem)=textaddr;
       FP_OFF(vidmem)=0;
 #endif
       savebytes = (text_type == 0) ? 4000 : 16384;
@@ -355,9 +362,9 @@ void unstackscreen()
    textcol = saverc[screenctr] % 80;
    if (--screenctr >= 0) { /* unstack */
 #ifdef __TURBOC__
-      vidmem = MK_FP(0xB800,0);
+      vidmem = MK_FP(textaddr,0);
 #else
-      FP_SEG(vidmem)=0xB800;
+      FP_SEG(vidmem)=textaddr;
       FP_OFF(vidmem)=0;
 #endif
       savebytes = (text_type == 0) ? 4000 : 16384;
@@ -379,9 +386,12 @@ void unstackscreen()
 
 void discardscreen()
 {
-   if (--screenctr >= 0) /* unstack */
+   if (--screenctr >= 0) { /* unstack */
       if (savescreen[screenctr])
 	 farmemfree(savescreen[screenctr]);
+      }
+   else
+      discardgraphics();
 }
 
 
@@ -624,7 +634,7 @@ static char far choiceinstr3b[]="Press F2 to show choices only (no description)"
       else
 	 itemptr = choices[current];
       putstring(topleftrow+i/boxwidth,topleftcol+(i%boxwidth)*colwidth,
-		C_CHOICE_CURRENT+INVERSE,itemptr);
+		C_CHOICE_CURRENT,itemptr);
 
       if (speedstring) {		     /* show speedstring if any */
 	 memset(buf,' ',80);
@@ -961,7 +971,7 @@ top:
 	 setattr(1,0,C_GENERAL_MED,24*80);
 	 for (i = 9; i <= 11; ++i)
 	   setattr(i,18,C_GENERAL_INPUT,40);
-	 putstringcenter(10,18,40,C_GENERAL_INPUT+INVERSE,s);
+	 putstringcenter(10,18,40,C_GENERAL_INPUT,s);
 	 movecursor(25,80);
 	 while ((i = getakey()) != 'y' && i != 'Y' && i != 13) {
 	    if (i == 'n' || i == 'N')
@@ -1187,7 +1197,7 @@ int field_prompt(
    else 				  /* default instructions */
       putstringcenter(i,0,80,C_PROMPT_BKGRD,
 	      "Press ENTER when finished (or ESCAPE to back out)");
-   return(input_field(options,C_PROMPT_INPUT+INVERSE,fld,len,
+   return(input_field(options,C_PROMPT_INPUT,fld,len,
 		      titlerow+titlelines+1,promptcol,checkkey));
 }
 
@@ -1233,4 +1243,167 @@ int thinking(int options,char *msg)
 void clear_screen(void)  /* a stub for a windows only subroutine */
 {
 }
+
+
+/* savegraphics/restoregraphics: video.asm subroutines */
+
+static unsigned char far *swapsavebuf;
+static unsigned int memhandle;
+unsigned long swaptotlen;
+unsigned long swapoffset;
+unsigned char far *swapvidbuf;
+int swaplength;
+static int swaptype = -1;
+static int swapblklen; /* must be a power of 2 */
+extern void (*swapsetup)(void),swapnormread(void);
+void movewords(int,unsigned char far*,unsigned char far*);
+extern unsigned char suffix[4096];
+
+extern	unsigned int emmallocate(unsigned int),xmmallocate(unsigned int);
+extern	void   emmdeallocate(unsigned int),xmmdeallocate(unsigned int);
+extern	void   emmgetpage(unsigned int, unsigned int);
+extern	unsigned char far *emmquery(void);
+extern	unsigned int *xmmquery(void);
+
+int savegraphics()
+{
+   extern int made_dsktemp;
+   int i;
+   struct {
+      unsigned long   len;
+      unsigned int    sourcehandle;
+      unsigned long   sourceptr;
+      unsigned int    desthandle;
+      unsigned long   destptr;
+      } xmmparms;
+   discardgraphics(); /* if any emm/xmm in use from prior call, release it */
+   swaptotlen = (long)sxdots * sydots;
+   i = colors;
+   while (i <= 16) {
+      swaptotlen >>= 1;
+      i = i * i;
+      }
+   swapoffset = 0;
+   if (debugflag != 420 && debugflag != 422 /* 422=xmm test, 420=disk test */
+     && (swapsavebuf = emmquery()) != NULL
+     && (memhandle = emmallocate((swaptotlen + 16383) >> 14)) != 0) {
+      swaptype = 0; /* use expanded memory */
+      swapblklen = 16384;
+      }
+   else if (debugflag != 420
+     && xmmquery() !=0
+     && (memhandle = xmmallocate((swaptotlen + 1023) >> 10)) != 0) {
+      swaptype = 1; /* use extended memory */
+      swapblklen = 16384;
+      }
+   else {
+      swaptype = 2; /* use disk */
+      swapblklen = 4096;
+      if ((memhandle = open("FRACTINT.DSK",O_CREAT|O_WRONLY|O_BINARY,S_IWRITE))
+	 == -1) {
+dskfile_error:
+	 setvideomode(3,0,0,0); /* text mode */
+	 setclear();
+	 printf("!!! error in temp file FRACTINT.DSK (disk full?) - aborted\n\n");
+	 exit(1);
+	 }
+      made_dsktemp = 1;
+      }
+   while (swapoffset < swaptotlen) {
+      swaplength = swapblklen;
+      if ((swapoffset & (swapblklen-1)) != 0)
+	 swaplength = swapblklen - (swapoffset & (swapblklen-1));
+      if (swaplength > swaptotlen - swapoffset)
+	 swaplength = swaptotlen - swapoffset;
+      (*swapsetup)(); /* swapoffset,swaplength -> sets swapvidbuf,swaplength */
+      switch(swaptype) {
+	 case 0:
+	    emmgetpage(swapoffset>>14,memhandle);
+	    movewords(swaplength>>1,swapvidbuf,
+		      swapsavebuf+(swapoffset&(swapblklen-1)));
+	    break;
+	 case 1:
+	    xmmparms.len = swaplength;
+	    xmmparms.sourcehandle = 0; /* Source is conventional memory */
+	    xmmparms.sourceptr = (unsigned long)swapvidbuf;
+	    xmmparms.desthandle = memhandle;
+	    xmmparms.destptr = swapoffset;
+	    xmmmoveextended(&xmmparms);
+	    break;
+	 default:
+	    movewords(swaplength>>1,swapvidbuf,(unsigned char far *)suffix);
+	    if (write(memhandle,suffix,swaplength) == -1)
+	       goto dskfile_error;
+	 }
+      swapoffset += swaplength;
+      }
+   if (swaptype == 2)
+      close(memhandle);
+   return 0;
+}
+
+void restoregraphics()
+{
+   struct {
+      unsigned long   len;
+      unsigned int    sourcehandle;
+      unsigned long   sourceptr;
+      unsigned int    desthandle;
+      unsigned long   destptr;
+      } xmmparms;
+   swapoffset = 0;
+   if (swaptype == 2)
+      memhandle = open("FRACTINT.DSK",O_RDONLY|O_BINARY,S_IREAD);
+#ifdef __TURBOC__
+   swapvidbuf = MK_FP(extraseg+0x1000,0); /* for swapnormwrite case */
+#else
+   FP_SEG(swapvidbuf)=extraseg+0x1000;
+   FP_OFF(swapvidbuf)=0;
+#endif
+   while (swapoffset < swaptotlen) {
+      swaplength = swapblklen;
+      if ((swapoffset & (swapblklen-1)) != 0)
+	 swaplength = swapblklen - (swapoffset & (swapblklen-1));
+      if (swaplength > swaptotlen - swapoffset)
+	 swaplength = swaptotlen - swapoffset;
+      if (swapsetup != swapnormread)
+	 (*swapsetup)(); /* swapoffset,swaplength -> sets swapvidbuf,swaplength */
+      switch(swaptype) {
+	 case 0:
+	    emmgetpage(swapoffset>>14,memhandle);
+	    movewords(swaplength>>1,swapsavebuf+(swapoffset&(swapblklen-1)),
+		      swapvidbuf);
+	    break;
+	 case 1:
+	    xmmparms.len = swaplength;
+	    xmmparms.sourcehandle = memhandle;
+	    xmmparms.sourceptr = swapoffset;
+	    xmmparms.desthandle = 0; /* conventional memory */
+	    xmmparms.destptr = (unsigned long)swapvidbuf;
+	    xmmmoveextended(&xmmparms);
+	    break;
+	 default:
+	    read(memhandle,suffix,swaplength);
+	    movewords(swaplength>>1,(unsigned char far *)suffix,swapvidbuf);
+	 }
+      if (swapsetup == swapnormread)
+	 swapnormwrite();
+      swapoffset += swaplength;
+      }
+   if (swaptype == 2)
+      close(memhandle);
+   discardgraphics();
+}
+
+void discardgraphics() /* release expanded/extended memory if any in use */
+{
+   switch(swaptype) {
+      case 0:
+	 emmdeallocate(memhandle);
+	 break;
+      case 1:
+	 xmmdeallocate(memhandle);
+      }
+   swaptype = -1;
+   }
 

@@ -87,6 +87,10 @@ ENDIF
 	extrn	linehgc   :far	    ; Hercules line draw
 	extrn	charhgc   :far	    ; Draw an ASCII char in Hercules graphics
 
+; setforgraphics/setfortext textsafe=save
+	extrn	savegraphics	:far
+	extrn	restoregraphics :far
+
 .DATA
 
 ; ************************ External variables *****************************
@@ -96,6 +100,7 @@ ENDIF
 	extrn	dotmode: word		; video mode (see the comments
 					; in front of the internal video
 					; table for legal dot modes)
+	extrn	textsafe2: word 	; textsafe over-ride from videotable
 
 	extrn	sxdots:word,sydots:word ; physical screen number of dots
 	extrn	sxoffs:word,syoffs:word ; logical screen top left
@@ -115,6 +120,11 @@ ENDIF
 
 	extrn	suffix:word		; (safe place during video-mode switches)
 
+	extrn	swaplength:word 	; savegraphics/restoregraphics stuff
+	extrn	swapoffset:dword	; ...
+	extrn	swapvidbuf:dword	; ...
+	extrn	swaptotlen:dword	; ...
+
 ; ************************ Public variables *****************************
 
 public		andcolor		; used by 'calcmand'
@@ -126,7 +136,9 @@ public		rowcount		; row-counter for decoder and out_line
 public		reallyega		; "really an EGA" (faking a VGA) flag
 public		diskflag		; disk video active flag
 public		video_type		; video adapter type
-public		no_color_text		; 0 if mode3 ok while image remembered
+public		mode7text		; for egamono and hgc
+public		textaddr		; text segment
+public		textsafe		; setfortext/setforgraphics logic
 public		boxcolor		; zoom box color
 public		goodmode		; video mode ok?
 public		text_type		; current mode's type of text
@@ -139,6 +151,8 @@ public		color_dark		; darkest color in palette
 public		color_bright		; brightest color in palette
 public		color_medium		; nearest to medbright grey in palette
 
+public		swapsetup		; for savegraphics/restoregraphics
+
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
 
@@ -149,6 +163,7 @@ dotwrite	dw	0		; write-a-dot routine:	mode-specific
 dotread 	dw	0		; read-a-dot routine:	mode-specific
 linewrite	dw	0		; write-a-line routine: mode-specific
 lineread	dw	0		; read-a-line routine: mode-specific
+swapsetup	dd	0		; setfortext/graphics setup routine
 andcolor	dw	0		; "and" value used for color selection
 color		db	0		; the color to set a pixel
 videoflag	db	0		; special "your-own-video" flag
@@ -160,6 +175,7 @@ f85flag 	db	0		;flag for 8514a
 HGCflag 	db	0		;flag for Hercules Graphics Adapter
 
 		align	2
+tmpbufptr	dd	0
 color_dark	dw	0		; darkest color in palette
 color_bright	dw	0		; brightest color in palette
 color_medium	dw	0		; nearest to medbright grey in palette
@@ -185,9 +201,9 @@ videocx 	dw	0		; graphics mode values: cx
 videodx 	dw	0		; graphics mode values: dx
 
 video_type	dw	0		; actual video adapter type:
-					;   0  = not yet determined
-					;   1  = Hercules (not yet checked)
-					;   2  = CGA
+					;   0  = type not yet determined
+					;   1  = Hercules
+					;   2  = CGA (assumed if nothing else)
 					;   3  = EGA
 					;   4  = MCGA
 					;   5  = VGA
@@ -195,10 +211,15 @@ video_type	dw	0		; actual video adapter type:
 					;  11  = 8514/A (not yet checked)
 					;  12  = TIGA	(not yet checked)
 					;  13  = TARGA	(not yet checked)
-no_color_text	dw	0		; 0 if mode3 ok while image remembered
-					;   only 0 if video_type is 3,4,5
+mode7text	dw	0		; nonzero for egamono and hgc
+textaddr	dw	0b800h		; b800 for mode 3, b000 for mode 7
+textsafe	dw	0		; 0 = default, runup chgs to 1
+					; 1 = yes
+					; 2 = no, use 640x200
+					; 3 = bios, yes plus use int 10h-1Ch
+					; 4 = save, save entire image
 text_type	dw	0		; current mode's type of text:
-					;   0  = real text, mode 3
+					;   0  = real text, mode 3 (or 7)
 					;   1  = 640x200x2, mode 6
 					;   2  = some other mode, graphics
 video_entries	dw	0		; offset into video_entries table
@@ -397,7 +418,7 @@ tweaks		dw	offset x704y528 	; tweak table
 
 tweaktype	dw	0			; 8 or 9 (320x400 or 360x480)
 
-bios_vidsave	dw	1			; for setfortext/graphics
+bios_vidsave	dw	0			; for setfortext/graphics
 
 .CODE
 
@@ -749,7 +770,7 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	   0h,	 0,   0,   0,	0,   0,   0,  0
 	db	680	dup(0)
 
-; bios_savebuf db 384 dup(0)  ; enough for 6 blocks (64 bytes/block)
+bios_savebuf db 256 dup(0)  ; enough for 4 blocks (64 bytes/block)
 
 .code
 
@@ -1602,7 +1623,7 @@ bankseg dw	seg $nobank
 endif
 
 vesa_granularity	db	0	; BDT VESA Granularity value
-vesa_bankswitch 	dd	0	; BDT VESA Bank-Switching Routine
+vesa_bankswitch 	dd	$vesa_nullbank ; initially, do-nothing
 
 	public	curbk
 
@@ -2055,6 +2076,10 @@ $vesa	proc				; VESA bank switching
 	ret
 $vesa	endp
 
+$vesa_nullbank proc ; null routine for vesa_bankswitch when unknown
+	ret
+$vesa_nullbank endp
+
 $nobank proc
 	sti
 	ret
@@ -2076,6 +2101,7 @@ lbl:
 	endm
 
 whichvga proc	near
+	push	bp			; save it around all the int 10s
 	mov	ax,4f00h		; check for VESA adapter
 	push	ds			; set ES == DS
 	pop	es			;  ...
@@ -2303,6 +2329,7 @@ no4ram: jmp	short fini
 nooak:	mov	si,0
 
 fini:	mov	ax,si
+	pop	bp
 	ret
 whichvga endp
 
@@ -2734,19 +2761,20 @@ adapter_init	endp
 ; adapter_detect:
 ;	This routine performs a few quick checks on the type of
 ;	video adapter installed.
-;	It sets variables video_type and no_color_text,
+;	It sets variables video_type and textsafe,
 ;	and fills in a few bank-switching routines.
 
 adapter_detect	proc	uses di si es
 	push	bp			; some bios's don't save during int 10h
 	cmp	done_detect,0		; been called already?
-	jne	adapter_go_ret		;  yup, do nothing
+	je	adapter_detect2 	;  nope
+	jmp	adapter_ret		; yup, do nothing
+adapter_detect2:
 	inc	done_detect		; don't get called again
 
 	cmp	video_type,0		; video_type preset by command line arg?
-	jne	adapter_set		;  yup, use what we're told
+	jne	go_adapter_set		;  yup, use what we're told
 
-	mov	video_type,2		; set the video type: CGA
 	mov	ax,1a00h		; start by trying int 10 func 1A
 	int	10h			;  ...
 	cmp	al,1ah			; was AL modified?
@@ -2760,22 +2788,34 @@ adapter_detect	proc	uses di si es
 	mov	bl,10h			;  by using an EGA-specific call
 	int	10h			;  ...
 	cmp	bl,10h			; was BL modified?
-	je	adapter_set		;  nope.  Not an EGA.  Exit with CGA
+	je	adapter_detect_notega	;  nope, < EGA
 	mov	video_type,3		; set the video type: EGA
-	jmp	short adapter_set	;  We done.
-adapter_go_ret: 			; a label for some short jumps
-	jmp	adapter_ret		;  to the exit
+	cmp	bh,1			; monochrome monitor?
+	jne	go_adapter_set		;  nope
+	mov	mode7text,1		; yup, use mode 7 for text
+	jmp	short go_adapter_set	; We done.
 adapter_detect_4:
+	cmp	bl,1			; =1?
+	jne	adapter_detect_4a	;  nope
+	jmp	adapter_detect_hgc	; MDA, assume HGC (nothing else works)
+adapter_detect_4a:
+	mov	video_type,2		; set the video type: CGA
 	cmp	bl,3			; <=2?
-	jb	adapter_set		;  exit with type CGA
+	jb	go_adapter_set		;  exit with type CGA
 	mov	video_type,3		; set the video type: EGA
+	cmp	bl,5			; =5?
+	jne	adapter_detect_5	;  nope
+	mov	mode7text,1		; yup, monochrome monitor, mode 7 text
+go_adapter_set:
+	jmp	adapter_set
+adapter_detect_5:
 	cmp	bl,6			; <=5?
-	jb	adapter_set		;  exit with type EGA
+	jb	go_adapter_set		;  exit with type EGA
 	cmp	bl,10			; <=9?
 	jb	adapter_detect_vga	;  vga, go check which kind
 	mov	video_type,4		; set the video type: MCGA
 	cmp	bl,13			; <=12?
-	jb	adapter_set		;  exit with type MCGA
+	jb	go_adapter_set		;  exit with type MCGA
 adapter_detect_vga:
 	mov	video_type,5		; set the video type: VGA
 	call	whichvga		; autodetect which VGA is there
@@ -2783,8 +2823,43 @@ adapter_detect_vga:
 	mov	video_bankadr,ax	;  ...
 	mov	ax,[bankseg]		;  ...
 	mov	video_bankseg,ax	;  ...
-adapter_set:
+	jmp	adapter_set
+adapter_detect_notega:
+	mov	video_type,2		; set the video type: CGA
+	; HGC detect code from book by Richard Wilton follows
+	mov	dx,3B4h 		; check for MDA, use MDA CRTC address
+	mov	al,0Fh			; select 6845 reg 0Fh (Cursor Low)
+	out	dx,al
+	inc	dx
+	in	al,dx			; AL := current Cursor Low value
+	mov	ah,al			; preserve in AH
+	mov	al,66h			; AL := arbitrary value
+	out	dx,al			; try to write to 6845
+	mov	cx,200h
+mdalp:	loop	mdalp			; wait for 6845 to respond
+	in	al,dx			; read cursor low again
+	xchg	ah,al
+	out	dx,al			; restore original value
+	cmp	ah,66h			; test whether 6845 responded
+	jne	adapter_set		;  nope, exit with type CGA
+	mov	dl,0BAh 		; DX := 3BAh (status port)
+	in	al,dx
+	and	al,80h
+	mov	ah,al			; AH := bit 7 (vertical sync on HGC)
+	mov	cx,8000h		; do this 32768 times
+mdalp2: in	al,dx
+	and	al,80h			; isolate bit 7
+	cmp	ah,al
+	loope	mdalp2			; wait for bit 7 to change
+	je	adapter_set		;  didn't change, exit with type CGA
+	in	al,dx
+	and	al,01100000b		; mask off bits 5 and 6
+	jnz	adapter_set		; not hgc/hgc+, exit with type CGA
+adapter_detect_hgc:
+	mov	video_type,1		; HGC
+	mov	mode7text,1		; use mode 7 for text
 
+adapter_set:
 	; ensure a nice safe standard state
 	mov	ax,3			; set 80x25x16 text mode, clear screen
 	int	10h			;  ...
@@ -2792,12 +2867,15 @@ adapter_set:
 	int	10h			;  ...
 
 	; now the color text stuff
-	cmp	no_color_text,0 	; command line override?
-	jg	adapter_go_ret		;  yup, believe the user
-	inc	no_color_text		; 0 if textsafe=yes, default 1 otherwise
-	cmp	video_type,3		; < ega?
-	jb	adapter_go_ret		;  yup, no_color_text (won't matter tho)
+	cmp	textsafe,2		; command line textsafe=no?
+	je	adapter_go_ret		;  yup, believe the user
+	cmp	video_type,3		; >= ega?
+	jae	adapter_setup		;  yup
+	mov	textsafe,2		; textsafe=no
+adapter_go_ret: 			; a label for some short jumps
+	jmp	adapter_ret		;  to the exit
 
+adapter_setup:
 	; more standard state, ega and up stuff
 	mov	ax,1003h		; top attribute bit means blink
 	mov	bl,01h			;  ...
@@ -2814,86 +2892,91 @@ adapter_set:
 	mov	ax,1200h		; enable default palette loading
 	mov	bl,31h			;  ...
 	int	10h			;  ...
-	cmp	no_color_text,0 	; were we told "textsafe=yes"?
-	je	adapter_go_ret2 	;  yup, so believe it
-	cmp	video_type,5		; vga?
-	je	adapter_test_egavga	;  yup
-	cmp	video_type,3		; ega?
-	je	adapter_test_egavga	;  yup
-	cmp	video_type,4		; mcga?
-	jne	adapter_go_ret2 	;  nope, no_color_text
-	mov	no_color_text,0 	; mcga well defined, let's trust it
-adapter_go_ret2:
-	jmp	adapter_ret		; exit
-
-adapter_test_egavga:
-	mov	ax,0a000h		; EGA/VGA screen starts here
-	mov	es,ax			;  ...
-	mov	cx,3			; loop thru 4 planes, clearing, just to
-adapter_zero:				;  avoid ugly flash during runup
-	call	select_vga_plane	; map the plane to a0000
-	push	cx			; save plane number
-	mov	cx,2000h		; zap 8k words
-	xor	ax,ax			; to this value
-	xor	di,di			;  ...
-	cld				;  ...
-	rep stosw			;  ...
-	pop	cx			; plane number
-	dec	cx			; done them all?
-	jns	adapter_zero		;  on to the next one
-	; trial and error to see if font info goes where we expect
-	mov	ax,8eh			; set a graphics mode
-	int	10h			;  ...
-	mov	ax,0			; disable the video (I think)
-	call	disablevideo		;  ...
-	mov	ax,0			; in case video bios inconsistent in
-	call	far ptr newbank 	;  bank setup; ensure it
-	mov	ax,0a000h		; EGA/VGA screen starts here
-	mov	es,ax			;  ...
-	mov	cx,3			; loop thru 4 planes,
-adapter_clear:				;  ...
-	call	select_vga_plane	; map the plane to a0000
-	push	cx			; save plane number
-	mov	cx,2000h		; zap 8k words
-	mov	ax,0bc88h		; to this value
-	xor	di,di			;  ...
-	cld				;  ...
-	rep stosw			;  ...
-	pop	cx			; plane number
-	dec	cx			; done them all?
-	jns	adapter_clear		;  on to the next one
-	mov	ax,83h			; set 80x25x16 text mode, don't clear
-	int	10h			;  ...
-	mov	ax,0			; disable the video (I think)
-	call	disablevideo		;  ...
-	; now see if results are as expected
-	mov	cx,3			; loop thru 4 planes,
-adapter_check:				;  ...
-	call	select_vga_plane	; map the plane to a0000
-	mov	bx,cx			; remember plane number
-	mov	cx,2000h		; check 8k words
-	mov	ax,0bc88h		; against the value we stored
-	mov	di,3ffeh		; start at the end of 8k words
-	std				; reverse direction
-	repe scasw			;  ...
-	jcxz	adapter_check_2 	; jump if all words match
-	cmp	bx,2			; plane 2? (no other should've chgd)
-	jne	adapter_test_end	;  nope, exit with no_color_text set
-	cmp	cx,1000h		; was difference past the limit?
-	ja	adapter_test_end	;  yup, exit with no_color_text set
-	jmp	short adapter_check_next
-adapter_check_2:			; all words match preset value
-	cmp	bx,2			; plane 2? (font ought to have changed)
-	je	adapter_test_end	;  yup, match wrong, exit with no_color
-adapter_check_next:
-	mov	cx,bx			; plane number
-	dec	cx			; done them all?
-	jns	adapter_check		;  on to the next plane
-	mov	no_color_text,0 	; phew! seems we know how to use mode 3
-adapter_test_end:
-	mov	ax,3			; set 80x25x16 text mode, clear screen
-	int	10h			;  ...
-
+	cmp	textsafe,0		; were we told textsafe=yes|bios|save?
+; pb 901215 removed runup textsafe test - no adapter so far fails this test
+;	    except Unisys Video 7, and it actually works with textsafe=yes!
+	jne	adapter_ret		;  yup
+	mov	textsafe,1		; set textsafe=yes
+;	jne	adapter_go_ret2 	;  yup
+;	mov	textsafe,2		; =no until proven otherwise
+;	cmp	video_type,5		; vga?
+;	je	adapter_test_egavga	;  yup
+;	cmp	video_type,3		; ega?
+;	je	adapter_test_egavga	;  yup
+;	cmp	video_type,4		; mcga?
+;	jne	adapter_go_ret2 	;  nope, textsafe=no
+;	mov	textsafe,1		; mcga well defined, let's trust it
+;adapter_go_ret2:
+;	jmp	adapter_ret		; exit
+;
+;adapter_test_egavga:
+;	mov	ax,0a000h		; EGA/VGA screen starts here
+;	mov	es,ax			;  ...
+;	mov	cx,3			; loop thru 4 planes, clearing, just to
+;adapter_zero:				 ;  avoid ugly flash during runup
+;	call	select_vga_plane	; map the plane to a0000
+;	push	cx			; save plane number
+;	mov	cx,2000h		; zap 8k words
+;	xor	ax,ax			; to this value
+;	xor	di,di			;  ...
+;	cld				;  ...
+;	rep stosw			;  ...
+;	pop	cx			; plane number
+;	dec	cx			; done them all?
+;	jns	adapter_zero		;  on to the next one
+;	; trial and error to see if font info goes where we expect
+;	mov	ax,8eh			; set a graphics mode
+;	int	10h			;  ...
+;	mov	ax,0			; disable the video (I think)
+;	call	disablevideo		;  ...
+;	mov	ax,0			; in case video bios inconsistent in
+;	call	far ptr newbank 	;  bank setup; ensure it
+;	mov	ax,0a000h		; EGA/VGA screen starts here
+;	mov	es,ax			;  ...
+;	mov	cx,3			; loop thru 4 planes,
+;adapter_clear: 			 ;  ...
+;	call	select_vga_plane	; map the plane to a0000
+;	push	cx			; save plane number
+;	mov	cx,2000h		; zap 8k words
+;	mov	ax,0bc88h		; to this value
+;	xor	di,di			;  ...
+;	cld				;  ...
+;	rep stosw			;  ...
+;	pop	cx			; plane number
+;	dec	cx			; done them all?
+;	jns	adapter_clear		;  on to the next one
+;	mov	ax,83h			; set 80x25x16 text mode, don't clear
+;	int	10h			;  ...
+;	mov	ax,0			; disable the video (I think)
+;	call	disablevideo		;  ...
+;	; now see if results are as expected
+;	mov	cx,3			; loop thru 4 planes,
+;adapter_check: 			 ;  ...
+;	call	select_vga_plane	; map the plane to a0000
+;	mov	bx,cx			; remember plane number
+;	mov	cx,2000h		; check 8k words
+;	mov	ax,0bc88h		; against the value we stored
+;	mov	di,3ffeh		; start at the end of 8k words
+;	std				; reverse direction
+;	repe scasw			;  ...
+;	jcxz	adapter_check_2 	; jump if all words match
+;	cmp	bx,2			; plane 2? (no other should've chgd)
+;	jne	adapter_test_end	;  nope, exit with textsafe=no
+;	cmp	cx,1000h		; was difference past the limit?
+;	ja	adapter_test_end	;  yup, exit with textsafe=no
+;	jmp	short adapter_check_next
+;adapter_check_2:			 ; all words match preset value
+;	cmp	bx,2			; plane 2? (font ought to have changed)
+;	je	adapter_test_end	;  yup, match wrong, exit with no_color
+;adapter_check_next:
+;	mov	cx,bx			; plane number
+;	dec	cx			; done them all?
+;	jns	adapter_check		;  on to the next plane
+;	mov	textsafe,1		; phew! seems we know how to use mode 3
+;adapter_test_end:
+;	mov	ax,3			; set 80x25x16 text mode, clear screen
+;	int	10h			;  ...
+;
 adapter_ret:
 	cld				; some MSC 6.0 libraries assume this!
 	pop	bp
@@ -3701,6 +3784,7 @@ noHGC:
 	mov	bx,offset mcgaread	; set up null read-a-dot  routine
 	mov	cx,offset normaline	; set up normal linewrite routine
 	mov	dx,offset mcgareadline	; set up normal linewrite routine
+	mov	si,offset swapnormread	; set up the normal swap routine
 	jmp	videomode		; return to common code
 
 videomodeisgood:
@@ -3752,6 +3836,7 @@ tandymode:	; from Joseph Albrecht
 	mov	bx,offset gettandy16	; set up read-a-dot
 	mov	cx,offset normaline	; set up the normal linewrite routine
 	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	si,offset swapnormread	; set up the normal swap routine
 	cmp	videoax,8		; check for 160x200x16 color mode
 	je	tandy16low		; ..
 	cmp	videoax,9		; check for 320x200x16 color mode
@@ -3780,12 +3865,14 @@ dullnormalmode:
 	mov	bx,offset normalread	; set up the BIOS read-a-dot  routine
 	mov	cx,offset normaline	; set up the normal linewrite routine
 	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	si,offset swapnormread	; set up the normal swap routine
 	jmp	videomode		; return to common code
 mcgamode:
 	mov	ax,offset mcgawrite	; set up MCGA write-a-dot routine
 	mov	bx,offset mcgaread	; set up MCGA read-a-dot  routine
 	mov	cx,offset mcgaline	; set up the MCGA linewrite routine
 	mov	dx,offset mcgareadline	; set up the MCGA lineread  routine
+	mov	si,offset swap256	; set up the MCGA swap routine
 	jmp	videomode		; return to common code
 tseng16mode:
 	mov	tseng,1 		; set chipset flag
@@ -3834,6 +3921,7 @@ vgamode:
 	mov	bx,offset vgaread	; set up EGA/VGA read-a-dot  routine
 	mov	cx,offset vgaline	; set up the EGA/VGA linewrite routine
 	mov	dx,offset vgareadline	; set up the EGA/VGA lineread  routine
+	mov	si,offset swapvga	; set up the EGA/VGA swap routine
 	jmp	videomode		; return to common code
 tseng256mode:
 	mov	tseng,1 		; set chipset flag
@@ -3881,6 +3969,7 @@ super256mode:
 	mov	bx,offset super256read	; set up superVGA read-a-dot  routine
 	mov	cx,offset super256line	; set up the  linewrite routine
 	mov	dx,offset super256readline ; set up the normal lineread  routine
+	mov	si,offset swap256	; set up the swap routine
 	jmp	videomode		; return to common code
 tweak256mode:
 	mov	oktoprint,0		; NOT OK to printf() in this mode
@@ -3888,8 +3977,12 @@ tweak256mode:
 	mov	bx,offset tweak256read	; set up tweaked-256 read-a-dot
 	mov	cx,offset tweak256line	; set up tweaked-256 read-a-line
 	mov	dx,offset tweak256readline ; set up the normal lineread  routine
+	mov	si,offset swapvga	; set up the swap routine
 	jmp	videomode		; return to common code
 cgamode:
+	mov	cx,offset normaline	; set up the normal linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	si,offset swapnormread	; set up the normal swap routine
 	cmp	videoax,4		; check for 320x200x4 color mode
 	je	cga4med 		; ..
 	cmp	videoax,5		; ..
@@ -3899,14 +3992,10 @@ cgamode:
 cga4med:
 	mov	ax,offset plotcga4	; set up CGA write-a-dot
 	mov	bx,offset getcga4	; set up CGA read-a-dot
-	mov	cx,offset normaline	; set up the normal linewrite routine
-	mov	dx,offset normalineread ; set up the normal lineread  routine
 	jmp	videomode		; return to common code
 cga2high:
 	mov	ax,offset plotcga2	; set up CGA write-a-dot
 	mov	bx,offset getcga2	; set up CGA read-a-dot
-	mov	cx,offset normaline	; set up the normal linewrite routine
-	mov	dx,offset normalineread ; set up the normal lineread  routine
 	jmp	videomode		; return to common code
 ati1024mode:
 	mov	ativga,1		; set ATI flag.
@@ -3914,6 +4003,7 @@ ati1024mode:
 	mov	bx,offset ati1024read	; set up ATI1024 read-a-dot
 	mov	cx,offset normaline	; set up the normal linewrite routine
 	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	si,offset swap256	; set up the swap routine
 	jmp	videomode		; return to common code
 diskmode:
 	call	diskstart		; start up the disk routines
@@ -3921,6 +4011,7 @@ diskmode:
 	mov	bx,offset diskread	; set up disk-vid read-a-dot routine
 	mov	cx,offset normaline	; set up the normal linewrite routine
 	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	si,offset swapnormread	; set up the normal swap routine
 	jmp	videomode		; return to common code
 yourownmode:
 	call	videostart		; start up your-own-video routines
@@ -3928,6 +4019,7 @@ yourownmode:
 	mov	bx,offset videoread	; set up ur-own-vid read-a-dot routine
 	mov	cx,offset normaline	; set up the normal linewrite routine
 	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	si,offset swapnormread	; set up the normal swap routine
 	mov	videoflag,1		; flag "your-own-end" needed.
 	jmp	videomode		; return to common code
 targaMode:				; TARGA MODIFIED 2 June 89 - j mclain
@@ -3936,6 +4028,7 @@ targaMode:				; TARGA MODIFIED 2 June 89 - j mclain
 	mov	bx,offset tgaread	;
 	mov	cx,offset normaline	; set up the normal linewrite routine
 	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	si,offset swapnormread	; set up the normal swap routine
 	mov	tgaflag,1		;
 	jmp	videomode		; return to common code
 f8514mode:		       ; 8514 modes
@@ -3953,6 +4046,7 @@ hgcmode:
 	mov	bx,offset hgcread	; set up HGC read-a-dot  routine
 	mov	cx,offset normaline	; set up normal linewrite routine
 	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	si,offset swapnormread	; set up the normal swap routine
 	mov	HGCflag,1		; flag "HGC-end" needed.
 	jmp	videomode		; return to common code
 f85ok:
@@ -3960,6 +4054,7 @@ f85ok:
 	mov	bx,offset f85read	;
 	mov	cx,offset f85line	;
 	mov	dx,offset f85readline	;
+	mov	si,offset swapnormread	; set up the normal swap routine
 	mov	f85flag,1		;
 	mov	oktoprint,0		; NOT OK to printf() in this mode
 	jmp	videomode		; return to common code
@@ -3970,6 +4065,9 @@ videomode:
 	mov	dotread,bx		;  ...
 	mov	linewrite,cx		;  ...
 	mov	lineread,dx		;  ...
+	mov	word ptr swapsetup,si	;  ...
+	mov	ax,cs			;  ...
+	mov	word ptr swapsetup+2,ax ;  ...
 
 	mov	ax,colors		; calculate the "and" value
 	dec	ax			; to use for eventual color
@@ -4014,10 +4112,14 @@ setnullvideo endp
 
 setvideo	proc	near		; local set-video more
 
+	push	bp			; save it around all the int 10s
 	mov	text_type,2		; set to this for most exit paths
+	mov	si,offset $vesa_nullbank ; set to do nothing if mode not vesa
+	mov	word ptr vesa_bankswitch,si
+	mov	si,seg $vesa_nullbank
+	mov	word ptr vesa_bankswitch+2,si
 
 	cmp	ax,0			; TWEAK?:  look for AX==BX==CX==0
-
 	jne	short setvideobios	;  ...
 	cmp	bx,0			;  ...
 	jne	short setvideobios	;  ...
@@ -4026,13 +4128,10 @@ setvideo	proc	near		; local set-video more
 
 	cmp	dotmode, 27		; check for auto-detect modes
 	je	setvideoauto1
-
 	cmp	dotmode, 20		; check for auto-detect modes
 	je	setvideoauto1
-
 	cmp	dotmode, 4		; check for auto-detect modes
 	je	setvideoauto1
-
 	cmp	dotmode, 28		; check for auto-detect modes
 	je	setvideoauto1
 
@@ -4044,9 +4143,21 @@ setvideoauto1:
 setvideobios:
 	mov	text_type,0		; if next branch taken this is true
 	cmp	ax,3			; text mode?
-	je	setvideobios_doit	;  yup.  Just do it.
+	jne	setvideobios2		;  nope
+	mov	textaddr,0b800h
+	cmp	mode7text,0		; egamono/hgc?
+	je	setvideobios_doit	;  nope.  Just do it.
+	mov	textaddr,0b000h
+	mov	ax,7			; use mode 7
+	call	maybeor 		; maybe or AL or (for Video-7s) BL
+	push	bp			; weird but necessary, set mode twice
+	int	10h			;  get colors right on vga systems
+	pop	bp			;  ..
+	mov	ax,7			; for the 2nd hit
+	jmp	short setvideobios_doit
+setvideobios2:
 	mov	text_type,1		; if next branch taken this is true
-	cmp	ax,6			; text mode?
+	cmp	ax,6			; 640x200x2 mode?
 	je	setvideobios_doit	;  yup.  Just do it.
 	mov	text_type,2		; not mode 3 nor 6, so this is true
 	mov	si,dotmode		; compare the dotmode against
@@ -4338,11 +4449,9 @@ crtcloop:
 	pop	es			; restore ES
 
 setvideoreturn:
-
 	mov	curbk,0ffffh		; stuff impossible value into cur-bank
-
 	mov	orvideo,0		; reset the video to clobber memory
-
+	pop	bp
 	ret
 setvideo	endp
 
@@ -4372,6 +4481,7 @@ maybeor endp
 monocolors db  0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
 setfortext	proc	uses es si di
+	push	bp			; save it around the int 10s
 	cmp	dotmode, 12		;check for 8514
 	jne	tnot8514
 	cmp	f85flag, 0		;check 8514 active flag
@@ -4384,11 +4494,13 @@ tnot8514:
 	cmp	dotmode,14		; (klooge for Tandy 640x200x16)
 	je	setfortextcga
 	cmp	videoax,0		; check for CGA modes
-	je	setfortextnocga 	;  not this one
+	je	go_setfortextnocga	;  not this one
 	cmp	sydots,348		; (only Hercules modes have this res)
 	je	setfortextcga		;  ...
 	cmp	videoax,7		;  ...
-	ja	setfortextnocga 	;  not this one
+	jbe	setfortextcga		;  ...
+go_setfortextnocga:
+	jmp	setfortextnocga 	;  not this one
 setfortextcga:	; from mode ensures we can go to mode 3, so do it
 	mov	ax,extraseg		; set ES == Extra Segment
 	add	ax,1000h		; (plus 64K)
@@ -4396,6 +4508,12 @@ setfortextcga:	; from mode ensures we can go to mode 3, so do it
 	mov	di,4000h		; save the video data here
 	mov	ax,0b800h		; video data starts here <XXX>
 	mov	si,0			;  ...
+	cmp	videoax,3		; from mode 3?
+	jne	setfortextcga2		;  nope
+	cmp	mode7text,0		; egamono/hgc?
+	je	setfortextcga2		;  nope
+	mov	ax,0b000h		; video data starts here
+setfortextcga2:
 	mov	cx,2000h		; save this many words
 	cmp	sydots,348		; (only Hercules modes have this res)
 	jne	setfortextcganoherc	;  ...
@@ -4431,31 +4549,52 @@ dosettext:
 	call	setvideo		; set the video
 	jmp	setfortextreturn
 setfortextnocga:
-;  pb following code *should* work, but is even worse than the existing
-;     problems on many boards, commented for now for future ref
-;	mov	bios_vidsave,0		; default, not using bios for state save
-;	cmp	video_type,5		; vga?
-;	jl	setfortextnocga2	;  nope
-;	mov	ax,1c00h		; check size of reqd save area
-;	mov	cx,3			;  for hardware + bios states
-;	int	10h			;  ask...
-;	cmp	al,1ch			; function recognized?
-;	jne	setfortextnocga2	;  nope
-;	cmp	bx,6			; buffer big enough? (3 seems usual)
-;	ja	setfortextnocga2	;  nope
-;	mov	bios_vidsave,1		; using bios to save vid state
-;	mov	ax,cs			; ptr to save buffer
-;	mov	es,ax			;  ...
-;	mov	bx,offset bios_savebuf	;  ...
-;	mov	ax,1c01h		;  save state
-;	mov	cx,3			;  hardware + bios
-;	int	10h			;  ...
-setfortextnocga2:
-	cmp	no_color_text,0 	; color text ok?
-	je	setforcolortext 	;  yup
-	jmp	setfordummytext 	;  nope
+	mov	bios_vidsave,0		; default, not using bios for state save
+	cmp	dotmode,9		; Targa?
+	je	go_setdummytext 	;  use 640x200x2
+	mov	ax,textsafe2		; videotable override?
+	cmp	ax,0			;  ...
+	jne	setfortextsafe		;  yup
+	mov	ax,textsafe		; nope, use general setting
+setfortextsafe:
+	cmp	ax,2			; textsafe=no?
+	jne	setforcolortext 	;  nope
+go_setdummytext:
+	jmp	setfordummytext 	;  yup, use 640x200x2
 setforcolortext:
-	; must be ega, mcga, or vga, else we'd have set no_color_text in runup
+	; must be ega, mcga, or vga, else we'd have set textsafe=no in runup
+	cmp	ax,4			; textsafe=save?
+	jne	setforcolortext2	;  nope
+	mov	ax,0			; disable the video (I think)
+	call	disablevideo		;  ...
+	call	far ptr savegraphics	; C rtn which uses swapsetup
+	call	swapvga_reset		; some cleanup for swapvga case
+	mov	orvideo,80h		; preserve memory, just for speed
+	cmp	videoax,0fh		; ega 640x350x2?
+	jne	dosettext		;  nope, go call bios for mode 3
+	mov	ax,83h			; I know this is silly! have to set
+	int	10h			; mode twice when coming from mode 0fh
+	jmp	dosettext		; on some machines to get right colors
+setforcolortext2:
+	cmp	ax,3			; textsafe=bios?
+	jne	setforcolortext3	;  nope
+	cmp	video_type,5		; vga?
+	jl	setforcolortext3	;  nope
+	mov	ax,1c00h		; check size of reqd save area
+	mov	cx,3			;  for hardware + bios states
+	int	10h			;  ask...
+	cmp	al,1ch			; function recognized?
+	jne	setforcolortext3	;  nope
+	cmp	bx,4			; buffer big enough? (3 seems usual)
+	ja	setforcolortext3	;  nope
+	mov	bios_vidsave,1		; using bios to save vid state
+	mov	ax,cs			; ptr to save buffer
+	mov	es,ax			;  ...
+	mov	bx,offset bios_savebuf	;  ...
+	mov	ax,1c01h		;  save state
+	mov	cx,3			;  hardware + bios
+	int	10h			;  ...
+setforcolortext3:
 	push	ds			; save ds
 	mov	ax,extraseg		; set ES == Extra Segment
 	add	ax,1000h		; (plus 64K)
@@ -4477,11 +4616,16 @@ setfortextegavga:
 	sub	ax,ax			; set bank just in case
 	call far ptr newbank
 	mov	ax,8eh			; switch to a mode with known mapping
-	int	10h			;  to avoid SVGA bank problems
+	cmp	videoax,0fh		; coming from ega 640x350x2?
+	jne	sftknownmode		;  nope
+	mov	ax,8fh			; yup, stay in it but do the set mode
+sftknownmode:
+	int	10h			; set the safe mode
 	mov	ax,0			; disable the video (I think)
 	call	disablevideo		;  ...
-	mov	ax,0			; in case video bios inconsistent in
-	call	far ptr newbank 	;  bank setup; ensure it
+;; pb removed next, could be trouble with vesa, very unlikely to be necessary
+;;	mov	ax,0			; in case video bios inconsistent in
+;;	call	far ptr newbank 	;  bank setup; ensure it
 	mov	ax,0a000h		; video mem address
 	mov	ds,ax			; set ds to video mem
 	mov	cx,0			; set to plane 0
@@ -4507,8 +4651,9 @@ setfortextegavga:
 	mov	cx,0400h		;  ...
 	rep stosw			;  ...
 setfortextxxgadone:
-	sub	ax,ax			; set bank just in case
-	call far ptr newbank
+;; pb removed next, could be trouble with vesa, very unlikely to be necessary
+;;	sub	ax,ax			; set bank just in case
+;;	call far ptr newbank
 	pop	ds			; restore ds
 	mov	orvideo,80h		; set the video to preserve memory
 	jmp	dosettext		; (else more than we saved gets cleared)
@@ -4562,17 +4707,19 @@ setfordummytext:			; use 640x200x2 simulated text mode
 
 setfortextreturn:
 	call	far ptr setclear	; clear and home the cursor
+	pop	bp
 	ret
 setfortext	endp
 
 setforgraphics	proc	uses es si di
-	cmp	 dotmode, 12		;check for 8514
+	push	bp			; save it around the int 10s
+	cmp	dotmode, 12		;check for 8514
 	jne	gnot8514
 	cmp	f85flag, 0
-	jne	f85isgraphics
+	jne	go_graphicsreturn
 	call	reopen8514
 	mov	f85flag, 1
-f85isgraphics:
+go_graphicsreturn:
 	jmp	setforgraphicsreturn
 gnot8514:
 	cmp	videoax,0		; check for CGA modes
@@ -4607,6 +4754,12 @@ twasHGC2:
 	mov	si,4000h		; video data is saved here
 	mov	ax,0b800h		; restore the video area
 	mov	di,0			;  ...
+	cmp	videoax,3		; from mode 3?
+	jne	setforgraphicscga2	;  nope
+	cmp	mode7text,0		; egamono/hgc?
+	je	setforgraphicscga2	;  nope
+	mov	ax,0b000h		; video data starts here
+setforgraphicscga2:
 	mov	cx,2000h		; restore this many words
 	cmp	sydots,348		; (only Hercules modes have this res)
 	jne	setforgraphicscganoherc ;  ...
@@ -4631,11 +4784,44 @@ tnottandy2:
 setforgraphicsnocga:
 	mov	ax,0			; disable the video (I think)
 	call	disablevideo		;  ...
-	push	ds			; save ds
 	cld				; clear the direction flag
-	cmp	no_color_text,0 	; color text ok?
-	jne	setfordummygraphics	;  nope
-	; must be ega, mcga, or vga, else we'd have set no_color_text in runup
+	cmp	dotmode,9		; Targa?
+	je	go_dummygraphics	;  use 640x200x2
+	mov	ax,textsafe2		; videotable override?
+	cmp	ax,0			;  ...
+	jne	setforgraphicssafe	;  yup
+	mov	ax,textsafe		; nope, use general setting
+setforgraphicssafe:
+	cmp	ax,2			; textsafe=no?
+	jne	setforgraphicsnocga2
+go_dummygraphics:
+	jmp	setfordummygraphics	;  yup, 640x200x2
+setforgraphicsnocga2:
+	; must be ega, mcga, or vga, else we'd have set textsafe=no in runup
+	cmp	ax,4			; textsafe=save?
+	jne	setforgraphicsnocga3	;  nope
+	cmp	dotmode,2		; ega/vga, <=16 colors?
+	jne	setfgncfast		;  nope
+	cmp	colors,16		; < 16 colors?
+	jae	setfgncfast		;  nope
+	jmp	short setfgncsetvid	; special, need unused planes cleared
+setfgncfast:
+	mov	orvideo,80h		; preserve memory (just to be faster)
+setfgncsetvid:
+	mov	ax,videoax		; set up the video call
+	mov	bx,videobx		;  ...
+	mov	cx,videocx		;  ...
+	mov	dx,videodx		;  ...
+	call	setvideo		; do it.
+	sub	ax,ax			; disable the video (I think)
+	call	disablevideo		;  ...
+	call	far ptr restoregraphics ; C rtn which uses swapsetup
+	call	swapvga_reset		; some cleanup for swapvga case
+	mov	ax,20h			; enable the video (I think)
+	call	disablevideo		;  ...
+	jmp	setforgraphicsreturn
+setforgraphicsnocga3:
+	push	ds			; save ds
 	mov	ax,0a000h		; set es to video mem
 	mov	es,ax			;  ...
 	cmp	video_type,4		; mcga?
@@ -4673,6 +4859,7 @@ setforgraphicsegavga:
 	rep movsw			; restore plane 1 2k bytes (attributes)
 	jmp	short setforgraphicsdoit
 setfordummygraphics:
+	push	ds			; save ds
 	mov	ax,0b800h		; restore the video area
 	mov	es,ax			; ES == video addr
 	mov	di,0			;  ...
@@ -4686,19 +4873,19 @@ setfordummygraphics:
 	mov	cx,4000 		; restore this many words
 	rep	movsw			; restore them.
 setforgraphicsdoit:
-	sub	ax,ax			; just in case
-	call far ptr newbank
+;; pb removed next, could be trouble with vesa, very unlikely to be necessary
+;;	sub	ax,ax			; just in case
+;;	call far ptr newbank
 	pop	ds			; restore DS
-; pb, see prior note
-;	cmp	bios_vidsave,0		; did setfortext use bios state save?
-;	je	setforgraphicssetvid	;  nope
-;	mov	ax,cs			; ptr to save buffer
-;	mov	es,ax			;  ...
-;	mov	bx,offset bios_savebuf	;  ...
-;	mov	ax,1c02h		;  restore state
-;	mov	cx,3			;  hardware + bios
-;	int	10h			;  ...
-;	jmp	short setforgraphicsreturn
+	cmp	bios_vidsave,0		; did setfortext use bios state save?
+	je	setforgraphicssetvid	;  nope
+	mov	ax,cs			; ptr to save buffer
+	mov	es,ax			;  ...
+	mov	bx,offset bios_savebuf	;  ...
+	mov	ax,1c02h		;  restore state
+	mov	cx,3			;  hardware + bios
+	int	10h			;  ...
+	jmp	short setforgraphicsreturn
 setforgraphicssetvid:
 	mov	orvideo,80h		; set the video to preserve memory
 	mov	ax,videoax		; set up the video call
@@ -4720,8 +4907,258 @@ setforgraphicsreturn:
 	pop	ax			; restore the registers
 	pop	ax			;  ...
 setforgraphicsend:
+	pop	bp
 	ret
 setforgraphics	endp
+
+; swapxxx routines: indirect call via swapsetup, used by savegraphics
+;		    and restoregraphics
+
+swap256 	proc uses es si di	; simple linear banks version
+	mov	ax,word ptr swapoffset+2; high word of offset is bank
+	call	far ptr newbank 	; map in the bank
+	mov	ax,0a000h		; high word of vid addr
+	mov	word ptr swapvidbuf+2,ax; store it
+	mov	ax,word ptr swapoffset	; offset in bank
+	mov	word ptr swapvidbuf,ax	; store as low word of vid addr
+	neg	ax			; 65536-offset
+	jz	swap256ret		; offset 0
+	cmp	ax,swaplength		; rest of bank smaller than req length?
+	jae	swap256ret		;  nope
+	mov	swaplength,ax		; yup, reduce length to what's available
+swap256ret:
+	ret
+swap256 	endp
+
+swapvga 	proc uses es si di	; 4 (or less) planes version
+	xor	si,si			; this will be plane number
+	mov	ax,word ptr swaptotlen	; dx,ax = total length
+	mov	dx,word ptr swaptotlen+2
+	mov	cx,word ptr swapoffset	; bx,cx = offset
+	mov	bx,word ptr swapoffset+2
+	cmp	colors,4		; 4 or 2 color mode?
+	jle	swapvga_2		;  yup, no plane 2/3
+	shr	dx,1			; 1/2 of total
+	rcr	ax,1			;  ...
+	cmp	dx,bx			; 1/2 total <= offset?
+	jb	swapvga_1		;  yup
+	ja	swapvga_2		;  nope
+	cmp	ax,cx			; ...
+	ja	swapvga_2		;  nope
+swapvga_1:
+	mov	si,2			; plane 2
+	sub	cx,ax			; subtract 1/2 total from offset
+	sbb	bx,dx			;  ...
+swapvga_2:
+	cmp	colors,2		; 2 color mode?
+	jle	swapvga_4		;  yup, just plane 0
+	shr	dx,1			; 1/4 of total (or 1/2 if 4 colors)
+	rcr	ax,1			;  ...
+	cmp	dx,bx			; 1/4 total <= remaining offset?
+	jb	swapvga_3		;  yup
+	ja	swapvga_4		;  nope
+	cmp	ax,cx			; ...
+	ja	swapvga_4		;  nope
+swapvga_3:
+	inc	si			; plane 1 or 3
+	sub	cx,ax			; subtract 1/4 total from offset
+	sbb	bx,dx			;  ...
+swapvga_4:
+	mov	di,0			; bank size (65536 actually)
+	cmp	bx,dx			; in last bank?
+	jne	swapvga_5		;  nope
+	mov	di,ax			; yup, note its size
+swapvga_5:
+	mov	ax,0a000h		; high word of vid addr
+	mov	word ptr swapvidbuf+2,ax; store it
+	mov	word ptr swapvidbuf,cx	; low word of vid addr (offset in bank)
+	sub	di,cx			; bank size - offset
+	je	swapvga_6		; 0 implies bank = 65536
+	cmp	di,swaplength		; rest of bank smaller than req length?
+	jae	swapvga_6		;  nope
+	mov	swaplength,di		; yup, reduce length to what's available
+swapvga_6:
+	push	si			; remember plane
+	mov	ax,bx			; top word of offset is bank
+	call	far ptr newbank 	; map in the bank
+	mov	dx,03ceh		; graphics controller address
+	pop	cx			; plane
+	mov	ah,cl			;  ...
+	mov	al,04h			; set up controller address register
+	out	dx,ax			; map the plane into memory for reads
+	mov	ax,0001h		; set/reset enable - all bits processor
+	out	dx,ax			;  ...
+	mov	ax,0ff08h		; bit mask - all bits processor
+	out	dx,ax			;  ...
+	mov	dx,03c4h		; sequencer address
+	mov	ah,1			; 1 << plane number
+	shl	ah,cl			;  ...
+	mov	al,02h			; sequencer plane write enable register
+	out	dx,ax			; enable just this plane for writing
+	ret
+swapvga 	endp
+
+swapvga_reset	proc near
+	cmp	word ptr swapsetup,offset swapvga; swapvga being used?
+	jne	swapvga_reset_ret
+	mov	ax,0f02h		; write enable register, all planes
+	mov	dx,03c4h		; sequencer address
+	out	dx,ax
+swapvga_reset_ret:
+	ret
+swapvga_reset	endp
+
+swapnormread	proc uses es si di	; the SLOW version
+	local	xdot:word,ydot:word,bytesleft:word,bits:word,bitctr:word
+	local	savebyte:byte
+	mov	ax,swaplength		; bytes to save
+	mov	bytesleft,ax		;  ...
+	mov	bits,8			; bits/pixel
+	mov	bx,word ptr swapoffset	; pixel offset to save
+	mov	cx,word ptr swapoffset+2
+	mov	ax,colors		; colors
+swapnorm_bits:
+	cmp	ax,256			; accounted for 8 bits yet?
+	jae	swapnorm_gotbits	;  yup
+	shr	bits,1			; nope, halve the bits/pixel
+	shl	bx,1			; double the pixel offset
+	rcl	cx,1			;  ...
+	mul	ax			; square colors accounted for
+	jmp	short swapnorm_bits	; check if enough yet
+swapnorm_gotbits:
+	mov	ax,bx			; pixel offset now in dx:ax
+	mov	dx,cx			;  ...
+	div	sxdots			; translate pixel offset to row/col
+	mov	ydot,ax 		;  ...
+	mov	xdot,dx 		;  ...
+	mov	ax,extraseg		; Extra Segment
+	add	ax,1000h		;  plus 64K
+	mov	word ptr swapvidbuf+2,ax; temp buffer to return to caller
+	mov	word ptr swapvidbuf,0	;  ...
+	mov	word ptr tmpbufptr+2,ax ; running ptr for building buffer
+	mov	word ptr tmpbufptr,0	;  ...
+	mov	bitctr,0
+swapnorm_loop:
+	mov	ax,0a000h		; EGA, VGA, MCGA starts here
+	mov	es,ax			;  for dotread
+	mov	cx,xdot 		; load up the registers
+	mov	dx,ydot 		;  for the video routine
+	call	dotread 		; read the dot via the approved method
+	mov	cx,bits 		; bits per pixel
+	cmp	cx,8			; 1 byte per pixel?
+	je	swapnorm_store		;  yup, go store a byte
+	add	bitctr,cx		; nope, add how many we're storing
+	mov	bl,savebyte		; load the byte being built
+swapnorm_shift:
+	shr	al,1			; shift pixel into byte
+	rcr	bl,1			;  ...
+	loop	swapnorm_shift		; for number of bits/pixel
+	mov	savebyte,bl		; save byte we're building
+	cmp	bitctr,8		; filled a byte yet?
+	jb	swapnorm_nxt		;  nope
+	mov	al,bl			; yup, set up to store
+	mov	bitctr,0		; clear counter for next time
+swapnorm_store:
+	les	di,tmpbufptr		; buffer pointer
+	stosb				; store byte
+	dec	bytesleft		; finished?
+	jz	swapnorm_ret		;  yup
+	mov	word ptr tmpbufptr,di	; store incremented buffer pointer
+swapnorm_nxt:
+	inc	xdot			; for next dotread call
+	mov	ax,xdot 		; past row length?
+	cmp	ax,sxdots		;  ...
+	jb	swapnorm_loop		;  nope, go for next pixel
+	inc	ydot			; yup, increment row
+	mov	xdot,0			; and reset column
+	jmp	short swapnorm_loop	; go for next pixel
+swapnorm_ret:
+	ret
+swapnormread	endp
+
+swapnormwrite	proc uses es si di	; the SLOW way
+	local	xdot:word,ydot:word,bytesleft:word,bits:word,bitctr:word
+	local	savebyte:byte
+	mov	ax,swaplength		; bytes to restore
+	inc	ax			; +1
+	mov	bytesleft,ax		; save it
+	mov	bits,8			; bits/pixel
+	mov	bx,word ptr swapoffset	; pixel offset to restore
+	mov	cx,word ptr swapoffset+2;  ...
+	mov	ax,colors		; colors
+swapnormw_bits:
+	cmp	ax,256			; accounted for 8 bits yet?
+	jae	swapnormw_gotbits	;  yup
+	shr	bits,1			; nope, halve the bits/pixel
+	shl	bx,1			; double the pixel offset
+	rcl	cx,1			;  ...
+	mul	ax			; square colors accounted for
+	jmp	short swapnormw_bits	; check if enough yet
+swapnormw_gotbits:
+	mov	ax,bx			; pixel offset now in dx:ax
+	mov	dx,cx			;  ...
+	div	sxdots			; translate pixel offset to row/col
+	mov	ydot,ax 		;  ...
+	mov	xdot,dx 		;  ...
+	mov	dx,word ptr swapvidbuf+2; temp buffer from caller
+	mov	ax,word ptr swapvidbuf	;  ...
+	mov	word ptr tmpbufptr+2,dx ; running ptr in buffer
+	mov	word ptr tmpbufptr,ax	;  ...
+	mov	bitctr,0
+swapnormw_loop:
+	mov	cx,bits 		; bits per pixel
+	sub	bitctr,cx		; subtract a pixel from counter
+	jg	swapnormw_extract	;  got some left in savebyte
+	dec	bytesleft		; all done?
+	jz	swapnormw_ret		;  yup
+	les	si,tmpbufptr		; buffer pointer
+	mov	dl,es:[si]		; next byte
+	inc	word ptr tmpbufptr	; incr buffer pointer for next time
+	mov	bitctr,8		; reset unused bit count
+	cmp	cx,8			; 1 byte/pixel?
+	je	swapnormw_store 	;  yup, go the fast way
+	mov	bl,dl			; byte to extract from
+	jmp	short swapnormw_extract2
+swapnormw_extract:
+	mov	bl,savebyte		; byte with bits left to use
+	mov	dl,bl			; current pixel in bottom n bits
+swapnormw_extract2:
+	shr	bl,1			; for next time
+	loop	swapnormw_extract2	; for bits per pixel
+	mov	savebyte,bl		; save remaining bits
+swapnormw_store:
+	mov	ax,0a000h		; EGA, VGA, MCGA starts here
+	mov	es,ax			;  for dotread
+	mov	al,dl			; color to write
+	and	ax,andcolor		;  ...
+	mov	cx,xdot 		; load up the registers
+	mov	dx,ydot 		;  for the video routine
+	call	dotwrite		; write the dot via the approved method
+	inc	xdot			; for next dotread call
+	mov	ax,xdot 		; past row length?
+	cmp	ax,sxdots		;  ...
+	jb	swapnormw_loop		;  nope, go for next pixel
+	inc	ydot			; yup, increment row
+	mov	xdot,0			; and reset column
+	jmp	short swapnormw_loop	; go for next pixel
+swapnormw_ret:
+	ret
+swapnormwrite	endp
+
+; far move routine for savegraphics/restoregraphics
+
+movewords proc	uses es di si, len:word, fromptr:dword, toptr:dword
+	push	ds			; save DS
+	mov	cx,len			; words to move
+	les	di,toptr		; destination buffer
+	lds	si,fromptr		; source buffer
+	cld				; direction=forward
+	rep	movsw			; do it.
+	pop	ds			; restore DS
+	ret				; we done.
+movewords endp
+
+; clear text screen
 
 setclear	proc	uses es si di	; clear the screen after setfortext
 	call	far ptr home		; home the cursor
@@ -4736,7 +5173,7 @@ setclear	proc	uses es si di	; clear the screen after setfortext
 ;;	push	bp			; some BIOS's don't save this
 ;;	int	10h			; do it.
 ;;	pop	bp			; restore the saved register
-	mov	ax,0b800h
+	mov	ax,textaddr
 	mov	es,ax
 	xor	di,di
 	cmp	text_type,0		; real text mode?
@@ -4865,7 +5302,6 @@ tickwait	endp
 ;	Show cursor, wait for a key, disable cursor, return key
 
 keycursor	proc   uses es si di, row:word, col:word
-	push	bp			; some BIOS's don't save this
 	mov	cursortyp,0607h 	; default cursor
 	mov	ax,row			; row specified?
 	cmp	ax,-1			;  ...
@@ -4923,6 +5359,7 @@ ckbwwt: mov	cx,3			; wait 3 ticks for keystroke
 ck_text:
 	cmp	text_type,0		; real text mode?
 	jne	ckgetw			;  nope, no cursor at all
+	push	bp			; some bios's don't save this
 	mov	ah,1			; set cursor type
 	mov	cx,cursortyp		;  ...
 	int	10h			;  ...
@@ -4933,12 +5370,14 @@ ck_text:
 	mov	dl,byte ptr textcol	;  col
 	add	dh,byte ptr textcbase	;  ...
 	int	10h			;  ...
+	pop	bp
 ckgetw: call	far ptr keypressed	; not getakey, help/tab mey be enabled
 	cmp	ax,0			; key available?
 	je	ckgetw			;  nope, keep waiting
 ck_get: call	far ptr getakey 	; get the keystroke
 	cmp	text_type,0		; real text mode?
 	jne	ck_ret			;  nope, done
+	push	bp			; some bios's don't save this
 	push	ax			; save it
 	mov	ah,1			; make cursor normal size
 	mov	cx,0607h		;  ...
@@ -4948,7 +5387,8 @@ ck_get: call	far ptr getakey 	; get the keystroke
 	mov	dx,1950h		;  off the display
 	int	10h			;  ...
 	pop	ax			; keystroke value
-ck_ret: pop	bp			; restore the saved register
+	pop	bp
+ck_ret:
 	ret
 keycursor	endp
 
@@ -5174,6 +5614,19 @@ setago: cmp	text_type,0		; real color text mode?
 	jcxz	setax			; none?
 	mov	ax,attr 		; get color attributes in al
 	mov	dx,0b800h		; set video pointer
+	cmp	mode7text,0		; egamono/hgc?
+	je	setalstore		;  nope
+	mov	dx,0b000h		; mode 7 address
+	mov	al,07h			; normal mda ttribute
+	cmp	ah,0			; inverse?
+	jge	setalchkbright		;  nope
+	mov	al,70h			; yup
+	jmp	short setalstore
+setalchkbright:
+	test	ah,40h			; bright?
+	jz	setalstore		;  nope
+	mov	al,0Fh			; yup
+setalstore:
 	mov	es,dx			;  ...
 setalp: mov	byte ptr es:1[di],al	; set attribute
 	add	di,2			; for next one
@@ -5300,7 +5753,18 @@ put_text:				; text mode substring loop
 	add	ax,bx			;  ...
 	mov	di,ax			; di -> start location in Video segment
 	mov	ax,attr 		; get color attributes in ah
-	mov	ah,al			;  ...
+	cmp	mode7text,0		; egamono/hgc? (MDA)
+	je	B0			; nope, use color attr
+	mov	al,07h			; default, white on blank
+	cmp	ah,0			; top bit of attr set?
+	jge	mdachkbright		;  nope
+	mov	al,70h			; inverse video
+	jmp	short B0
+mdachkbright:
+	test	ah,40h			; 2nd bit of attr set?
+	jz	B0			;  nope
+	mov	al,0Fh			; bright
+B0:	mov	ah,al
 B1:	mov	al,byte ptr es:[si]	; get a char in al
 	cmp	al,0			; end of string?
 	je	putstring_ret		;  yes, done
@@ -5311,7 +5775,7 @@ B1:	mov	al,byte ptr es:[si]	; get a char in al
 	inc	textrow 		; ...
 	jmp	short put_text		; on to the next substring
 B2:	push	es			; No, store char & attribute
-	mov	dx,0b800h		;  ...
+	mov	dx,textaddr		;  ...
 	mov	es,dx			;  ...
 	stosw				;  ...
 	pop	es			;  ...

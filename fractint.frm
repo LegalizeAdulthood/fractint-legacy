@@ -31,13 +31,13 @@
 
    Daisy (ORIGIN) = { z = pixel:  z = z*z + (0.11031, -0.67037), |z| <= 4 }
 
-   InvMandel {
+   InvMandel (XAXIS) {
       c = z = 1 / pixel:
 	 z = sqr(z) + c;
       |z| <= 4
    }
 
-   MarksMandelPwr {
+   MarksMandelPwr (XAXIS) {
       z = pixel, c = z ^ (z - 1):
 	 z = c * sqr(z) + pixel,
       |z| <= 4
@@ -181,7 +181,7 @@
 	   |z| <= (P2 + 3)
  }
 
- Cubic {
+ Cubic (XYAXIS) {
 	  p = pixel,
        test = p1 + 3,
 	 t3 = 3*p,
@@ -204,13 +204,25 @@
 
   { The following were sent by JM Colard-Richard}
 
-  Richard1(XYAXIS) {c = z = pixel: z=(z*z*sin(z*z)+z*z)+pixel, |z|<=50}
-  Richard2 {c = z = pixel: z=1/(sin(z*z+pixel*pixel)),|z|<=50}
-  Richard3 {c = z = pixel: z=(1/sinh(z)*sinh(z))+pixel,|z|<=50}
-  Richard4 {c = z = pixel: z=(1/(z*z*cos(z*z)+z*z))+pixel,|z|<=50}
-  Richard5 {c = z = pixel: z=sin(z*sinh(z))+pixel,|z|<=50}
-  Richard6 {c = z = pixel: z=sin(sinh(z))+pixel,|z|<=50}
-  Richard7 {c = z = pixel: z=log(z)*pixel,|z|<=50}
-  Richard8 {c = z = pixel: z=sin(z)+sin(pixel),|z|<=50}
+  Richard1 (XYAXIS) {c = z = pixel: z=(z*z*sin(z*z)+z*z)+pixel, |z|<=50}
+  Richard2 (XYAXIS) {c = z = pixel: z=1/(sin(z*z+pixel*pixel)),|z|<=50}
+  Richard3 (XAXIS)  {c = z = pixel: z=(1/sinh(z)*sinh(z))+pixel,|z|<=50}
+  Richard4 (XAXIS)  {c = z = pixel: z=(1/(z*z*cos(z*z)+z*z))+pixel,|z|<=50}
+  Richard5 (XAXIS)  {c = z = pixel: z=sin(z*sinh(z))+pixel,|z|<=50}
+  Richard6 (XYAXIS) {c = z = pixel: z=sin(sinh(z))+pixel,|z|<=50}
+  Richard7 (XAXIS)  {c = z = pixel: z=log(z)*pixel,|z|<=50}
+  Richard8 (XYAXIS) {c = z = pixel: z=sin(z)+sin(pixel),|z|<=50}
 
+
+{ The following are from Scott Taylor.
+  Scott says they're "Dog" because the first one he looked at reminded
+  him of a hot dog. }
+
+  SinDog(XYAXIS)  { z = Pixel, b = p1+2:  z = sin( z ) * pixel,  |z| <= b }
+  CosDog(XYAXIS)  { z = Pixel, b = p1+2:  z = cos( z ) * pixel,  |z| <= b }
+  SinHDog(XYAXIS) { z = Pixel, b = p1+2:  z = sinh( z ) * pixel, |z| <= b }
+  CosHDog(XYAXIS) { z = Pixel, b = p1+2:  z = cosh( z ) * pixel, |z| <= b }
+  SqrDog(XYAXIS)  { z = Pixel, b = p1+2:  z = sqr( z ) * pixel,  |z| <= b }
+  LogDog(XYAXIS)  { z = Pixel, b = p1+2:  z = log( z ) * pixel,  |z| <= b }
+  ExpDog(XYAXIS)  { z = Pixel, b = p1+2:  z = exp( z ) * pixel,  |z| <= b }
 

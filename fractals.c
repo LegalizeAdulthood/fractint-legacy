@@ -2700,7 +2700,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MANDEL, JULIAFP,  ORIGIN,
    JuliaFractal,   julia_per_pixel, JuliaSetup,    calcmand,	    STDBAILOUT,
 
-   "*newtbasin",   newtdegree,"", "","",3,0,0,0, 0,
+   "*newtbasin",   newtdegree,"", "","",3,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, MPNEWTBASIN,   NOSYM,
    NewtonFractal2, otherjuliafp_per_pixel,  NewtonSetup, StandardFractal,NOBAILOUT,
 
@@ -2708,15 +2708,15 @@ struct fractalspecificstuff far fractalspecific[] =
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MANDELLAMBDA, LAMBDAFP,  NOSYM,
    LambdaFractal,   julia_per_pixel, JulialongSetup,  StandardFractal,STDBAILOUT,
 
-   "*mandel",    realz0, imagz0,"","",0,0,0,0, 0,
+   "*mandel",    realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.5,  1.5, -1.5,  1.5, 0, JULIAFP,	 NOFRACTAL, MANDEL,  XAXIS_NOPARM,
    JuliafpFractal,mandelfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "*newton",      newtdegree,stripes, "","",3,0,0,0, 0,
+   "*newton",      newtdegree,stripes, "","",3,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, MPNEWTON,	XAXIS,
    NewtonFractal2, otherjuliafp_per_pixel,  NewtonSetup, StandardFractal,NOBAILOUT,
 
-   "*julia",     realparm, imagparm,"","",0.3,0.6,0,0, 0,
+   "*julia",     realparm, imagparm,"","",0.3,0.6,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, MANDELFP, JULIA,  ORIGIN,
    JuliafpFractal, juliafp_per_pixel,  JuliafpSetup,StandardFractal,STDBAILOUT,
 
@@ -2729,12 +2729,12 @@ struct fractalspecificstuff far fractalspecific[] =
    -8.0,  8.0, -6.0,  6.0, 0, LAMBDATRIGFP,NOFRACTAL, MANDELTRIG, XYAXIS_NOPARM,
    LambdaTrigfpFractal,othermandelfp_per_pixel,MandelTrigSetup,StandardFractal,FTRIGBAILOUT,
 
-   "*manowar",    realz0, imagz0,"","",0,0,0,0, 0,
-   -2.5,  1.5, -1.5,  1.5, 0, MANOWARJ, NOFRACTAL, MANOWAR,  XAXIS_NOPARM,
+   "*manowar",    realz0, imagz0,"","",0,0,0,0, WINFRAC,
+   -2.5,  1.5, -1.5,  1.5, 0, MANOWARJFP, NOFRACTAL, MANOWAR,  XAXIS_NOPARM,
    ManOWarfpFractal,mandelfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
    "manowar",    realz0, imagz0,"","",0,0,0,0, WINFRAC,
-   -2.5,  1.5, -1.5,  1.5, 1, MANOWARJFP, NOFRACTAL, MANOWARFP, XAXIS_NOPARM,
+   -2.5,  1.5, -1.5,  1.5, 1, MANOWARJ, NOFRACTAL, MANOWARFP, XAXIS_NOPARM,
    ManOWarFractal,mandel_per_pixel, MandellongSetup,StandardFractal,STDBAILOUT,
 
    "test",        "(testpt Param #1)","(testpt param #2)","(testpt param #3)", "(testpt param #4)",0,0,0,0, 0,
@@ -2797,11 +2797,11 @@ struct fractalspecificstuff far fractalspecific[] =
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MANDEL4, NOFRACTAL, ORIGIN,
    Mandel4Fractal,   julia_per_pixel, JulialongSetup,StandardFractal,	 STDBAILOUT,
 
-   "ifs",        "","","","",0,0,0,0, NOGUESS+NOTRACE+NORESUME,
+   "ifs",        "","","","",0,0,0,0, NOGUESS+NOTRACE+NORESUME+WINFRAC,
    -8.0,  8.0, -1.0, 11.0, 16, NOFRACTAL, NOFRACTAL, NOFRACTAL,  NOSYM,
    NULL,	  NULL, 	    StandaloneSetup, ifs,    NOBAILOUT,
 
-   "ifs3d",        "","","","",0,0,0,0, NOGUESS+NOTRACE+NORESUME,
+   "ifs3d",        "","","","",0,0,0,0, NOGUESS+NOTRACE+NORESUME+WINFRAC,
    -11.0,  11.0, -11.0, 11.0, 16, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM,
    NULL,	  NULL,      StandaloneSetup, ifs3d,	NOBAILOUT,
 
@@ -2821,7 +2821,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, NOFRACTAL, TRIGSQR,XYAXIS,
    TrigZsqrdfpFractal,	 juliafp_per_pixel, JuliafpSetup,  StandardFractal,STDBAILOUT,
 
-   "*bifurcation",     "", "","","",0,0,0,0, NOGUESS+NOTRACE+NOROTATE,
+   "*bifurcation",     "", "","","",0,0,0,0, NOGUESS+NOTRACE+NOROTATE+WINFRAC,
    1.9,  3.0, 0,  1.34, 0, NOFRACTAL, NOFRACTAL, LBIFURCATION, NOSYM,
    BifurcVerhulst, NULL, StandaloneSetup, Bifurcation, NOBAILOUT,
 
@@ -2853,7 +2853,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, NOFRACTAL, ZXTRIGPLUSZ,XAXIS,
    ZXTrigPlusZfpFractal,   juliafp_per_pixel, ZXTrigPlusZSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "*kamtorus",kamangle,kamstep,kamstop,pointsperorbit,1.3,.05,1.5,150, NOGUESS+NOTRACE+INFCALC,
+   "*kamtorus",kamangle,kamstep,kamstop,pointsperorbit,1.3,.05,1.5,150, NOGUESS+NOTRACE+INFCALC+WINFRAC,
    -1.0,  1.0, -.75, .75, 0, NOFRACTAL, NOFRACTAL, KAM, NOSYM,
    kamtorusfloatorbit, NULL,	     orbit3dfloatsetup, orbit2dfloat,	 NOBAILOUT,
 
@@ -2861,7 +2861,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -1.0,  1.0, -.75, .75,16, NOFRACTAL, NOFRACTAL, KAMFP,	NOSYM,
    kamtoruslongorbit, NULL,	     orbit3dlongsetup, orbit2dlong,	 NOBAILOUT,
 
-   "*kamtorus3d",kamangle,kamstep,kamstop,pointsperorbit,1.3,.05,1.5,150, NOGUESS+NOTRACE+INFCALC,
+   "*kamtorus3d",kamangle,kamstep,kamstop,pointsperorbit,1.3,.05,1.5,150, NOGUESS+NOTRACE+INFCALC+WINFRAC,
    -3.0,  3.0, -1, 3.5, 0, NOFRACTAL, NOFRACTAL, KAM3D,       NOSYM,
    kamtorusfloatorbit, NULL,	     orbit3dfloatsetup, orbit3dfloat,	 NOBAILOUT,
 
@@ -2905,11 +2905,11 @@ struct fractalspecificstuff far fractalspecific[] =
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, LMANDELZPOWER, FPJULIAZPOWER,	 ORIGIN,
    longZpowerFractal,long_julia_per_pixel,JulialongSetup,StandardFractal,STDBAILOUT,
 
-   "*manzpower",    realz0, imagz0, exponent,"",0,0,2,0, 0,
+   "*manzpower",    realz0, imagz0, exponent,"",0,0,2,0, WINFRAC,
    -2.5,  1.5, -1.5,  1.5, 0, FPJULIAZPOWER,   NOFRACTAL, LMANDELZPOWER,  XAXIS_NOPARM,
    floatZpowerFractal,othermandelfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "*julzpower",     realparm, imagparm, exponent,"",0.3,0.6,2,0, 0,
+   "*julzpower",     realparm, imagparm, exponent,"",0.3,0.6,2,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, FPMANDELZPOWER, LJULIAZPOWER,	ORIGIN,
    floatZpowerFractal, otherjuliafp_per_pixel,	JuliafpSetup,StandardFractal,STDBAILOUT,
 
@@ -2945,7 +2945,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -3.0,  3.0, -2.2,  2.2, 16, NOFRACTAL, NOFRACTAL, FPPOPCORN,  NOPLOT,
    LPopcornFractal,   long_julia_per_pixel, JulialongSetup,popcorn,STDBAILOUT,
 
-   "*lorenz",timestep,"a","b", "c",.02,5,15,1, NOGUESS+NOTRACE+INFCALC,
+   "*lorenz",timestep,"a","b", "c",.02,5,15,1, NOGUESS+NOTRACE+INFCALC+WINFRAC,
    -15,  15, 0, 30, 0, NOFRACTAL, NOFRACTAL, LLORENZ,	NOSYM,
    lorenz3dfloatorbit, NULL,	     orbit3dfloatsetup, orbit2dfloat,	 NOBAILOUT,
 
@@ -2981,55 +2981,55 @@ struct fractalspecificstuff far fractalspecific[] =
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, COMPLEXMARKSMAND, NOFRACTAL,	NOSYM,
    MarksCplxMand, juliafp_per_pixel, JuliafpSetup, StandardFractal, STDBAILOUT,
 
-   "formula", p1real, p1imag, p2real, p2imag, 0,0,0,0, 0,
+   "formula", p1real, p1imag, p2real, p2imag, 0,0,0,0, WINFRAC,
    -2.0, 2.0, -1.5, 1.5, 1, NOFRACTAL, NOFRACTAL, FFORMULA, SETUP_SYM,
    Formula, form_per_pixel, intFormulaSetup, StandardFractal, 0,
 
-   "*formula", p1real, p1imag, p2real, p2imag, 0,0,0,0, 0,
+   "*formula", p1real, p1imag, p2real, p2imag, 0,0,0,0, WINFRAC,
    -2.0, 2.0, -1.5, 1.5, 0, NOFRACTAL, NOFRACTAL, FORMULA, SETUP_SYM,
    Formula, form_per_pixel, fpFormulaSetup, StandardFractal, 0,
 
-  "*sierpinski",  "","","","",0,0,0,0, 0,
+  "*sierpinski",  "","","","",0,0,0,0, WINFRAC,
    -0.9,  1.7, -0.9,  1.7, 0, NOFRACTAL, NOFRACTAL, SIERPINSKI,   NOSYM,
    SierpinskiFPFractal, otherjuliafp_per_pixel, SierpinskiFPSetup,StandardFractal,127.0,
 
-   "*lambda",      realparm, imagparm,"","",0.85,0.6,0,0, 0,
+   "*lambda",      realparm, imagparm,"","",0.85,0.6,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, MANDELLAMBDAFP, LAMBDA,  NOSYM,
    LambdaFPFractal,   juliafp_per_pixel, JuliafpSetup,	StandardFractal,STDBAILOUT,
 
-  "*barnsleym1",  realz0, imagz0,"","",0,0,0,0, 0,
+  "*barnsleym1",  realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, BARNSLEYJ1FP,NOFRACTAL, BARNSLEYM1,  XYAXIS_NOPARM,
    Barnsley1FPFractal, othermandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
 
-  "*barnsleyj1",  realparm, imagparm,"","",0.6,1.1,0,0, 0,
+  "*barnsleyj1",  realparm, imagparm,"","",0.6,1.1,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, BARNSLEYM1FP, BARNSLEYJ1,  ORIGIN,
    Barnsley1FPFractal, otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "*barnsleym2",  realz0, imagz0,"","",0,0,0,0, 0,
+   "*barnsleym2",  realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, BARNSLEYJ2FP,NOFRACTAL, BARNSLEYM2,  YAXIS_NOPARM,
    Barnsley2FPFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "*barnsleyj2",  realparm, imagparm,"","",0.6,1.1,0,0, 0,
+   "*barnsleyj2",  realparm, imagparm,"","",0.6,1.1,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, BARNSLEYM2FP, BARNSLEYJ2,  ORIGIN,
    Barnsley2FPFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "*barnsleym3",  realz0, imagz0,"","",0,0,0,0, 0,
+   "*barnsleym3",  realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, BARNSLEYJ3FP, NOFRACTAL, BARNSLEYM3,  XAXIS_NOPARM,
    Barnsley3FPFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "*barnsleyj3",  realparm, imagparm,"","",0.6,1.1,0,0, 0,
+   "*barnsleyj3",  realparm, imagparm,"","",0.6,1.1,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, BARNSLEYM3FP, BARNSLEYJ3,  XAXIS,
    Barnsley3FPFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "*mandellambda",realz0, imagz0,"","",0,0,0,0, 0,
+   "*mandellambda",realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -3.0,  5.0, -3.0,  3.0, 0, LAMBDAFP, NOFRACTAL, MANDELLAMBDA,  XAXIS_NOPARM,
    LambdaFPFractal,mandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "julibrot", "","","","", -.83, -.83, .25, -.25, NOGUESS+NOTRACE+NOROTATE+NORESUME,
+   "julibrot", "","","","", -.83, -.83, .25, -.25, NOGUESS+NOTRACE+NOROTATE+NORESUME+WINFRAC,
    -2.0, 2.0, -1.5, 1.5, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL, NOSYM,
    JuliaFractal, jb_per_pixel, JulibrotSetup, Std4dFractal, NOBAILOUT,
 
-   "*lorenz3d",timestep,"a","b", "c",.02,5,15,1, NOGUESS+NOTRACE+NORESUME,
+   "*lorenz3d",timestep,"a","b", "c",.02,5,15,1, NOGUESS+NOTRACE+NORESUME+WINFRAC,
    -30.0,  30.0,  -30.0,   30.0, 0, NOFRACTAL, NOFRACTAL, LLORENZ3D,   NOSYM,
    lorenz3dfloatorbit, NULL,	     orbit3dfloatsetup, orbit3dfloat,	 NOBAILOUT,
 
@@ -3037,7 +3037,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -30.0,  30.0,  -20.0,   40.0, 16, NOFRACTAL, NOFRACTAL, FPROSSLER,	NOSYM,
    rosslerlongorbit, NULL,	   orbit3dlongsetup, orbit3dlong,    NOBAILOUT,
 
-   "*rossler3d",timestep,"a","b", "c",.04, .2, .2, 5.7, NOGUESS+NOTRACE+NORESUME,
+   "*rossler3d",timestep,"a","b", "c",.04, .2, .2, 5.7, NOGUESS+NOTRACE+NORESUME+WINFRAC,
    -30.0,  30.0,  -20.0,   40.0, 0, NOFRACTAL, NOFRACTAL, LROSSLER,   NOSYM,
    rosslerfloatorbit, NULL,	    orbit3dfloatsetup, orbit3dfloat,	NOBAILOUT,
 
@@ -3045,7 +3045,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -1.4,  1.4,	-.5,   .5, 16, NOFRACTAL, NOFRACTAL, FPHENON,	NOSYM,
    henonlongorbit, NULL,	 orbit3dlongsetup, orbit2dlong,    NOBAILOUT,
 
-   "*henon","a","b","","",1.4,.3,0,0, NOGUESS+NOTRACE+INFCALC,
+   "*henon","a","b","","",1.4,.3,0,0, NOGUESS+NOTRACE+INFCALC+WINFRAC,
    -1.4,  1.4,	-.5,   .5, 0, NOFRACTAL, NOFRACTAL, LHENON,   NOSYM,
    henonfloatorbit, NULL,	  orbit3dfloatsetup, orbit2dfloat,    NOBAILOUT,
 
@@ -3062,11 +3062,11 @@ struct fractalspecificstuff far fractalspecific[] =
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,	 NOSYM,
    NULL,   NULL,     StandaloneSetup, diffusion,    NOBAILOUT,
 
-   "*unity",       "","","","",0,0,0,0, 0,
+   "*unity",       "","","","",0,0,0,0, WINFRAC,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, UNITY,   XYAXIS,
    UnityfpFractal, otherjuliafp_per_pixel,StandardSetup,StandardFractal,NOBAILOUT,
 
-   "*spider",    realz0, imagz0,"","",0,0,0,0, 0,
+   "*spider",    realz0, imagz0,"","",0,0,0,0, WINFRAC,
    -2.5,  1.5, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, SPIDER,  XAXIS_NOPARM,
    SpiderfpFractal,mandelfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
@@ -3102,7 +3102,7 @@ struct fractalspecificstuff far fractalspecific[] =
    -2.0, 4.0, -1.0, 2.0, 1, NOFRACTAL, NOFRACTAL, BIFLAMBDA,   NOSYM,
    LongBifurcLambda, NULL, StandaloneSetup, Bifurcation, NOBAILOUT,
 
-   "*biflambda",     "", "","","",0,0,0,0,NOGUESS+NOTRACE+NOROTATE,
+   "*biflambda",     "", "","","",0,0,0,0,NOGUESS+NOTRACE+NOROTATE+WINFRAC,
    -2.0, 4.0, -1.0, 2.0, 0, NOFRACTAL, NOFRACTAL, LBIFLAMBDA,  NOSYM,
    BifurcLambda, NULL, StandaloneSetup, Bifurcation, NOBAILOUT,
 
@@ -3126,12 +3126,12 @@ struct fractalspecificstuff far fractalspecific[] =
    -1, 1, -1, 1, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL, NOSYM,
    NULL, NULL, StandaloneSetup, Lsystem, NOBAILOUT,
 
-   "*manowarj",    realparm, imagparm,"","",0,0,0,0, 0,
-   -2.5,  1.5, -1.5,  1.5, 0, NOFRACTAL, MANOWAR, MANOWARJ,  NOSYM,
+   "*manowarj",    realparm, imagparm,"","",0,0,0,0, WINFRAC,
+   -2.5,  1.5, -1.5,  1.5, 0, NOFRACTAL, MANOWARFP, MANOWARJ,  NOSYM,
    ManOWarfpFractal,juliafp_per_pixel, JuliafpSetup,StandardFractal,STDBAILOUT,
 
    "manowarj",    realparm, imagparm,"","",0,0,0,0, WINFRAC,
-   -2.5,  1.5, -1.5,  1.5, 1, NOFRACTAL,MANOWARFP , MANOWARJFP, NOSYM,
+   -2.5,  1.5, -1.5,  1.5, 1, NOFRACTAL,MANOWAR , MANOWARJFP, NOSYM,
    ManOWarFractal,julia_per_pixel, JulialongSetup,StandardFractal,STDBAILOUT,
 
    NULL, NULL, NULL, NULL, NULL,0,0,0,0, 0, /* marks the END of the list */

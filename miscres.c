@@ -28,8 +28,8 @@ extern	int set_trig_array(int k,char *name);
 extern	void set_trig_pointers(int which);
 extern	int tab_display(void );
 extern	int endswithslash(char *fl);
-extern	void ifsgetfile(void );
-extern	void ifs3dgetfile(void );
+extern	int ifsgetfile(void );
+extern	int ifs3dgetfile(void );
 
 static	void trigdetails(char *);
 
@@ -106,8 +106,10 @@ int cvtcentermag(double *Xctr, double *Yctr, double *Magnification)
    double Width, Height, Radius, Ratio;
    Width  = xxmax - xxmin;
    Height = yymax - yymin;
+   Ratio = Height / Width;
    if(xx3rd != xxmin || yy3rd != yymin || Width < 0
-     || (Ratio = Height / Width) < 0.749 || Ratio > 0.751)
+     || (Width > 1e-8 && (Ratio <= 0.74 || Ratio >= 0.76))
+     || Ratio < 0.66 || Ratio > 0.84)
       return(0);
    /* calculate center and magnification */
    Radius = Height / 2.0;
@@ -468,7 +470,12 @@ int tab_display()	/* display the status of the current image */
       sprintf(msg,"%20.16f %20.16f",Xctr,Yctr);
       putstring(-1,-1,C_GENERAL_HI,msg);
       putstring(-1,-1,C_GENERAL_MED,"  Mag: ");
-      sprintf(msg,"%20.16f",Magnification);
+      if (Magnification < 1e6)
+	 sprintf(msg,"%20.14f",Magnification);
+      else if (Magnification < 1e12)
+	 sprintf(msg,"%20.8f",Magnification);
+      else
+	 sprintf(msg,"%20.2f",Magnification);
       putstring(-1,-1,C_GENERAL_HI,msg);
       }
    else if (xxmin != xx3rd || yymin != yy3rd) {
@@ -532,7 +539,7 @@ int endswithslash(char *fl)
 
 /* --------------------------------------------------------------------- */
 
-void ifsgetfile()	/* read in IFS parameters */
+int ifsgetfile()       /* read in IFS parameters */
 {
    FILE  *ifsfile;		/* IFS code file pointer */
    float localifs[IFSPARM];
@@ -547,6 +554,13 @@ void ifsgetfile()	/* read in IFS parameters */
 	    sscanf(temp1," %f %f %f %f %f %f %f",
 	       &localifs[0], &localifs[1], &localifs[2], &localifs[3],
 	       &localifs[4], &localifs[5], &localifs[6]  );
+	    if (i == 0 && localifs[6] == 0) {
+	       char msg[200];
+	       sprintf(msg,"%s invalid (perhaps it is IFS3D?)",ifsfilename);
+	       stopmsg(0,msg);
+	       fclose(ifsfile);
+	       return(-1);
+	       }
 	    for (j = 0; j < IFSPARM; j++) {
 	       initifs[i][j]   = localifs[j];
 	       initifs[i+1][j] = 0.0;
@@ -554,12 +568,13 @@ void ifsgetfile()	/* read in IFS parameters */
 	    }
 	 fclose(ifsfile);
 	 }
-   }
+      }
+   return(0);
 }
 
 /* --------------------------------------------------------------------- */
 
-void ifs3dgetfile()	/* read in 3D IFS parameters */
+int ifs3dgetfile()     /* read in 3D IFS parameters */
 {
    FILE  *ifsfile;		/* IFS code file pointer */
    float localifs[IFS3DPARM];
@@ -571,13 +586,20 @@ void ifs3dgetfile()	/* read in 3D IFS parameters */
 	 i = -1;
 	 while (fgets(temp1, 155, ifsfile) != NULL) {
 	    if (++i >= NUMIFS) break;
-	    sscanf(temp1," %f %f %f %f %f %f %f %f %f %f %f %f %f",
+	    j = sscanf(temp1," %f %f %f %f %f %f %f %f %f %f %f %f %f",
 	       &localifs[ 0], &localifs[ 1], &localifs[ 2],
 	       &localifs[ 3], &localifs[ 4], &localifs[ 5],
 	       &localifs[ 6], &localifs[ 7], &localifs[ 8],
 	       &localifs[ 9], &localifs[10], &localifs[11],
 	       &localifs[12]
 	       );
+	    if (i == 0 && j < 13) {
+	       char msg[200];
+	       sprintf(msg,"%s invalid (perhaps it is 2D IFS?)",ifs3dfilename);
+	       stopmsg(0,msg);
+	       fclose(ifsfile);
+	       return(-1);
+	       }
 	    for (j = 0; j < IFS3DPARM; j++) {
 	       initifs3d[i][j]	 = localifs[j];
 	       initifs3d[i+1][j] = 0.0;
@@ -586,6 +608,7 @@ void ifs3dgetfile()	/* read in 3D IFS parameters */
 	 fclose(ifsfile);
 	 }
       }
+   return(0);
 }
 
 

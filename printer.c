@@ -331,12 +331,8 @@ if (EPSFileType > 0)			 /* Only needed if saving to .EPS */
 			Printer_printf(LPTn,"%%%%DocumentFonts: Helvetica\r\n");
 			}
 		Printer_printf(LPTn,"%%%%EndComments\r\n");
-		Printer_printf(LPTn,"/BEGINEPSFILE { /EPSFsave save def\r\n");
 		Printer_printf(LPTn,"0 setgray 0 setlinecap 1 setlinewidth 0 setlinejoin\r\n");
 		Printer_printf(LPTn,"10 setmiterlimit [] 0 setdash newpath } bind def\r\n");
-		Printer_printf(LPTn,"/ENDEPSFILE { EPSFsave restore } bind def\r\n");
-
-		Printer_printf(LPTn,"BEGINEPSFILE\r\n");
 		}
 
 		Printer_printf(LPTn,"/dopic { gsave %d %d 8 [%d 0 0 %d 0 %d]\r\n",
@@ -612,13 +608,13 @@ if(EPSFileType == 1)			 /* To be used on WELL-BEHAVED .EPS */
 	    }
 	   }
 	  }
-	 if (Print_To_File == 0)
+	 if ((EPSFileType == 0)||(EPSFileType > 2))
 		{
 		Printer_printf(LPTn,"\r\nshowpage\r\n%c",4);
 		}
 	 else
 		{
-		Printer_printf(LPTn,"\r\nENDEPSFILE\r\n%%%%Trailer\r\n");
+		Printer_printf(LPTn,"\r\n%%%%Trailer\r\n%c",4);
 		}
 	 break;
 	 }

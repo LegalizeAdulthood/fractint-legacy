@@ -86,6 +86,7 @@ extern int  debugflag;		/* internal use only - you didn't see this */
 */
 	int	active_system = 0;	/* 0 for DOS, WINFRAC for Windows */
 	int	dotmode;		/* video access method	    */
+	int	textsafe2;		/* textsafe override from videotable */
 	int	oktoprint;		/* 0 if printf() won't work */
 	int	sxdots,sydots;		/* # of dots on the physical screen    */
 	int	sxoffs,syoffs;		/* physical top left of logical screen */
@@ -419,6 +420,8 @@ imagestart:				/* calc/display a new image */
 	 xdots	 = videoentry.xdots;	   /* # dots across the screen */
 	 ydots	 = videoentry.ydots;	   /* # dots down the screen   */
 	 colors  = videoentry.colors;	   /* # colors available */
+	 textsafe2 = dotmode / 100;
+	 dotmode  %= 100;
 	 sxdots  = xdots;
 	 sydots  = ydots;
 	 sxoffs = syoffs = 0;
