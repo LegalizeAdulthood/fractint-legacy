@@ -51,104 +51,10 @@ an appropriate setup, per_image, per_pixel, and orbit routines.
 #include <malloc.h>
 #endif
 
-/* defines should match fractalspecific array indices */
-
-/* first values defined in fractype.h for historical reasons  - from there:
-  #define NOFRACTAL      -1
-  #define MANDEL          0 
-  #define JULIA           1 
-  #define NEWTBASIN       2 
-  #define LAMBDA          3 
-  #define MANDELFP        4 
-  #define NEWTON          5 
-  #define JULIAFP         6 
-  #define PLASMA          7 
-*/
-
-#define LAMBDASINE        8 
-#define LAMBDACOS         9 
-#define LAMBDAEXP         10
-#define TEST              11
-#define SIERPINSKI        12
-#define BARNSLEYM1        13
-#define BARNSLEYJ1        14
-#define BARNSLEYM2        15
-#define BARNSLEYJ2        16
-#define MANDELSINE        17
-#define MANDELCOS         18
-#define MANDELEXP         19
-#define MANDELLAMBDA      20
-#define MARKSMANDEL       21
-#define MARKSJULIA        22
-#define UNITY             23
-#define MANDEL4           24
-#define JULIA4            25
-#define IFS               26
-#define IFS3D             27
-#define BARNSLEYM3        28
-#define BARNSLEYJ3        29
-#define DEMM              30
-#define DEMJ              31
-#define BIFURCATION       32
-#define MANDELSINH        33
-#define LAMBDASINH        34
-#define MANDELCOSH        35
-#define LAMBDACOSH        36
-#define LMANDELSINE       37
-#define LLAMBDASINE       38
-#define LMANDELCOS        39
-#define LLAMBDACOS        40
-#define LMANDELSINH       41
-#define LLAMBDASINH       42
-#define LMANDELCOSH       43
-#define LLAMBDACOSH       44
-#define LMANSINZSQRD      45
-#define LJULSINZSQRD      46
-#define FPMANSINZSQRD     47
-#define FPJULSINZSQRD     48
-#define LMANDELEXP        49
-#define LLAMBDAEXP        50
-#define LMANDELZPOWER     51
-#define LJULIAZPOWER      52
-#define FPMANDELZPOWER    53
-#define FPJULIAZPOWER     54
-#define FPMANZTOZPLUSZPWR 55
-#define FPJULZTOZPLUSZPWR 56
-#define LMANSINEXP        57
-#define LJULSINEXP        58
-#define FPMANSINEXP       59
-#define FPJULSINEXP       60
-#define FPPOPCORN         61
-#define LPOPCORN          62
-#define FPLORENZ          63
-#define LLORENZ           64
-#define LORENZ3D          65
-#define MPNEWTON          66 
-#define MPNEWTBASIN       67 
-#define COMPLEXNEWTON     68
-#define COMPLEXBASIN      69
-
-/* DEFINITIONS PRIOR TO THIS POINT ARE FROZEN BY THE VERSION 11.0 RELEASE! */
-
-#define COMPLEXMARKSMAND  70
-#define COMPLEXMARKSJUL   71
-#define FORMULA           72
-#define FFORMULA          73
-#define SIERPINSKIFP      74
-#define LAMBDAFP          75
-#define BARNSLEYM1FP      76
-#define BARNSLEYJ1FP      77
-#define BARNSLEYM2FP      78
-#define BARNSLEYJ2FP      79
-#define BARNSLEYM3FP      80
-#define BARNSLEYJ3FP      81
-#define MANDELLAMBDAFP    82
-#define JULIBROT          83
-
-/* DEFINITIONS PRIOR TO THIS POINT ARE FROZEN BY THE VERSION 12.0 RELEASE! */
-
+#include "fractype.h"
 
 #define NEWTONDEGREELIMIT  100
+extern int boundarytraceflag;
 extern int xshift, yshift;
 extern void draw_line(int,int,int,int,int);
 long Exp086(long);
@@ -279,148 +185,23 @@ extern int Std4dFractal(), JulibrotSetup(), jb_per_pixel();
 /* -------------------------------------------------------------------- */
 
 extern char far plasmamessage[];
+extern int orbit2dfloat();
+extern int orbit2dlong();
 
-/* Thanks to Rob Beyer */
-floatlorenz() 
-{
-   int count;
-   double dx,dy,dz,x,y,z,dt,a,b,c;
-   double adt,bdt,cdt,xdt,ydt;
-   int oldrow, oldcol;
-   count = 0;
-   if(inside > 0)
-      color = inside;
-   if(color >= colors)
-      color = 1;   
-   oldcol = oldrow = -1;
-   x = 1;  /* initial conditions */
-   y = 1;
-   z = 1;
-   
-   dt = fractalspecific[fractype].paramvalue[0];
-   a  = fractalspecific[fractype].paramvalue[1];
-   b  = fractalspecific[fractype].paramvalue[2];
-   c  = fractalspecific[fractype].paramvalue[3];
-         
-   /* precalculations for speed */
-   adt = a*dt;
-   bdt = b*dt;
-   cdt = c*dt;
-   
-   while(1)
-   {
-      if (++count > 1000) 
-      {        /* time to switch colors? */
-         count = 0;
-         if (++color >= colors)   /* another color to switch to? */
-              color = 1;        /* (don't use the background color) */
-      }
-      if(check_key())
-         return(-1);
-      if ( x > xxmin && x < xxmax && z > yymin && z < yymax )
-      {
-         col =          (( x-xxmin) / deltaX);
-         row = YYdots - (( z-yymin) / deltaY);
-         if(oldcol != -1)
-            draw_line(col,row,oldcol,oldrow,color&(colors-1));
-         else            
-            (*plot)(col,row,color&(colors-1));
-         oldcol = col;
-         oldrow = row;    
-      }
-      else
-         oldrow = oldcol = -1;
-
-      /* Calculate the next point */
-      xdt = x*dt;
-      ydt = y*dt;
-      dx = -(adt * x) + (adt * y);
-      dy =  (bdt * x) - (ydt) - (z * xdt);
-      dz = -(cdt * z) + (x * ydt);
-
-      x += dx;
-      y += dy;
-      z += dz;
-   }
-   return(0); 
-}
-
-longlorenz() 
-{
-   int count;
-   long delx,dely,xmin,xmax,ymin,ymax;
-   long dx,dy,dz,x,y,z,dt,a,b,c;
-   long adt,bdt,cdt,xdt,ydt;
-   int oldrow, oldcol;
-   count = 0;
-   if(inside > 0)
-      color = inside;
-   if(color >= colors)
-      color = 1;   
-   oldcol = oldrow = -1;
-   fudge = 1L<<bitshift;
-   delx = deltaX*fudge;
-   dely = deltaY*fudge;
-   xmin = xxmin*fudge;
-   ymin = yymin*fudge;
-   xmax = xxmax*fudge;
-   ymax = yymax*fudge;
-   x = fudge;  /* initial conditions */
-   y = fudge;
-   z = fudge;
-
-   /* for speed am assuming a,b,c are integers (they are not fudged) */
-   dt = fractalspecific[fractype].paramvalue[0] * fudge;
-   a  = fractalspecific[fractype].paramvalue[1];
-   b  = fractalspecific[fractype].paramvalue[2];
-   c  = fractalspecific[fractype].paramvalue[3];
-
-   /* precalculations for speed */
-   adt = a*dt;
-   bdt = b*dt;
-   cdt = c*dt;
-
-   while(1)
-   {
-      if (++count > 1000) 
-      {        /* time to switch colors? */
-         count = 0;
-         if (++color >= colors)   /* another color to switch to? */
-              color = 1;        /* (don't use the background color) */
-      }
-      if(check_key())
-         return(-1);
-      if ( x > xmin && x < xmax && z > ymin && z < ymax )
-      {
-         col =          (( x-xmin) / delx);
-         row = YYdots - (( z-ymin) / dely);
-         if(oldcol != -1)
-            draw_line(col,row,oldcol,oldrow,color&(colors-1));
-         else            
-            (*plot)(col,row,color&(colors-1));
-         oldcol = col;
-         oldrow = row;    
-      }
-      else
-         oldrow = oldcol = -1;
-
-      /* Calculate the next point */
-      
-      xdt = multiply(x,dt,bitshift);
-      ydt = multiply(y,dt,bitshift);
-      dx  = -multiply(adt,x,bitshift) + multiply(adt,y,bitshift);
-      dy  =  multiply(bdt,x,bitshift) -ydt -multiply(z,xdt,bitshift);
-      dz  = -multiply(cdt,z,bitshift) + multiply(x,ydt,bitshift);
-
-      x += dx;
-      y += dy;
-      z += dz;
-   }
-   return(0); 
-}
-
-/* this ought to be combined with ifs3d */
-extern int lorenz3dlong();
+/* functions defined elswhere needed for fractalspecific */
+extern int orbit3dfloat();
+extern int orbit3dlong();
+extern int lorenz3dlongorbit();
+extern int orbit3dlongsetup();
+extern int lorenz3dfloatorbit();
+extern int orbit3dfloatsetup();
+extern int rosslerfloatorbit();
+extern int rosslerlongorbit();
+extern int henonfloatorbit();
+extern int henonlongorbit();
+extern int pickoverfloatorbit();
+extern int gingerbreadfloatorbit();
+extern int diffusion();
 
 ifs()            /* IFS logic shamelessly converted to integer math */
 {
@@ -522,7 +303,7 @@ static	double	JSetDist( void );
 #define BIG 100000.0
 #define XOVERFLOW 100000000000000.0
 
-static	int		mono, outside;
+static	int		mono, outside_x;
 static	double	delta, pixelwidth;
 static	double	(*DistEstimate)();
 static	struct	complex far *orbit;
@@ -587,7 +368,7 @@ static int dem_start( void )
 	pixelwidth = 2*delta;
 
 	if ( colors == 2 ) mono = 1;
-	if ( mono ) outside = !inside;
+	if ( mono ) outside_x = !inside;
 
 	if ( strncmp( fractalspecific[fractype].name, "demm", 4 ) == 0)
 		DistEstimate = MSetDist;
@@ -614,7 +395,7 @@ static int dem_pt( void )
 
 	if ((distance = DistEstimate()) < delta)	color = inside;
 	else {
-		if (mono) color = outside;
+		if (mono) color = outside_x;
 		else {
 			tempcolor = 1 + (( distance/pixelwidth ));
 			color = (int)(tempcolor / sqrt( tempcolor )) % colors;
@@ -733,10 +514,10 @@ int Bifurcation( void )
 	if ( colors == 2 ) mono = 1;
 	if ( mono )	{
 		if ( inside ) {
-			outside = 0;
+			outside_x = 0;
 			inside = 1;
 		}
-		else outside = 1;
+		else outside_x = 1;
 	}
 
 	if ((filter_cycles = parm.x) == 0) filter_cycles = DEFAULTFILTER;
@@ -752,7 +533,7 @@ int Bifurcation( void )
          int color;
          color = verhulst_array[ row ];
 			if ( color && mono ) color = inside;
-			else if ( (!color) && mono ) color = outside;
+			else if ( (!color) && mono ) color = outside_x;
 			verhulst_array[ row ] = 0;
 			(*plot)(column,row,color);
       }
@@ -809,28 +590,27 @@ static void verhulst( double rate )  /* P. F. Verhulst (1845) */
    old = new;
 
 #define LONGBAILOUT()   \
-   ltempsqrx = lsqr(lnew.x);\
-   ltempsqry = lsqr(lnew.y);\
+   ltempsqrx = lsqr(lnew.x); ltempsqry = lsqr(lnew.y);\
    lmagnitud = ltempsqrx + ltempsqry;\
    if (lmagnitud >= llimit || lmagnitud < 0 || labs(lnew.x) > llimit2\
-         || labs(lnew.y) > llimit2) \
-      return(1);\
+         || labs(lnew.y) > llimit2 || overflow) \
+      { overflow=0;return(1);}\
    lold = lnew;
 
 #define FLOATTRIGBAILOUT()  \
    if (fabs(old.y) >= rqlim2) return(1);
 
 #define LONGTRIGBAILOUT()  \
-   if(labs(lold.y) >= llimit2) return(1);
+   if(labs(lold.y) >= llimit2 || overflow) { overflow=0;return(1);}
 
 #define FLOATHTRIGBAILOUT()  \
    if (fabs(old.x) >= rqlim2) return(1);
 
 #define LONGHTRIGBAILOUT()  \
-   if(labs(lold.x) >= llimit2) return(1);
+   if(labs(lold.x) >= llimit2 || overflow) { overflow=0;return(1);}
 
 #define TRIG16CHECK(X)  \
-      if(labs((X)) > l16triglim) return(1);
+      if(labs((X)) > l16triglim || overflow) { overflow=0;return(1);}
 
 #if 0
 /* this define uses usual trig instead of fast trig */
@@ -944,8 +724,8 @@ z_to_the_z(struct complex *z, struct complex *out)
 {
     static struct complex tmp1,tmp2;
     /* raises complex z to the z power */
-    extern int errno;
-    errno = 0;
+    int errno_xxx;
+    errno_xxx = 0;
 
     if(fabs(z->x) < DBL_EPSILON) return(-1);
 
@@ -967,7 +747,7 @@ z_to_the_z(struct complex *z, struct complex *out)
     FPUsincos(&tmp2.y,&siny,&cosy);
     out->x = tmpexp*cosy;
     out->y = tmpexp*siny;
-    return(errno);
+    return(errno_xxx);
 }
  
 /* Distance of complex z from unit circle */
@@ -1175,9 +955,6 @@ Barnsley1FPFractal()
    FLOATBAILOUT();
    return(0);
 }
-
-
-
 
 Barnsley2Fractal() 
 {
@@ -1558,18 +1335,37 @@ MarksLambdaFractal()
    return(0);
 }
 
+
 UnityFractal() 
 {
    /* brought to you by Mark Peterson - you won't find this in any fractal
       books unless they saw it here first - Mark invented it! */
-
    XXOne = multiply(lold.x, lold.x, bitshift) + multiply(lold.y, lold.y, bitshift);
    if((XXOne > FgTwo) || (labs(XXOne - FgOne) < delx))
       return(1);
    lold.y = multiply(FgTwo - XXOne, lold.x, bitshift);
    lold.x = multiply(FgTwo - XXOne, lold.y, bitshift);
+   lnew=lold;  /* TW added this line */
    return(0);
 }
+
+#define XXOne new.x
+
+UnityFractalfp() 
+{
+   /* brought to you by Mark Peterson - you won't find this in any fractal
+      books unless they saw it here first - Mark invented it! */
+
+   XXOne = sqr(old.x) + sqr(old.y);
+   if((XXOne > 2.0) || (fabs(XXOne - 1.0) < deltaX))
+      return(1);
+   old.y = (2.0 - XXOne)* old.x;
+   old.x = (2.0 - XXOne)* old.y;
+   new=old;  /* TW added this line */
+   return(0);
+}
+
+#undef XXOne
 
 Mandel4Fractal() 
 {
@@ -2110,8 +1906,10 @@ int MarksCplxMandperp(void)
 
 MandelSetup()		/* Mandelbrot Routine */
 {
+   extern int outside; /* there is a static int outside decl elsewhere */
    if (debugflag != 90 && ! invert && decomp[0] == 0 && rqlim <= 4.0 
-          && forcesymmetry == 999 && biomorph == -1 && bof_pp60_61 == 0)
+          && forcesymmetry == 999 && biomorph == -1 && bof_pp60_61 == 0 
+          && outside == -1)
       calctype = calcmand; /* the normal case - use CALCMAND */
    else
    {
@@ -2123,8 +1921,9 @@ MandelSetup()		/* Mandelbrot Routine */
 }
 JuliaSetup()		/* Julia Routine */
 {
+   extern int outside; /* there is a static int outside decl elsewhere */
    if (debugflag != 90 && ! invert && decomp[0] == 0 && rqlim <= 4.0 
-          && forcesymmetry == 999 && biomorph == -1)
+          && forcesymmetry == 999 && biomorph == -1 && outside == -1)
       calctype = calcmand; /* the normal case - use CALCMAND */
    else
    {
@@ -2247,7 +2046,7 @@ StandaloneSetup()
 
 UnitySetup()
 {
-   periodicitycheck = 0;		/* disable periodicity checks */
+   periodicitycheck = 0;
    FgOne = (1L << bitshift);
    FgTwo = FgOne + FgOne;
    return(1);
@@ -2346,6 +2145,8 @@ SierpinskiFPSetup()
 
 StandardSetup()
 {
+   if(fractype==UNITYFP)
+      periodicitycheck=0;
    return(1);
 }
 /* parameter descriptions */
@@ -2387,8 +2188,8 @@ struct fractalspecificstuff fractalspecific[] =
 {
    /*
      fractal name and parameters (text strings)
-     xmin  xmax  ymin  ymax int tojulia   tomandel symmetry 
-   |------|-----|-----|-----|--|--------|---------|--------|
+     xmin  xmax  ymin  ymax int tojulia   tomandel tofloat  symmetry 
+   |------|-----|-----|-----|--|--------|---------|--------|---------|
      orbit fnct     per_pixel fnct  per_image fnct  calctype fcnt    bailout
    |---------------|---------------|---------------|----------------|-------|
    */
@@ -2486,7 +2287,7 @@ struct fractalspecificstuff fractalspecific[] =
    MarksLambdaFractal,julia_per_pixel,MarksJuliaSetup,StandardFractal,STDBAILOUT,
 
    "unity",       "","","","",0,0,0,0,
-   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL,   XYAXIS, 
+   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, NOFRACTAL, UNITYFP,   XYAXIS, 
    UnityFractal, long_julia_per_pixel,UnitySetup,StandardFractal,0.0,
    
    "mandel4",      realz0, imagz0,"","",0,0,0,0,
@@ -2647,15 +2448,15 @@ struct fractalspecificstuff fractalspecific[] =
 
    "*lorenz",timestep,"a","b", "c",.02,5,15,1,
    -15,  15, 0, 30, 0, NOFRACTAL, NOFRACTAL, LLORENZ,   NOSYM, 
-   NULL,          NULL,             StandaloneSetup, floatlorenz,    0.0,
+   lorenz3dfloatorbit, NULL,         orbit3dfloatsetup, orbit2dfloat,    0.0,
 
    "lorenz",timestep,"a","b", "c",.02,5,15,1,
    -15,  15, 0, 30, 16, NOFRACTAL, NOFRACTAL, FPLORENZ,   NOSYM, 
-   NULL,          NULL,             StandaloneSetup, longlorenz,    0.0,
+   lorenz3dlongorbit, NULL,         orbit3dlongsetup, orbit2dlong,    0.0,
 
    "lorenz3d",timestep,"a","b", "c",.02,5,15,1,
-   -30.0,  30.0,  -30.0,   30.0, 16, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
-   NULL,          NULL,      StandaloneSetup, lorenz3dlong,    0.0,
+   -30.0,  30.0,  -30.0,   30.0, 16, NOFRACTAL, NOFRACTAL, FPLORENZ3D,   NOSYM, 
+   lorenz3dlongorbit, NULL,         orbit3dlongsetup, orbit3dlong,    0.0,
 
    "newton",      newtdegree,"", "","",3,0,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NEWTON,   XAXIS, 
@@ -2729,8 +2530,43 @@ struct fractalspecificstuff fractalspecific[] =
    -2.0, 2.0, -1.5, 1.5, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL, NOSYM,
    JuliaFractal, jb_per_pixel, JulibrotSetup, Std4dFractal, STDBAILOUT,
 
+   "*lorenz3d",timestep,"a","b", "c",.02,5,15,1,
+   -30.0,  30.0,  -30.0,   30.0, 0, NOFRACTAL, NOFRACTAL, LLORENZ3D,   NOSYM, 
+   lorenz3dfloatorbit, NULL,         orbit3dfloatsetup, orbit3dfloat,    0.0,
+
+   "rossler3d",timestep,"a","b", "c",.04, .2, .2, 5.7,
+   -30.0,  30.0,  -20.0,   40.0, 16, NOFRACTAL, NOFRACTAL, FPROSSLER,   NOSYM, 
+   rosslerlongorbit, NULL,         orbit3dlongsetup, orbit3dlong,    0.0,
+
+   "*rossler3d",timestep,"a","b", "c",.04, .2, .2, 5.7,
+   -30.0,  30.0,  -20.0,   40.0, 0, NOFRACTAL, NOFRACTAL, LROSSLER,   NOSYM, 
+   rosslerfloatorbit, NULL,         orbit3dfloatsetup, orbit3dfloat,    0.0,
+
+   "henon","a","b","","",1.4,.3,0,0,
+   -1.4,  1.4,  -.5,   .5, 1, NOFRACTAL, NOFRACTAL, FPHENON,   NOSYM, 
+   henonlongorbit, NULL,         orbit3dlongsetup, orbit2dlong,    0.0,
+
+   "*henon","a","b","","",1.4,.3,0,0,
+   -1.4,  1.4,  -.5,   .5, 0, NOFRACTAL, NOFRACTAL, LHENON,   NOSYM, 
+   henonfloatorbit, NULL,         orbit3dfloatsetup, orbit2dfloat,    0.0,
+
+   "pickover","a","b","c","d",2.24,.43,-.65, -2.43,
+   -2.8,  2.8,  -2.0, 2.0, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
+   pickoverfloatorbit, NULL,         orbit3dfloatsetup, orbit3dfloat,    0.0,
+
+   "gingerbreadman","","","","",0,0,0,0,
+   -4.5,  8.5,  -4.5, 8.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
+   gingerbreadfloatorbit, NULL, orbit3dfloatsetup, orbit2dfloat,    0.0,
+
+   "diffusion",        "Border size","","", "",10,0,0,0,
+   -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
+   NULL,   NULL,     StandaloneSetup, diffusion,    0.0,
+
+   "*unity",       "","","","",0,0,0,0,
+   -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, UNITY,   XYAXIS, 
+   UnityFractalfp, otherjuliafp_per_pixel,StandardSetup,StandardFractal,0.0,
+
    NULL, NULL, NULL, NULL, NULL,0,0,0,0, /* marks the END of the list */
    0,  0, 0,  0, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
    NULL, NULL, NULL, NULL,0
 };
-	

@@ -147,7 +147,8 @@ line3d(unsigned char pixels[], unsigned linelen)
    /* corners of transformed xdotx by ydots x colors box */ 
    double xmin, ymin, zmin, xmax, ymax, zmax; 
    int i,j;
-
+   int lastdot;
+   
    if(transparent[0] || transparent[1])
       plot = normalplot = T_clipcolor;  /*  Use the transparent plot function */
    else if(colors >= 16)
@@ -543,13 +544,14 @@ line3d(unsigned char pixels[], unsigned linelen)
       if (rowcount % localpreviewfactor)
          if ( !(((FILLTYPE == 5) || (FILLTYPE == 6)) && (rowcount == 1)))
             goto reallythebottom; /* skip over most of the line3d calcs */
-
+   lastdot = min(xdots-1, linelen-1);
+   
    /* PROCESS ROW LOOP BEGINS HERE */
    while(col < linelen)
    {
       if (FILLTYPE == -1)
       {
-         if (col != xdots-1) /* if this is not the last col */
+         if (col != lastdot) /* if this is not the last col */
             if (col % localpreviewfactor) /* if not the 1st or mod factor col*/
                goto loopbottom;
       }
@@ -584,9 +586,9 @@ line3d(unsigned char pixels[], unsigned linelen)
          */
 
          if(rscale < 0.0)
-            r = R + Rfactor*(double)f_cur.color;
+            r = R + Rfactor*(double)f_cur.color*costheta;
          else if(rscale > 0.0)
-            r = R -rXrscale + Rfactor*(double)f_cur.color;
+            r = R -rXrscale + Rfactor*(double)f_cur.color*costheta;
          else
             r = R;
          if(persp)
@@ -750,7 +752,7 @@ line3d(unsigned char pixels[], unsigned linelen)
             if(col == 1)
                putatriangle(lastrow[col],oldlast,old,old.color);
               
-            if(col < xdots-1)
+            if(col < lastdot)
                putatriangle(lastrow[col+1],lastrow[col],cur,cur.color);
             putatriangle(old,           lastrow[col],cur,cur.color);
 
@@ -758,7 +760,7 @@ line3d(unsigned char pixels[], unsigned linelen)
             (*plot)(cur.x,cur.y,cur.color);
             (*plot)(old.x,old.y,old.color);
             (*plot)(lastrow[col  ].x,lastrow[col  ].y,lastrow[col  ].color);
-            if(col < xdots-1)
+            if(col < lastdot)
                (*plot)(lastrow[col+1].x,lastrow[col+1].y,lastrow[col+1].color);
 
          }
@@ -895,7 +897,7 @@ line3d(unsigned char pixels[], unsigned linelen)
                already been calculated (variable old) */   
             if(col < 2 || rowcount < 2) /* don't have valid colors yet */
                break;
-            if(col < xdots-1)
+            if(col < lastdot)
                putatriangle(lastrow[col+1],lastrow[col],cur,cur.color);
             putatriangle(old,lastrow[col],cur,cur.color);
 
@@ -903,7 +905,7 @@ line3d(unsigned char pixels[], unsigned linelen)
             (*plot)(cur.x,cur.y,cur.color);
             (*plot)(old.x,old.y,old.color);
             (*plot)(lastrow[col  ].x,lastrow[col  ].y,lastrow[col  ].color);
-            if(col < xdots-1)
+            if(col < lastdot)
                (*plot)(lastrow[col+1].x,lastrow[col+1].y,lastrow[col+1].color);
          }
 	     break;
@@ -1462,7 +1464,7 @@ offscreen(struct point *pt)
    return(1); /* point is off the screen */          
 }
 
-clipcolor(x,y,color)
+clipcolor(int x,int y,int color)
 {
    if(0 <= x    && x < xdots   && 
       0 <= y    && y < ydots   && 
@@ -1474,7 +1476,8 @@ clipcolor(x,y,color)
    else   
       return(-1);
 }
-clipcolor2(x,y,color)
+
+clipcolor2(int x,int y,int color)
 {
    if(0 <= x    && x < xdots   && 
       0 <= y    && y < ydots   && 
@@ -1487,11 +1490,12 @@ clipcolor2(x,y,color)
       return(-1);
 }
 
-T_clipcolor(x,y,color)
+T_clipcolor(int x,int y,int color)
 /*	This function is the same as clipcolor but checks for color being
 	in transparent range. Intended to be called only if transparency
     has been enabled.
 */
+
 
 {
    if(0 <= x    && x < xdots         && /*  is the point on screen?  */ 
@@ -1511,7 +1515,7 @@ T_clipcolor(x,y,color)
    to the x and y values of three points (p1,p2,p3) which are static in
    this routine */
 
-int interpcolor(x,y,color)
+int interpcolor(int x,int y,int color)
 {
    int d1,d2,d3;
 
@@ -1540,7 +1544,7 @@ int interpcolor(x,y,color)
       return(-1);
 }
 
-int T_interpcolor(x,y,color)
+int T_interpcolor(int x,int y,int color)
 
 /* A substitute for interpcolor that interpolates the colors according
    to the x and y values of three points (p1,p2,p3) which are static in

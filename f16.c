@@ -168,7 +168,7 @@ int t16_getline(FILE *fp, int hs, U16 *data)
 
 int t16_flush(FILE *fp)
 {
-    if (state == 0) return;
+    if (state == 0) return(0);
     else if (state == 1) {
         putc(0, fp);
         fwrite(rlebuf, 2, 1, fp);

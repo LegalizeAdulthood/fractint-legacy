@@ -68,6 +68,7 @@ elsewhere.  The actual declarations are in the assembler code.
 
 extern unsigned int strlocn[MAXENTRY];
 extern unsigned char teststring[MAXTEST];
+extern unsigned char block[266];   /* GIF-encoded blocks go here */
 
 static int numsaves = 0;	/* For adjusting 'save-to-disk' filenames */
 
@@ -78,7 +79,7 @@ static unsigned int nextentry;
 static int clearcode, endcode;
 static unsigned int hashcode;
 
-static unsigned char blockcount, block[266];
+static unsigned char blockcount;
 static int startbits, codebits, bytecount, bitcount;
 
 static char paletteBW[] = {			/* B&W palette */
@@ -108,7 +109,7 @@ int entrynum;
 
 if (extraseg == 0) {			/* not enough memory for this */
 	buzzer(2);
-	return;
+	return(0);
 	}
 
 restart:
@@ -133,7 +134,7 @@ if (warn && (out=fopen(openfile,"r")) != NULL) {
 if ((out=fopen(openfile,"wb")) == NULL) {
 	if (oktoprint)
 		printf(" ?? Couldn't create file %s \n",openfile);
-	return;
+	return(0);
 	}
 
 bitsperpixel = 0;			/* calculate bits / pixel */
@@ -350,7 +351,7 @@ if (code == 9999) {			/* special start-up signal */
 	bitcount = 0;
 	for (i = 0; i < 266; i++)
 		block[i] = 0;
-	return;
+	return(0);
 	}
 
 icode = code << bitcount;		/* update the bit string */

@@ -107,4 +107,27 @@ int mpcFormulaSetup(void);
 int intFormulaSetup(void);
 /* char *FormStr, *FormName;	BDT commented these out */
 
+long 
+   far RegFg2Float(long x, char FudgeFact),
+   far RegFloat2Fg(long x, int Fudge),
+   far RegDivFloat(long x, long y),
+   far RegSftFloat(long x, char Shift),
+   far r16Mul(long x, long y),
+   far LogFudged(unsigned long x, int Fudge),
+   far LogFloat14(unsigned long x),
+   far ExpFloat14(long x);
+
+unsigned long far ExpFudged(long x, int Fudge);
+
+#define fDiv(x, y, z) (void)((*(long*)&z) = RegDivFloat(*(long*)&x, *(long*)&y))
+#define fMul16(x, y, z) (void)((*(long*)&z) = r16Mul(*(long*)&x, *(long*)&y))
+#define fShift(x, Shift, z) (void)((*(long*)&z) = \
+   RegSftFloat(*(long*)&x, Shift))
+#define Fg2Float(x, f, z) (void)((*(long*)&z) = RegFg2Float(x, f))
+#define Float2Fg(x, f) RegFloat2Fg(*(long*)&x, f)
+#define fLog14(x, z) (void)((*(long*)&z) = \
+	RegFg2Float(LogFloat14(*(long*)&x), 16))
+#define fExp14(x, z) (void)((*(long*)&z) = ExpFloat14(*(long*)&x));
+#define fSqrt14(x, z) fLog14(x, z); fShift(z, -1, z); fExp14(z, z)
+
 #endif

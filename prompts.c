@@ -3,13 +3,21 @@
 	(Also, odds and ends that don't git anywhere else)
 */
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <dos.h>
 
 #include "fractint.h"
+#include "fractype.h"
+
+extern char far inversionmessage[];		/* located in FARMSG.ASM */
+
+/* common strings - why keep several copies around? */
+char string001[] = {"  Use the cursor keys to select values to change"};
+char string002[] = {"  Type in any replacement values you wish to use"};
+char string003[] = {"Press the ENTER when finished (or ESCAPE to back out)"};
+char string004[] = {"...Press any key to continue.."};
 
 struct fullscreenvalues
 {
@@ -60,6 +68,9 @@ extern	double	potparam[3];	/* three potential parameters*/
 extern	int	fractype;	/* if == 0, use Mandelbrot  */
 extern	char	floatflag;	/* floating-point fractals? */
 extern	int	maxit;		/* try this many iterations */
+extern	int	inside;		/* inside color */
+extern	int	outside;	/* outside color */
+extern	char	savename[80];	/* save files using this name */
 extern	char	ifsfilename[80];    /* IFS code file */
 extern	char	ifs3dfilename[80];  /* IFS 3D code file */
 extern  char	preview;	/* 3D preview mode flag */
@@ -67,6 +78,13 @@ extern int decomp[];		/* decomposition parameters */
 extern int rflag, rseed;	/* Plasma-Cloud seed values */
 extern int fractype;		/* current fractal type */
 extern int transparent[];	/* transparency values */
+extern	int	numpasses;	/* 0 if single-pass, else 1 */
+extern	int	solidguessing;	/* 0 if disabled, else 1    */
+extern int boundarytraceflag;   /* boundary trace option */
+extern int warn;                /* warn=yes flag */
+extern int soundflag;           /* sound option */
+extern	int	LogFlag;	/* non-zero if logarithmic palettes */
+extern	int	biomorph;	/* Biomorph flag */
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
 extern unsigned char olddacbox[256][3]; /* backup copy of the Video-DAC */
 extern	long	xmin, xmax, ymin, ymax;	/* screen corner values */
@@ -76,12 +94,6 @@ extern	int tab_status;		/* == 0 means no fractal on screen */
 extern int	xdots, ydots;		/* coordinates of dots on the screen  */
 extern int	colors;				/* maximum colors available */
 extern int	row, col;
-
-
-/* keep this in synch with fractals.c !!! */
-#define IFS          26
-#define IFS3D        27
-#define LORENZ3D     65
 
 /* Define command keys */
 
@@ -177,15 +189,15 @@ char temp2[24][15];		/* string value of answers go here */
 int row, col, c, done, i, j, k;
 
 if (numprompts <= 0)		/* ?? nothing to do! */
-	return;
+	return(0);
 
 fullscreen_setup();		/* set up for full-screen prompting */
 
 movecursor(25,81);		/* kill cursor */
 
-putstring(22,10,7,"  Use the cursor keys to select values to change",0);
-putstring(23,10,7,"  Type in any replacement values you wish to use",0);
-putstring(24,10,7,"Press the ENTER when finished (or ESCAPE to back out)",0);
+putstring(22,10,7,string001,0);
+putstring(23,10,7,string002,0);
+putstring(24,10,7,string003,0);
 
 col = 0;
 for (i = 0; i < numprompts; i++) {	/* calculate initial display */
@@ -296,15 +308,15 @@ char temp2[24][15];		/* string value of answers go here */
 int row, col, c, done, i, j, k;
 
 if (numprompts <= 0)		/* ?? nothing to do! */
-	return;
+	return(0);
 
 fullscreen_setup();		/* set up for full-screen prompting */
 
 movecursor(25,81);		/* kill cursor */
 
-putstring(22,10,7,"  Use the cursor keys to select values to change",0);
-putstring(23,10,7,"  Type in any replacement values you wish to use",0);
-putstring(24,10,7,"Press the ENTER when finished (or ESCAPE to back out)",0);
+putstring(22,10,7,string001,0);
+putstring(23,10,7,string002,0);
+putstring(24,10,7,string003,0);
 
 col = 0;
 for (i = 0; i < numprompts; i++) 
@@ -440,7 +452,7 @@ return(done);
 
 /* prompt for and select choices */
 fullscreen_choice(int numchoices,         /* How many choices in list  */
-                  char choices[1][50],    /* array of choices          */
+                  char *choices[1],       /* array of choices          */
                   int numcols,            /* how many columns          */
                   int startrow,           /* upper left corner of list */
                   int startcol,	          /* upper left corner of list */
@@ -570,8 +582,20 @@ compare(unsigned char *i, unsigned char *j)
 
 /* --------------------------------------------------------------------- */
 
+clear_line(int row, int start, int stop, int color) /* clear part of a line */
+{
+   int col;
+   for(col=start;col<= stop;col++)
+      putstring(row,col,color," ",0);
+}
+
+/* --------------------------------------------------------------------- */
 get_fracttype(int t)		/* prompt for and select fractal type */
 {
+   char *speed_pt;
+   int speed_col; 
+   char tname[40];          /* target name for speed key */
+   int cct;                 /* which character for speed key */
    char *s;
    int oldhelpmode;
    int done;
@@ -586,7 +610,9 @@ get_fracttype(int t)		/* prompt for and select fractal type */
    unsigned char onthelist[256];	/* list of REAL name locations */
 
 restart:
-
+   speed_col = 15;  /* column to start speed key prompt */
+   speed_pt = "Speed key string ->";
+   *tname = cct = 0;
    setvideomode(3,0,0,0);		/* switch to text mode */
 
    fullscreen_setup();			/* set up full-screen values */   
@@ -618,7 +644,7 @@ restart:
    }
    k1 = onthelist[k]; /* remember index of current type */
    numtypes = j;
-   
+   onthelist[numtypes+1] = 0;   /* allow index to overshoot harmlessly */
    qsort(onthelist,1+numtypes,1,compare); /* sort type list */
    
    putstring(2,(crtcols-50)/2,7,
@@ -640,7 +666,7 @@ restart:
       "Use your cursor keypad, HOME, and END to move to your chosen item",
       0);
    putstring(23,(crtcols-66)/2,7,
-      "(or press the 'h' key for a short description of each fractal type)",
+      "(or press the F1 key for a short description of each fractal type)",
       0);
    putstring(24,(crtcols-66)/2,7,
       "Press <ENTER> to select or <ESC> to return to the previous screen",
@@ -654,12 +680,55 @@ restart:
    {
       /* write type in reverse video */
       putstring(crow,ccol,112,fractalspecific[onthelist[i]].name,0);
-      while (! keypressed());
+
+      while (! keypressed()); /* wait for a keystroke */
       c = getakey();
       
       /* write type back to normal video */
       putstring(crow,ccol, 7,fractalspecific[onthelist[i]].name,0);
-      
+
+      /* speed key case */
+      if(('1'<= c && c <= '9') || ('A' <= c && c <= 'z') || (c==8 && cct) )
+      {
+         int match;
+         c = tolower(c);
+         if(c==8) /* backspace */
+         {
+            putstring(21,speed_col+strlen(speed_pt)+ --cct,7," ",0);
+            tname[cct] = 0;
+            if(cct == 0) /* backspaced out of speed mode */
+               clear_line(21,speed_col,crtcols-1,7);
+         }
+         else
+         {   
+            if(cct<39) /* add char to speed key buffer */
+            {
+               tname[cct] = c;
+               tname[++cct] = 0;
+            }   
+         }
+         
+         /* write speed key buffer monitor window */
+         putstring(21,speed_col,7,speed_pt,0);
+         putstring(21,speed_col+strlen(speed_pt),112,tname,0);
+
+         /* locate matching type */
+         i = 0; /* start at top of list */          
+         while(i <= numtypes && 
+             (match=strncmp(tname,fractalspecific[onthelist[i]].name,cct))>0)
+            i++;
+         if(match < 0 && i > 0)  /* oops - overshot    */
+            i--;
+         else if(i > numtypes) /* bumped end of list */
+            i = numtypes;
+      }
+      else
+      {
+         if(c==27 && cct)
+            c = 0; /* exit speed key mode */
+         *tname = cct = 0;
+         clear_line(21,speed_col,crtcols-1,7); /* zap speed key window */
+      }
       switch(c)
       {
       case DOWN_ARROW:
@@ -711,8 +780,9 @@ restart:
          done = -1;
          break;
       default:
-         continue; 
+         break; 
       }
+      /* calculate position of type on screen */
       ccol = startcol + (i%numcols)*colwidth;
       crow = startrow + i/(numcols);
    }
@@ -794,12 +864,16 @@ get_formula_name()	/* get the fractal formula name */
 {
    int numcols;                  /* number of columns */
    int startrow, startcol;       /* upper left corner of list */
-   char choices[21][50];
+   char *choices[41], choicetext[41][21];
    char fullfilename[200];	/* Full file name */
    int numformulas, i;
    FILE *File;
 
    FormName[0] = 0;		/* start by declaring failure */
+   for (i = 0; i < 41; i++) {
+      choicetext[i][0] = 0;
+      choices[i] = choicetext[i];
+      }
 
    setclear();
    printf("\n\n Enter the name of your Formula File (if not %s) .. ",
@@ -814,7 +888,7 @@ get_formula_name()	/* get the fractal formula name */
    if((File = fopen(fullfilename, "rt")) == NULL) {
      buzzer(2);
      printf("\n?? I Can't find %s\n", FormFileName);
-     printf("\n\n...Press any key to continue..");
+     printf("\n\n%s",string004);
      getakey();
      return(-1);
    }
@@ -831,7 +905,7 @@ get_formula_name()	/* get the fractal formula name */
          break;
       else if(c != '\n'){
          numformulas++;
-         if (numformulas >= 20) break;
+         if (numformulas >= 41-1) break;
 skipcomments:
          if(fscanf(File, "%200[^}]", fullfilename) == EOF) break;
          if (getc(File) != '}') goto skipcomments;
@@ -853,7 +927,7 @@ skipcomments:
    if (RunForm(FormName)) {
        FormName[0] = 0;		/* declare failure */
        buzzer(2);
-       printf("\n\n...Press any key to continue..");
+       printf("\n\n%s",string004);
        getakey();
        return(-1);
        }
@@ -909,10 +983,7 @@ static char *invert_prompts[] = {
     setvideomode(3,0,0,0);                 /* clear the screen entirely */
     memcpy(dacbox,olddacbox,256*3);        /* restore the DAC */
 
-   printf("\n\n Please enter inversion parameters that apply.  Note\n");
-   printf("  that the inversion option requires a fixed radius and \n");
-   printf("  center for zooming to make sense - if you want to zoom,\n");
-   printf("  do not use default values, but specify radius and center\n");
+   helpmessage(inversionmessage);
 
    if (fullscreen_prompt(10,3,invert_prompts,inversion) < 0)
       return(-1);
@@ -980,7 +1051,7 @@ get_3d_params()		/* prompt for 3D parameters */
    int numcols;                 /* number of columns */
    int startrow;                /* upper left corner of list */
    int startcol;                /* upper left corner of list */
-   char choices[8][50];
+   char *choices[8];
    char c;
    int numprompts;
    int sphere,filltype;
@@ -991,7 +1062,7 @@ get_3d_params()		/* prompt for 3D parameters */
 
    struct fullscreenvalues uvalues[25];  
    int i, j, k;
-   
+
    if (initmode < 0 || !display3d || initbatch)
       return(0);
 
@@ -1090,20 +1161,18 @@ restart_1:
       whichimage = 1;
 
    k=0;
-   strncpy(choices[k++],"make a surface grid"                   ,50);
-   strncpy(choices[k++],"just draw the points"                  ,50);
-   strncpy(choices[k++],"connect the dots (wire frame)"         ,50);
-   strncpy(choices[k++],"surface fill (colors interpolated)"    ,50);
-   strncpy(choices[k++],"surface fill (colors not interpolated)",50);
-   strncpy(choices[k++],"solid fill (bars up from \"ground\")"  ,50);
+   choices[k++] = "make a surface grid";
+   choices[k++] = "just draw the points";
+   choices[k++] = "connect the dots (wire frame)";
+   choices[k++] = "surface fill (colors interpolated)";
+   choices[k++] = "surface fill (colors not interpolated)";
+   choices[k++] = "solid fill (bars up from \"ground\")";
    if(SPHERE)
-   {
-   strncpy(choices[k++],"light source"                          ,50);
-   }
+      choices[k++] = "light source";
    else
    {
-   strncpy(choices[k++],"light source before transformation)"   ,50);
-   strncpy(choices[k++],"light source after transformation)"    ,50);
+      choices[k++] = "light source before transformation)";
+      choices[k++] = "light source after transformation)";
    } 
    numcols  =  1;                 /* number of columns */
    startrow = 12;                 /* upper left corner of list */
@@ -1111,9 +1180,10 @@ restart_1:
 
    s = "Select Fill Type";
    putstring(startrow-2,(crtcols-strlen(s))/2,7,s,0);
-   putstring(22,10,7,"                                                   ",0);
-   putstring(23,10,7,"                                                   ",0);
-   putstring(24,10,7,"                                                   ",0);
+   clear_line(22,10,60,7);
+   clear_line(23,10,60,7);
+   clear_line(24,10,60,7);
+
    i = FILLTYPE+1;
 
    if ((i = fullscreen_choice(k, choices,numcols,startrow,startcol,i)) >= 0)
@@ -1298,7 +1368,7 @@ check_mapfile()
             }
             buzzer(2);
             printf ("\nSorry, cannot open %s \n", temp1);
-            printf ("Hit any key to continue");
+            printf (string004);
             getch();
             setclear();
             continue;
@@ -1326,7 +1396,7 @@ get_funny_glasses_params()
       ZVIEWER = 150;
    if(eyeseparation == 0)
    {
-      if(fractype==IFS3D || fractype==LORENZ3D)
+      if(fractype==IFS3D || fractype==LLORENZ3D || fractype==FPLORENZ3D)
       {
          eyeseparation =  2;
          xadjust       = -2;
@@ -1415,13 +1485,16 @@ get_ifs_params()		/* prompt for IFS params */
 char *s;
 int numcols;                  /* number of columns */
 int startrow, startcol;       /* upper left corner of list */
-char choices[4][50];
+char *choices[4], choicetext[4][50];
 char *filename;
 float far *initarray;
 static char ifstype = '2';
 int totrows, totcols;
 int i, j, numlines;
 FILE *tempfile;
+
+for (i = 0; i < 4; i++)
+    choices[i] = choicetext[i];
 
 setfortext();			/* switch to text mode */
 
@@ -1448,7 +1521,7 @@ else if (fractype == IFS3D)
 else if (tab_status != 0) {   /* there's a fractal image active */
    ifstype = 't';
    get_ifs3d_params();
-   return;
+   return(0);
    }
    strcpy(choices[0],"2D IFS Codes");
    strcpy(choices[1],"3D IFS Codes");
@@ -1481,10 +1554,10 @@ else if (tab_status != 0) {   /* there's a fractal image active */
     case 2:
        printf("\n\n");
        get_ifs3d_params();
-       return;
+       return(0);
        break;
      default:
-       return;
+       return(0);
        break;
     }
 if (ifstype == '3') {
@@ -1569,8 +1642,244 @@ for ( ;; ) {
 }
 
 /* --------------------------------------------------------------------- */
+/*
+	get_toggles() is called from FRACTINT.C whenever the 'x' key
+	is pressed.  This routine prompts for several options,
+	sets the appropriate variables, and returns the following code
+	to the calling routine:
+	
+	-1  routine was ESCAPEd - no need to re-generate the image.
+	 0  minor variable changed (such as "warn=").  No need to
+	    re-generate the image.
+	1   major variable changed (such as "inside=").  Re-generate
+	    the image.
+	2   Floating-point toggle changed.  FRACTINT.C takes special
+	    actions in this instance, as the algorithm itself changes.
+
+        Finally, remember to insert variables in the list *and* check
+        for them in the same order!!!
+*/
+
+get_toggles()
+{
+   int numcols;                 /* number of columns */
+   int startrow;                /* upper left corner of list */
+   int startcol;                /* upper left corner of list */
+   char *choices[20];
+   char c;
+   int numprompts;
+   char *s;
+
+   double values[25], oldvalues[25];
+
+   struct fullscreenvalues uvalues[25];  
+   int i, j, k, isound, ipasses, isavename;
+
+   /* fill up the choices (and previous values) arrays */
+   k = -1;
+
+   k++;
+   choices[k] =  "Floating Point Algorithm";
+   uvalues[k].type = 's';
+   oldvalues[k] = floatflag;
+   uvalues[k].uval.dval = oldvalues[k];
+
+   k++;
+   ipasses = k;
+   choices[k] =  "Passes (1, 2, g[uessing], or b[oundary trace])";
+   uvalues[k].type = 's';
+   oldvalues[k] = boundarytraceflag*100 + numpasses + solidguessing;
+   uvalues[k].uval.dval = oldvalues[k];
+
+   k++;
+   choices[k] = "Biomorph Color (-1 means OFF)";
+   uvalues[k].type = 'd';
+   oldvalues[k] = biomorph;
+   uvalues[k].uval.dval = oldvalues[k];
+
+   k++;
+   choices[k] = "Decomp Option (2,4,8,..,256, 0=OFF)";
+   uvalues[k].type = 'd';
+   oldvalues[k] = decomp[0];
+   uvalues[k].uval.dval = oldvalues[k];
+
+   k++;
+   choices[k] = "Maximum Iterations (10 to 32000)";
+   uvalues[k].type = 'd';
+   oldvalues[k] = maxit;
+   uvalues[k].uval.dval = oldvalues[k];
+
+   k++;
+   choices[k] = "Inside Color (-1 means use Maxiter)";
+   uvalues[k].type = 'd';
+   oldvalues[k] = inside;
+   uvalues[k].uval.dval = oldvalues[k];
+
+   k++;
+   choices[k] = "Outside Color (-1 means none)";
+   uvalues[k].type = 'd';
+   oldvalues[k] = outside;
+   uvalues[k].uval.dval = oldvalues[k];
+
+   k++;
+   choices[k] = "Logarithmic Palettes";
+   uvalues[k].type = 's';
+   oldvalues[k] = LogFlag;
+   uvalues[k].uval.dval = oldvalues[k];
+
+   k++;
+   choices[k] = "File Overwrite ('warn=')";
+   uvalues[k].type = 's';
+   oldvalues[k] = warn;
+   uvalues[k].uval.dval = oldvalues[k];
+
+   k++;
+   isavename = k;
+   choices[k] = "Savename (.FRA implied)";
+   uvalues[k].type = 's';
+   oldvalues[k] = 0;
+   uvalues[k].uval.dval = oldvalues[k];
+
+   k++;
+   isound = k;
+   choices[k] = "Sound (no, yes, x, y, z)";
+   uvalues[k].type = 's';
+   oldvalues[k] = soundflag;
+   uvalues[k].uval.dval = oldvalues[k];
+
+   for (i = 0; i < k; i++)
+      if (uvalues[i].type == 's')
+         if (uvalues[i].uval.dval)
+            strcpy(uvalues[i].uval.sval,"yes");
+         else
+            strcpy(uvalues[i].uval.sval,"no");
+
+   /* passes klooge */
+   strcpy(uvalues[ipasses].uval.sval,"1");
+   if (boundarytraceflag == 1)
+      uvalues[ipasses].uval.sval[0] = 'b';
+   else {
+      if (solidguessing == 1)
+         uvalues[ipasses].uval.sval[0] = 'g';
+      else
+         uvalues[ipasses].uval.sval[0] = '1' + numpasses;
+      }
+         
+   /* sound klooge */
+   strcpy(uvalues[isound].uval.sval,"no");
+   if (soundflag == -1)
+      strcpy(uvalues[isound].uval.sval,"yes");
+   if (soundflag == 1)
+      strcpy(uvalues[isound].uval.sval,"x");
+   if (soundflag == 2)
+      strcpy(uvalues[isound].uval.sval,"y");
+   if (soundflag == 3)
+      strcpy(uvalues[isound].uval.sval,"z");
+
+   /* savename klooge */
+   strcpy(uvalues[isavename].uval.sval,savename);
+
+   fullscreen_setup();		/* set up for full-screen prompting */
+
+   putstring(0,10,7,"The following options and doodads are in effect.  (Note",0);
+   putstring(1,10,7,"that not all combinations make sense - don't select both",0);
+   putstring(2,10,7,"Boundary Tracing and Biomorphs, for Example)",0);
+
+   if ((i = fullscreen_prompt2(5,k+1,choices,uvalues)) < 0)
+      return(-1);
+
+   /* now check out the results (*hopefully* in the same order <grin>) */
+   k = -1;
+   j = 0;   /* return code */
+
+   if (uvalues[++k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
+      floatflag = 1;
+   else
+      floatflag = 0;
+   if (floatflag != oldvalues[k]) j = 2;
+
+   /* passes= klooge */
+   if (uvalues[++k].uval.sval[0] == 'b' || uvalues[k].uval.sval[0] == 'B') {
+      boundarytraceflag = 1;
+      }
+   else {
+      boundarytraceflag = 0;
+   }
+   if (uvalues[k].uval.sval[0] == '1' || uvalues[k].uval.sval[0] == '2') {
+      numpasses = uvalues[k].uval.sval[0] - '1';
+      solidguessing = 0;
+      }
+   if (uvalues[k].uval.sval[0] == 'g' || uvalues[k].uval.sval[0] == 'G') {
+      numpasses = 1;
+      solidguessing = 1;
+      }
+   ipasses = boundarytraceflag*100 + numpasses + solidguessing;
+   if (ipasses != oldvalues[k] && j < 1) j = 1;
+
+   biomorph = uvalues[++k].uval.dval;
+   if (biomorph != oldvalues[k] && j < 1) j = 1;
+
+   decomp[0] = uvalues[++k].uval.dval;
+   if (decomp[0] != oldvalues[k] && j < 1) j = 1;
+
+   maxit = uvalues[++k].uval.dval;
+   if (maxit != oldvalues[k] && j < 1) j = 1;
+
+   inside = uvalues[++k].uval.dval;
+   if (inside != oldvalues[k] && j < 1) j = 1;
+
+   outside = uvalues[++k].uval.dval;
+   if (outside != oldvalues[k] && j < 1) j = 1;
+
+   if (uvalues[++k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
+      LogFlag = 1;
+   else
+      LogFlag = 0;
+   if (LogFlag != oldvalues[k] && j < 1) j = 1;
+   if (LogFlag != oldvalues[k] && LogFlag == 0) ChkLogFlag();
+
+   if (uvalues[++k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
+      warn = 1;
+   else
+      warn = 0;
+
+   strcpy(savename,uvalues[++k].uval.sval);
+
+   if (strnicmp(uvalues[++k].uval.sval,"yes",2) == 0) {
+      soundflag = -1;
+      uvalues[k].uval.sval[0] = 'q';
+      }
+   else
+      soundflag = 0;
+   if (uvalues[k].uval.sval[0] == 'x' || uvalues[k].uval.sval[0] == 'X')
+      soundflag = 1;
+   if (uvalues[k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
+      soundflag = 2;
+   if (uvalues[k].uval.sval[0] == 'z' || uvalues[k].uval.sval[0] == 'Z')
+      soundflag = 3;
+   if (soundflag != oldvalues[k] && (soundflag > 1 || oldvalues[k] > 1) &&
+      j < 1) j = 1;
+
+   return(j);
+}
 
 /*  **** the routines below this point are *not* prompting routines ***  */
+
+
+/* --------------------------------------------------------------------- */
+
+get_obsolete()			/* notify user of obsolete switches */
+{
+
+printf("\n\n\nWell, the key you pressed *used* to be a valid command key,\n");
+printf("but it has since become obsolete.  Please use the following keys\n");
+printf("instead.\n\n");
+printf("  F1      for help\n\n");
+printf("  x or X  to set a number of options\n");
+printf("\n\n%s",string004);
+getakey();
+
+}
 
 /* --------------------------------------------------------------------- */
 
@@ -1625,7 +1934,7 @@ if(invert) {
 if (floatflag)
 	printf("\nFloating-point flag is activated\n");
 	
-printf("\nPress any key to continue...");
+printf("\n%s",string004);
 getakey();
 setforgraphics();
 
@@ -1711,11 +2020,15 @@ static double starfield_values[4] = {
 	};
 	
 int get_starfield_params(void) {
+   static char StarMap[] = "altern.map";
    int i, c;
    double values[3];
+   extern int loadPalette;
 
-   if(colors < 255)
+   if(colors < 255) {
+      buzzer(2);
       return(-1);
+   }
    setfortext();		/* switch to text mode */
    fullscreen_setup();		/* set up for full-screen prompting */
 
@@ -1727,6 +2040,7 @@ int get_starfield_params(void) {
       return(-1);
       }
    setforgraphics();            /* back to graphics */
+
    for (i = 0; i < 3; i++)
       starfield_values[i] = values[i];
 
@@ -1740,6 +2054,12 @@ int get_starfield_params(void) {
    Distribution = (int)(starfield_values[0]);
    con  = (long)(((starfield_values[1]) / 100.0) * (1L << 16));
    Slope = (int)(starfield_values[2]);
+
+   SetColorPaletteName(StarMap);
+   if(!loadPalette)
+      return(-1);
+   spindac(0,1);                 /* load it, but don't spin */
+
    for(row = 0; row < ydots; row++) {
       for(col = 0; col < xdots; col++) {
          if(check_key()) {
@@ -1753,7 +2073,6 @@ int get_starfield_params(void) {
    buzzer(0);
    return(0);
 }
-
 
 int GausianNumber(int Probability, int Range) {
    int n, r;

@@ -1,4 +1,4 @@
-c:\turbo\lib\c0m +
+c:\turboc\lib\c0m +
 FRACTINT +
 3D +
 CALCFRAC +
@@ -36,7 +36,7 @@ TGAVIEW +
 targa loadmap tgasubs
 fractint.exe
 fractint.map /s
-c:\turbo\lib\emu  +
-c:\turbo\lib\mathm +
-c:\turbo\lib\cm
+c:\turboc\lib\emu  +
+c:\turboc\lib\mathm +
+c:\turboc\lib\cm
 

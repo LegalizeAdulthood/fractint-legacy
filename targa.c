@@ -21,7 +21,7 @@
 
 /*************  ****************/
 
-extern unsigned int _dataseg;
+extern unsigned int _dataseg_xx;
 
 extern char far runningontarga[];
 

@@ -137,21 +137,21 @@ void (*StkSqr)(void) = dStkSqr;
 void dStkAdd(void) {
    Arg2->d.x += Arg1->d.x;
    Arg2->d.y += Arg1->d.y;
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void mStkAdd(void) {
    Arg2->m = MPCadd(Arg2->m, Arg1->m);
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void lStkAdd(void) {
    Arg2->l.x += Arg1->l.x;
    Arg2->l.y += Arg1->l.y;
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void (*StkAdd)(void) = dStkAdd;
@@ -159,24 +159,66 @@ void (*StkAdd)(void) = dStkAdd;
 void dStkSub(void) {
    Arg2->d.x -= Arg1->d.x;
    Arg2->d.y -= Arg1->d.y;
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void mStkSub(void) {
    Arg2->m = MPCsub(Arg2->m, Arg1->m);
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void lStkSub(void) {
    Arg2->l.x -= Arg1->l.x;
    Arg2->l.y -= Arg1->l.y;
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void (*StkSub)(void) = dStkSub;
+
+void dStkConj(void) {
+   Arg1->d.y = -Arg1->d.y;
+}
+
+void mStkConj(void) {
+   Arg1->m.y.Exp ^= 0x8000;
+}
+
+void lStkConj(void) {
+   Arg1->l.y = -Arg1->l.y;
+}
+
+void (*StkConj)(void) = dStkConj;
+
+void dStkReal(void) {
+   Arg1->d.y = 0.0;
+}
+
+void mStkReal(void) {
+   Arg1->m.y.Mant = (long)(Arg1->m.y.Exp = 0);
+}
+
+void lStkReal(void) {
+   Arg1->l.y = 0l;
+}
+
+void (*StkReal)(void) = dStkReal;
+
+void dStkImag(void) {
+   Arg1->d.x = 0.0;
+}
+
+void mStkImag(void) {
+   Arg1->m.x.Mant = (long)(Arg1->m.x.Exp = 0);
+}
+
+void lStkImag(void) {
+   Arg1->l.x = 0l;
+}
+
+void (*StkImag)(void) = dStkImag;
 
 void dStkNeg(void) {
    Arg1->d.x = -Arg1->d.x;
@@ -197,14 +239,14 @@ void (*StkNeg)(void) = dStkNeg;
 
 void dStkMul(void) {
    FPUcplxmul(&Arg2->d, &Arg1->d, &Arg2->d);
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void mStkMul(void) {
    Arg2->m = MPCmul(Arg2->m, Arg1->m);
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void lStkMul(void) {
@@ -216,22 +258,22 @@ void lStkMul(void) {
        multiply(Arg2->l.x, Arg1->l.y, bitshift);
    Arg2->l.x = x;
    Arg2->l.y = y;
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void (*StkMul)(void) = dStkMul;
 
 void dStkDiv(void) {
    FPUcplxdiv(&Arg2->d, &Arg1->d, &Arg2->d);
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void mStkDiv(void) {
    Arg2->m = MPCdiv(Arg2->m, Arg1->m);
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void lStkDiv(void) {
@@ -245,8 +287,8 @@ void lStkDiv(void) {
 	y = multiply(Arg2->l.y, x, bitshift) + multiply(Arg2->l.x, y, bitshift);
 	Arg2->l.x = x;
 	Arg2->l.y = y;
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void (*StkDiv)(void) = dStkDiv;
@@ -256,8 +298,8 @@ void StkSto(void) {
 }
 
 void StkLod(void) {
-   Arg1 += sizeof(union Arg);
-   Arg2 += sizeof(union Arg);
+   Arg1 += 1;
+   Arg2 += 1;
    *Arg1 = *Load[LodPtr++];
 }
 
@@ -284,7 +326,7 @@ void (*StkMod)(void) = dStkMod;
 void StkClr(void) {
    s[0] = *Arg1;
    Arg1 = &s[0];
-   Arg2 = Arg1 - sizeof(union Arg);
+   Arg2 = Arg1 - 1;
 }
 
 void dStkSin(void) {
@@ -406,22 +448,22 @@ void (*StkCosh)(void) = dStkCosh;
 void dStkLT(void) {
    Arg2->d.x = (double)(Arg2->d.x < Arg1->d.x);
    Arg2->d.y = 0.0;
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void mStkLT(void) {
    Arg2->m.x = fg2MP((long)(MPcmp(Arg2->m.x, Arg1->m.x) == -1), 0);
    Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void lStkLT(void) {
    Arg2->l.x = Arg2->l.x < Arg1->l.x;
    Arg2->l.y = 0l;
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void (*StkLT)(void) = dStkLT;
@@ -429,8 +471,8 @@ void (*StkLT)(void) = dStkLT;
 void dStkLTE(void) {
    Arg2->d.x = (double)(Arg2->d.x <= Arg1->d.x);
    Arg2->d.y = 0.0;
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void mStkLTE(void) {
@@ -439,15 +481,15 @@ void mStkLTE(void) {
    comp = MPcmp(Arg2->m.x, Arg1->m.x);
    Arg2->m.x = fg2MP((long)(comp == -1 || comp == 0), 0);
    Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void lStkLTE(void) {
    Arg2->l.x = Arg2->l.x <= Arg1->l.x;
    Arg2->l.y = 0l;
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void (*StkLTE)(void) = dStkLTE;
@@ -519,8 +561,8 @@ void (*StkExp)(void) = dStkExp;
 
 void dStkPwr(void) {
 	Arg2->d = ComplexPower(Arg2->d, Arg1->d);
-   Arg1 -= sizeof(union Arg);
-   Arg2 -= sizeof(union Arg);
+   Arg1 --;
+   Arg2 --;
 }
 
 void mStkPwr(void) {
@@ -530,8 +572,8 @@ void mStkPwr(void) {
    y = MPC2cmplx(Arg1->m);
    x = ComplexPower(x, y);
    Arg2->m = cmplx2MPC(x);
-	Arg1 -= sizeof(union Arg);
-	Arg2 -= sizeof(union Arg);
+	Arg1 --;
+	Arg2 --;
 }
 
 void lStkPwr(void) {
@@ -548,8 +590,8 @@ void lStkPwr(void) {
    }
    else
       overflow = 1;
-	Arg1 -= sizeof(union Arg);
-	Arg2 -= sizeof(union Arg);
+	Arg1 --;
+	Arg2 --;
 }
 
 void (*StkPwr)(void) = dStkPwr;
@@ -620,6 +662,9 @@ struct FNCT_LIST FnctList[] = {
    "log", &StkLog,
    "exp", &StkExp,
    "abs", &StkAbs,
+   "conj", &StkConj,
+   "real", &StkReal,
+   "imag", &StkImag,
 };
 
 void (far *isfunct(char *Str, int Len))(void) {
@@ -633,7 +678,7 @@ void (far *isfunct(char *Str, int Len))(void) {
                return(*FnctList[n].ptr);
          }
       }
-      return((void far *)-1);
+      return((void far **)-1);
    }
    return((void far *)0);
 }
@@ -710,6 +755,9 @@ int ParseStr(char *Str) {
          StkPwr = dStkPwr;
          StkDiv = dStkDiv;
          StkAbs = dStkAbs;
+         StkReal = dStkReal;
+         StkImag = dStkImag;
+         StkConj = dStkConj;
          break;
       case M_MATH:
          StkAdd = mStkAdd;
@@ -729,6 +777,9 @@ int ParseStr(char *Str) {
          StkPwr = mStkPwr;
          StkDiv = mStkDiv;
          StkAbs = mStkAbs;
+         StkReal = mStkReal;
+         StkImag = mStkImag;
+         StkConj = mStkConj;
          break;
 		case L_MATH:
 			Delta16 = bitshift - 16;
@@ -749,6 +800,9 @@ int ParseStr(char *Str) {
          StkPwr = lStkPwr;
          StkDiv = lStkDiv;
          StkAbs = lStkAbs;
+         StkReal = lStkReal;
+         StkImag = lStkImag;
+         StkConj = lStkConj;
          break;
    }
    for(vsp = 0; vsp < sizeof(Constants) / sizeof(char*); vsp++) {
@@ -1007,7 +1061,7 @@ int Formula(void) {
    OpPtr = InitOpPtr;
 
    Arg1 = &s[0];
-   Arg2 = Arg1 - sizeof(union Arg);
+   Arg2 = Arg1 - 1;
    while(OpPtr < LastOp)
       f[OpPtr++]();
 
@@ -1033,7 +1087,7 @@ int form_per_pixel(void) {
    if (FormName[0] == 0) return(1);
    overflow = LodPtr = StoPtr = OpPtr = 0;
    Arg1 = &s[0];
-   Arg2 = Arg1 - sizeof(union Arg);
+   Arg2 = Arg1 - 1;
    switch(MathType) {
       case D_MATH:
          old.x = new.x = v[0].a.d.x = dx0[col];

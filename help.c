@@ -162,6 +162,7 @@ while (mode != HELPEXIT) {
 			break;
 		}
 	if (key != 27
+		&& key != 1059 				/* F1 */
 		&& key != 'h' && key != 'H'
 		&& key != '?' && key != '/') {
 		setforgraphics();

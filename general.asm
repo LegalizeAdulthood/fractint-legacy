@@ -36,6 +36,8 @@
 ;	buzzer()
 ;	delay()
 ;	tone()
+;	snd()
+;	nosnd()
 ;
 ; ---- Expanded Memory Support
 ;
@@ -74,7 +76,7 @@ ENDIF
 
 ; ************************ External variables *****************************
 
-	extrn	sound:word		; if 0, supress sounds
+	extrn	soundflag:word		; if 0, supress sounds
 	extrn	debugflag:word		; for debugging purposes only
 	extrn	helpmode:word		; help mode (AUTHORS is special)
 
@@ -85,7 +87,7 @@ public		lx0, ly0		; used by lots of routines
 public		cpu			; used by 'calcmand'
 public		fpu			; will be used by somebody someday
 public		lookatmouse		; used by 'calcfrac'
-public		_dataseg		; used by TARGA, other Turbo Code
+public		_dataseg_xx		; used by TARGA, other Turbo Code
 
 public		extraseg		; extra 64K segment, if any
 
@@ -95,7 +97,7 @@ public		overflow		; Mul, Div overflow flag: 0 means none
 ;		arrays not used simultaneously are deliberately overlapped
 
 public		prefix, suffix, dstack, decoderline	; Used by the Decoder
-public		strlocn, teststring		; used by the Encoder
+public		strlocn, teststring, block	; used by the Encoder
 public		boxx, boxy, boxvalues		; zoom-box arrays
 public		olddacbox			; temporary DAC saves
 public		diskline			; Used by the Diskvid rtns
@@ -104,8 +106,10 @@ public		paldata, stbuff			; 8514A arrays, (FR8514A.ASM)
 
 ; ************************* "Shared" array areas **************************
 
-suffix		dw	2048 dup(0)	; 4K Decoder array
-dstack		dw	2048 dup(0)	; 4K Decoder array
+block		dw	0		; 266 byte Encoder array
+suffix		dw	2048 dup(0)	; 4K Decoder array (ALSO CALCFRAC.C)
+teststring	dw	0		; 100 byte Encoder array
+dstack		dw	2048 dup(0)	; 4K Decoder array (ALSO CALCFRAC.C)
 
 olddacbox	db	0		; (256*3) temporary dacbox values
 strlocn		dw	0		; 10K Encoder array
@@ -121,13 +125,11 @@ paldata		db	1024 dup (0)	; 8514A palette (used in FR8514A.ASM)
 stbuff		db	415 dup (0)	; 8514A state   (used in FR8514A.ASM)
 		db	609 dup(0)	; (fluff this area out to 2K)
 
-teststring	db	100  dup(0)	; 100 byte Encoder array
-
 ; ************************ Internal variables *****************************
 
 cpu		dw	0		; cpu type: 86, 186, 286, or 386
 fpu		dw	0		; fpu type: 0, 87, 287, 387
-_dataseg	dw	0		; our "near" data segment
+_dataseg_xx	dw	0		; our "near" data segment
 
 overflow	dw	0		; overflow flag
 
@@ -272,19 +274,17 @@ multiply	proc	uses di si es, x:dword, y:dword, n:word
 	mov	eax,edx			;  >= 32 bits:  manual shift
 	mov	edx,0			;  ...
 	sub	cx,32			;  ...
-fastm1:	push	cx			; save to counter
-	shrd	eax,edx,cl		; shift down 'n' bits
-	pop	cx			; restore the counter
-	sar	edx,cl			; shift down the top bits
-	cmp	eax,0			; verify the resulting sign
-	jge	fastm3			;  positive
-	inc	edx			; negative - increment edx
-fastm3:	cmp	edx,0			; if EDX isn't zero
-	jne	overm1			;  we overflowed
-	push	eax			; save the 64-bit result
-	pop	ax			; low-order  16 bits
-	pop	dx			; high-order 16 bits
-	jmp	multiplyreturn		; back to common code
+fastm1: shrd	eax,edx,cl		; shift down 'n' bits
+	js	fastm3
+	sar	edx,cl
+	jne	overm1
+	shld	edx,eax,16
+	jmp	multiplyreturn
+fastm3: sar	edx,cl
+	inc	edx
+	jne	overm1
+	shld	edx,eax,16
+	jmp	multiplyreturn
 
 .8086					; 386-specific code ends here
 
@@ -631,10 +631,12 @@ keypressed3:
 	mov	ax,keybuffer			; return the keypress code.
 	cmp	helpmode,1			; is this HELPAUTHORS mode?
 	je	keypressed99			;  yup.  forget help.
-	cmp	ax,'h'				; help called?
+	cmp	ax,1059				; help called?
 	je	keypressed4			;  ...
-	cmp	ax,'H'				; help called?
-	je	keypressed4			;  ...
+;	cmp	ax,'h'				; help called?
+;	je	keypressed4			;  ...
+;	cmp	ax,'H'				; help called?
+;	je	keypressed4			;  ...
 	cmp	ax,'?'				; help called?
 	je	keypressed4			;  ...
 	cmp	ax,'/'				; help called?
@@ -726,7 +728,7 @@ getakey	endp
 ; ***********************************************************************
 
 buzzer	proc	uses si, buzzertype:word
-	cmp	sound,0			; is the sound supressed?
+	cmp	soundflag,0		; is the sound supressed?
 	je	buzzerreturn		;  yup.  bail out.
 	mov	si, offset buzzer0	; normal completion frequency
 	cmp	buzzertype,0		; normal completion?
@@ -814,6 +816,41 @@ tonebypass:
 	ret				; we done
 tone	endp
 
+; ************** Function snd(int hertz) and nosnd() **************
+;
+;	turn the speaker on with this frequency (snd) or off (nosnd)
+;
+; *****************************************************************
+
+snd	proc	hertz:word		;Sound the speaker
+        cmp     hertz, 20
+        jle     hertzbad
+        cmp     hertz, 5000
+        jge     hertzbad
+	mov 	ax,0  			;Convert hertz
+	mov 	dx, 12h			;for use by routine
+	div	hertz
+	mov	bx, ax
+	mov	al,10110110b		;Put magic number
+	out	43h, al			;into timer2
+	mov 	ax, bx			;Pitch into AX
+	out	42h, al			;LSB into timer2
+	mov 	al, ah			;MSB to AL then
+	out	42h, al			;to timer2
+	in	al, 61h			;read I/O port B into AL
+	or	al,3			;turn on bits 0 and 1
+	out	61h,al			;to turn on speaker
+hertzbad:
+	ret
+snd		endp
+
+nosnd		proc				;Turn off speaker
+	in 	al, 61h			;Read I/O port B into AL
+	and	al, 11111100b		;mask lower two bits
+	out	61h, al			;to turn off speaker
+	ret
+nosnd	endp
+
 
 ; ********************* Mouse Support Code ******************************
 ;
@@ -832,7 +869,7 @@ initasmvars	proc	uses es si di
 
 initasmvarsgo:
 	mov	ax,ds			; save the data segment
-	mov	_dataseg,ax		;  for the C code
+	mov	_dataseg_xx,ax		;  for the C code
 
 	mov	overflow,0		; indicate no overflows so far
 
@@ -997,7 +1034,7 @@ nocol:	cmp	cx,0		       ; did the row change up or down
 	mov	ax,1115		       ; indicate a control-arrow
 	jmp	short pressed
 arright:
-	mov	ax,1077		       ;indeicate a right arrow
+	mov	ax,1077		       ;indicate a right arrow
 	cmp	mousekey,0	       ; were any mouse keys hit?
 	jne	pressed		       ;  yup.  proceed.
 	mov	ax,1116		       ; indicate a control-arrow
@@ -1233,6 +1270,146 @@ erasesegment	proc	uses es di si, segaddress:word, segvalue:word
 	repnz	stosw			; do it
 	ret				; we done
 erasesegment	endp
+
+; *************** Far string/memory functions *********
+;	far_strcpy( char far *, char far *);
+;	far_strcmp( char far *, char far *);
+;	far_stricmp(char far *, char far *);
+;	far_strcat( char far *, char far *);
+;	far_memset( char far *, char far,   int);
+;	far_memcpy( char far *, char far *, int);
+;	far_memcmp( char far *, char far *, int);
+;	far_memicmp(char far *, char far *, int);
+
+;	xxxfar_routines are called internally with:
+;		ds:si pointing to the source
+;		es:di pointing to the destination
+;		cx    containing a byte count
+;		al    contining  a character (set) value
+;		(and they destroy registers willy-nilly)
+
+xxxfar_memlen	proc	near	; return string length - INCLUDING the 0
+	mov	ax,0
+	mov	cx,1024
+	repne	scasb
+	sub	cx,1024
+	neg	cx
+	ret
+xxxfar_memlen	endp
+
+xxxfar_memcmp	proc	near	; compare two strings - length in CX
+	mov	ax,0
+	rep	cmpsb
+	jz	wedone
+	mov	ax,1
+wedone:	ret
+xxxfar_memcmp	endp
+
+xxxfar_memicmp	proc	near	; compare two caseless strings - length in CX
+	mov	ax,0
+	cmp	cx,0
+	je	wedone
+	dec	si
+	dec	di
+loop1:	inc	si
+	inc	di
+	mov	al,es:[di]
+	mov	ah,ds:[si]
+	cmp	al,ah
+	je	loop2
+	cmp	al,'A'
+	jb	lower1
+	cmp	al,'Z'
+	ja	lower1
+	add	al,20h
+lower1:	cmp	ah,'A'
+	jb	lower2
+	cmp	ah,'Z'
+	ja	lower2
+	add	ah,20h
+lower2:	cmp	al,ah
+	jne	uneql
+loop2:	loop	loop1
+	mov	ax,0
+	jmp	short wedone
+uneql:	mov	ax,1
+wedone:	ret
+xxxfar_memicmp	endp
+
+
+far_strcpy proc	uses ds es di si, toaddr:dword, fromaddr:dword
+	les	di,fromaddr		; point to start-of-string
+	call	xxxfar_memlen		; find the string length
+	les	di,toaddr		; now move to here
+	lds	si,fromaddr		; from here
+	rep	movsb			; move them
+	ret				; we done.
+far_strcpy endp
+
+far_strcmp proc	uses ds es di si, toaddr:dword, fromaddr:dword
+	les	di,fromaddr		; point to start-of-string
+	call	xxxfar_memlen		; find the string length
+	les	di,toaddr		; now compare to here
+	lds	si,fromaddr		; compare here
+	call	xxxfar_memcmp		; compare them
+	ret				; we done.
+far_strcmp endp
+
+far_stricmp proc	uses ds es di si, toaddr:dword, fromaddr:dword
+	les	di,fromaddr		; point to start-of-string
+	call	xxxfar_memlen		; find the string length
+	les	di,toaddr		; get the dest string
+	lds	si,fromaddr		; get the source string
+	call	xxxfar_memicmp		; compare them
+	ret				; we done.
+far_stricmp endp
+
+far_strcat proc	uses ds es di si, toaddr:dword, fromaddr:dword
+	les	di,fromaddr		; point to start-of-string
+	call	xxxfar_memlen		; find the string length
+	push	cx			; save it
+	les	di,toaddr		; point to start-of-string
+	call	xxxfar_memlen		; find the string length
+	les	di,toaddr		; now move to here
+	add	di,cx			; but start at the end of string
+	dec	di			; (less the EOS zero)
+	lds	si,fromaddr		; from here
+	pop	cx			; get the string length
+	rep	movsb			; move them
+	ret				; we done.
+far_strcat endp
+
+far_memset proc	uses es di, toaddr:dword, fromvalue:byte, slength:word
+	mov	al,fromvalue		; get the value to store
+	mov	cx,slength		; get the store length
+	les	di,toaddr		; now move to here
+	rep	stosb			; store them
+	ret				; we done.
+far_memset endp
+
+far_memcpy proc	uses ds es di si, toaddr:dword, fromaddr:dword, slength:word
+	mov	cx,slength		; get the move length
+	les	di,toaddr		; now move to here
+	lds	si,fromaddr		; from here
+	rep	movsb			; move them
+	ret				; we done.
+far_memcpy endp
+
+far_memcmp proc	uses ds es di si, toaddr:dword, fromaddr:dword, slength:word
+	mov	cx,slength		; get the compare length
+	les	di,toaddr		; now compare to here
+	lds	si,fromaddr		; compare here
+	call	xxxfar_memcmp		; compare them
+	ret				; we done.
+far_memcmp endp
+
+far_memicmp proc uses ds es di si, toaddr:dword, fromaddr:dword, slength:word
+	mov	cx,slength		; get the compare length
+	les	di,toaddr		; get the dest string
+	lds	si,fromaddr		; get the source string
+	call	xxxfar_memicmp		; compare them
+	ret				; we done.
+far_memicmp endp
 
 disable	proc				; disable interrupts
 	cli

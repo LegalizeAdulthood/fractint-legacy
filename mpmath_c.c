@@ -218,8 +218,6 @@ extern int periodicitycheck, row, col, debugflag;
 #include <float.h>
 #include <stdlib.h>
 
-#include "fmath.h"
-
 extern void (*plot)(int x, int y, int Color);
 extern int  xdots, ydots;     /* coordinates of dots on the screen  */
 extern int  colors;           /* maximum colors available */

@@ -1,24 +1,24 @@
-FRACTSRC.ARC includes the complete source code for FRACTINT (.C and .ASM).
+FRACTSRC.ZIP includes the complete source code for FRACTINT (.C and .ASM).
 Recognizing that not everyone HAS (or even wants) an assembler, much less
 either MASM 5.1 or Turbo-ASM, which are the only two assemblers that the
 authors are aware of that can handle these particular files, it also contains
 a complete set of .OBJ files from the assembler code,
 
 Note that the Keepers of the Official Sets of Source Code (Bert Tyler and
-Timothy Wegner) both use the Microsoft 5.1 C compiler and Microsoft 5.1
-assembler, so that is the one combination of compiler/assemblers that is
+Timothy Wegner) both use the Microsoft 5.1 or 6.0 C compiler and Microsoft
+5.1 assembler, so that is the one combination of compiler/assemblers that is
 pretty much guaranteed to handle FRACTINT in all of its various mutations.
 Given that several of FRACTINT's co-authors now prefer (or only have!)
 alternate combinations, we have re-arranged the code to (usually) handle 
 several popular alternatives.  In particular:
 
 
-Microsoft C 5.1 (and MASM 5.1):
-===============================
+Microsoft C 5.1 or 6.0 (and MASM 5.1):
+======================================
 
 Just run MAKEFRAC.BAT, which invokes the Microsoft MAKE utility using
 the files FRACTINT.MAK and FRACTINT.LNK.  Note that the assembler .OBJ files
-have been included in the .ARC file, so that you don't really need MASM
+have been included in the .ZIP file, so that you don't really need MASM
 unless you are going to modify one or more of them.  If you ARE going to
 modify one of the assembler files, note that the distributed versions rely
 on some nifty features added to version 5.1 (like the '.model medium,c'
@@ -33,7 +33,7 @@ As of version 9.0, FRACTINT is just too big for the interactive Quick-C
 (QC) environment.  You have to use the command-line variant of Quick-C
 (QCL) these days (which even works, now - we chopped up the large routine
 in FRACTINT.C that was choking Quick-C).  To convert the MAKEfiles to use
-Quick-C rather than "regular" C, edit FRACTINT.MAK, comment out the third
+Quick-C rather than "regular" C, edit FRACTINT.MAK, comment out the fifth
 line (the one that goes " cl /AM ...") and un-comment out the second line
 (the one that goes " qcl /AM ..."). 
 
@@ -48,10 +48,7 @@ the possibility that we managed to sneak a last-minute update by everybody
 ("but, we hardly changed anything at all!") that destroys this compatibility.
 We have included two sample files (TC.MAK, TC.LNK) that compile and link
 FRACTINT using the Turbo products on Bert's machine using the command
-"make -ftc" (Note: for no good reason, Bert keeps his Turbo products in
-a non-standard directory name ("C:\TURBO") - you will most likely have to
-edit TC.MAK and TC.LNK to refer to the directories where you keep your
-Turbo products).
+"make -ftc".
 
 Note that FRACTINT is simply too large for the interactive Turbo-C
 environment.  Sorry, but you're gonna have to use the command line option.
@@ -67,6 +64,7 @@ to look:
 
 FRACTINT.C	- The main routine.  Nothing special here.
 FRACTINT.H	- General Include file.  Nothing special here, either.
+FRACTYPE.H	- Fractal type-specific Include file.
 PROMPTS.C	- The full-screen prompting code (using support routines
 		  in VIDEO.ASM)
 
@@ -81,6 +79,7 @@ MPMATH_C.C,	- Mark Peterson's "fast-math" support routines.
 MPMATH_A.ASM,	  (this stuff puts some of the routines supplied by your
 FPU387.ASM,       favorite "C" compiler to shame!)
 FPU087.ASM	  ...
+PARSER.C	- The "type=formula" formula parser routines
 
 VIDEO.ASM	- Assembler code containing all of the video routines
 		  (setting up the video, reading/writing pixels, zoom-box

@@ -96,8 +96,9 @@ struct fractal_info 			/*  for saving data in GIF file     */
     int xadjust;
     int eyeseparation;
     int glassestype;
+    int outside;
 
-    int future[7];     /* for stuff we haven't thought of yet */
+    int future[6];     /* for stuff we haven't thought of yet */
 };
 
 #define MAXVIDEOMODES 100	/* maximum size of the video table */
@@ -109,7 +110,8 @@ struct videoinfo videoentry;
 int	maxvideomode;		/* size of the above list */
 
 char *fkeys[] = {		/* Function Key names for display table */
-	"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10",
+	/* "F1", Appropriated by the Help function */
+	"F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10",
 	"SF1","SF2","SF3","SF4","SF5","SF6","SF7","SF8","SF9","SF10",
 	"CF1","CF2","CF3","CF4","CF5","CF6","CF7","CF8","CF9","CF10",
 	"AF1","AF2","AF3","AF4","AF5","AF6","AF7","AF8","AF9","AF10",
@@ -130,7 +132,8 @@ char *fkeys[] = {		/* Function Key names for display table */
 	"END"};
 
 int kbdkeys[] = {		/* Function Keystrokes for above names */
-	1059, 1060, 1061, 1062, 1063, 1064, 1065, 1066, 1067, 1068,
+	/* 1059,  Appropriated by the Help function */
+	1060, 1061, 1062, 1063, 1064, 1065, 1066, 1067, 1068,
 	1084, 1085, 1086, 1087, 1088, 1089, 1090, 1091, 1092, 1093,
 	1094, 1095, 1096, 1097, 1098, 1099, 1100, 1101, 1102, 1103,
 	1104, 1105, 1106, 1107, 1108, 1109, 1110, 1111, 1112, 1113,
@@ -153,20 +156,6 @@ extern struct videoinfo videoentry;
 extern int maxvideomode;
 
 #endif
-
-/* defines of some of the early fractal types
-        (hardcoded in various routines)
-   remainder defined in calcfract.c/fractals.c (used only there) */
-
-#define NOFRACTAL    -1
-#define MANDEL       0 
-#define JULIA        1 
-#define NEWTBASIN    2 
-#define LAMBDA       3 
-#define MANDELFP     4 
-#define NEWTON       5 
-#define JULIAFP      6 
-#define PLASMA       7 
 
 #define NUMIFS    32     /* number of ifs functions in ifs array */
 #define IFSPARM    7     /* number of ifs parameters */
@@ -345,6 +334,14 @@ extern  void   emmdeallocate(unsigned int);
 extern  unsigned int emmgetfree(void);
 extern  void   emmgetpage(unsigned int, unsigned int);
 extern  unsigned char far *emmquery(void);
+extern far_strcpy( char far *, char far *);
+extern far_strcmp( char far *, char far *);
+extern far_stricmp(char far *, char far *);
+extern far_strcat( char far *, char far *);
+extern far_memset( char far *, char      , int);
+extern far_memcpy( char far *, char far *, int);
+extern far_memcmp( char far *, char far *, int);
+extern far_memicmp(char far *, char far *, int);
 extern	unsigned char far *farmemalloc(long);
 extern	void   farmemfree(unsigned char far *);
 extern  int    getakey(void);

@@ -7,7 +7,7 @@ void setfortext(void);
 void setforgraphics(void);
 
 extern int row, col, xdots, ydots, bitshift, fractype;
-extern int ixstart, ixstop, iystart, iystop;
+extern int ixstart, ixstop, iystart, iystop, colors, loadPalette;
 extern double param[], xxmin, xxmax, yymin, yymax;
 extern long delx, dely, ltempsqrx, ltempsqry, far *lx0, far *ly0;
 extern struct lcomplex lold, lnew, *longparm;
@@ -35,32 +35,39 @@ static long
    height = (long)(7.0 * (1L << 16)), 
 	width = (long)(10.0 * (1L << 16)), 
    dist = (long)(24.0 * (1L << 16)), 
-   eyes = (long)(2.5 * (1L << 16)), 
+   eyes = (long)(0.0 * (1L << 16)), 
    depth = (long)(8.0 * (1L << 16)), 
-   brratio = (long)(0.8 * (1L << 16));
+   brratio = (long)(0.0 * (1L << 16));
 
 int JulibrotSetup(void) {
 	int r;
    double d[NUM_VAR];
+   static char StereoFile[] = "glasses1.map";
+   static char GreyFile[] = "altern.map";
    static char *v[NUM_VAR] = {
-      "Julia from x",            /* d[0] */
-      "Julia to x",              /* d[1] */
-      "Julia from y",            /* d[2] */
-      "Julia to y",              /* d[3] */
-      "Mandelbrot from x",       /* d[4] */
-      "Mandelbrot to x",         /* d[5] */
-      "Mandelbrot from y",       /* d[6] */
-      "Mandelbrot to y",         /* d[7] */
-      "Number of z pixels",      /* d[8] */
-      "Penetration level",       /* d[9] */
-      "Location of z origin",    /* d[10] */
-      "Depth of z",              /* d[11] */
-      "Screen height",           /* d[12] */
-      "Screen width",            /* d[13] */
-      "Distance to Screen",      /* d[14] */
-      "Distance between eyes",   /* d[15] */
-      "Blue:Red ratio",          /* d[16] */
+      "Julia from x",                              /* d[0] */
+      "Julia to x",                                /* d[1] */
+      "Julia from y",                              /* d[2] */
+      "Julia to y",                                /* d[3] */
+      "Mandelbrot from x",                         /* d[4] */
+      "Mandelbrot to x",                           /* d[5] */
+      "Mandelbrot from y",                         /* d[6] */
+      "Mandelbrot to y",                           /* d[7] */
+      "Number of z pixels",                        /* d[8] */
+      "Penetration level",                         /* d[9] */
+      "Location of z origin",                      /* d[10] */
+      "Depth of z",                                /* d[11] */
+      "Screen height",                             /* d[12] */
+      "Screen width",                              /* d[13] */
+      "Distance to Screen",                        /* d[14] */
+      "Distance between eyes (0 for Greyscale)",   /* d[15] */
+      "Blue:Red Ratio (0 for Greyscale)",          /* d[16] */
    };
+
+   if(colors < 255) {
+      buzzer(2);
+      return(0);
+   }
 
    fg = (double)(1L << bitshift);
    fg16 = (double)(1L << 16);
@@ -121,6 +128,15 @@ int JulibrotSetup(void) {
    }
 
    setforgraphics();
+
+   if(d[16] == 0.0)
+      SetColorPaletteName(GreyFile);
+   else
+      SetColorPaletteName(StereoFile);
+   if(!loadPalette)
+      return(0);
+   spindac(0,1);                 /* load it, but don't spin */
+
    return(r == 1);
 }
 
@@ -170,12 +186,18 @@ int zline(long x, long y) {
             break;
       }
       if(n == shell) {
-         color = (int)(128l * zpixel / zdots);
-         if((row + col) & 1)
-            (*plot)(col, row, 127 - color);
+         if(brratio) {
+            color = (int)(128l * zpixel / zdots);
+            if((row + col) & 1)
+               (*plot)(col, row, 127 - color);
+            else {
+   				color = (int)(multiply((long)color << 16, brratio, 16) >> 16);
+               (*plot)(col, row, 127 + bbase - color);
+            }
+         }
          else {
-				color = (int)(multiply((long)color << 16, brratio, 16) >> 16);
-            (*plot)(col, row, 127 + bbase - color);
+            color = (int)(254l * zpixel / zdots);
+            (*plot)(col, row, color + 1);
          }
          plotted = 1;
          break;

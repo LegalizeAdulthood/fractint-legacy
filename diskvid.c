@@ -210,7 +210,7 @@ if (! diskisgood) return(0);		/* bail out if the open failed */
 if (oldy != y) {			/* need to get a new line? */
 	if (linehaschanged) 		/* write the old line out, if need be */
 		diskwriteline();
-	start = bytesperline;  start *= oldy;	/* locate start-of-line */
+	start = bytesperline;  start *= y;	/* locate start-of-line */
 	fseek(fp,start,SEEK_SET);	/* seek to start of line */
 	fread(diskline,1,bytesperline,fp);	/* read the line */
 	oldy = y;			/* reset oldy */

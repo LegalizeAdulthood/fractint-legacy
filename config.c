@@ -10,6 +10,7 @@
 #endif
 
 #include "fractint.h"
+#include "fractype.h"
 #include "targa_lc.h"
 int file_type = -1;     /* 0=GIF, 1=Tim's pot (may become Targa) TW 7/20/89 */
 
@@ -44,7 +45,7 @@ struct fractal_info *info;
   
    if((fp = fopen(temp1,"rb"))==NULL)
    {
-      *gif_file = NULL; /* failed ... zap filename */
+      *gif_file = 0; /* failed ... zap filename */
       return(-1);
    }
    fread(gifstart,18,1,fp);
@@ -57,7 +58,7 @@ struct fractal_info *info;
       filetype = 2; /* Targa 16 */
    else
    {
-      *gif_file = NULL; /* failed ... zap filename */
+      *gif_file = 0; /* failed ... zap filename */
       fclose(fp);
       return(-1);
    }
@@ -79,7 +80,7 @@ struct fractal_info *info;
       colors = info->colors;
       if(rows != info->ydots || cols != info->xdots)
       {
-         *gif_file = NULL; /* failed ... zap filename */
+         *gif_file = 0; /* failed ... zap filename */
          fclose(fp);
          return(-1);
       }else
@@ -89,7 +90,7 @@ struct fractal_info *info;
       }
       break;
    default:
-      *gif_file = NULL; /* failed ... zap filename */
+      *gif_file = 0; /* failed ... zap filename */
       fclose(fp);
       return(-1);
       break;

@@ -69,6 +69,8 @@ helpmessagefractals	dw	offset  helpmessagefractals1
 			dw	seg     helpmessagefractals8
 			dw	offset  helpmessagefractals9
 			dw	seg     helpmessagefractals9
+			dw	offset  helpmessagefractals10
+			dw	seg     helpmessagefractals10
 			dw	0,0
 
 helpmessageformoreinfo	dw	offset  helpmessageformoreinfo1
@@ -96,12 +98,13 @@ helpmessageformoreinfo	dw	offset  helpmessageformoreinfo1
 	public	plasmamessage
 	public	argerrormessage
 	public	goodbyemessage
+	public  inversionmessage
 
 	public	helpmessage
 
 	public	initifs, initifs3d
 
-helpmessagetitle	db	"FRACTINT    Version 12.0"
+helpmessagetitle	db	"FRACTINT    Version 13.01r"
  db 13,10,0
 
 helpmessageauthors	db	13,10
@@ -127,7 +130,7 @@ helpmessageauthors	db	13,10
  db 13,10
  db 13,10
  db "Please press one of the Function Keys to select a video mode and begin an image",13,10
- db "(or press the 'h' key now or at any other time for help)"
+ db "(or press the >> F1 << (NOT the 'h') key now or at any other time for help)"
  db 0
 
 helpmessagecredits	db	32
@@ -135,12 +138,16 @@ helpmessagecredits	db	32
  db "Michael Abrash  - 360x480x256, 320x400x256 VGA video modes",13,10
  db "Steve Bennett   - restore-from-disk logic",13,10
  db "Rob Beyer       - [71021,2074] Barnsley IFS, Lorenz fractals",13,10
+ db "Pieter Branderhorst - [72611,2257] Mandelbrot, Solid-guessing Speedups",13,10
  db "John Bridges    - [73307,606] superVGA support, 360x480x256 mode",13,10
+ db "Brian Corbino   - [71611,702] Tandy 1000 640x200x16 video mode",13,10
  db "Lee Crocker     - [73407,2030] Fast Newton, Inversion, Decomposition..",13,10
  db "Monte Davis     - [71450,3542] Documentation",13,10
  db "Richard Finegold- [76701,153] 8/16/../256-Way Decomposition option",13,10
  db "Lawrence Gozum  - [73437,2372] Tseng 640x400x256 Video Mode",13,10
+ db "David Guenther  - [70531,3525] Boundary Tracing algorithm",13,10
  db "Mike Kaufman    - [71610,431] mouse support, other features",13,10
+ db "Adrian Mariano  - Diffusion fractal type",13,10
  db "Joe McLain      - [75066,1257] TARGA Support, color-map files",13,10
  db "Bob Montgomery  - [73357,3140] (Author of VPIC) Fast text I/O routines",13,10
  db "Bret Mulvey     - plasma clouds",13,10
@@ -149,6 +156,7 @@ helpmessagecredits	db	32
  db "Matt Saucier    - [72371,3101] Printer Support",13,10
  db "Herb Savage     - [71640,455] 'inside=bof60', 'inside=bof61' options",13,10
  db "Dean Souleles   - [75115,1671] Hercules Support",13,10
+ db "Kurt Sowa       - [73467,2013] Color Printer Support",13,10
  db "Scott Taylor    - [72401,410] type=formula 'Scott...' formulas",13,10
  db "Paul Varner     - [73237,411] Floating-point fractal algorithms",13,10
  db "Dave Warker     - Integer Mandelbrot Fractals concept",13,10
@@ -182,18 +190,18 @@ helpmessagemain1	db	13,10
  db "The useful keys you can hit while this program is running (the commands marked",13,10
  db "                    with an '*' are also available at the credits screen) are:",13,10
  db 13,10
- db "* h or H or ?       HELP! (Enter help mode and display this screen)",13,10
+ db "* F1 or ?           HELP! (Enter help mode and display this screen)",13,10
+ db "* F2,F3,F4,F5...    Select a new Video Mode and THEN Redraw",13,10
+ db "                    (see the Video-modes HELP screens for the full modes list)",13,10
+ db "* t or T            Select a new fractal type and parameters",13,10
+ db "* x or X            Set any of a number of options ('eXtensions')",13,10
  db "  PageUp, PageDown  Shrink or Expand the Zoom Box",13,10
  db "  Cursor Keys       Pan (Move) the Zoom Box across the screen",13,10
  db "  Ctrl-Cursor Keys  Fast-Pan the Zoom Box (may require an enhanced keyboard)",13,10
  db "  End or Enter      Redraw the Screen or area inside the Zoom Box",13,10
- db "* F1,F2,F3,F4...    Select a new Video Mode and THEN Redraw",13,10
- db "                    (see the Video-modes HELP screens for the full modes list)",13,10
- db "* 1 or 2 or g       Select Single-Pass, Dual-Pass, or Solid-Guessing mode",13,10
- db "  c or C or + or -  Enter Color-Cycling Mode (see Color-Cycling Help screen)",13,10
+ db "  Tab               Display the current fractal image information",13,10
  db "  s or S            Save the current screen image to disk (restart with 'r')",13,10
  db "* r or R or 3 or o  Restart from a saved (or .GIF) file ('3' or 'o' for 3-D)",13,10
- db "* t or T            Select a new fractal type and parameters",13,10
  db 13,10
  db 13,10
  db "Hit any of these keys while drawing a fractal to immediately do the command.",13,10
@@ -205,13 +213,13 @@ helpmessagemain2	db	13,10
  db "                    with an '*' are also available at the credits screen) are:",13,10
  db 13,10
  db "  p or P            Print the screen (command-line options set printer type)",13,10
+ db "  c or C or + or -  Enter Color-Cycling Mode (see Color-Cycling Help screen)",13,10
  db "  Spacebar          Mandelbrot/Julia Set toggle (read FRACTINT.DOC first)",13,10
- db "  < or >            Lower or Raise the Iteration Limit (display with Tab key)",13,10
- db "* n or N or l or L  Select Normal (the default) or Logarithmic Palettes",13,10
- db "  b or B            Add the current fractal description to FRABATCH.BAT",13,10
- db "  o or O            toggles 'orbits' option on and off during image generation",13,10
+ db "* Delete or Esc     Stop the program and return to MSDOS",13,10
  db "  Home              Redraw Previous screen (you can 'back out' recursively)",13,10
- db "  Tab               Display the current fractal image information",13,10
+ db "* Insert            Restart the program (at the credits screen)",13,10
+ db "* d or D            Shell to DOS (type 'exit' at the DOS prompt to return)",13,10
+ db "  o or O            toggles 'orbits' option on and off during image generation",13,10
  db "  Control-Enter     'Zoom-out' - expands the image so that your current",13,10
  db "                    image is positioned inside the current zoom-box location.",13,10
  db "* e or E            Edit the parameters for the Barnsley IFS fractal-types",13,10
@@ -226,17 +234,17 @@ helpmessagemain3	db	13,10
  db "The useful keys you can hit while this program is running (the commands marked",13,10
  db "                    with an '*' are also available at the credits screen) are:",13,10
  db 13,10
+ db "  b or B            Add the current fractal description to FRABATCH.BAT",13,10
+ db "* 1 or 2 or g       Select Single-Pass, Dual-Pass, or Solid-Guessing mode",13,10
+ db "  < or >            Lower or Raise the Iteration Limit (display with Tab key)",13,10
+ db "* f or F            toggle the floating-point algorithm option ON or OFF.",13,10
+ db "* n or N or l or L  Select Normal (the default) or Logarithmic Palettes",13,10
  db "  i or I            apply inversion to the current fractal image",13,10
- db "* f or F            toggle the floating-point option ON or OFF.  The",13,10
- db "                    TAB key display will indicate so if it's ON.",13,10
- db "                    See FRACTINT.DOC for details.",13,10
  db "  q or Q            apply Decomposition (2, 4, .. 256-way) to the current",13,10
  db "                    fractal image.  See FRACTINT.DOC for details.",13,10
  db "  a or A            Convert the current image into a fractal 'starfield'",13,10
  db "                    (the 'astrologer' option).",13,10
- db "* Insert            Restart the program (at the credits screen)",13,10
- db "* d or D            Shell to DOS (type 'exit' at the DOS prompt to return)",13,10
- db "* Delete or Esc     Stop the program and return to MSDOS",13,10
+ db 13,10
  db 13,10
  db 13,10
  db 13,10
@@ -251,11 +259,11 @@ helpmessagecycling1	db	13,10
  db "the the colors are now cycling on your screen).  Commands marked with an '*'",13,10
  db "are available only on VGA systems (the others also work on EGA systems).",13,10
  db 13,10
- db "  h or H or ?      HELP! (Enter help mode and display this screen)",13,10
+ db "  F1 or ?          HELP! (Enter help mode and display this screen)",13,10
  db "  + or -           (re)-set the direction of the color-cycling",13,10
  db "  Right/Left Arrow (re)-set the direction of the color-cycling (just like +/-)",13,10
  db "  Up/Down Arrow    SpeedUp/SlowDown the color cycling process",13,10
- db "  F1 thru F10      Select Short--Medium--Long (randomly-generated) color bands",13,10
+ db "  F2 thru F10      Select Short--Medium--Long (randomly-generated) color bands",13,10
  db "  1  thru 9        Cycle through 'nn' colors between screen updates (default=1)",13,10
  db "  Enter            Randomly (re)-select all new colors  [TRY THIS ONE!]",13,10
  db "  Spacebar         Pause until another key is hit (the overscan area is set",13,10
@@ -289,7 +297,7 @@ helpmessagexhair1	db	13,10
  db "looking at a screen with a white overscan (border) area and a Cross-Hair",13,10
  db "cursor on the screen).  Cross-Hair mode is available only on VGA systems.",13,10
  db 13,10
- db "  h or H or ?      HELP! (Enter help mode and display this screen)",13,10
+ db "  F1 or ?          HELP! (Enter help mode and display this screen)",13,10
  db "  Cursor Keys      Move the cross-hair cursor around the screen.  The",13,10
  db "                   Control-Cursor keys move the cross-hair around faster.",13,10 
  db "                   A mouse can also be used to move around, in which case",13,10
@@ -367,30 +375,28 @@ helpmessagecmdline1	db	13,10
 helpmessagecmdline2	db	13,10
  db "The initialization variables available, and their formats are:",13,10
  db 13,10
- db "passes=x (x = 1, 2, or g)  Select Single-Pass, Dual-Pass, or Solid-Guessing",13,10
+ db "passes=x (x = 1, 2, g, or b)  Select Single-Pass, Dual-Pass, Solid-Guessing",13,10
+ db "                           or the Boundary-Tracing drawing algorithms",13,10
  db "potential=nn[/nn[/nn]]     Continuous Potential options (see FRACTINT.DOC)",13,10
  db "logmap=yes                 Use a Logarithmic palette map rather than the",13,10
  db "                           default (Continuous) palette map",13,10
  db "maxiter=nnn                Maximum number of iterations (default = 150)",13,10
  db "iterincr=nnn               Iteration inc/decrement stepsize (default = 50)",13,10
- db "inside=nnn                 Mandelbrot Interior color (inside=0 for black)",13,10
+ db "inside=nnn                 Fractal interior color (inside=0 for black)",13,10
+ db "outside=nnn                Fractal exterior color (forces two-color images)",13,10
  db "map=filename               (VGA or TARGA) get the color map from 'filename'",13,10
  db "warn=yes                   Tells FRACTINT to avoid over-writing existing files",13,10
  db "batch=yes                  Batch mode run (display image, save-to-disk, exit)",13,10
  db "batch=config               Batch mode run to generate a 'fractint.cfg' file",13,10
  db "cyclelimit=nnn             color-cycler speed-limit (1 to 256, default = 55)",13,10
- db "float=yes                  For some functions changes from integer math to fp",13,10
+ db "float=yes                  For most functions changes from integer math to fp",13,10
  db "ifs=filename               Define an IFS map for the Barnsley IFS fractals",13,10
  db "                           Read the IFS section of FRACTINT.DOC for details",13,10
- db "printer=type[/res[/lpt#]]  Set the printer type (HP-Laserjet, IBM, Epson),",13,10
- db "                           dots/inch, and port# (1-3 for LPTn, 11-14 for COMn)",13,10
  db 0
 
 helpmessagecmdline3	db	13,10
  db "The initialization variables available, and their formats are:",13,10
  db 13,10
-; db "3d=[nn[/nn[/nn]]]...       Generate 'filename' (above) as a 3D image using",13,10
-; db "                           'nn/nn...' as default answers to the 3D prompts",13,10
  db "preview=yes                Turns on 3D 'preview' default mode",13,10
  db "showbox=yes                Turns on 3D 'showbox' default mode",13,10
  db "sphere=yes                 Turns on 3D sphere mode",13,10
@@ -439,6 +445,9 @@ helpmessagecmdline5	db	13,10
  db "                           instead of the default file (FRACTINT.FRM).",13,10
  db "formulaname=formulaname    Have the 'type=formula' fractals use this",13,10
  db "                           formula (instead of the first one in the file).",13,10
+ db "printer=type[/res[/lpt#]]  Set the printer type (HP-Laserjet, IBM, Epson, or,",13,10
+ db "                           Color [Star Micronix]), dots/inch, and port#",13,10
+ db "                           (1-3 for LPTn, 11-14 for COMn)",13,10
  db "askvideo=no                Disable 'Is This Mode OK?' prompt if you have a ",13,10
  db "                           FRACTINT.CFG file restricted to legal video modes.",13,10
  db "    ;                      indicates the rest of the line is a comment",13,10
@@ -604,22 +613,44 @@ helpmessagefractals8	db	13,10
  db "complexnewton, = Newton's fractal type extended to complex numbers. ",13,10
  db "complexbasin     Newton's fractal uses (z**n + 1) - these types use",13,10
  db "             (z**a + b), where both 'a' and 'b' are complex numbers.",13,10
- db "lorenz    =  Lorenz attractor fractal - orbits of differential equation",13,10 
- db "             x = x + (-a * x * dt) + (a * y * dt)",13,10
- db "             y = y + (b * x * dt) - (y * dt) - (z * x * dt)",13,10
- db "             z = z + (-c * z * dt) + (x * y * dt)",13,10
- db "             Parameters are dt, a, b, and c.",13,10
- db "lorenz3d  =  3D Lorenz attractor with 3D perspective.  Run this while",13,10
- db "             using the transformation option of the E(dit) command",13,10
- db "             to change your perspective.",13,10
- db "formula   =  Formula interpreter - write your own formulas as text files!",13,10
- db "             See FRACTINT.DOC for instructions on using this one.",13,10
- db 0
-
-helpmessagefractals9	db	13,10
  db "julibrot  =  'Julibrot' 4-dimensional fractals.  Read FRACTINT.DOC for",13,10
  db "             an description of these fractals (and a description of",13,10
  db "             the prompts involved in invoking them).",13,10
+ db "formula   =  Formula interpreter - write your own formulas as text files!",13,10
+ db "             See FRACTINT.DOC for instructions on using this one.",13,10
+ db "lorenz    =  Lorenz attractor - orbit in three dimensions defined by:",13,10 
+ db "             xnew = x + (-a*x*dt) + (a*y*dt)",13,10
+ db "             ynew = y + (b*x*dt) - (y*dt) - (z*x*dt)",13,10
+ db "             znew = z + (-c*z*dt) + (x*y*dt)",13,10
+ db "             Parameters are dt, a, b, and c.",13,10
+ db 0
+
+helpmessagefractals9	db	13,10
+ db "lorenz3d  =  3D Lorenz attractor with 3D perspective.  Run this while",13,10
+ db "             using the transformation option of the E(dit) command",13,10
+ db "             to change your perspective.",13,10
+ db "rossler3D =  Orbit in three dimensions defined by:",13,10
+ db "             xnew = x - y*dt -   z*dt",13,10
+ db "             ynew = y + x*dt + a*y*dt",13,10 
+ db "             znew = z + b*dt + x*z*dt - c*z*dt",13,10
+ db "             Parameters are dt, a, b, and c.",13,10
+ db "henon     =  Orbit in two dimensions defined by:",13,10
+ db "             xnew = 1 + y - a*x*x",13,10
+ db "             ynew = b*x",13,10
+ db "             Parameters are a and b",13,10
+ db "pickover  =  Orbit in three dimensions defined by:",13,10
+ db "             xnew = sin(a*y) - z*cos(b*x)",13,10
+ db "             ynew = z*sin(c*x) - cos(d*y)",13,10
+ db "             znew = sin(x)",13,10
+ db "             Parameters are a, b, c, and d.",13,10
+ db 0
+
+helpmessagefractals10	db	13,10
+ db "gingerbread = Orbit in two dimensions defined by:",13,10
+ db "             x <- 1 - y + |x|",13,10
+ db "             y <- x",13,10
+ db "diffusion =  Diffusion Limited Aggregation.  Randomly moving points",13,10
+ db "             accumulate.  One param:  border width (default 10)",13,10
  db 0
 
 helpmessageformoreinfo1	db	13,10
@@ -650,7 +681,7 @@ helpmessagemoretext	db	13,10
  db 0;
 
 helpmessageendtext	db	13,10
- db "Press ESCAPE to exit Help mode, or 'h' to see the help menu. ",13,10
+ db "Press ESCAPE to exit Help mode, or F1 to see the help menu. ",13,10
  db "Pressing any other key passes that keypress back to your program. "
  db 0;
 
@@ -659,7 +690,7 @@ helpmessagevideo	db	" "
  db "    'B' after #-of-colors means video access is via the BIOS (s-l-o-w-l-y)",13,10
  db 13,10
  db ">>ANOTHER HELP PAGE IS AVAILABLE<< -- Press the ENTER key to see it.",13,10
- db "Press ESCAPE to exit Help mode, or 'h' to see the help menu.",13,10
+ db "Press ESCAPE to exit Help mode, or F1 to see the help menu.",13,10
  db "Pressing any other key passes that keypress back to your program. "
  db 0
 
@@ -670,14 +701,14 @@ runningontarga		db	13,10
 plasmamessage		db	13,10
  db 13,10
  db "I'm sorry, but because of their random-screen-access algorithms, Plasma",13,10
- db "Clouds and Barnsley IFS fractal images cannot be created using a",13,10
+ db "Clouds, Diffusion and Barnsley IFS fractal images cannot be created using a",13,10
  db "Disk-based 'Video' mode.",13,10
  db 13,10
  db "Also, Plasma Clouds can currently only be run in a 4-or-more-color video",13,10
  db "mode (and color-cycled only on VGA adapters [or EGA adapters in their",13,10
  db "640x350x16 mode]).",13,10
  db 13,10,13,10,13,10
- db "Either press a function key (like F1 thru F5) that selects one of",13,10
+ db "Either press a function key (like F2 thru F5) that selects one of",13,10
  db "those modes, or press the 't' key to select a new fractal type.",13,10
  db 13,10,0
 
@@ -694,6 +725,14 @@ goodbyemessage		db	13,10
  db "Thank You for using FRACTINT"
  db 13,10
  db 13,10,0
+
+inversionmessage	db	13,10
+ db 13,10
+ db  " Please enter inversion parameters that apply.  Note",13,10
+ db  "  that the inversion option requires a fixed radius and ",13,10
+ db  "  center for zooming to make sense - if you want to zoom,",13,10
+ db  "  do not use default values, but specify radius and center",13,10
+ db 0
 
 ;	IFS fractal of a fern
 ;             a     b     c     d     e     f     p 

@@ -8,25 +8,24 @@ SUBTTL All rights reserved.
 ;    copyright notice and this message is left unchanged and all
 ;    modifications are clearly documented.
 ;
-;    I would appreciate a copy of any work which incorporates this code,
-;    however this is optional.
+;    I would appreciate a copy of any work which incorporates this code.
 ;
 ;    Mark C. Peterson
-;    128 Hamden Ave., F
-;    Waterbury, CT 06704
-;    (203) 754-1162
-;
-;  Note: Remark statements following floating point commands generally indicate
-;     the FPU stack contents after the command is completed.
+;    253 West St., H
+;    Plantsville, CT 06579
+;    (203) 276-9474
 ;
 ;  References:
+;     The VNR Concise Encyclopedia of Mathematics
+;        by W. Gellert, H. Hustner, M. Hellwich, and H. Kastner
+;        Published by Van Nostrand Reinhold Comp, 1975
+;
 ;     80386/80286 Assembly Language Programming
 ;        by William H. Murray, III and Chris H. Pappas
 ;        Published by Osborne McGraw-Hill, 1986
 ;        
 ;
 ;
-
 
 IFDEF ??version
 MASM51
@@ -48,7 +47,6 @@ extrn cpu:WORD
 PUBLIC TrigLimit, TrigOverflow
 
 PiFg13         dw       6487h
-InvPiFg17      dw       0a2f9h
 InvPiFg33      dd       0a2f9836eh
 InvPiFg16      dw       517ch
 Ln2Fg16        dw       0b172h
@@ -56,21 +54,31 @@ TrigOverflow   dw       0
 TrigLimit      dd       0
 one            dw       ?
 expSign        dw       ?
-exp            dw       ?
+a              dw       ?
 SinNeg         dw       ?
-CosNeg         dw       ?
+CosNeg	       dw	?
+Ans	       dq	?
 
 
-MP STRUC
-   Exp   DW    0
-   Mant  DD    0
-MP ENDS
+TaylorTerm  MACRO
+LOCAL Ratio
+   add   Factorial, one
+   jnc   SHORT Ratio
 
-Ans         MP       <?>
+   rcr   Factorial, 1
+   shr   Num, 1
+   shr   one, 1
 
-Four        dq    4.0
-Two         dq    2.0
-One         dq    1.0
+Ratio:
+   mul   Num
+   div   Factorial
+ENDM
+
+
+
+_4_         dq    4.0
+_2_         dq    2.0
+_1_         dq    1.0
 PointFive   dq    0.5
 temp        dq     ?
 Sign        dw     ?
@@ -142,7 +150,7 @@ LOCAL Status:word
    fld   QWORD PTR [bx]          ; x.x, x.y
    mov   bx, z
    fldln2                        ; ln2, x.x, x.y
-   fdiv  Two                     ; ln2/2, x.x, x.y
+   fdiv  _2_                     ; ln2/2, x.x, x.y
    fld   st(2)                   ; x.y, ln2/2, x.x, x.y
    fmul  st, st                  ; sqr(x.y), ln2/2, x.x, x.y
    fld   st(2)                   ; x.x, sqr(x.y), ln2/2, x.x, x.y
@@ -185,14 +193,14 @@ ChkMagnitudes:
    fstp  st                      ; x.y
    fstp  st                      ; <empty>
    fldpi                         ; Pi
-   fdiv  Four                    ; Pi/4
+   fdiv  _4_                     ; Pi/4
    jmp   ChkSignZ
 
 XneY:
    fxch                          ; x.y, x.x
    fpatan                        ; Pi/2 - Angle
    fldpi                         ; Pi, Pi/2 - Angle
-   fdiv  Two                     ; Pi/2, Pi/2 - Angle
+   fdiv  _2_                     ; Pi/2, Pi/2 - Angle
    fsubr                         ; Angle
    jmp   ChkSignZ
 
@@ -254,9 +262,9 @@ DuplicateX:
    frndint                    ; int = integer(|x|/ln(2)), x/ln(2)
    fxch                       ; x/ln(2), int
    fsub  st, st(1)            ; rem < 1.0, int
-   fdiv  Two                  ; rem/2 < 0.5, int
+   fdiv  _2_                  ; rem/2 < 0.5, int
    f2xm1                      ; (2**rem/2)-1, int
-   fadd  One                  ; 2**rem/2, int
+   fadd  _1_                  ; 2**rem/2, int
    fmul  st, st               ; 2**rem, int
    fscale                     ; e**|x|, int
    fstp  st(1)                ; e**|x|
@@ -264,14 +272,14 @@ DuplicateX:
    cmp   BYTE PTR [bx+7], 0
    jns   ExitFexp
 
-   fdivr One                  ; e**x      
+   fdivr _1_                  ; e**x      
 
 ExitFexp:
    fld   st                   ; e**x, e**x
    fdivr PointFive            ; e**-x/2, e**x
    fld   st                   ; e**-x/2, e**-x/2, e**x
    fxch  st(2)                ; e**x, e**-x/2, e**-x/2
-   fdiv  Two                  ; e**x/2,  e**-x/2, e**-x/2
+   fdiv  _2_                  ; e**x/2,  e**-x/2, e**-x/2
    fadd  st(2), st            ; e**x/2,  e**-x/2, cosh(x)
    fsubr                      ; sinh(x), cosh(x)
 
@@ -319,7 +327,7 @@ Use387FPUsincos:
 turbo_c1:
    fld   st                   ; FPU stack:  cos(x), cos(x)
    fmul  st, st               ; cos(x)**2, cos(x)
-   fsubr One                  ; sin(x)**2, cos(x)
+   fsubr _1_                  ; sin(x)**2, cos(x)
    fsqrt                      ; +/-sin(x), cos(x)
 
    mov   bx, x
@@ -477,8 +485,52 @@ RegFloat2Fg    ENDP
 
 
 
+PUBLIC RegFg2Float
+RegFg2Float     PROC   x1:word, x2:word, FudgeFact:byte
+      mov   ax, x1
+      mov   dx, x2
+
+      mov   cx, ax
+      or    cx, dx
+      jz    ExitFudgedToRegFloat
+
+      mov   ch, 127 + 32
+      sub   ch, FudgeFact
+      xor   cl, cl
+      shl   ax, 1       ; Get the sign bit
+      rcl   dx, 1
+      jnc   FindOneBit
+
+      inc   cl          ; Fudged < 0, convert to postive
+      not   ax
+      not   dx
+      add   ax, 1
+      adc   dx, 0
+
+   FindOneBit:
+      shl   ax, 1
+      rcl   dx, 1
+      dec   ch
+      jnc   FindOneBit
+      dec   ch
+
+      mov   al, ah
+      mov   ah, dl
+      mov   dl, dh
+      mov   dh, ch
+
+      shr   cl, 1       ; Put sign bit in
+      rcr   dx, 1
+      rcr   ax, 1
+
+   ExitFudgedToRegFloat:
+      ret
+RegFg2Float      ENDP
+
+
 PUBLIC ExpFudged
-ExpFudged      PROC     uses si, x_low:word, x_high:word, Fudge:word
+ExpFudged      PROC	uses si, x_low:word, x_high:word, Fudge:word
+LOCAL exp:WORD
       xor   ax, ax
       mov   WORD PTR Ans, ax
       mov   WORD PTR Ans + 2, ax
@@ -575,7 +627,8 @@ ExpFudged      ENDP
 
 
 PUBLIC   LogFudged
-LogFudged      PROC     uses si di es, x_low:word, x_high:word, Fudge:word
+LogFudged      PROC	uses si di es, x_low:word, x_high:word, Fudge:word
+LOCAL exp:WORD
       xor   bx, bx
       mov   cx, 16
       sub   cx, Fudge
@@ -713,49 +766,6 @@ LogFloat14     PROC     x1:word, x2:word
 LogFloat14     ENDP
 
 
-PUBLIC RegFg2Float
-RegFg2Float     PROC   x1:word, x2:word, FudgeFact:byte
-      mov   ax, x1
-      mov   dx, x2
-
-      mov   cx, ax
-      or    cx, dx
-      jz    ExitFudgedToRegFloat
-
-      mov   ch, 127 + 32
-      sub   ch, FudgeFact
-      xor   cl, cl
-      shl   ax, 1       ; Get the sign bit
-      rcl   dx, 1
-      jnc   FindOneBit
-
-      inc   cl          ; Fudged < 0, convert to postive
-      not   ax
-      not   dx
-      add   ax, 1
-      adc   dx, 0
-
-   FindOneBit:
-      shl   ax, 1
-      rcl   dx, 1
-      dec   ch
-      jnc   FindOneBit
-      dec   ch
-
-      mov   al, ah
-      mov   ah, dl
-      mov   dl, dh
-      mov   dh, ch
-
-      shr   cl, 1       ; Put sign bit in
-      rcr   dx, 1
-      rcr   ax, 1
-
-   ExitFudgedToRegFloat:
-      ret
-RegFg2Float      ENDP
-
-
 PUBLIC RegSftFloat
 RegSftFloat     PROC   x1:word, x2:word, Shift:byte
       mov   ax, x1
@@ -891,23 +901,6 @@ RegDivFloat      ENDP
 
 
 
-TaylorTerm  MACRO
-LOCAL Ratio
-   add   Factorial, one
-   jnc   SHORT Ratio
-
-   rcr   Factorial, 1
-   shr   Num, 1
-   shr   one, 1
-
-Ratio:
-   mul   Num
-   div   Factorial
-ENDM
-
-
-
-
 Term        equ      <ax>
 Num         equ      <bx>
 Factorial   equ      <cx>
@@ -916,18 +909,22 @@ Cos         equ      <di>
 e           equ      <si>
 Inve        equ      <di>
          
-_sincos   PROC                   ; edx:eax =: Num * 2**32
+SinCos086   PROC     uses si di, LoNum:WORD, HiNum:WORD, SinAddr:WORD, \
+                                CosAddr:WORD
+   mov   ax, LoNum 
+   mov   dx, HiNum
+   
    xor   cx, cx
    mov   SinNeg, cx
    mov   CosNeg, cx
-   mov   exp, cx
+   mov   a, cx
    or    dx, dx
    jns   AnglePositive
    
    not   ax
    not   dx
    add   ax, 1
-	adc   dx, cx
+   adc   dx, cx
    mov   SinNeg, 1
       
 AnglePositive:
@@ -940,22 +937,22 @@ AnglePositive:
    add   bx, ax
    adc   cx, dx
    mov   ax, si
-   mul   InvPiFg17
+   mul   WORD PTR InvPiFg33 + 2
    add   bx, ax
    adc   cx, dx
    mov   ax, di
-	mul   InvPiFg17
-	add   ax, cx
-	adc   dx, 0
+   mul   WORD PTR InvPiFg33 + 2
+   add   ax, cx
+   adc   dx, 0
 
    and   dx, 3
-   mov   exp, dx
+   mov   a, dx
 
    mov   Num, ax
-   mov   Factorial, InvPiFg17
+   mov   Factorial, WORD PTR InvPiFg33 + 2
    mov   one, Factorial
    mov   Cos, Factorial          ; Cos = 1
-   mov   Sin, Num                  ; Sin = Num
+   mov   Sin, Num                ; Sin = Num
       
 LoopIntSinCos:
    TaylorTerm                    ; Term = Num * (x/2) * (x/3) * (x/4) * . . .
@@ -981,35 +978,35 @@ LoopIntSinCos:
 ExitIntSinCos:
    xor   ax, ax
    mov   cx, ax
-   cmp   Cos, InvPiFg17
-	jb    CosDivide               ; Cos < 1.0
+   cmp   Cos, WORD PTR InvPiFg33 + 2
+   jb    CosDivide               ; Cos < 1.0
       
    inc   cx                      ; Cos == 1.0
    jmp   StoreCos
       
 CosDivide:
    mov   dx, Cos
-   div   InvPiFg17
+   div   WORD PTR InvPiFg33 + 2
       
 StoreCos:
    mov   Cos, ax                 ; cx:Cos
 
    xor   ax, ax
    mov   bx, ax
-   cmp   Sin, InvPiFg17
-	jb    SinDivide               ; Sin < 1.0
+   cmp   Sin, WORD PTR InvPiFg33 + 2
+   jb    SinDivide               ; Sin < 1.0
    
    inc   bx                      ; Sin == 1.0
    jmp   StoreSin
       
 SinDivide:
    mov   dx, Sin
-   div   InvPiFg17
+   div   WORD PTR InvPiFg33 + 2
       
 StoreSin:
    mov   Sin, ax                 ; bx:Sin
 
-   test  exp, 1
+   test  a, 1
    jz    ChkNegCos
 
    xchg  cx, bx
@@ -1019,7 +1016,7 @@ StoreSin:
    mov   CosNeg, ax
 
 ChkNegCos:
-   mov   ax, exp
+   mov   ax, a
    shr   al, 1
    rcl   ah, 1
    xor   ah, al
@@ -1028,21 +1025,12 @@ ChkNegCos:
    xor   CosNeg, 1
 
 ChkNegSin:
-   test  exp, 2
+   test  a, 2
    jz    CorrectQuad
 
    xor   SinNeg, 1
 
 CorrectQuad:
-   ret
-_sincos     ENDP
-      
-      
-SinCos086   PROC     LoNum:WORD, HiNum:WORD, SinAddr:WORD, CosAddr:WORD
-   mov   ax, LoNum 
-   mov   dx, HiNum
-   
-   call  _sincos
 
    cmp   CosNeg, 1
    jne   CosPolarized
@@ -1075,7 +1063,7 @@ SinCos086      ENDP
       
       
       
-_e2y   PROC                 ; eax =: Num * 2**16, 0 < Num < Ln2
+_e2x   PROC
    mov   expSign, 0
    or    dx, dx
    jns   CalcExp
@@ -1088,8 +1076,8 @@ _e2y   PROC                 ; eax =: Num * 2**16, 0 < Num < Ln2
    
 CalcExp:
    div   Ln2Fg16
-   mov   exp, ax
-   mov   Num, dx
+   mov   a, ax
+   mov   Num, dx                    ; 0 <= Num < Ln(2)
       
    xor   Factorial, Factorial
    stc
@@ -1099,27 +1087,27 @@ CalcExp:
    mov   Term, Num
    shr   Num, 1
       
-Loop_e2y:
+Loop_e2x:
    TaylorTerm
-   add   e, Term                 ; e = 1 + x + x*x/2 + (x**3)/3! + . . .
+   add   e, Term                 ; e = x + x*x/2 + (x**3)/3! + . . .
    cmp   Term, WORD PTR TrigLimit
-   jnbe  SHORT Loop_e2y
+   jnbe  SHORT Loop_e2x
       
 ExitIntSinhCosh:
    stc
-   rcr   e, 1
-   ret                           ; return e**y * (2**32), 1 < e**y < 2
-_e2y   ENDP
+   rcr   e, 1                    ; e = e + 1, fg 15
+   ret                           ; return e**x * (2**15), 1 < e**x < 2
+_e2x   ENDP
       
       
       
-Exp086    PROC     LoNum:WORD, HiNum:WORD
+Exp086    PROC     uses si di, LoNum:WORD, HiNum:WORD
    mov   ax, LoNum 
    mov   dx, HiNum
    
-   call  _e2y
+   call  _e2x
       
-   cmp   exp, 16
+   cmp   a, 16
    jae   Overflow
       
    cmp   expSign, 0
@@ -1127,11 +1115,11 @@ Exp086    PROC     LoNum:WORD, HiNum:WORD
       
    mov   ax, e
    mov   dx, ax
-   inc   exp
+   inc   a
    mov   cx, 16
-   sub   cx, exp
+   sub   cx, a
    shr   dx, cl
-   mov   cx, exp
+   mov   cx, a
    shl   ax, cl
    jmp   ExitExp086
       
@@ -1146,7 +1134,7 @@ NegNumber:
    jne   DivideE
       
    mov   ax, e
-   dec   exp
+   dec   a
    jmp   ShiftE
       
 DivideE:
@@ -1158,7 +1146,7 @@ DivideE:
       
 ShiftE:
    xor   dx, dx
-   mov   cx, exp
+   mov   cx, a
    shr   ax, cl
       
 ExitExp086:
@@ -1167,18 +1155,19 @@ Exp086    ENDP
 
 
 
-SinhCosh086    PROC     LoNum:WORD, HiNum:WORD, SinhAddr:WORD, CoshAddr:WORD
+SinhCosh086    PROC     uses si di, LoNum:WORD, HiNum:WORD, SinhAddr:WORD, \
+                                   CoshAddr:WORD
    mov   ax, LoNum
    mov   dx, HiNum
 
-   call  _e2y
+   call  _e2x
 
    cmp   e, 8000h
    jne   InvertE              ; e > 1
 
    mov   dx, 1
    xor   ax, ax
-   cmp   exp, 0
+   cmp   a, 0
    jne   Shiftone
 
    mov   e, ax
@@ -1186,17 +1175,17 @@ SinhCosh086    PROC     LoNum:WORD, HiNum:WORD, SinhAddr:WORD, CoshAddr:WORD
    jmp   ChkSinhSign
 
 Shiftone:
-   mov   cx, exp
+   mov   cx, a
    shl   dx, cl
    dec   cx
-	shr   e, cl
+   shr   e, cl
    shr   dx, 1
    shr   e, 1
-	mov   cx, dx
-	sub   ax, e
-	sbb   dx, 0
-	xchg  ax, e
-	xchg  dx, cx
+   mov   cx, dx
+   sub   ax, e
+   sbb   dx, 0
+   xchg  ax, e
+   xchg  dx, cx
    jmp   ChkSinhSign
 
 InvertE:
@@ -1207,9 +1196,9 @@ InvertE:
    mov   Inve, ax
 
 ShiftE:
-   mov   cx, exp
-	shr   Inve, cl
-	inc   cl
+   mov   cx, a
+   shr   Inve, cl
+   inc   cl
    mov   dx, e
    shl   e, cl
    neg   cl
@@ -1251,5 +1240,122 @@ SinhCosh086    ENDP
 
 
 
-END
+Numerator   equ      <bx>
+Denominator equ      <di>
+Counter     equ      <si>
 
+Log086   PROC     uses si di, LoNum:WORD, HiNum:WORD, Fudge:WORD
+LOCAL Exp:WORD, Accum:WORD, LoAns:WORD, HiAns:WORD
+      xor   bx, bx
+      mov   Accum, bx
+      mov   LoAns, bx
+      mov   HiAns, bx
+      mov   cx, Fudge
+      mov   ax, LoNum
+      mov   dx, HiNum
+
+      or    dx, dx
+      js    Overflow
+      jnz   ShiftUp
+
+      or    ax, ax
+      jnz   ShiftUp      
+
+   Overflow:
+      mov   TrigOverflow, 1
+      jmp   ExitLog086
+
+   ShiftUp:
+      inc   cx                      ; cx = Exp
+      shl   ax, 1
+      rcl   dx, 1
+      or    dx, dx
+      jns   ShiftUp
+
+      neg   cx
+      add   cx, 31
+      mov   Exp, cx
+      mov   di, dx                  ; dx = x, 1 <= x < 2, fg 15
+      add   di, 8000h
+      rcr   di, 1                   ; di = x + 1, fg 14
+
+      shl   ax, 1
+      rcl   dx, 1
+      push  ax
+      push  dx
+
+      mov   ax, dx
+      mul   dx
+      mov   Numerator, dx           ; Numerator = (x - 1)**2, fg 16
+                                    ; 0 <= cx < 1
+
+      mov   ax, di
+      mul   di
+      mov   si, dx                  ; Save (x + 1)**2, fg 12
+      pop   dx
+      pop   ax
+      shr   dx, 1
+      rcr   ax, 1
+      div   di
+      mov   LoAns, ax
+      push  ax                      ; Rem = (x-1)/(x+1), fg 17
+      mov   Denominator, si         ; Denominator = (x + 1)**2, fg 12
+                                    ; 1 <= Denominator < 8
+      mov   Counter, 3
+      mov   cl, 3
+      mov   ch, 13
+
+   LogLoop:
+      pop   ax                      ; ax = Rem, fg 13+cl
+      mul   Numerator               ; dx:ax = Rem * (x-1)**2, fg 29+cl
+      shr   dx, 1
+      rcr   ax, 1
+      div   Denominator
+      push  ax                      ; Rem = [Rem*(x-1)**2]/(x+1)**2, fg 17+cl
+      xor   dx, dx
+      div   Counter                 ; ax = Rem / Counter, fg 17+cl
+      mov   dx, ax
+      shr   ax, cl                  ; ax = Rem / Counter, fg 17
+      cmp   ax, WORD PTR TrigLimit
+      jbe   SHORT MultExp
+
+      xchg  cl, ch
+      shl   dx, cl
+      add   Accum, dx
+      adc   LoAns, ax
+      adc   HiAns, 0
+      inc   Counter
+      inc   Counter
+      xchg  cl, ch
+      add   cl, 3
+      sub   ch, 3
+      jmp   LogLoop
+
+   MultExp:
+      pop   cx                      ; Discard Rem
+      mov   cx, Exp
+      mov   ax, Ln2Fg16
+      or    cx, cx
+      js    SubFromAns
+
+      mul   cx                      ; cx = Exp * Lg2Fg16, fg 16
+      add   LoAns, ax
+      adc   HiAns, dx
+      jmp   ExitLog086
+
+   SubFromAns:
+      neg   cx
+      mul   cx
+      sub   LoAns, ax
+      sbb   HiAns, dx
+
+   ExitLog086:
+      ; r = (x-1)/(x+1)
+      ; Ans = 2 * (r + r**3/3 + r**5/5 + . . .) + (Exp * Ln2Fg16), fg 16
+      mov   ax, LoAns
+      mov   dx, HiAns
+      ret
+Log086   ENDP
+
+
+END

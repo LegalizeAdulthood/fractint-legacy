@@ -821,7 +821,7 @@ int reg;
 
 	for ( reg=0; reg<FIXED_REGS; reg++)
 		SetDispReg(FixedRegs[reg],FixedValue[reg]);
-	return;
+	return(0);
 }
 
 

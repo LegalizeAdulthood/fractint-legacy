@@ -7,7 +7,7 @@
 #include	<dos.h>
 
 
-extern unsigned int _dataseg;
+extern unsigned int _dataseg_xx;
 
 /****************************************************************/
 
@@ -19,8 +19,8 @@ extern unsigned int _dataseg;
 #	define		OUTPORTW	outport
 #	define		INPORTW		inport
 #else
-#	define		PEEK(a,b,c,d)		movedata( b, a, _dataseg, c, d)
-#	define		POKE(a,b,c,d)		movedata( _dataseg, c, b, a, d )
+#	define		PEEK(a,b,c,d)		movedata( b, a, _dataseg_xx, c, d)
+#	define		POKE(a,b,c,d)		movedata( _dataseg_xx, c, b, a, d )
 #	define		OUTPORTB	outp
 #	define		INPORTB		inp
 #	define		OUTPORTW	outpw

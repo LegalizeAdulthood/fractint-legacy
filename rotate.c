@@ -43,7 +43,7 @@ FILE *dacfile;
 if (dacbox[0][0] == 255 || 		/* ??? no DAC to rotate!	*/
 	colors < 16) {			/* strange things happen in 2x modes */
 		buzzer(2);
-		return;
+		return(0);
 		}
 
 oldhelpmode = helpmode;			/* save the old help mode */
@@ -438,7 +438,7 @@ if (dacbox[0][0] == 255 || 		/* ??? no DAC to rotate! */
 	reallyega ||			/* true VGAs only, please */
 	colors < 16) {			/* strange things happen in 2x modes */
 		buzzer(2);
-		return;
+		return(0);
 		}
 
 oldhelpmode = helpmode;			/* save the old help mode */

@@ -1,24 +1,23 @@
 .c.obj:	
-#	qcl /AM /W1 /FPi /c /Od $*.c
-#	cl /AM /W1 /FPi /c /Oait $*.c
-#	cl /AM /W1 /FPi /Gs /c /Od /Zi $*.c
+#	qcl /AM /W1 /FPi /c /Olt $*.c
+#	cl /AM /W1 /FPi /qc /c /Zi $*.c
+#	cl /AM /W1 /FPi /qc /c $*.c
 	cl /AM /W1 /FPi /c /Oait $*.c
 
 .asm.obj:
-#	masm /ML $*;
 #	masm /ML /Zi $*;
 	masm /ML $*;
 
 
-lorenz.obj : lorenz.c fractint.h
+lorenz.obj : lorenz.c fractint.h fractype.h
 
 plot3d.obj : plot3d.c
 
 3d.obj : 3d.c fractint.h
 
-fractals.obj : fractals.c fractint.h
+fractals.obj : fractals.c fractint.h fractype.h
 
-calcfrac.obj : calcfrac.c fractint.h
+calcfrac.obj : calcfrac.c fractint.h mpmath.h
 
 parser.obj : parser.c fractint.h
 
@@ -26,7 +25,7 @@ calcmand.obj : calcmand.asm
 
 cmdfiles.obj : cmdfiles.c fractint.h
 
-config.obj : config.c fractint.h
+config.obj : config.c fractint.h fractype.h
 
 decoder.obj : decoder.c fractint.h
 
@@ -40,7 +39,7 @@ fr8514a.obj : fr8514a.asm
 
 hgcfra.obj : hgcfra.asm
 
-fractint.obj : fractint.c fractint.h
+fractint.obj : fractint.c fractint.h fractype.h
 
 video.obj : video.asm
 
@@ -59,7 +58,7 @@ newton.obj : newton.asm
 
 printer.obj : printer.c fractint.h
 
-prompts.obj : prompts.c fractint.h
+prompts.obj : prompts.c fractint.h fractype.h
 
 rotate.obj : rotate.c fractint.h
 

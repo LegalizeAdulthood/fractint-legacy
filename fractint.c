@@ -9,6 +9,7 @@
 #include <dos.h>
 #include <float.h>
 #include <process.h>
+#include <time.h>
 #ifndef __TURBOC__
 #include <malloc.h>
 #endif
@@ -16,6 +17,7 @@
 #define PUTTHEMHERE 1			/* stuff common external arrays here */
 
 #include "fractint.h"
+#include "fractype.h"
 
 int	adapter;		/* Video Adapter chosen from list in ...h */
 
@@ -26,9 +28,9 @@ struct fractal_info save_info, read_info; /*  for saving data in file */
 extern int biomorph;
 extern int askvideo;
 extern int forcesymmetry;
-extern	char    readname[];     /* name of fractal input file */
-extern	int     showfile;        /* has file been displayed yet? */
-#define	FUDGEFACTOR	29		/* fudge all values up by 2**this */
+extern	char	readname[];	/* name of fractal input file */
+extern	int	showfile;	 /* has file been displayed yet? */
+#define FUDGEFACTOR	29		/* fudge all values up by 2**this */
 #define FUDGEFACTOR2	24		/* (or maybe this)		  */
 
 #define MAXHISTORY	25		/* save this many historical rcds */
@@ -43,7 +45,7 @@ struct historystruct {			/* history structure */
 
 /* yes, I *know* it's supposed to be compatible with Microsoft C,
    but some of the routines need to know if the "C" code
-   has been compiled with Turbo-C.  This flag is a 1 if FRACTINT.C 
+   has been compiled with Turbo-C.  This flag is a 1 if FRACTINT.C
    (and presumably the other routines as well) has been compiled
    with Turbo-C. */
 
@@ -51,21 +53,21 @@ int compiled_by_turboc;
 
 extern	char	savename[];		/* save files using this name */
 
-extern  char preview;    /* 3D preview mode flag */
+extern	char preview;	 /* 3D preview mode flag */
 
 extern char floatflag;			/* floating-point fractals? */
 
-extern	char	temp1[];			/* temporary strings        */
+extern	char	temp1[];			/* temporary strings	    */
 
 extern	int	debugflag;		/* internal use only - you didn't see this */
 /*
    the following variables are out here only so
    that the calcfract() and assembler routines can get at them easily
 */
-	int	dotmode;			/* video access method      */
+	int	dotmode;			/* video access method	    */
 	int	oktoprint;			/* 0 if printf() won't work */
 	int	xdots, ydots;			/* # of dots on the screen  */
-	int	colors;				/* maximum colors available */
+	int	colors; 			/* maximum colors available */
 	int	maxit;				/* try this many iterations */
 	int	ixmin, ixmax, iymin, iymax;	/* corners of the zoom box  */
 	int	boxcount;			/* 0 if no zoom-box yet     */
@@ -86,30 +88,31 @@ extern	int	debugflag;		/* internal use only - you didn't see this */
 	int	diskvideo;			/* disk-video access flag   */
 	int	diskprintfs;			/* disk-video access flag   */
 
-extern	long	far *lx0, far *ly0;		/* x, y grid                */
+extern	long	far *lx0, far *ly0;		/* x, y grid		    */
 	double far *dx0, far *dy0;		/* floating pt equivs */
-	int	integerfractal;		/* TRUE if fractal uses integer math */
+	int	integerfractal; 	/* TRUE if fractal uses integer math */
 
-extern	int	inside;				/* inside color: 1=blue     */
+extern	int	inside; 			/* inside color: 1=blue     */
+extern	int	outside; 			/* outside color, if set    */
 extern	int	cyclelimit;			/* color-rotator upper limit */
 extern	int	display3d;			/* 3D display flag: 0 = OFF */
 extern	int	overlay3d;			/* 3D overlay flag: 0 = OFF */
 extern	int	init3d[20];			/* '3d=nn/nn/nn/...' values */
 
-extern    int previewfactor;			/* for save_info */
-extern    int xtrans;
-extern    int ytrans;
-extern    int red_crop_left;
-extern    int red_crop_right;
-extern    int blue_crop_left;
-extern    int blue_crop_right;
-extern    int red_bright;
-extern    int blue_bright;
-extern    int xadjust;
-extern    int eyeseparation;
-extern    int glassestype;
-extern    int filetype;        
-extern    int whichimage;
+extern	  int previewfactor;			/* for save_info */
+extern	  int xtrans;
+extern	  int ytrans;
+extern	  int red_crop_left;
+extern	  int red_crop_right;
+extern	  int blue_crop_left;
+extern	  int blue_crop_right;
+extern	  int red_bright;
+extern	  int blue_bright;
+extern	  int xadjust;
+extern	  int eyeseparation;
+extern	  int glassestype;
+extern	  int filetype;
+extern	  int whichimage;
 
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
@@ -120,6 +123,7 @@ extern int	cpu;			/* cpu type			*/
 extern int	fpu;			/* fpu type			*/
 extern int	lookatmouse;		/* used to activate non-button mouse movement */
 extern int	out_line();		/* called in decoder */
+extern int	cmp_line();		/* for test purposes */
 extern	int	outlin16();		/* called in decoder */
 extern int	line3d();		/* called in decoder */
 extern int	(*outln)();		/* called in decoder */
@@ -127,40 +131,43 @@ extern	int	filetype;		/* GIF or other */
 
 /* variables defined by the command line/files processor */
 extern	double	inversion[];
-extern	int	invert;			/* non-zero if inversion active */
+extern	int	invert; 		/* non-zero if inversion active */
 extern	int	initbatch;		/* 1 if batch run (no kbd)  */
-extern	int	initmode;		/* initial video mode       */
+extern	int	initmode;		/* initial video mode	    */
 extern	int	inititer;		/* initial value of maxiter */
 extern	int	initincr;		/* initial maxiter incrmnt  */
-extern	int	initpass;		/* initial pass mode        */
+extern	int	initpass;		/* initial pass mode	    */
 extern	int	initsolidguessing;	/* initial solid-guessing md*/
 extern	int	initfractype;		/* initial type set flag    */
-extern	int	initcyclelimit;		/* initial cycle limit      */
+extern	int	initcyclelimit; 	/* initial cycle limit	    */
 extern	int	initcorners;		/* initial flag: corners set*/
 extern	double	initxmin,initxmax;	/* initial corner values    */
 extern	double	initymin,initymax;	/* initial corner values    */
-extern	double	initparam[4];		/* initial parameters       */
+extern	double	initparam[4];		/* initial parameters	    */
 extern	int	LogFlag;		/* non-zero if logarithmic palettes */
 extern int transparent[];
 extern int decomp[];
- 
-extern char showbox;          /* flag to show box and vector in preview */
+
+extern char showbox;	      /* flag to show box and vector in preview */
 extern char FormFileName[];   /* file to find (type=)formulas in */
 extern char FormName[];       /* Name of the Formula (if not null) */
-extern int bailout;           /* user input bailout value */
-extern int mapset;            /* indicates new map */
-extern int warn;              /* 0 if savename warnings off, 1 if on */
-extern int ramvideo;          /* if zero, skip RAM-video for EXP-RAM */
+extern int bailout;	      /* user input bailout value */
+extern int mapset;	      /* indicates new map */
+extern int warn;	      /* 0 if savename warnings off, 1 if on */
+extern int ramvideo;	      /* if zero, skip RAM-video for EXP-RAM */
 extern char MAP_name[];       /* map file name */
 
+extern int boundarytraceflag; /* boundary tracing (0 = off, 1 = on) */
+
 extern int rflag, rseed;
+int	comparegif=0;			/* compare two gif files flag */
 
 /* the following is out here for the 'tab_display()' routine */
-long	xmin, xmax, ymin, ymax;		/* screen corner values */
+long	xmin, xmax, ymin, ymax; 	/* screen corner values */
 double	xxmin,xxmax,yymin,yymax;	/* (printf) screen corners */
-int tab_status;				/* == 0 means no fractal on screen */
+int tab_status; 			/* == 0 means no fractal on screen */
 					/* == 1 means fractal in progress  */
-					/* == 2 means fractal complete     */
+					/* == 2 means fractal complete	   */
 
 /* "main()" now does initialization only and then calls "main_routine()" */
 
@@ -168,7 +175,7 @@ void main(argc,argv)
 int argc;
 char *argv[];
 {
-long	huge *xxxalloc;				/* Quick-C klooge (extraseg) */
+long	huge *xxxalloc; 			/* Quick-C klooge (extraseg) */
 
 initasmvars();					/* initialize ASM stuff */
 
@@ -177,10 +184,10 @@ hasconfig = readconfig();			/* read fractint.cfg, if any */
 maxvideomode = initvideotable();		/* get the size of video table */
 if ( maxvideomode >= MAXVIDEOMODES)		/* that's all the Fn keys we got! */
 	maxvideomode = MAXVIDEOMODES;
-	
+
 cmdfiles(argc,argv);				/* process the command-line */
 
-if (debugflag == 8088)                cpu =  86; /* for testing purposes */
+if (debugflag == 8088)		      cpu =  86; /* for testing purposes */
 if (debugflag == 2870 && fpu >= 287 ) fpu = 287; /* for testing purposes */
 if (debugflag ==  870 && fpu >=  87 ) fpu =  87; /* for testing purposes */
 if (debugflag ==   70 && fpu >=   0 ) fpu =   0; /* for testing purposes */
@@ -199,7 +206,7 @@ if (debugflag >= 9002 && debugflag <= 9100)	 /* for testing purposes */
    get CodeView working and we don't *care* about the fact that any
    attempt to do something tricky like using help mode or a hi-rez
    video mode will require "extraseg" memory that we just don't have.
-   
+
    Note: unless and until you can get CodeView to reside *entirely* in
    extended/expanded memory, run "codeview /s /e fractint debug=10000"
    and don't use help or any hi-rez video modes (they require the full
@@ -209,19 +216,19 @@ if (debugflag >= 9002 && debugflag <= 9100)	 /* for testing purposes */
    with a version of CodeView that resides entirely in extended/expanded
    memory.
 */
- 
+
 #ifndef __TURBOC__
-if (debugflag == 10000 && extraseg == 0) { 
+if (debugflag == 10000 && extraseg == 0) {
 	xxxalloc = (long huge *)halloc(16384L,4);  /* try for 64K */
 	extraseg = FP_SEG(xxxalloc);
 	if (extraseg == 0) {
-		xxxalloc = (long huge *)halloc(8192L,4); /* try for 32K */ 
+		xxxalloc = (long huge *)halloc(8192L,4); /* try for 32K */
 		extraseg = FP_SEG(xxxalloc);
 		}
 	}
 #endif
 
-if (extraseg == 0) {			/* oops.  not enough memory     */
+if (extraseg == 0) {			/* oops.  not enough memory	*/
 	buzzer(2);
 	printf(" I'm sorry, but you don't have enough free memory \n");
 	printf(" to run this program.\n\n");
@@ -248,7 +255,7 @@ diskisactive = 0;			/* disk-video is inactive */
 diskvideo = 0;				/* disk driver is not in use */
 diskprintfs = 1;			/* disk-video should display status */
 setvideomode(3,0,0,0);			/* switch to text mode */
-tab_status = 0;				/* no active fractal image */
+tab_status = 0; 			/* no active fractal image */
 
 if (debugflag == 10000) {		/* check for free memory */
 	char *tempptr;
@@ -275,26 +282,25 @@ main_routine();
 
 main_routine()
 {
-	double	jxxmin, jxxmax, jyymin, jyymax;	/* "Julia mode" entry point */
+	double	jxxmin, jxxmax, jyymin, jyymax; /* "Julia mode" entry point */
 	double	atof(), ftemp;			/* floating point stuff    */
 	double	ccreal,ccimag;			/* Julia Set Parameters    */
 	int	xstep, ystep;			/* zoom-box increment values */
-	int	axmode, bxmode, cxmode, dxmode;	/* video mode (BIOS ##) */
+	int	axmode, bxmode, cxmode, dxmode; /* video mode (BIOS ##) */
 	int	historyptr;			/* pointer into history tbl */
 	int	zoomoff;			/* = 0 when zoom is disabled */
 	int	kbdchar;			/* keyboard key-hit value */
 	int	more, kbdmore;			/* continuation variables */
 	int	i, j, k, l;			/* temporary loop counters */
-	int	displaypage;			/* signon display page      */
+	int	displaypage;			/* signon display page	    */
 	int	savedac;			/* save-the-Video DAC flag  */
-	int	olddotmode;			/* temp copy of dotmode	    */
-    int status; 
+	int	olddotmode;			/* temp copy of dotmode     */
+	int	status;
 
 savedac = 0;				/* don't save the VGA DAC */
-
 restorestart:
 
-read_overlay();				/* read overlay/3D files, if reqr'd */
+read_overlay(); 			/* read overlay/3D files, if reqr'd */
 
 if (overlay3d && initmode < 0) {	/* overlay command failed */
 	setforgraphics();		/* restore the graphics screen */
@@ -304,26 +310,26 @@ if (overlay3d && initmode < 0) {	/* overlay command failed */
 	}
 
 
-restart:                                /* insert key re-starts here */
+restart:				/* insert key re-starts here */
 
 savedac = 0;				/* don't save the VGA DAC */
 
 lookatmouse = 0;			/* de-activate full mouse-checking */
 
 maxit = inititer;				/* max iterations */
-numpasses = initpass-1;				/* single/dual-pass mode */
+numpasses = initpass-1; 			/* single/dual-pass mode */
 solidguessing = initsolidguessing;		/* solid-guessing mode */
 
-fractype = initfractype;			/* use the default set   */
+fractype = initfractype;			/* use the default set	 */
 
 if (floatflag) {				/* adjust for floating pt */
 	if (fractalspecific[fractype].isinteger != 0 &&
-		fractalspecific[fractype].tofloat != NOFRACTAL) 
+		fractalspecific[fractype].tofloat != NOFRACTAL)
 		fractype = fractalspecific[fractype].tofloat;
 	}
 else	{
 	if (fractalspecific[fractype].isinteger == 0 &&
-		fractalspecific[fractype].tofloat != NOFRACTAL) 
+		fractalspecific[fractype].tofloat != NOFRACTAL)
 		fractype = fractalspecific[fractype].tofloat;
 	}
 
@@ -338,7 +344,7 @@ for (i = 0; i < 4; i++)
    else
       initparam[i] = param[i] = fractalspecific[fractype].paramvalue[i];
 }
-ccreal = param[0]; ccimag = param[1];		/* default C-values      */
+ccreal = param[0]; ccimag = param[1];		/* default C-values	 */
 xxmin = initxmin; xxmax = initxmax;		/* default corner values */
 yymin = initymin; yymax = initymax;		/* default corner values */
 
@@ -350,26 +356,34 @@ if (yymin > yymax) { ftemp = yymax; yymax = yymin; yymin = ftemp; }
 if(fractalspecific[fractype].isinteger > 1)
    bitshift = fractalspecific[fractype].isinteger;
 else
-   bitshift = FUDGEFACTOR2;                     /* shift bits by this much */
-if (fractype == MANDEL || fractype == JULIA) {  /* adust shift bits if.. */
-   if (fabs(potparam[0]) < .0001                /* not using potential */
-       && (fractype != MANDEL ||                /* and not an int mandel */
-       (ccreal == 0.0 && ccimag == 0.0))        /*  w/ "fudged" parameters */
-       && ! invert                              /* and not inverting */
-       && biomorph == -1                        /* and not biomorphing */
-       && debugflag != 1234)                    /* and not debugging */
+   bitshift = FUDGEFACTOR2;			/* shift bits by this much */
+
+if(fractalspecific[fractype].isinteger == 0) /* TW start */
+{
+   if((i = fractalspecific[fractype].tofloat) != NOFRACTAL)
+      if(fractalspecific[i].isinteger > 1)
+	 bitshift =  fractalspecific[i].isinteger; /* TW stop */
+}
+
+if (fractype == MANDEL || fractype == JULIA) {	/* adust shift bits if.. */
+   if (fabs(potparam[0]) < .0001		/* not using potential */
+       && (fractype != MANDEL ||		/* and not an int mandel */
+       (ccreal == 0.0 && ccimag == 0.0))	/*  w/ "fudged" parameters */
+       && ! invert				/* and not inverting */
+       && biomorph == -1			/* and not biomorphing */
+       && debugflag != 1234)			/* and not debugging */
        bitshift = FUDGEFACTOR;
    if (ccreal < -1.99 || ccreal > 1.99) ccreal = 1.99;
    if (ccimag < -1.99 || ccimag > 1.99) ccimag = 1.99;
    }
 
-ftemp = 32767.99;                               /* avoid corners overflow */
+ftemp = 32767.99;				/* avoid corners overflow */
 if (bitshift >= 24) ftemp = 31.99;
 if (bitshift >= 29) ftemp = 3.99;
 if (xxmax - xxmin > ftemp) xxmax = xxmin + ftemp;
 if (yymax - yymin > ftemp) yymax = yymin + ftemp;
 
-fudge = 1; fudge = fudge << bitshift;          /* fudged value for printfs */
+fudge = 1; fudge = fudge << bitshift;	       /* fudged value for printfs */
 
 ftemp = ccreal * fudge; creal = ftemp;
 ftemp = ccimag * fudge; cimag = ftemp;
@@ -384,22 +398,24 @@ jyymin = yymin; jyymax = yymax;
 adapter = initmode;			/* set the video adapter up	*/
 initmode = -1;				/* (once)			*/
 
-helpmode = HELPAUTHORS;			/* use this help mode */
+tab_status = 2; 		       /* fractal image is complete */
+
+helpmode = HELPAUTHORS; 	       /* use this help mode */
 if (adapter < 0) {
-	tab_status = 0;			/* no active fractal image */
-	help();				/* display the credits screen	*/
-	}
-helpmode = HELPMENU;			/* now use this help mode */
+	tab_status = 0; 		/* no active fractal image */
+	help(); 			/* display the credits screen */
+}
+helpmode = HELPMENU;		       /* now use this help mode */
 
 while (adapter < 0) {			/* cycle through instructions	*/
 
 	if (initbatch == 0) {			/* online-mode only, please */
-		while (!keypressed()) ;		/* enable help */
+		while (!keypressed()) ; 	/* enable help */
 		kbdchar = getakey();
 		}
 	else
 		kbdchar = 27;
-        if (kbdchar == 32) continue;		/* spacebar stops scrolling */
+	if (kbdchar == 32) continue;		/* spacebar stops scrolling */
 	while (kbdchar == 13 || kbdchar == 1013) { /* ENTER calls help, here */
 		kbdchar = help();
 		}
@@ -409,21 +425,21 @@ while (adapter < 0) {			/* cycle through instructions	*/
 			adapter = k;		/* use this adapter */
 	if (adapter >= 0) break;		/* bail out if we found one */
 	if (kbdchar == 1082) goto restart;	/* restart pgm on Insert Key */
-	if (kbdchar == 1000) goodbye();		/* Control-C */
+	if (kbdchar == 1000) goodbye(); 	/* Control-C */
 	if (kbdchar == 27) goodbye();		/* exit to DOS on Escape Key */
-	if (kbdchar == 1083) goodbye();		/* exit to DOS on Delete Key */
-        if (kbdchar == 'd' || kbdchar == 'D') { /* shell to DOS */
-        	clscr();
+	if (kbdchar == 1083) goodbye(); 	/* exit to DOS on Delete Key */
+	if (kbdchar == 'd' || kbdchar == 'D') { /* shell to DOS */
+		clscr();
 		printf("\n\nShelling to DOS - type 'exit' to return\n\n");
 		shell_to_dos();
-        	goto restart;
-        	}
-	if (kbdchar == '1' || kbdchar == '2') {	/* select single or dual-pass */
+		goto restart;
+		}
+	if (kbdchar == '1' || kbdchar == '2') { /* select single or dual-pass */
 		numpasses = kbdchar - '1';
 		solidguessing = 0;
 		continue;
 		}
-	if (kbdchar == 'g' || kbdchar == 'G') {	/* solid-guessing */
+	if (kbdchar == 'g' || kbdchar == 'G') { /* solid-guessing */
 		numpasses = 1;
 		solidguessing = 1;
 		continue;
@@ -437,8 +453,8 @@ while (adapter < 0) {			/* cycle through instructions	*/
 		LogFlag = 1;
 		continue;
 		}
-	if (kbdchar == 'r' || kbdchar == 'R' ||	kbdchar == '3'
-		|| kbdchar == 'o' || kbdchar == 'O') {	/* restore old image	*/
+	if (kbdchar == 'r' || kbdchar == 'R' || kbdchar == '3'
+		|| kbdchar == 'o' || kbdchar == 'O') {  /* restore old image    */
 		display3d = 0;
 		if (kbdchar == '3' || kbdchar == 'o' ||
 			kbdchar == 'O') display3d = 1;
@@ -447,30 +463,40 @@ while (adapter < 0) {			/* cycle through instructions	*/
 			gets(readname);
 			goto restorestart;
 			}
-	if (kbdchar == 't' || kbdchar == 'T') {	/* set fractal type */
+	if (kbdchar == 't' || kbdchar == 'T') { /* set fractal type */
 		olddotmode = dotmode;	/* save the old dotmode */
 		dotmode = 1;		/* force a disable of any 8514/A */
 		if ((j = get_fracttype(initfractype)) < 0) goto restart;
 		dotmode = olddotmode;
 		goto restart;
 		}
-	if (kbdchar == 'f' || kbdchar == 'F') {	/* floating pt toggle */
+	if (kbdchar == 'x' || kbdchar == 'X') { /* generic toggle switch */
+		clscr();
+		get_toggles();			/* get the parameters */
+		goto restart;			/* restore the screen */
+		}
+	if (kbdchar == 'f' || kbdchar == 'F') { /* floating pt toggle */
 		if (floatflag == 0)
 			floatflag = 1;
 		else
 			floatflag = 0;
 		goto restart;
 		}
-	if (kbdchar == 'e' || kbdchar == 'E') {	/* set IFS fractal parms */
+	if (kbdchar == 'e' || kbdchar == 'E') { /* set IFS fractal parms */
 		clscr();
 		get_ifs_params();		/* get the parameters */
 		goto restart;
 		}
-	else 
+	if (kbdchar == 'h' || kbdchar == 'H') { /* obsolete command-key */
+		clscr();
+		get_obsolete();			/* display obsolete msg */
+		goto restart;			/* restore the screen */
+		}
+	else
 		buzzer(2);
 	}
 
-historyptr = 0;					/* initialize history ptr */
+historyptr = 0; 				/* initialize history ptr */
 history[historyptr].fractype = -1;
 zoomoff = 1;					/* zooming is enabled */
 
@@ -482,30 +508,30 @@ while (more) {					/* eternal loop */
 
 						/* collect adapter info */
 	fromvideotable(adapter);
-	axmode  = videoentry.videomodeax;	 /* video mode (BIOS call) */
-	bxmode  = videoentry.videomodebx;	 /* video mode (BIOS call) */
-	cxmode  = videoentry.videomodecx;	 /* video mode (BIOS call) */
-	dxmode  = videoentry.videomodedx;	 /* video mode (BIOS call) */
+	axmode	= videoentry.videomodeax;	 /* video mode (BIOS call) */
+	bxmode	= videoentry.videomodebx;	 /* video mode (BIOS call) */
+	cxmode	= videoentry.videomodecx;	 /* video mode (BIOS call) */
+	dxmode	= videoentry.videomodedx;	 /* video mode (BIOS call) */
 	dotmode = videoentry.dotmode;		/* assembler dot read/write */
-	xdots   = videoentry.xdots;		/* # dots across the screen */
-	ydots   = videoentry.ydots;		/* # dots down the screen   */
-	colors  = videoentry.colors;		/* # colors available */
+	xdots	= videoentry.xdots;		/* # dots across the screen */
+	ydots	= videoentry.ydots;		/* # dots down the screen   */
+	colors	= videoentry.colors;		/* # colors available */
 
 	diskvideo = 0;				/* set diskvideo flag */
 	if (dotmode == 11)			/* default assumption is disk */
 		diskvideo = 2;
 
-	memcpy(olddacbox,dacbox,256*3);		/* save the DAC */
+	memcpy(olddacbox,dacbox,256*3); 	/* save the DAC */
 	diskisactive = 1;		/* flag for disk-video routines */
 	if (overlay3d) {
 		setforgraphics();	/* restore old graphics image */
 		overlay3d = 0;
 		}
 	else
-	        setvideomode(axmode,bxmode,cxmode,dxmode); /* switch video modes */
+		setvideomode(axmode,bxmode,cxmode,dxmode); /* switch video modes */
 	diskisactive = 0;		/* flag for disk-video routines */
 	if (savedac) {
-		memcpy(dacbox,olddacbox,256*3);		/* restore the DAC */
+		memcpy(dacbox,olddacbox,256*3); 	/* restore the DAC */
 		spindac(0,1);
 		}
 	savedac = 1;				/* assume we save next time */
@@ -517,26 +543,28 @@ while (more) {					/* eternal loop */
 		and should NOT set video mode (that's done here)
 		*/
 
-		if (display3d)			/* set up 3D decoding */
-			outln = line3d;
-        else if(filetype >= 1)
-            outln = outlin16;
-        else
-            outln = out_line;
- 
-        if(filetype == 0)
-           status = funny_glasses_call(gifview);
-        else
-           status = funny_glasses_call(tgaview);
-        if(status==0)
-           buzzer(0);   
-        if(status == -1 && keypressed())
-               getakey();
-	/*	display3d = 0;			   turn off 3D retrievals */
- 		}
+	if (display3d)			/* set up 3D decoding */
+	   outln = line3d;
+	else if(filetype >= 1)
+	   outln = outlin16;
+	else if(comparegif)
+	   outln = cmp_line;
+	else
+	   outln = out_line;
 
-	xstep   = xdots / 40;			/* zoom-box increment: across */
-	ystep   = ydots / 40;			/* zoom-box increment: down */
+	if(filetype == 0)
+	   status = funny_glasses_call(gifview);
+	else
+	   status = funny_glasses_call(tgaview);
+	if(status==0)
+	   buzzer(0);
+	if(status == -1 && keypressed())
+	       getakey();
+	/*	display3d = 0;			   turn off 3D retrievals */
+		}
+
+	xstep	= xdots / 40;			/* zoom-box increment: across */
+	ystep	= ydots / 40;			/* zoom-box increment: down */
 	if (xdots == 640 && ydots == 350)	/* zoom-box adjust:  640x350 */
 		{ xstep = 16; ystep =  9; }
 	if (xdots == 720 && ydots == 348)	/* zoom-box adjust:  720x348 */
@@ -556,10 +584,11 @@ while (more) {					/* eternal loop */
 	if (xdots == 720 && ydots == 348)	/* zoom-box adjust:  720x348 */
 		{ xstep = 18; ystep =  9; }
 
-        integerfractal = fractalspecific[fractype].isinteger;
+	integerfractal = fractalspecific[fractype].isinteger;
 
 	zoomoff = 1;				/* zooming is enabled */
-	if (dotmode == 11 || fractype == PLASMA) /* for these situations */
+        /* for these situations */
+        if (dotmode == 11 || fractype == PLASMA || fractype == DIFFUSION) 
 		zoomoff = 0;		/* disable zooming */
 
 	ccreal = param[0]; ccimag = param[1];
@@ -588,7 +617,7 @@ while (more) {					/* eternal loop */
 		delx = 1;
 		delyy = DBL_EPSILON;
 		delxx = DBL_EPSILON;
-		if (integerfractal &&		/* integer fractal type? */ 
+		if (integerfractal &&		/* integer fractal type? */
 			fractalspecific[fractype].tofloat != NOFRACTAL) {
 			floatflag = 1;		/* switch to floating pt */
 			inititer = maxit;
@@ -611,17 +640,17 @@ while (more) {					/* eternal loop */
 	for (i = 1; i < ydots; i++ )
 		ly0[i] = ly0[i-1] - dely;
 
-        if ((!integerfractal) || invert)
-        {
+	if ((!integerfractal) || invert)
+	{
 	/* set up dx0 and dy0 analogs of lx0 and ly0 */
 	/* put fractal parameters in doubles */
-	dx0[0] = xxmin;				/* fill up the x, y grids */
+	dx0[0] = xxmin; 			/* fill up the x, y grids */
 	dy0[0] = yymax;
 	for (i = 1; i < xdots; i++ )
 		dx0[i] = dx0[i-1] + delxx;
 	for (i = 1; i < ydots; i++ )
 		dy0[i] = dy0[i-1] - delyy;
-        }
+	}
 
 	if (zoomoff == 0) {
 		xmax = lx0[xdots-1];		/* re-set xmax and ymax */
@@ -636,8 +665,8 @@ while (more) {					/* eternal loop */
 		}
 
 
-         if ((fractype == MANDEL || fractype == JULIA) && bitshift == 29)
-            decomp[1] = 0;      /* make the world safe for decomposition */
+	 if ((fractype == MANDEL || fractype == JULIA) && bitshift == 29)
+	    decomp[1] = 0;	/* make the world safe for decomposition */
 
 	if (history[0].fractype == -1)		/* initialize the history file */
 		for (i = 0; i < MAXHISTORY; i++) {
@@ -650,10 +679,10 @@ while (more) {					/* eternal loop */
 			history[i].fractype = fractype;
 		}
 
-	if (history[historyptr].xxmax != xxmax  ||	/* save any (new) zoom data */
-	    history[historyptr].xxmin != xxmin  ||
-	    history[historyptr].yymax != yymax  ||
-	    history[historyptr].yymin != yymin  ||
+	if (history[historyptr].xxmax != xxmax	||	/* save any (new) zoom data */
+	    history[historyptr].xxmin != xxmin	||
+	    history[historyptr].yymax != yymax	||
+	    history[historyptr].yymin != yymin	||
 	    history[historyptr].param[0] != param[0] ||
 	    history[historyptr].param[1] != param[1] ||
 	    history[historyptr].fractype != fractype) {
@@ -676,15 +705,15 @@ while (more) {					/* eternal loop */
 		showfile = 1;
 	else	{
 		diskisactive = 1;	/* flag for disk-video routines */
-        /* TW 07/21/89 - see below */
-        /* set save parameters in save structure */
+	/* TW 07/21/89 - see below */
+	/* set save parameters in save structure */
 		strcpy(save_info.info_id, INFO_ID);
 		save_info.iterations   = maxit;
 		save_info.fractal_type = fractype;
-		save_info.xmin         = xxmin;
-		save_info.xmax         = xxmax;
-		save_info.ymin         = yymin;
-		save_info.ymax         = yymax;
+		save_info.xmin	       = xxmin;
+		save_info.xmax	       = xxmax;
+		save_info.ymin	       = yymin;
+		save_info.ymax	       = yymax;
 		save_info.creal        = param[0];
 		save_info.cimag        = param[1];
 		save_info.videomodeax  = videoentry.videomodeax;
@@ -692,46 +721,48 @@ while (more) {					/* eternal loop */
 		save_info.videomodecx  = videoentry.videomodecx;
 		save_info.videomodedx  = videoentry.videomodedx;
 		save_info.dotmode	= videoentry.dotmode;
-		save_info.xdots		= videoentry.xdots;
-		save_info.ydots		= videoentry.ydots;
+		save_info.xdots 	= videoentry.xdots;
+		save_info.ydots 	= videoentry.ydots;
 		save_info.colors	= videoentry.colors;
-        save_info.version = 1;
-      	save_info.parm3          = param[2]; 
-      	save_info.parm4          = param[3]; 
-        save_info.potential[0]   = potparam[0];
-        save_info.potential[1]   = potparam[1];
-        save_info.potential[2]   = potparam[2];
-        save_info.rflag          = rflag;
-        save_info.rseed          = rseed;
-        save_info.inside         = inside;
-        save_info.logmap         = LogFlag;
-        save_info.invert[0]      = inversion[0];
-        save_info.invert[1]      = inversion[1];
-        save_info.invert[2]      = inversion[2]; 
-        save_info.decomp[0]      = decomp[0];
-        save_info.decomp[1]      = decomp[1];
-        save_info.biomorph       = biomorph;
-        save_info.symmetry       = forcesymmetry;
-        save_info.version = 2;
+	save_info.version = 1;
+	save_info.parm3 	 = param[2];
+	save_info.parm4 	 = param[3];
+	save_info.potential[0]	 = potparam[0];
+	save_info.potential[1]	 = potparam[1];
+	save_info.potential[2]	 = potparam[2];
+	save_info.rflag 	 = rflag;
+	save_info.rseed 	 = rseed;
+	save_info.inside	 = inside;
+	save_info.logmap	 = LogFlag;
+	save_info.invert[0]	 = inversion[0];
+	save_info.invert[1]	 = inversion[1];
+	save_info.invert[2]	 = inversion[2];
+	save_info.decomp[0]	 = decomp[0];
+	save_info.decomp[1]	 = decomp[1];
+	save_info.biomorph	 = biomorph;
+	save_info.symmetry	 = forcesymmetry;
+	save_info.version = 2;
 	for (i = 0; i < 16; i++)
 		save_info.init3d[i] = init3d[i];
-        save_info.previewfactor  = previewfactor;
-        save_info.xtrans         = xtrans;
-        save_info.ytrans         = ytrans;
-        save_info.red_crop_left  = red_crop_left;
-        save_info.red_crop_right = red_crop_right;
-        save_info.blue_crop_left  = blue_crop_left;
-        save_info.blue_crop_right = blue_crop_right;
-        save_info.red_bright      = red_bright;
-        save_info.blue_bright     = blue_bright;
-        save_info.xadjust         = xadjust;
-        save_info.eyeseparation   = eyeseparation;
-        save_info.glassestype     = glassestype;
+	save_info.previewfactor  = previewfactor;
+	save_info.xtrans	 = xtrans;
+	save_info.ytrans	 = ytrans;
+	save_info.red_crop_left  = red_crop_left;
+	save_info.red_crop_right = red_crop_right;
+	save_info.blue_crop_left  = blue_crop_left;
+	save_info.blue_crop_right = blue_crop_right;
+	save_info.red_bright	  = red_bright;
+	save_info.blue_bright	  = blue_bright;
+	save_info.xadjust	  = xadjust;
+	save_info.eyeseparation   = eyeseparation;
+	save_info.glassestype	  = glassestype;
+	save_info.version = 3;
+	save_info.outside         = outside;
 
-        for (i = 0; i < sizeof(save_info.future)/sizeof(int); i++)
-               save_info.future[i] = 0;
+	for (i = 0; i < sizeof(save_info.future)/sizeof(int); i++)
+	       save_info.future[i] = 0;
 
-	tab_status = 1;				/* fractal image in progress */
+	tab_status = 1; 			/* fractal image in progress */
 
 		if (calcfract() == 0)		/* draw the fractal using "C" */
 			buzzer(0);		/* finished!! */
@@ -745,7 +776,7 @@ while (more) {					/* eternal loop */
 
 	diskisactive = 0;	/* flag for disk-video routines */
 
-	tab_status = 2;				/* fractal image is complete */
+	tab_status = 2; 			/* fractal image is complete */
 	}
 
 	ixmin = 0;  ixmax = xdots-1;		/* initial zoom box */
@@ -770,14 +801,17 @@ resumeloop:					/* return here on failed overlays */
 			}
 		else {				/* batch mode special  */
 			if (initbatch == 1) {	/* first, save-to-disk */
-				kbdchar = 's';
+				if (debugflag == 50)
+					kbdchar = 'r';
+				else
+					kbdchar = 's';
 				initbatch = 2;
 				}
 			else
-				kbdchar = 27;	/* then, exit          */
+				kbdchar = 27;	/* then, exit	       */
 			}
 		switch (kbdchar) {
-			case 't':			/* new fractal type */
+			case 't':                       /* new fractal type */
 			case 'T':
 				olddotmode = dotmode;	/* save the old dotmode */
 				dotmode = 1;		/* force a disable of any 8514/A */
@@ -787,7 +821,27 @@ resumeloop:					/* return here on failed overlays */
 				dotmode = olddotmode;
 				goto restart;
 				break;
-			case 'f':			/* floating pt toggle */
+			case 'x':                       /* boundary tracing toggle */
+			case 'X':
+				setfortext();		/* switch to text mode */
+				i = get_toggles();	/* get the parameters */
+				setforgraphics();	/* back to graphics */
+				if (i > 0)		/* time to redraw? */
+					kbdmore = 0;
+				if (i == 2) {		/* float change? */
+					inititer = maxit;
+					initfractype = fractype;
+					initmode = adapter;
+					initxmin = xxmin;
+					initxmax = xxmax;
+					initymin = yymin;
+					initymax = yymax;
+					for (i = 0; i < 4; i++)
+						initparam[i] = param[i];
+					goto restart;
+					}
+				break;
+			case 'f':                       /* floating pt toggle */
 			case 'F':
 				if (floatflag == 0)
 					floatflag = 1;
@@ -803,36 +857,47 @@ resumeloop:					/* return here on failed overlays */
 				for (i = 0; i < 4; i++)
 					initparam[i] = param[i];
 				goto restart;
-			case 'e':			/* new IFS parms    */
+			case 'e':                       /* new IFS parms    */
 			case 'E':
 				setfortext();		/* switch to text mode */
 				get_ifs_params();	/* get the parameters */
 				setforgraphics();	/* back to graphics */
 				kbdmore = 0;
 				break;
-			case 'i':			/* inversion parms    */
+			case 'i':                       /* inversion parms    */
 			case 'I':
-				setfortext();		/* switch to text mode */
-				get_invert_params();	/* get the parameters */
-				setforgraphics();	/* back to graphics */
+		                setfortext();           /* switch to text mode */
+		                get_invert_params();    /* get the parameters */
+		                setforgraphics();       /* back to graphics */
+		                inititer = maxit;
+		                initfractype = fractype;
+		                initmode = adapter;
+		                initxmin = xxmin;
+		                initxmax = xxmax;
+		                initymin = yymin;
+		                initymax = yymax;
+		                for (i = 0; i < 4; i++)
+		                        initparam[i] = param[i];
+		                invert = (inversion[0]==0.0) ? 0 : 1;
+		                goto restart;
 				kbdmore = 0;
 				break;
-			case 'q':			/* decomposition parms    */
+			case 'q':                       /* decomposition parms    */
 			case 'Q':
 				setfortext();		/* switch to text mode */
 				get_decomp_params();	/* get the parameters */
 				setforgraphics();	/* back to graphics */
 				kbdmore = 0;
 				break;
-			case 'a':			/* starfield parms    */
+			case 'a':                       /* starfield parms    */
 			case 'A':
-				get_starfield_params();	/* get the parameters */
+				get_starfield_params(); /* get the parameters */
 				continue;
 				break;
 			case 32:			/* spacebar */
 				if (fractalspecific[fractype].tojulia != NOFRACTAL
-					&& ccreal == 0.0 && ccimag == 0.0) { 
-				 	/* switch to corresponding Julia set */
+					&& ccreal == 0.0 && ccimag == 0.0) {
+					/* switch to corresponding Julia set */
 					fractype = fractalspecific[fractype].tojulia;
 					ccreal = (xxmax + xxmin) / 2;
 					ccimag = (yymax + yymin) / 2;
@@ -864,8 +929,8 @@ resumeloop:					/* return here on failed overlays */
 					zoomoff = 1;
 					}
 
-				else if (fractalspecific[fractype].tomandel != NOFRACTAL) { 
-				 	/* switch to corresponding Mandel set */
+				else if (fractalspecific[fractype].tomandel != NOFRACTAL) {
+					/* switch to corresponding Mandel set */
 					fractype = fractalspecific[fractype].tomandel;
 					ccreal = 0;
 					ccimag = 0;
@@ -876,7 +941,7 @@ resumeloop:					/* return here on failed overlays */
 					zoomoff = 1;
 					}
 
-				else buzzer(2);		/* no switch */
+				else buzzer(2); 	/* no switch */
 				kbdmore = 0;
 				break;
 			case 1071:			/* home */
@@ -893,7 +958,7 @@ resumeloop:					/* return here on failed overlays */
 				zoomoff = 1;
 				kbdmore = 0;
 				break;
-			case 'd':			/* shell to MS-DOS */
+			case 'd':                       /* shell to MS-DOS */
 			case 'D':
 				setfortext();
 				printf("\n\nShelling to DOS - type 'exit' to return\n\n");
@@ -905,11 +970,11 @@ resumeloop:					/* return here on failed overlays */
 				shell_to_dos();
 				setforgraphics();
 				break;
-			case '<':			/* lower iter maximum */
+			case '<':                       /* lower iter maximum */
 			case ',':
 				if (maxit >= 10+initincr) maxit -= initincr;
 				maxit -= initincr;	/* for fall-thru */
-			case '>':			/* raise iter maximum */
+			case '>':                       /* raise iter maximum */
 			case '.':
 				if (maxit <= 32000-initincr) maxit += initincr;
 				if (LogFlag) {		/* log palettes? */
@@ -919,52 +984,47 @@ resumeloop:					/* return here on failed overlays */
 					}
 				continue;
 				break;
-			case 'c':			/* switch to cycling */
+			case 'c':                       /* switch to cycling */
 			case 'C':
 				rotate(0);
 				continue;
 				break;
-			case '+':			/* rotate palette */
+			case '+':                       /* rotate palette */
 				rotate(+1);
 				continue;
 				break;
-			case '-':			/* rotate palette */
+			case '-':                       /* rotate palette */
 				rotate(-1);
 				continue;
 				break;
-                        case 's':                       /* save-to-disk */
-                        case 'S':
-				drawbox(0);		/* clobber zoom-box */
-				ixmin = 0;  ixmax = xdots-1;
-				iymin = 0;  iymax = ydots-1;
-				if (integerfractal) {
-                                ftemp = lx0[xdots-1]; xxmax = ftemp / fudge;
-                                ftemp = lx0[0];       xxmin = ftemp / fudge;
-                                ftemp = ly0[0];       yymax = ftemp / fudge;
-                                ftemp = ly0[ydots-1]; yymin = ftemp / fudge;
-				} else {
-				xxmin = dx0[0];
-				xxmax = dx0[xdots-1];	/* re-set xmax and ymax */
-				yymin = dy0[ydots-1];
-				yymax = dy0[0];
-				}
-
-				setup_save_info();
-
-				diskisactive = 1;	/* flag for disk-video routines */
-                                savetodisk(savename);
-				diskisactive = 0;	/* flag for disk-video routines */
+			case 's':                       /* save-to-disk */
+			case 'S':
+		saveanimage();
 				continue;
-                                break;
-			case 'o':			/* 3D overlay */
+		break;
+			case 'o':                       /* 3D overlay */
 			case 'O':
 				overlay3d = 1;
-			case '3':			/* restore-from (3d) */
+			case '3':                       /* restore-from (3d) */
 				display3d = 1;
-			case 'r':			/* restore-from */
+			case 'r':                       /* restore-from */
 			case 'R':
-                                if(kbdchar == 'r' || kbdchar == 'R')
-                                        overlay3d = display3d = 0;
+				comparegif = 0;
+				if(kbdchar == 'r' || kbdchar == 'R')
+				{
+				   if(debugflag == 50)
+				   {
+				      comparegif = overlay3d = 1;
+				      if (initbatch == 2)
+				      {
+					 strcpy(readname,savename);
+					 goto restorestart;
+				      }
+				   }
+				   else
+				      comparegif = overlay3d = 0;
+				   display3d = 0;
+				}
 				olddotmode = dotmode;	/* save the old dotmode */
 				if (overlay3d) {
 					setfortext();	/* save graphics image */
@@ -987,43 +1047,43 @@ resumeloop:					/* return here on failed overlays */
 				dotmode = olddotmode;
 				goto restorestart;
 				break;
-			case '1':			/* single-pass mode */
-			case '2':			/* dual-pass mode */
+			case '1':                       /* single-pass mode */
+			case '2':                       /* dual-pass mode */
 				numpasses = kbdchar - '1';
 				solidguessing = 0;
 				kbdmore = 0;
 				break;
-			case 'g':			/* solid-guessing */
+			case 'g':                       /* solid-guessing */
 			case 'G':
 				numpasses = 1;
 				solidguessing = 1;
-				kbdmore = 0;	
+				kbdmore = 0;
 				break;
-			case 'n':			/* normal palette */
+			case 'n':                       /* normal palette */
 			case 'N':
 				LogFlag = 0;
 				ChkLogFlag();
 				kbdmore = 0;
 				break;
-			case 'l':			/* log palette */
+			case 'l':                       /* log palette */
 			case 'L':
 				LogFlag = 1;
 				kbdmore = 0;
 				break;
-			case 'b':			/* make batch file */
+			case 'b':                       /* make batch file */
 			case 'B':
 				make_batch_file();
 				break;
-                        case 'p':
-                        case 'P':
-                                Print_Screen();
-                                if (!keypressed()) buzzer(0);
-                                 else {
-                                        buzzer(1);
-                                        getakey();
-                                 }
-                                continue;
-                                /*  ^^^^^  MDS 7/1/89  ^^^^^  */
+			case 'p':
+			case 'P':
+				Print_Screen();
+				if (!keypressed()) buzzer(0);
+				 else {
+					buzzer(1);
+					getakey();
+				 }
+				continue;
+				/*  ^^^^^  MDS 7/1/89  ^^^^^  */
 			case 13:			/* Enter */
 			case 1013:			/* Numeric-Keypad Enter */
 			case 1079:			/* end */
@@ -1049,8 +1109,10 @@ resumeloop:					/* return here on failed overlays */
 					}
 				xmin = xxmin; xmax = xxmax;
 				ymin = yymin; ymax = yymax;
-				xxmax = xmax / fudge;  xxmin = xmin / fudge;
-				yymax = ymax / fudge;  yymin = ymin / fudge;
+                                xxmax = (double)xmax / fudge;
+                                xxmin = (double)xmin / fudge;
+                                yymax = (double)ymax / fudge;
+                                yymin = (double)ymin / fudge;
 				} else {
 				ftemp = (delxx * xdots) / (ixmax-ixmin+1);
 				xxmin = dx0[0] - (ftemp * ixmin);
@@ -1063,7 +1125,7 @@ resumeloop:					/* return here on failed overlays */
 				break;
 			case 1082:			/* insert */
 				dotmode = 1;
-				setvideomode(3,0,0,0); 	/* force text mode */
+				setvideomode(3,0,0,0);	/* force text mode */
 				goto restart;
 				break;
 			case 1000:			/* Control-C */
@@ -1120,7 +1182,7 @@ resumeloop:					/* return here on failed overlays */
 					}
 				break;
 			case 1073:			/* page up */
-				if (zoomoff == 1 
+				if (zoomoff == 1
 				  && ixmax - ixmin > 3 * xstep
 				  && iymax - iymin > 3 * ystep) {
 					/* 640x350 Zoom-In Klooge:  Adjust the
@@ -1144,17 +1206,23 @@ resumeloop:					/* return here on failed overlays */
 						iymin -= 14;
 						iymax += 14;
 						}
-					ixmin += xstep;	ixmax -= xstep;
-					iymin += ystep;	iymax -= ystep;
+					ixmin += xstep; ixmax -= xstep;
+					iymin += ystep; iymax -= ystep;
 					}
 				break;
 			case 1081:			/* page down */
 				if (zoomoff == 1
 				 && ixmin >= xstep && ixmax < xdots - xstep
 				 && iymin >= ystep && iymax < ydots - ystep) {
-					ixmin -= xstep;	ixmax += xstep;
-					iymin -= ystep;	iymax += ystep;
+					ixmin -= xstep; ixmax += xstep;
+					iymin -= ystep; iymax += ystep;
 					}
+				break;
+			case 'h':                       /* obsolete command key */
+			case 'H':
+				setfortext();		/* switch to text mode */
+				get_obsolete();		/* inform user */
+				setforgraphics();	/* back to graphics */
 				break;
 			default:		/* other (maybe a valid Fn key) */
 				for (k = 0; k < maxvideomode; k++)
@@ -1184,7 +1252,7 @@ resumeloop:					/* return here on failed overlays */
 				yymin = dy0[iymax];
 				yymax = dy0[iymin];
 			}
-			if (ixmin > 0 || ixmax < xdots-1 
+			if (ixmin > 0 || ixmax < xdots-1
 				|| iymin > 0 || iymax < ydots-1)
 				drawbox(1);
 			else
@@ -1202,66 +1270,69 @@ read_overlay()				/* read overlay/3D files, if reqr'd */
 int kbdchar;
 char accessmethod[2];			/* "B" if through the BIOS */
 
-if(*readname){  /* This is why readname initialized to null string */
-	if (!overlay3d)			/* overlays use the existing mode */
+if(*readname){	/* This is why readname initialized to null string */
+	if (!overlay3d) 		/* overlays use the existing mode */
 		initmode = -1;		/* no viewing mode set yet */
 	else
 		initmode = adapter;	/* use previous adapter mode for overlays */
 	if(find_fractal_info(readname,&read_info)==0){
-      		inititer   = read_info.iterations;
-      		initfractype  = read_info.fractal_type;
-      		initxmin   = read_info.xmin;
-      		initxmax   = read_info.xmax;
-      		initymin   = read_info.ymin;
-      		initymax   = read_info.ymax;
-      		initparam[0]   = read_info.creal;
-      		initparam[1]   = read_info.cimag;
+		inititer   = read_info.iterations;
+		initfractype  = read_info.fractal_type;
+		initxmin   = read_info.xmin;
+		initxmax   = read_info.xmax;
+		initymin   = read_info.ymin;
+		initymax   = read_info.ymax;
+		initparam[0]   = read_info.creal;
+		initparam[1]   = read_info.cimag;
 
-      		fractalspecific[initfractype].paramvalue[0] = initparam[0];
-      		fractalspecific[initfractype].paramvalue[1] = initparam[1];
-      		
-      		if(read_info.version > 0)
-            {
-      			initparam[2]  = read_info.parm3;
-      			initparam[3]  = read_info.parm4;
-                fractalspecific[initfractype].paramvalue[2] = initparam[2];
-                fractalspecific[initfractype].paramvalue[3] = initparam[3];
-                potparam[0]   = read_info.potential[0];     
-                potparam[1]   = read_info.potential[1];     
-                potparam[2]   = read_info.potential[2];     
-                rflag         = read_info.rflag;
-                rseed         = read_info.rseed;
-                inside        = read_info.inside;
-                LogFlag       = read_info.logmap;
-                inversion[0]  = read_info.invert[0];
-                inversion[1]  = read_info.invert[1];
-                inversion[2]  = read_info.invert[2];
-                decomp[0]     = read_info.decomp[0];
-                decomp[1]     = read_info.decomp[1];
-                biomorph      = read_info.biomorph;
-                forcesymmetry = read_info.symmetry;
-            }
-      		
-      		if(read_info.version > 1 && !display3d)
-            {
+		fractalspecific[initfractype].paramvalue[0] = initparam[0];
+		fractalspecific[initfractype].paramvalue[1] = initparam[1];
+
+		if(read_info.version > 0)
+	    {
+			initparam[2]  = read_info.parm3;
+			initparam[3]  = read_info.parm4;
+		fractalspecific[initfractype].paramvalue[2] = initparam[2];
+		fractalspecific[initfractype].paramvalue[3] = initparam[3];
+		potparam[0]   = read_info.potential[0];
+		potparam[1]   = read_info.potential[1];
+		potparam[2]   = read_info.potential[2];
+		rflag	      = read_info.rflag;
+		rseed	      = read_info.rseed;
+		inside	      = read_info.inside;
+		LogFlag       = read_info.logmap;
+		inversion[0]  = read_info.invert[0];
+		inversion[1]  = read_info.invert[1];
+		inversion[2]  = read_info.invert[2];
+		decomp[0]     = read_info.decomp[0];
+		decomp[1]     = read_info.decomp[1];
+		biomorph      = read_info.biomorph;
+		forcesymmetry = read_info.symmetry;
+	    }
+
+		if(read_info.version > 1 && !display3d)
+	    {
 		       int i;
 		       for (i = 0; i < 16; i++)
 			      init3d[i] = read_info.init3d[i];
-        	   previewfactor   = read_info.previewfactor;
-        	   xtrans          = read_info.xtrans;
-        	   ytrans          = read_info.ytrans;
-        	   red_crop_left   = read_info.red_crop_left;
-        	   red_crop_right  = read_info.red_crop_right;
-        	   blue_crop_left  = read_info.blue_crop_left;
-        	   blue_crop_right = read_info.blue_crop_right;
-        	   red_bright      = read_info.red_bright;
-        	   blue_bright     = read_info.blue_bright;
-        	   xadjust         = read_info.xadjust;
-        	   eyeseparation   = read_info.eyeseparation;
-        	   glassestype     = read_info.glassestype;
-            }
+		   previewfactor   = read_info.previewfactor;
+		   xtrans	   = read_info.xtrans;
+		   ytrans	   = read_info.ytrans;
+		   red_crop_left   = read_info.red_crop_left;
+		   red_crop_right  = read_info.red_crop_right;
+		   blue_crop_left  = read_info.blue_crop_left;
+		   blue_crop_right = read_info.blue_crop_right;
+		   red_bright	   = read_info.red_bright;
+		   blue_bright	   = read_info.blue_bright;
+		   xadjust	   = read_info.xadjust;
+		   eyeseparation   = read_info.eyeseparation;
+		   glassestype	   = read_info.glassestype;
+	    }
+		if(read_info.version > 2) {
+		   outside         = read_info.outside;
+	    }
 
- 		showfile = 0;
+		showfile = 0;
 	if (!overlay3d) {		/* don't worry about the video if overlay */
 		if ((hasconfig || askvideo) && read_info.info_id[0] == 'G') {
 			buzzer(2);
@@ -1277,41 +1348,41 @@ if(*readname){  /* This is why readname initialized to null string */
 			printf("with resolution %d x %d x %d\n",
 				read_info.xdots, read_info.ydots, read_info.colors);
 			}
-		if ((!(hasconfig || askvideo) || read_info.info_id[0] != 'G') && 
+		if ((!(hasconfig || askvideo) || read_info.info_id[0] != 'G') &&
 			(read_info.dotmode != 11 || initbatch))
-	 		initmode = getGIFmode(&read_info);
+			initmode = getGIFmode(&read_info);
 		if (initmode >= maxvideomode) initmode = -1;
 		if (/* read_info.info_id[0] != 'G' &&*/ read_info.dotmode != 11
 			&& initmode >= 0
 			&& (hasconfig || askvideo) && ! initbatch ){
-                        char c;
+			char c;
 			fromvideotable(initmode);
 			strcpy(accessmethod," ");
 			if (videoentry.dotmode == 1)
 				accessmethod[0] = 'B';
-                	printf("fractal file contains following mode:\n\n");
+			printf("fractal file contains following mode:\n\n");
 #ifdef __TURBOC__
 			printf("%-6.6s %-25.25s%5d x%4d%5d %1.1s  %-25.25s\n",
 #else
 			printf("%-6s %-25s%5d x%4d%5d %1s  %-25s\n",
 #endif
-			        fkeys[initmode],
+				fkeys[initmode],
 				videoentry.name,
 				videoentry.xdots,
 				videoentry.ydots,
 				videoentry.colors,
 				accessmethod,
 				videoentry.comment);
-                        printf("Legal for this machine? ([Y] or N) --> ");
-                	while((c=getch())!='y' && c!='Y' && c!='n' && c!='N' && c!=13);
-                	if( c == 'n' || c == 'N')
-                		initmode = -1;
+			printf("Legal for this machine? ([Y] or N) --> ");
+			while((c=getch())!='y' && c!='Y' && c!='n' && c!='N' && c!=13);
+			if( c == 'n' || c == 'N')
+				initmode = -1;
 			}
-		else 	{
+		else	{
 			/* initmode bad */
-			if (initmode == -1 && initbatch) 
-        	       		showfile = 1; /* pretend already displayed */
-                       	}
+			if (initmode == -1 && initbatch)
+				showfile = 1; /* pretend already displayed */
+			}
 		if (initmode == -1 && ! initbatch) {
 			printf("\nPlease select a video mode with which to view this image by\n");
 			printf("pressing the appropriate function key (or press the ENTER)\n");
@@ -1323,15 +1394,15 @@ if(*readname){  /* This is why readname initialized to null string */
 			for (initmode = 0; initmode < maxvideomode; initmode++)
 				if (kbdchar == kbdkeys[initmode]) break;
 			if (initmode == maxvideomode) {
-				*readname = NULL; /* failed ... zap filename */
-                		initmode = -1;
-                	   	showfile = 1; /* pretend already displayed */
+				*readname = 0; /* failed ... zap filename */
+				initmode = -1;
+				showfile = 1; /* pretend already displayed */
 				}
 		}
 			if (initmode >= 0) fromvideotable(initmode);
 			if (initmode >= 0 && (
 				read_info.xdots != videoentry.xdots ||
-			 	read_info.ydots != videoentry.ydots)) {
+				read_info.ydots != videoentry.ydots)) {
 					initxmax = initxmin +
 						((initxmax-initxmin)*videoentry.xdots)/
 						read_info.xdots;
@@ -1352,15 +1423,15 @@ if(*readname){  /* This is why readname initialized to null string */
 			}
 		if (get_3d_params() < 0) {
 			initmode = -1;
-			*readname = NULL;
-			return;
+			*readname = 0;
+			return(0);
 			}
 		initcorners = 1;
-      		}
+		}
 	else	{
 		buzzer(2);
 		initmode = -1;
-		*readname = NULL;
+		*readname = 0;
 		}
 	}
 }
@@ -1393,6 +1464,8 @@ if (mapset && *MAP_name)
 }
 if (inside != 1)
    fprintf(batch, " inside=%d", inside);
+if (outside != 1)
+   fprintf(batch, " outside=%d", outside);
 if(forcesymmetry==XAXIS)
    fprintf(batch, " symmetry=xaxis");
 else if(forcesymmetry==YAXIS)
@@ -1420,20 +1493,20 @@ if (display3d <= 0)	/* a fractal was generated */
    else
       fprintf(batch, " type=%s", &fractalspecific[fractype].name[1]);
    if (delx > 1000 && dely > 1000)
-      fprintf(batch, " corners=%g/%g/%g/%g", 
-          xxmin, xxmax, yymin, yymax);
+      fprintf(batch, " corners=%g/%g/%g/%g",
+	  xxmin, xxmax, yymin, yymax);
    else
       fprintf(batch, " corners=%+20.17lf/%+20.17lf/%+20.17lf/%+20.17lf",
-          xxmin, xxmax, yymin, yymax);
-   fprintf(batch, " params=%g/%g/%g/%g", 
+	  xxmin, xxmax, yymin, yymax);
+   fprintf(batch, " params=%g/%g/%g/%g",
        param[0], param[1], param[2], param[3]);
    if (maxit != 150)
       fprintf(batch, " maxiter=%d", maxit);
    if (initincr != 50)
       fprintf(batch, " iterincr=%d", initincr);
    if (invert)
-      fprintf(batch, " invert=%g/%g/%g", 
-          inversion[0], inversion[1], inversion[2]);
+      fprintf(batch, " invert=%g/%g/%g",
+	  inversion[0], inversion[1], inversion[2]);
    if (decomp[0])
       fprintf(batch, " decomp=%d/%d", decomp[0], decomp[1]);
    if (floatflag)
@@ -1465,15 +1538,15 @@ if (display3d >= 1)	/* only for line3d */
    }
    if (FILLTYPE)
       fprintf(batch, " filltype=%d",
-          FILLTYPE);
+	  FILLTYPE);
    if (transparent[0] || transparent[1])
       fprintf(batch, " transparent=%d/%d",
-          transparent[0],transparent[1]);
+	  transparent[0],transparent[1]);
    if (preview)
-   { 
+   {
       fprintf(batch, " preview=yes");
       if (showbox)
-         fprintf(batch, " showbox=yes");
+	 fprintf(batch, " showbox=yes");
       fprintf(batch, " coarse=%d",previewfactor);
    }
 }
@@ -1493,8 +1566,8 @@ if (display3d)		/* universal 3d */
    fprintf(batch, " perspective=%d", ZVIEWER);
    fprintf(batch, " xyshift=%d/%d", XSHIFT, YSHIFT);
    if (FILLTYPE > 4)
-      fprintf(batch, " lightsource=%d/%d/%d", 
-          XLIGHT, YLIGHT, ZLIGHT);
+      fprintf(batch, " lightsource=%d/%d/%d",
+	  XLIGHT, YLIGHT, ZLIGHT);
    if (LIGHTAVG && FILLTYPE > 4)
       fprintf(batch, " smoothing=%d", LIGHTAVG);
    if(xtrans || ytrans)
@@ -1505,10 +1578,10 @@ if (display3d)		/* universal 3d */
       fprintf(batch, " interocular=%d",eyeseparation);
       fprintf(batch, " converge=%d",xadjust);
       fprintf(batch, " crop=%d/%d/%d/%d",
-          red_crop_left,red_crop_right,blue_crop_left,blue_crop_right);
+	  red_crop_left,red_crop_right,blue_crop_left,blue_crop_right);
       fprintf(batch, " bright=%d/%d",
-          red_bright,blue_bright);
-   } 
+	  red_bright,blue_bright);
+   }
 }
 
 fprintf(batch, "\n");
@@ -1516,14 +1589,14 @@ if (batch != NULL)
    fclose(batch);
 
 }
- 
+
 int shell_to_dos()
 {
     char *comspec;
- 
+
     if ((comspec = getenv("COMSPEC")) == NULL) {
-        printf("Cannot find COMMAND.COM.\n");
-        return -1;
+	printf("Cannot find COMMAND.COM.\n");
+	return -1;
     }
     putenv("PROMPT=Type 'EXIT' to return to FRACTINT.$_$p$g");
     return spawnl(P_WAIT, comspec, NULL);
@@ -1532,54 +1605,122 @@ int shell_to_dos()
 setup_save_info()
 {
 int i;
-                            /* set save parameters in save structure */
+			    /* set save parameters in save structure */
 				strcpy(save_info.info_id, INFO_ID);
-		                save_info.iterations   = maxit;
-		                save_info.fractal_type = fractype;
-		                save_info.xmin         = xxmin;
-		                save_info.xmax         = xxmax;
-		                save_info.ymin         = yymin;
-		                save_info.ymax         = yymax;
-		                save_info.creal        = param[0];
-		                save_info.cimag        = param[1];
-		                save_info.videomodeax  = videoentry.videomodeax;
-		                save_info.videomodebx  = videoentry.videomodebx;
-		                save_info.videomodecx  = videoentry.videomodecx;
-		                save_info.videomodedx  = videoentry.videomodedx;
-		                save_info.dotmode	   = videoentry.dotmode;
-		                save_info.xdots		   = videoentry.xdots;
-		                save_info.ydots		   = videoentry.ydots;
-		                save_info.colors	   = videoentry.colors;
-					    save_info.version      = 1;     /* structure version number */
-       	                save_info.parm3          = param[2]; 
-       	                save_info.parm4          = param[3]; 
-                        save_info.potential[0]   = potparam[0];
-                        save_info.potential[1]   = potparam[1];
-                        save_info.potential[2]   = potparam[2];
-                        save_info.rflag          = rflag;
-                        save_info.rseed          = rseed;
-                        save_info.inside         = inside;
-                        save_info.logmap         = LogFlag;
-                        save_info.invert[0]      = inversion[0];
-                        save_info.invert[1]      = inversion[1];
-                        save_info.invert[2]      = inversion[2]; 
-		        save_info.version = 2;
+				save_info.iterations   = maxit;
+				save_info.fractal_type = fractype;
+				save_info.xmin	       = xxmin;
+				save_info.xmax	       = xxmax;
+				save_info.ymin	       = yymin;
+				save_info.ymax	       = yymax;
+				save_info.creal        = param[0];
+				save_info.cimag        = param[1];
+				save_info.videomodeax  = videoentry.videomodeax;
+				save_info.videomodebx  = videoentry.videomodebx;
+				save_info.videomodecx  = videoentry.videomodecx;
+				save_info.videomodedx  = videoentry.videomodedx;
+				save_info.dotmode	   = videoentry.dotmode;
+				save_info.xdots 	   = videoentry.xdots;
+				save_info.ydots 	   = videoentry.ydots;
+				save_info.colors	   = videoentry.colors;
+					    save_info.version	   = 1;     /* structure version number */
+			save_info.parm3 	 = param[2];
+			save_info.parm4 	 = param[3];
+			save_info.potential[0]	 = potparam[0];
+			save_info.potential[1]	 = potparam[1];
+			save_info.potential[2]	 = potparam[2];
+			save_info.rflag 	 = rflag;
+			save_info.rseed 	 = rseed;
+			save_info.inside	 = inside;
+			save_info.logmap	 = LogFlag;
+			save_info.invert[0]	 = inversion[0];
+			save_info.invert[1]	 = inversion[1];
+			save_info.invert[2]	 = inversion[2];
+			save_info.version = 2;
 			for (i = 0; i < 16; i++)
 				save_info.init3d[i] = init3d[i];
-        		save_info.previewfactor  = previewfactor;
-        		save_info.xtrans         = xtrans;
-        		save_info.ytrans         = ytrans;
-        		save_info.red_crop_left  = red_crop_left;
-        		save_info.red_crop_right = red_crop_right;
-        		save_info.blue_crop_left  = blue_crop_left;
-        		save_info.blue_crop_right = blue_crop_right;
-        		save_info.red_bright      = red_bright;
-        		save_info.blue_bright     = blue_bright;
-        		save_info.xadjust         = xadjust;
-        		save_info.eyeseparation   = eyeseparation;
-        		save_info.glassestype     = glassestype;
-                       
-                        for (i = 0; i < sizeof(save_info.future)/sizeof(int); i++)
-                           save_info.future[i] = 0;
+			save_info.previewfactor  = previewfactor;
+			save_info.xtrans	 = xtrans;
+			save_info.ytrans	 = ytrans;
+			save_info.red_crop_left  = red_crop_left;
+			save_info.red_crop_right = red_crop_right;
+			save_info.blue_crop_left  = blue_crop_left;
+			save_info.blue_crop_right = blue_crop_right;
+			save_info.red_bright	  = red_bright;
+			save_info.blue_bright	  = blue_bright;
+			save_info.xadjust	  = xadjust;
+			save_info.eyeseparation   = eyeseparation;
+			save_info.glassestype	  = glassestype;
+			save_info.version = 3;
+			save_info.outside    	  = outside;
 
+			for (i = 0; i < sizeof(save_info.future)/sizeof(int); i++)
+			   save_info.future[i] = 0;
+
+}
+saveanimage()
+{
+   double ftemp;
+				drawbox(0);		/* clobber zoom-box */
+				ixmin = 0;  ixmax = xdots-1;
+				iymin = 0;  iymax = ydots-1;
+				if (integerfractal) {
+				ftemp = lx0[xdots-1]; xxmax = ftemp / fudge;
+				ftemp = lx0[0];       xxmin = ftemp / fudge;
+				ftemp = ly0[0];       yymax = ftemp / fudge;
+				ftemp = ly0[ydots-1]; yymin = ftemp / fudge;
+				} else {
+				xxmin = dx0[0];
+				xxmax = dx0[xdots-1];	/* re-set xmax and ymax */
+				yymin = dy0[ydots-1];
+				yymax = dy0[0];
+				}
+
+				setup_save_info();
+
+				diskisactive = 1;	/* flag for disk-video routines */
+		savetodisk(savename);
+				diskisactive = 0;	/* flag for disk-video routines */
+
+}
+
+/* displays differences between current image file and new image */
+/* Bert - suggest add this to video.asm */
+cmp_line(unsigned char *pixels, int linelen)
+{
+   static errcount;
+   static FILE *fp = NULL;
+   extern int rowcount;
+   int col;
+   int oldcolor;
+   char *timestring;
+   time_t ltime;
+   if(fp == NULL)
+      fp = fopen("cmperr",(initbatch)?"a":"w");
+   if(rowcount==0)
+      errcount=0;
+   for(col=0;col<linelen;col++)
+   {
+      oldcolor=getcolor(col,rowcount);
+      if(oldcolor==pixels[col])
+	 putcolor(col,rowcount,0);
+      else
+      {
+	 if(oldcolor==0)
+	    putcolor(col,rowcount,1);
+	 ++errcount;
+	 if(initbatch == 0)
+	    fprintf(fp,"#%5d col %3d row %3d old %3d new %3d\n",
+	       errcount,col,rowcount,oldcolor,pixels[col]);
+      }
+   }
+   rowcount++;
+   if(rowcount==ydots && initbatch)
+   {
+      time(&ltime);
+      timestring = ctime(&ltime);
+      timestring[24] = 0; /*clobber newline in time string */
+      fprintf(fp,"%s compare to %s has %5d errs\n",timestring,readname,errcount);
+   }
+   return(0);
 }

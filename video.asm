@@ -68,6 +68,8 @@ ENDIF
 	extrn   fr85wdot  :far      ; 8514a write dot
 	extrn   fr85wbox  :far      ; 8514a write box
 	extrn   fr85rdot  :far      ; 8514a read dot
+	extrn   fr85rbox  :far      ; 8514a read box
+	extrn   fr85zoom  :far      ; 8514a zoom box
 	extrn   w8514pal  :far      ; 8514a pallete update
 
 ; Hercules Routines
@@ -127,6 +129,7 @@ goodmode	dw	0		; if non-zero, OK to read/write pixels
 dotwrite	dw	0		; write-a-dot routine:  mode-specific
 dotread		dw	0		; read-a-dot routine:   mode-specific
 linewrite	dw	0		; write-a-line routine: mode-specific
+lineread	dw	0		; read-a-line routine: mode-specific
 andcolor	dw	0		; "and" value used for color selection
 color		db	0		; the color to set a pixel
 videoflag	db	0		; special "your-own-video" flag
@@ -152,6 +155,7 @@ saved_dacreg	dw	0ffffh,0,0,0	; saved DAC register goes here
 rowcount	dw	0		; row-counter for decoder and out_line
 
 orvideo		db	0		; "or" value for setvideo
+videomem	dw	0a000h		; VGA videomemory
 videoax		dw	0		; graphics mode values: ax
 videobx		dw	0		; graphics mode values: bx
 videocx		dw	0		; graphics mode values: cx
@@ -340,7 +344,7 @@ videotable	db	0	; video table actually starts on the NEXT byte
 ;		11) Non-Video [disk or RAM] "video"
 ;		12) 8514/A video modes
 ;		13) CGA 320x200x4-color and 640x200x2-color modes
-;		14) Reserved for Tandy 1000 video modes
+;		14) Tandy 1000 640x200x16 mode
 ;		15) SuperVGA 256-Color mode using the Trident Chipset
 ;		16) SuperVGA 256-Color mode using the Chips & Tech Chipset
 ;		17) SuperVGA 256-Color mode using the ATI VGA Wonder Chipset
@@ -368,8 +372,7 @@ videotable	db	0	; video table actually starts on the NEXT byte
 ;		|------INT 10H------|Dot-|--Resolution---|
 ;		|--AX---BX---CX---DX|Mode|--X-|--Y-|Color|
  
-	db	"IBM Low-Rez EGA           Quick but chunky          "
-	dw	  0dh,   0,   0,   0,   2, 320, 200,  16
+;	(low-rez EGA moved because F1 is now Help)
 	db	"IBM 16-Color EGA          Slower but lots nicer     "
 	dw	  10h,   0,   0,   0,   2, 640, 350,  16
 	db	"IBM 256-Color MCGA        Quick and LOTS of colors  "
@@ -384,8 +387,8 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	  0fh,   0,   0,   0,   2, 640, 350,   2
 	db	"IBM B&W VGA               (Monochrome VGA)          "
 	dw	  11h,   0,   0,   0,   2, 640, 480,   2
-	db	"IBM Med-Rez EGA           (Silly but it's there!)   "
-	dw	  0eh,   0,   0,   0,   2, 640, 200,  16
+	db	"IBM Low-Rez EGA           Quick but chunky          "
+	dw	  0dh,   0,   0,   0,   2, 320, 200,  16
 	db	"IBM VGA (non-std/no text) Register Compatibles ONLY "
 	dw	   0h,   0,   0,   9,   7, 320, 400, 256
 	db	"IBM VGA (non-std/no text) Register Compatibles ONLY "
@@ -400,6 +403,8 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	    0,   0,   0,   0,  27, 640, 480, 256
 	db	"SuperVGA/VESA Autodetect  Works with most SuperVGA  "
 	dw	    0,   0,   0,   0,  27, 800, 600, 256
+	db	"SuperVGA/VESA Autodetect  Works with most SuperVGA  "
+	dw	    0,   0,   0,   0,  27,1024, 768, 256
 ;	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
 ;	dw	4f02h,102h,   0,   0,  28, 800, 600,  16
 ;	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
@@ -412,8 +417,8 @@ videotable	db	0	; video table actually starts on the NEXT byte
 ;	dw	4f02h,101h,   0,   0,  28, 640, 480, 256
 ;	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
 ;	dw	4f02h,103h,   0,   0,  28, 800, 600, 256
-	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
-	dw	4f02h,105h,   0,   0,  28,1024, 768, 256
+;	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
+;	dw	4f02h,105h,   0,   0,  28,1024, 768, 256
 	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
 	dw	4f02h,107h,   0,   0,  28,1280,1024, 256
 	db	"8514/A Low  Res           Requires IBM's HDILOAD    "
@@ -424,6 +429,8 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	   3h,   0,   0,   1,  12, 632, 474, 256
 	db	"8514/A High W/Border      Requires IBM's HDILOAD    "
 	dw	   3h,   0,   0,   1,  12,1016, 762, 256
+	db	"IBM Med-Rez EGA           (Silly but it's there!)   "
+	dw	  0eh,   0,   0,   0,   2, 640, 200,  16
 	db	"Video-7 Vram VGA          OK: Ira Emus              "
 	dw	6f05h, 60h,   0,   0,   2, 752, 410,  16
 	db	"Video-7 Vram VGA          OK: Ira Emus              "
@@ -538,6 +545,8 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	   9h,   0,   0,   0,   1, 320, 200,  16
 	db	"Tandy 1000 4 Color hi-rez OK: Tom Price             "
 	dw	  0ah,   0,   0,   0,   1, 640, 200,   4
+	db	"Tandy 1000 16 Colr hi-rez UNTESTED: May not work    "
+	dw	 0ffh,   0,   0,   0,  14, 640, 200,  16
 	db	"AT&T 6300                 UNTESTED: may not work    "
 	dw	  41h,   0,   0,   0,   1, 640, 200,  16
 	db	"AT&T 6300                 OK: Michael Kaufman       "
@@ -552,14 +561,16 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	   0h,   0,   0,   0,   9, 512, 384, 256
 	db	"Hercules Graphics         OK: Timothy Wegner        "
 	dw	   8h,   0,   0,   0,  10, 720, 348,   2
-	db	"Genoa Super EGA Hirez+    UNTESTED: May not work    "
+	db	"Genoa Super EGA Hirez+    OK: John Jurewicz         "
 	dw	  75h,   0,   0,   0,   2, 640, 528,  16
-	db	"Genoa Super EGA Hirez+    UNTESTED: May not work    "
+	db	"Genoa Super EGA Hirez+    OK: John Jurewicz         "
 	dw	  77h,   0,   0,   0,   2, 752, 410,  16
-	db	"Genoa Super EGA Hirez+    UNTESTED: May not work    "
+	db	"Genoa Super EGA Hirez+    OK: John Jurewicz         "
 	dw	  79h,   0,   0,   0,   2, 800, 600,  16
-	db	"Genoa Super EGA Hirez+    UNTESTED: May not work    "
+	db	"Genoa Super EGA Hirez+    OK: John Jurewicz         "
 	dw	  7bh,   0,   0,   0,   2, 912, 480,  16
+	db	"NEC GB-1                  UNTESTED: May not work    "
+	dw	  26h,   0,   0,   0,   2, 640, 480,  16
 	db	"Disk/RAM 'Video'          Full-Page Epson @  60DPI  "
 	dw	   3h,   0,   0,   0,  11, 768, 480,   2
 	db	"Disk/RAM 'Video'          Full-Page Epson @ 120DPI  "
@@ -782,21 +793,23 @@ cgaseg2color:				; two-color option
 cgasegoff	endp
 
 mcgawrite	proc	near		; MCGA 320*200, 246 colors
-	push	ax			; save this for a tad
-	mov	ax,xdots		; this many dots / line
-	mul	dx			; times this many lines
-	add	ax,cx			; plus this many x-dots
-	mov	bx,ax			; save this in BX
-	pop	ax			; restore AX
+	xchg	dh,dl			; bx := 256*y
+	mov	bx,cx			; bx := x
+	add	bx,dx			; bx := 256*y + x 
+	shr	dx,1
+	shr	dx,1			; dx := 64*y
+	add	bx,dx			; bx := 320*y + x
 	mov	es:[bx],al		; write the dot
 	ret				; we done.
 mcgawrite	endp
 
 mcgaread	proc	near		; MCGA 320*200, 246 colors
-	mov	ax,xdots		; this many dots / line
-	mul	dx			; times this many lines
-	add	ax,cx			; plus this many x-dots
-	mov	bx,ax			; save this in BX
+	xchg	dh,dl			; dx := 256*y
+	mov	bx,cx			; bx := x
+	add	bx,dx			; bx := 256*y + x 
+	shr	dx,1
+	shr	dx,1			; dx := 64*y
+	add	bx,dx			; bx := 320*y + x
 	mov	al,es:[bx]		; retrieve the previous value
 	ret				; we done.
 mcgaread	endp
@@ -879,6 +892,158 @@ vgareadloop:
 	mov	al,bl			; returned pixel value
 	ret				; we done.
 vgaread	endp
+
+outax8bit	proc	near		; convert OUT DX,AX to
+	push	ax			; several OUT DX,ALs
+	out	dx,al			; (leaving registers intact)
+	inc	dx
+	mov	al,ah
+	out	dx,al
+	dec	dx
+	pop	ax
+	ret
+outax8bit	endp
+
+tandysetup	proc	near		; Tandy 640x200x16 mode setup
+	mov	dx,03d4h		; write to this address
+	mov	ax,07100h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,05001h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,05a02h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,00e03h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,0ff04h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,00605h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,0c806h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,0e207h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,00009h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,0000ch		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,01810h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	ax,04612h		; write to this register and value
+	out	dx,ax			;  do it.
+	mov	dx,03d8h		; new port
+	mov	al,01bh			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03d9h		; new port
+	mov	al,000h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03ddh		; new port
+	mov	al,000h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03dfh		; new port
+	mov	al,024h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03dah		; new port
+	mov	al,001h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03deh		; new port
+	mov	al,00fh			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03dah		; new port
+	mov	al,002h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03deh		; new port
+	mov	al,000h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03dah		; new port
+	mov	al,003h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03deh		; new port
+	mov	al,010h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03dah		; new port
+	mov	al,005h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03deh		; new port
+	mov	al,001h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03dah		; new port
+	mov	al,008h			;  and value
+	out	dx,al			;  do it.
+	mov	dx,03deh		; new port
+	mov	al,002h			;  and value
+	out	dx,al			;  do it.
+
+        cmp     orvideo,0               ; are we supposed to clear RAM?
+        jne     tandysetup1             ;  (nope)
+	push	es			; save ES for a tad
+	mov	ax,0a000h		; clear the memory
+	mov	es,ax			;  ...
+	mov	cx,07d00h		; this many words
+	mov	di,0			; starting here
+	mov	ax,0			; clear out to zero
+	rep	stosw			; do it.
+	pop	es			; restore ES
+
+tandysetup1:
+	mov	oktoprint,0		; no printing in this mode
+	ret
+tandysetup	endp
+
+tandyread	proc	near		; Tandy 640x200x16 mode read
+	push	es			; save ES for a tad
+	mov	ax,0a000h		; and reload it with the base addr
+	mov	es,ax			;  ...
+	mov	ax,xdots		; this many dots / line
+	mul	dx			; times this many lines
+	add	ax,cx			; plus this many x-dots
+	adc	dx,0			; DX:AX now holds the pixel count
+	mov	cx,ax			; save this for the bit mask
+	shr	dx,1			; now compute the pixel address
+	rcr	ax,1			;  (dividing by two)
+	mov	si,ax			; save the address here
+	mov	al,es:[si]		; get the appropriate byte
+	test	cx,1			; is this an even or an odd address?
+	jnz	tandyread1		; odd address
+	shr	al,1			; even address - shift the high-order
+	shr	al,1			;  four bits into the low-order
+	shr	al,1			;  four bits
+	shr	al,1			;  ...
+tandyread1:
+	and	ax,0fh			; use the low-order four bits only
+	pop	es			; restore ES
+	ret
+tandyread	endp
+
+tandywrite	proc	near		; Tandy 640x200x16 mode write
+	mov	bl,al			; save the color value for a bit
+	push	es			; save ES for a tad
+	mov	ax,0a000h		; and reload it with the base addr
+	mov	es,ax			;  ...
+	mov	ax,xdots		; this many dots / line
+	mul	dx			; times this many lines
+	add	ax,cx			; plus this many x-dots
+	adc	dx,0			; DX:AX now holds the pixel count
+	mov	cx,ax			; save this for the bit mask
+	shr	dx,1			; now compute the pixel address
+	rcr	ax,1			;  (dividing by two)
+	mov	si,ax			; save the address here
+	mov	al,es:[si]		; get the appropriate byte
+	mov	bh,0f0h			; set up the bit mask
+	and	bl,00fh			; isolate the bits we want to change
+	test	cx,1			; is this an even or an odd address?
+	jnz	tandywrite1		; odd address
+	shl	bl,1			; even address - shift the low-order
+	shl	bl,1			;  four bits into the high-order
+	shl	bl,1			;  four bits
+	shl	bl,1			;  ...
+	mov	bh,00fh			; modify the bit mask
+tandywrite1:
+	and	al,bh			; mask out the bits to modify
+	or	al,bl			; add in the new bits
+	mov	es:[si],al		; save the appropriate byte
+	pop	es			; restore ES
+	ret
+tandywrite	endp
 
 
 ;	The 360x480 mode draws heavily on Michael Abrash's article in
@@ -963,11 +1128,11 @@ tweak256write	proc near uses di	; Tweaked-VGA ...x256 color mode
   shr     cx,1                  ;There are 4 pixels at each address
   shr     cx,1                  ;so divide X by 4
   add     ax,cx                 ;Point to pixels address
-  mov     di,AX
+  mov     di,ax
   pop     cx                    ;Retrieve X coordinate
   and     cl,3                  ;Get the plane number of the pixel
   mov     ah,1
-  shl     ah,CL                 ;Set the bit corresponding to the plane
+  shl     ah,cl                 ;Set the bit corresponding to the plane
                                 ;the pixel is in
   mov     al,MAP_MASK            
   mov     dx,SC_INDEX
@@ -1073,6 +1238,7 @@ super256addr	endp
 ;       Integrated by Tim Wegner 8/15/89 
 ;	(switched to John's 9/7/89 version on 9/10/89 - Bert)
 ;	(switched to John's 1/5/90 version on 1/9/90  - Bert)
+;	(switched to John's version 3 on 4/27/90  - Bert)
 ;	((added logic for various resolution on 9/10/90 - Bert)
 ;	[ and had to add '@codesize' equate for some reason (??) - Bert]
 ;        
@@ -1098,22 +1264,24 @@ endif
 vesa_granularity	db	0	; BDT VESA Granularity value
 vesa_bankswitch		dd	0	; BDT VESA Bank-Switching Routine
 
-	public	curbk,maxx,maxy
+	public	curbk
 
 curbk	dw	0
-maxx	dw	640
-maxy	dw	480
 
 	public	vga512
 
 vga512	dw	0
 
-	public	cirrus,video7,tseng,paradise,chipstech,trident
-	public	ativga,everex,aheada,aheadb
+	public	cirrus,video7,tseng,tseng4,paradise,chipstech,trident
+	public	ativga,everex,aheada,aheadb,oaktech
+
+	public	vesa		; Bert
+vesa	dw	0		; Bert
 
 cirrus	dw	0
 video7	dw	0
 tseng	dw	0
+tseng4	dw	0
 paradise dw	0
 chipstech dw	0
 trident	dw	0
@@ -1121,6 +1289,10 @@ ativga	dw	0
 everex	dw	0
 aheada	dw	0
 aheadb	dw	0
+oaktech	dw	0
+
+first	dw	0		;flag so whichvga() is only called once
+retval	dw	0		;first return value from whichvga()
 
 		; this part is new - Bert 
 .code
@@ -1195,6 +1367,21 @@ video7_entries	dw	0
 	dw	 640, 480,256, 6f05h,67h
 	dw	 720, 540,256, 6f05h,68h
 	dw	 800, 600,256, 6f05h,69h
+oaktech_entries	dw	0
+	dw	 800, 600, 16, 52h,0
+	dw	 640, 480,256, 53h,0
+	dw	 800, 600,256, 54h,0
+	dw	1024, 768, 16, 56h,0
+	dw	0
+tseng4_entries	dw	0
+	dw	 800, 600, 16, 29h,0
+	dw	1024, 768, 16, 37h,0
+	dw	 640, 350,256, 2dh,0
+	dw	 640, 400,256, 2fh,0
+	dw	 640, 480,256, 2eh,0
+	dw	 800, 600,256, 30h,0
+	dw	1024, 768,256, 38h,0
+	dw	0
 no_entries	dw	0
 	dw	 320, 200,256, 13h,0
 	dw	 640, 480, 16, 12h,0
@@ -1230,6 +1417,31 @@ $tseng	proc		;Tseng
 	pop	ax
 	ret
 $tseng	endp
+
+$tseng4	proc		;Tseng 4000 series
+	push	ax
+	push	dx
+	mov	ah,al
+	mov	dx,3bfh			;Enable access to extended registers
+	mov	al,3
+	out	dx,al
+	mov	dl,0d8h
+	mov	al,0a0h
+	out	dx,al
+	and	ah,15
+	mov	al,ah
+	shl	al,1
+	shl	al,1
+	shl	al,1
+	shl	al,1
+	or	al,ah
+	mov	dl,0cdh
+	out	dx,al
+	sti
+	pop	dx
+	pop	ax
+	ret
+$tseng4	endp
 
 $trident proc		;Trident
 	push	ax
@@ -1465,6 +1677,24 @@ $aheadb	proc
 	ret
 $aheadb	endp
 
+$oaktech proc		;Oak Technology Inc OTI-067
+	push	ax
+	push	dx
+	and	al,15
+	mov	ah,al
+	shl	al,1
+	shl	al,1
+	shl	al,1
+	shl	al,1
+	or	al,ah
+	mov	dx,3dfh
+	out	dx,al
+	sti
+	pop	dx
+	pop	ax
+	ret
+$oaktech endp
+
 $vesa	proc				; VESA bank switching
 	push	ax
 	push	bx
@@ -1489,8 +1719,27 @@ $nobank	proc
 	ret
 $nobank	endp
 
+bkadr	macro	flag,func,entries               ; Bert        
+	mov	video_entries, offset entries	; Bert
+	mov	[flag],1
+	mov	[bankadr],offset func
+if @codesize
+	mov	[bankseg],seg func
+endif
+	endm
+
+nojmp	macro
+	local	lbl
+	jmp	lbl
+lbl:
+	endm
 
 whichvga proc	uses si
+	cmp	[first],0
+	jz	gotest
+	mov	ax,[retval]
+	ret
+gotest:	mov	[first],1
 	mov	ax,4f00h		; check for VESA adapter
 	push	ds			; set ES == DS
 	pop	es			;  ...
@@ -1507,11 +1756,7 @@ whichvga proc	uses si
 	jne	notvesa			; nope.  Not a VESA adapter
 	cmp	byte ptr 3[di],'A'	; string == 'VESA'?
 	jne	notvesa			; nope.  Not a VESA adapter
-	mov	video_entries, offset vesa_entries
-	mov	[bankadr],offset $vesa
-if @codesize
-	mov	[bankseg],seg $vesa
-endif
+	bkadr	vesa,$vesa, vesa_entries
 	jmp	fini
 notvesa:
 	mov	si,1
@@ -1519,12 +1764,7 @@ notvesa:
 	mov	es,ax
 	cmp	word ptr es:[40h],'13'
 	jnz	noati
-	mov	[ativga],1
-	mov	video_entries, offset ati_entries	; Bert
-	mov	[bankadr],offset $ativga
-if @codesize
-	mov	[bankseg],seg $ativga
-endif
+	bkadr	ativga,$ativga,ati_entries              ; Bert
 	cli
 	mov	dx,1ceh
 	mov	al,0bbh
@@ -1543,12 +1783,7 @@ noati:	mov	ax,7000h		;Test for Everex
 	int	10h
 	cmp	al,70h
 	jnz	noev
-	mov	[everex],1
-	mov	video_entries, offset everex_entries	; Bert
-	mov	[bankadr],offset $everex
-if @codesize
-	mov	[bankseg],seg $everex
-endif
+	bkadr	everex,$everex, everex_entries          ; Bert
 	and	ch,11000000b
 	jz	temp_2	
 	mov	[vga512],1
@@ -1557,12 +1792,8 @@ temp_2:	and	dx,0fff0h
 	jz	yeste
 	cmp	dx,2360h
 	jnz	note
-yeste:	mov	[trident],1
-	mov	video_entries, offset trident_entries	; Bert
-	mov	[bankadr],offset $trident
-if @codesize
-	mov	[bankseg],seg $trident
-endif
+yeste:	bkadr	trident,$trident, everex_entries        ; Bert
+	mov	everex,0
 note:	jmp	fini
 
 noev:	mov	dx,3c4h			;Test for Trident
@@ -1574,12 +1805,7 @@ noev:	mov	dx,3c4h			;Test for Trident
 	ja	notri
 	cmp	al,2
 	jb	notri
-	mov	[trident],1
-	mov	video_entries, offset trident_entries	; Bert
-	mov	[bankadr],offset $trident
-if @codesize
-	mov	[bankseg],seg $trident
-endif
+	bkadr	trident,$trident, trident_entries       ; Bert
 	mov	[vga512],1
 	jmp	fini
 
@@ -1589,12 +1815,7 @@ notri:	mov	ax,6f00h		;Test for Video 7
 	int	10h
 	cmp	bx,'V7'
 	jnz	nov7
-	mov	[video7],1
-	mov	video_entries, offset video7_entries	; Bert
-	mov	[bankadr],offset $video7
-if @codesize
-	mov	[bankseg],seg $video7
-endif
+	bkadr	video7,$video7, video7_entries          ; Bert
 	mov	ax,6f07h
 	cld
 	int	10h
@@ -1624,12 +1845,7 @@ noci:	mov	dx,3ceh			;Test for Paradise
 	mov	cx,1
 	call	$chkbk
 	jc	nopd			;if bank 0 and 1 same not paradise
-	mov	[paradise],1
-	mov	video_entries, offset paradise_entries	; Bert
-	mov	[bankadr],offset $paradise
-if @codesize
-	mov	[bankseg],seg $paradise
-endif
+	bkadr	paradise,$paradise, paradise_entries    ; Bert
 ;	mov	cx,64
 ;	call	$chkbk
 ;	jc	temp_4			;if bank 0 and 64 same only 256k
@@ -1642,61 +1858,116 @@ nopd:	mov	ax,5f00h		;Test for Chips & Tech
 	int	10h
 	cmp	al,5fh
 	jnz	noct
-	mov	[chipstech],1
-	mov	video_entries, offset chips_entries	; Bert
-	mov	[bankadr],offset $chipstech
-if @codesize
-	mov	[bankseg],seg $chipstech
-endif
+	bkadr	chipstech,$chipstech, chips_entries     ; Bert
 	cmp	bh,1
 	jb	temp_5
 	mov	[vga512],1
 temp_5:
 	jmp	fini
 
-noct:	mov	dx,3cdh			;Test for Tseng
+noct:	mov	ch,0
+	mov	dx,3d4h			;check for Tseng 4000 series
+	mov	al,33h
+	out	dx,al
+	inc	dx
 	in	al,dx
-	and	al,00111111b		;check bank switch register
-	jnz	nots
+	dec	dx
+	mov	cl,al
+	mov	ax,00a33h
+	out	dx,ax
+	mov	al,33h
+	out	dx,al
+	inc	dx
+	in	al,dx
+	and 	al,0fh
+	dec	dx
+	cmp	al,00ah
+	jnz	noct2
+	mov	ax,00533h
+	out	dx,ax
+	mov	al,33h
+	out	dx,al
+	inc	dx
+	in	al,dx
+	dec	dx
+	and 	al,0fh
+	cmp	al,005h
+	jnz	noct2
+	mov	al,33h
+	mov	ah,cl
+	out	dx,ax
+	mov	ch,1
 
-	mov	[tseng],1
-	mov	video_entries, offset tseng_entries	; Bert
-	mov	[bankadr],offset $tseng
-if @codesize
-	mov	[bankseg],seg $tseng
-endif
+	mov	dx,3bfh			;Enable access to extended registers
+	mov	al,3
+	out	dx,al
+	mov	dl,0d8h
+	mov	al,0a0h
+	out	dx,al
+
+noct2:	mov	dx,3cdh			;Test for Tseng
+	in	al,dx			;save bank switch register
+	mov	cl,al
+	mov	al,0aah			;test register with 0aah
+	out	dx,al
+	in	al,dx
+	cmp	al,0aah
+	jnz	nots
+	mov	al,055h			;test register with 055h
+	out	dx,al
+	in	al,dx
+	cmp	al,055h
+	jnz	nots
+	mov	al,cl
+	out	dx,al
+	bkadr	tseng,$tseng, tseng_entries    ; Bert
 	mov	[vga512],1
-	jmp	short fini
+
+	cmp	ch,0
+	jz	oldts
+	mov	tseng,0
+	bkadr	tseng4,$tseng4, tseng4_entries ; Bert
+oldts:	jmp	fini
+
 nots:	
         mov     dx,3ceh		;Test for Above A or B chipsets
         mov     ax,200fh
         out     dx,ax
         inc	dx
+	nojmp
         in      al,dx
 	cmp	al,21h
 	jz	verb
 	cmp	al,20h
 	jnz	noab
-	mov	[aheada],1
-	mov	video_entries, offset ahead_entries	; Bert
-	mov	[bankadr],offset $aheada
-if @codesize
-	mov	[bankseg],seg $aheada
-endif
+	bkadr	aheada,$aheada, ahead_entries           ; Bert
 	mov	[vga512],1
 	jmp	short fini
 
-verb:	mov	[aheadb],1
-	mov	video_entries, offset ahead_entries	; Bert
-	mov	[bankadr],offset $aheadb
-if @codesize
-	mov	[bankseg],seg $aheadb
-endif
+verb:	bkadr	aheadb,$aheadb, ahead_entries           ; Bert
 	mov	[vga512],1
 	jmp	short fini
-noab:	mov	si,0
+
+noab:	mov	dx,3deh
+	in	al,dx
+	and	al,11100000b
+	cmp	al,01100000b
+	jnz	nooak
+	bkadr	oaktech,$oaktech, oaktech_entries       ; Bert
+	mov	al,0dh
+	out	dx,al
+	inc	dx
+	nojmp
+	in	al,dx
+	test	al,80h
+	jz	no4ram
+	mov	[vga512],1
+no4ram:	jmp	short fini
+	
+nooak:	mov	si,0
 
 fini:	mov	ax,si
+	mov	[retval],ax
 	ret
 whichvga endp
 
@@ -2120,19 +2391,23 @@ adapter_detect	proc	far		; video adapter detection routine
 	mov	cirrus,bx		;  ...
 	mov	aheada,bx		;  ...
 	mov	aheadb,bx		;  ...
+	mov	tseng4,bx		;  ...
+	mov	oaktech,bx		;  ...
 	mov	[bankadr],offset $nobank
 	mov	[bankseg],seg $nobank
 	mov	video_entries, offset no_entries	; ...
+	mov	ax,1a00h		; look for a VGA/MCGA
+	int	10h			;  by using a VGA-specific call
+	cmp	al,1ah			; was AL modified?
+	je	adapter_detect_4	;  Yup.  A VGA or an MCGA
 	mov	ah,12h			; look for an EGA
 	mov	bl,10h			;  by using an EGA-specific call
 	int	10h			;  ...
 	cmp	bl,10h			; was BL modified?
 	je	adapter_detect_99	;  nope.  Not an EGA
 	mov	video_type,3		; set the video type: EGA
-	mov	ax,1a00h		; look for a VGA
-	int	10h			;  by using a VGA-specific call
-	cmp	al,1ah			; was AL modified?
-	jne	adapter_detect_99	;  nope.  Not a VGA
+	jmp	short adapter_detect_99	;  We done.
+adapter_detect_4:
 	mov	video_type,4		; set the video type: VGA
 	call	whichvga		; autodetect which VGA is there
 	mov	ax,[bankadr]		; save the results
@@ -2144,60 +2419,140 @@ adapter_detect_99:
 	ret
 adapter_detect	endp
 
-; **************** internal Write-a-line routines ***********************
+; **************** internal Read/Write-a-line routines *********************
 ;
-;	These Routines all assume the following register values:
+;	These routines are called by out_line(), put_line() and get_line().
+;	They assume the following register values:
 ;
-;		SI = Offset of array of colors for a row
+;		si = offset of array of colors for a row (write routines)
+;		di = offset of array of colors for a row (read routines)
+;		
+;		ax = stopping column 
+;		bx =		
+;		cx = starting column		
+;		dx = row
+;		
+; Note: so far have converted only normaline, normalineread, mcgaline,
+;	mcgareadline, super256line, super256readline -- Tim
 
-normaline	proc	near		; Normal Line:  no assumptions
-	xor	cx,cx			; zero the counter	
+normaline	proc	near		; Normal Line
 normal_line1:
-	mov	dx,rowcount		; set the y-pixel
-        mov     bx,si			; locate the actual pixel color
-	add	bx,cx			;  ...
-	mov	al,[bx]			; retrieve the color
+        push	ax			; save stop col
+	mov	al,[si]			; retrieve the color
 	push	cx			; save the counter around the call
+ 	push	dx			; save column around the call
 	push	si			; save the pointer around the call also
 	call	dotwrite		; write the dot via the approved method
 	pop	si     			; restore the pointer
+	pop	dx     			; restore the column
 	pop	cx     			; restore the counter
+	inc	si			; bump it up
 	inc	cx			; bump it up
-	cmp	cx,xdots		; more to go?
-	jl	normal_line1		; yup.  do it.
+        pop	ax			; retrieve number of dots
+	cmp	cx,ax			; more to go?
+	jle	normal_line1		; yup.  do it.
         ret
 normaline	endp
 
+normalineread	proc	near		; Normal Line
+	mov	bx,videomem
+	mov	es,bx
+normal_lineread1:
+        push	ax			; save stop col
+	push	cx			; save the counter around the call
+ 	push	dx			; save column around the call
+	push	di			; save the pointer around the call also
+	call	dotread			; read the dot via the approved method
+	pop	di     			; restore the pointer
+	pop	dx     			; restore the column
+	pop	cx     			; restore the counter
+        mov     bx,di			; locate the actual pixel color
+	mov	[bx],al			; retrieve the color
+	inc	di			; bump it up
+	inc	cx			; bump it up
+        pop	ax			; retrieve number of dots
+	cmp	cx,ax			; more to go?
+	jle	normal_lineread1	; yup.  do it.
+        ret
+normalineread	endp
+
 mcgaline	proc	near		; MCGA 320*200, 246 colors
-	mov	ax,xdots		; this many dots / line
-	mul	rowcount		; times this many lines
-        mov	di,ax			; di = offset of row in video memory
-        mov	cx,xdots		; move this many bytes
-	shr	cx,1			; convert bytes to words
-	rep	movsw			; zap line into memory
+	sub	ax,cx			; last col - first col
+	inc	ax			;   + 1
+
+	xchg	dh,dl			; bx := 256*y
+	mov	bx,cx			; bx := x
+	add	bx,dx			; bx := 256*y + x 
+	shr	dx,1
+	shr	dx,1			; dx := 64*y
+	add	bx,dx			; bx := 320*y + x
+        mov	di,bx			; di = offset of row in video memory
+
+        mov	cx,ax			; move this many bytes
+	rep	movsb			; zap line into memory
         ret
 mcgaline	endp
 
+mcgareadline	proc	near		; MCGA 320*200, 246 colors
+ 
+	sub	ax,cx			; last col - first col
+	inc	ax			;   + 1
+
+	xchg	dh,dl			; bx := 256*y
+	mov	bx,cx			; bx := x
+	add	bx,dx			; bx := 256*y + x 
+	shr	dx,1
+	shr	dx,1			; dx := 64*y
+	add	bx,dx			; bx := 320*y + x
+        mov	si,bx			; di = offset of row in video memory
+
+        mov	cx,ax			; move this many bytes
+	mov	ax,ds			; copy data segment to ...
+	mov	es,ax			;  ... es
+	mov	ax,videomem		; copy video segment to ...
+	mov	ds,ax			;  ... ds
+	rep	movsb			; zap line into memory
+	mov	ax,es
+	mov	ds,ax			; restore data segement to ds
+        ret
+mcgareadline	endp
+
 vgaline	proc	near		; Bank Switch EGA/VGA line write
+	push	cx			; save a few registers
+	push	ax			;  ...
+	push	dx			;  ...
+
+	mov	bx,dx			; save the rowcount
 	mov	ax,xdots		; compute # of dots / pass
 	shr	ax,1			;  (given 8 passes)
 	shr	ax,1			;  ...
 	shr	ax,1			;  ...
-	mov	cx,ax			; save the dots / pass here
-        xor     dx,dx
-	mul	rowcount		; now calc first video addr
-
+	mul	bx			; now calc first video addr
         cmp	dx,curbk		; see if bank changed
         jne	bank_is_changing	; if bank change call normaline
-;same_bank:
 
-	mov	di,ax			; save the starting addr here
+	mov	di,cx			; compute the starting destination
+	shr	di,1			; divide by 8
+	shr	di,1			;  ...
+	shr	di,1			;  ...
+	add	di,ax			; add the first pixel offset
+
 	mov	dx,03ceh		; set up graphics cntrlr addr
 	mov	ax,8008h		; set up for the bit mask
+	and	cx,7			; adjust for the first pixel offset
+	ror	ah,cl			;  ...
+
+	pop	bx			; flush old DX value
+	pop	bx			; flush old AX value
+	pop	cx			; flush old CX value
+	sub	bx,cx			; convert to a length value
+	add	bx,si			; locate the last source locn
+
+	mov	cx,ax			; save the bit mask
+
 vgaline1:
 	out	dx,ax			; set the graphics bit mask
 	push	ax			; save registers for a tad
-	push	cx			;  ...
 	push	si			;  ...
 	push	di			;  ...
 vgaline2:
@@ -2209,26 +2564,110 @@ vgaline2:
 	or	es:[di],al		; update all bit planes
 	inc	di			; set up the next video addr
 	add	si,8			;  and the next source addr
-	loop	vgaline2		; loop if more dots this pass
+	cmp	si,bx			; are we beyond the end?
+	jbe	vgaline2		; loop if more dots this pass
 	pop	di			; restore the saved registers
 	pop	si			;  ...
-	pop	cx			;  ...
 	pop	ax			;  ...
 	inc	si			; offset the source 1 byte
+	cmp	si,bx			; are we beyond the end?
+	ja	vgaline4		; stop if no more dots this pass
 	ror	ah,1			; alter bit mask value
-	cmp	ah,80h			; already done all 8 of them?
+	cmp	ah,80h			; time to update DI:
+	jne	vgaline3		;  nope
+	inc	di			;  yup
+vgaline3:
+	cmp	ah,ch			; already done all 8 of them?
 	jne	vgaline1		;  nope.  do another one.
+vgaline4:
 	call	videocleanup		; else cleanup time.
 	ret				;  and we done.
+
 bank_is_changing:
+	pop	dx			; restore the registers
+	pop	ax			;  ...
+	pop	cx			;  ...
         call    normaline		; just calling newbank didn't quite
         ret				;  work. This depends on no bank
 vgaline	endp				;  change mid line (ok for 1024 wide)
 
-super256line    proc    near     ; super VGA 256 colors
+vgareadline	proc	near		; Bank Switch EGA/VGA line read
+	push	cx			; save a few registers
+	push	ax			;  ...
+	push	dx			;  ...
+
+	mov	bx,dx			; save the rowcount
+	mov	ax,xdots		; compute # of dots / pass
+	shr	ax,1			;  (given 8 passes)
+	shr	ax,1			;  ...
+	shr	ax,1			;  ...
+	mul	bx			; now calc first video addr
+        cmp	dx,curbk		; see if bank changed
+        jne	bank_is_changing	; if bank change call normaline
+
+	mov	si,cx			; compute the starting destination
+	shr	si,1			; divide by 8
+	shr	si,1			;  ...
+	shr	si,1			;  ...
+	add	si,ax			; add the first pixel offset
+
+	and	cx,7			; adjust for the first pixel offset
+	mov	ch,cl			; save the original offset value
+
+	pop	bx			; flush old DX value
+	pop	bx			; flush old AX value
+	pop	ax			; flush old CX value
+	sub	bx,ax			; convert to a length value
+	add	bx,di			; locate the last dest locn
+
+	mov	ax,0a000h		; EGA/VGA screen starts here
+	mov	es,ax			;  ...
+
+	mov	dx,03ceh		; set up graphics cntrlr addr
+
+vgaline1:
+	push	bx			; save BX for a tad
+	mov	ch,80h			; bit mask to shift
+	shr	ch,cl			;  ...
+	mov	bx,0			; initialize bits-read value (none)
+	mov	ax,0304h		; set up controller address register
+vgareadloop:
+	out	dx,ax			; do it
+	mov	bh,es:[si]		; retrieve the old value
+	and	bh,ch			; mask one bit
+	neg	bh			; set bit 7 correctly
+	rol	bx,1			; rotate the bit into bl
+	dec	ah			; go for another bit?
+	jge	vgareadloop		;  sure, why not.
+	mov	ds:[di],bl		; returned pixel value
+	pop	bx			; restore BX
+	inc	di			; set up the next dest addr
+	cmp	di,bx			; are we beyond the end?
+	ja	vgaline3		;  yup.  We done.
+	inc	cl			; alter bit mask value
+	cmp	cl,8			; time to update SI:
+	jne	vgaline2		;  nope
+	inc	si			;  yup
+	mov	cl,0			;  ...
+vgaline2:
+	jmp	short vgaline1		;  do another one.
+
+vgaline3:
+	call	videocleanup		; else cleanup time.
+	ret				;  and we done.
+
+bank_is_changing:
+	pop	dx			; restore the registers
+	pop	ax			;  ...
+	pop	cx			;  ...
+        call    normalineread		; just calling newbank didn't quite
+        ret				;  work. This depends on no bank
+vgareadline	endp			;  change mid line (ok for 1024 wide)
+
+super256lineaddr    proc    near		; super VGA 256 colors
         mov     ax,xdots         ; this many dots / line
-        mov     cx,rowcount      ; cx = row
-        mul     cx               ; times this many lines
+        mov     bx,dx		 ; rowcount
+        mul     bx               ; times this many lines
         push    ax               ; save pixel address for later
         cmp     dx,curbk         ; bank ok?
         push    dx               ; save bank
@@ -2236,39 +2675,103 @@ super256line    proc    near     ; super VGA 256 colors
         mov     al,dl            ; newbank needs bank in al
         call    far ptr newbank
 bank_is_ok:
-        inc     cx               ; next row
+        inc     bx               ; next row
         mov     ax,xdots         ; this many dots / line
-        mul     cx               ; times this many lines
+        mul     bx               ; times this many lines
 	sub	ax,1		 ; back up some to the last pixel of the 
 	sbb	dx,0		 ; previous line
-        pop     cx               ; bank at start of row
-        cmp     dl,cl            ; did bank change?
-        pop     di               ; di = offset of row in video memory
+        pop     bx               ; bank at start of row
+        pop     ax               ; ax = offset of row in video memory
+	ret
+super256lineaddr endp
+
+super256line    proc    near		; super VGA 256 colors
+	push	ax			; stop col
+	push	dx			; row
+	call super256lineaddr		; ax=video,dl=newbank,bl=oldbank
+	mov	di,ax			; video offset
+        cmp     dl,bl			; did bank change?
+	pop	dx			; row
+	pop	ax			; stop col
         jne     bank_did_chg
-        mov     cx,xdots         ; move this many bytes
-	shr	cx,1		 ; convert bytes to words
-        rep     movsw            ; zap line into memory
+	add	di,cx			; add start col to video address
+	sub	ax,cx			; ax = stop - start
+	mov	cx,ax			;  + start column
+	inc	cx			; number of bytes to move
+        rep     movsb			; zap line into memory
         jmp     short linedone
 bank_did_chg:
-        call    normaline        ; normaline can handle bank change
+        call    normaline		; normaline can handle bank change
 linedone:
         ret
 super256line    endp
 
+super256readline    proc    near     ; super VGA 256 colors
+	push	ax			; stop col
+	push	dx			; row
+	call super256lineaddr		; ax=video,dl=newbank,bl=oldbank
+	mov	si,ax			; video offset
+        cmp     dl,bl			; did bank change?
+	pop	dx			; row
+	pop	ax			; stop col
+        jne     bank_did_chg
+
+	add	si,cx			; add start col to video address
+	sub	ax,cx			; ax = stop - start
+	mov	cx,ax			;  + start column
+	inc	cx			; number of bytes to move
+	mov	ax,ds			; save data segment to es
+	mov	es,ax
+	mov	ax,videomem		; video segment to es
+	mov	ds,ax
+	rep	movsb			; zap line into memory
+	mov	ax,es			; restore data segment to ds
+	mov	ds,ax
+        jmp     short linedone
+bank_did_chg:
+        call    normalineread        	; normaline can handle bank change
+linedone:
+        ret
+super256readline    endp
+
 tweak256line	proc	near		; Normal Line:  no assumptions
-	mov     cx,xdots
-	shr     cx, 1    
-	shr     cx, 1                   ; now ax = xdots/4     
-	mov	ax,cx			; calculate the first video address
-	mul	rowcount		;  (pixel 0 on this line)
-	mov	di,ax			; save the first address here
-        mov     al,MAP_MASK		; set up for the bit plane adjustment
-	mov	ah,1			;  (first plane first)
-        mov     dx,SC_INDEX		;  ...
+  local plane:byte
+	mov	bx,ax			; bx = stop col
+	sub	bx,cx			; bx = stop-start
+	inc	bx			; bx = how many pixels to write
+	cmp 	bx,3			; less than four points?
+	jg	nottoosmall		; algorithm won't work as written
+	call	normaline		;  - give up and call normaline
+	ret				; we done
+nottoosmall:				; at least four points - go for it!
+	push	bx			; save number of pixels
+	and	bx,3			;  pixels modulo 4 = no of extra pts 
+	mov     ax,xdots		; width of video row
+	shr     ax, 1    
+	shr     ax, 1    		; now ax = xdots/4     
+	mul     dx                  	; ax points to start of desired row
+	push    cx			; Save starting column for later
+	shr     cx,1			; There are 4 pixels at each address
+	shr     cx,1			;   so divide X by 4
+	add     ax,cx			; Point to pixel's address
+	mov     di,ax			; video offset of first point
+	pop     cx			; Retrieve starting column
+	and     cl,3			; Get the plane number of the pixel
+	mov     ah,1	
+	shl     ah,cl			; Set the bit corresponding to the plane
+                              		;  the pixel is in
+	mov	plane,ah		; Save starting plane for ending test
+	mov     al,MAP_MASK		; 
+	mov     dx,SC_INDEX
+	pop	cx			; number of pixels to write
+	shr     cx,1                  
+	shr     cx,1			; cx = number of pixels/4
+	cmp	bx,0			; extra pixels?
+	je	tweak256line1		; nope - don't add one
+	inc	cx			; yup - add one more pixel
 tweak256line1:
-	OUT_WORD			; set up the bit plane
-	push	ax			; save a few registers around the loop
-	push	cx			;  ...
+	OUT      DX,AX			; set up VGA registers for plane
+	push	cx			; save registers changed by movsb
 	push	si			;  ...
 	push	di			;  ...
 tweak256line2:
@@ -2278,25 +2781,107 @@ tweak256line2:
 	pop	di			; restore the saved registers
 	pop	si			;  ...
 	pop	cx			;  ...
-	pop	ax			;  ...
+	dec	bx			; one less extra pixel
+	cmp	bx,0			; out of extra pixels?
+	jne	noextra
+	dec	cx			; yup - next time one fewer to write
+noextra:
 	inc	si			; offset the source 1 byte
 	shl	ah,1			; set up for the next video plane
-	cmp	ah,16			; there IS a next plane, isn't there?
-	jne	tweak256line1		;  yup.  perform another loop.
+	cmp	ah,16			; at last plane?
+	jne     notlastplane
+	mov	ah,1			; start over with plane 0
+	inc	di			; bump up video memory 
+notlastplane:			
+	cmp	ah,plane		; back to first plane?
+	jne	tweak256line1		;  nope.  perform another loop.
         ret
 tweak256line	endp
 
+tweak256readline	proc	near		; Normal Line:  no assumptions
+  local plane:byte
+	mov	bx,ax			; bx = stop col
+	sub	bx,cx			; bx = stop-start
+	inc	bx			; bx = how many pixels to write
+	cmp 	bx,3			; less than four points?
+	jg	nottoosmall		; algorithm won't work as written
+	call	normalineread		;  - give up and call normalineread
+	ret				; we done
+nottoosmall:				; at least four points - go for it!
+	push	bx			; save number of pixels
+	and	bx,3			;  pixels modulo 4 = no of extra pts 
+	mov     ax,xdots		; width of video row
+	shr     ax, 1    
+	shr     ax, 1    		; now ax = xdots/4     
+	mul     dx                  	; ax points to start of desired row
+	push    cx			; Save starting column for later
+	shr     cx,1			; There are 4 pixels at each address
+	shr     cx,1			;   so divide X by 4
+	add     ax,cx			; Point to pixel's address
+	mov     si,ax
+	pop     cx			; Retrieve starting column
+	and     cl,3			; Get the plane number of the pixel
+	mov	ah,cl
+	mov	plane,ah		; Save starting plane
+	mov     al,READ_MAP            
+  	mov     dx,GC_INDEX
+	pop	cx			; number of pixels to write
+	shr     cx,1                  
+	shr     cx,1			; cx = number of pixels/4
+	cmp	bx,0			; extra pixels?
+	je	tweak256line1		; nope - don't add one
+	inc	cx			; yup - add one more pixel
+tweak256line1:
+	out     dx,ax
+	push	ax			; save registers
+	push	cx			;  ...
+	push	di			;  ...
+	push	si			;  ...
+	mov	ax,ds			; copy data segment to es
+	mov	es,ax			;  ...
+	mov	ax,videomem		; copy video segment to ds
+	mov	ds,ax			;  ... 
+tweak256line2:
+	movsb				; move the next pixel
+	add	di,3			; adjust the source addr (+4, not +1)
+	loop	tweak256line2		; loop if more dots this pass
+	mov	ax,es
+	mov	ds,ax			; restore data segement to ds
+	pop	si			; restore the saved registers
+	pop	di			;  ...
+	pop	cx			;  ...
+	pop	ax			;  ...
+	dec	bx			; one less extra pixel
+	cmp	bx,0			; out of extra pixels?
+	jne	noextra
+	dec	cx			; yup - next time one fewer to write
+noextra:
+	inc	di			; offset the source 1 byte
+	inc	ah			; set up for the next video plane
+	and	ah,3
+	cmp	ah,0			; at last plane?
+	jne     notlastplane
+	inc	si			; bump up video memory 
+notlastplane:			
+	cmp	ah,plane		; back to first plane?
+	jne	tweak256line1		;  nope.  perform another loop.
+        ret
+tweak256readline	endp
+
+
 f85line proc    near
 
-	mov ax, 0           ;a line is a box one line high
-	mov bx, rowcount
-	mov cx, xdots
-	mov dx, 1
-	
 	call    fr85wbox        ;put out the box
 	ret
 
 f85line endp
+
+f85readline proc    near
+
+	call    fr85rbox        ;read the box
+	ret
+
+f85readline endp
 
 
 ; ******************** Function videocleanup() **************************
@@ -2327,6 +2912,84 @@ videocleanup	endp
 ;	if newbox == 0, just erase old box.  Else erase old and draw new.
 
 drawbox	proc	uses di si es, newbox:word
+
+	cmp	f85flag,0		; special 8514/A mode?
+	jne	isan8514		; yup
+	jmp	not8514			; nope
+isan8514:
+	push	es			; it's popped at the end of 'drawbox'
+	push	ds			; set ES == DS momentarily
+	pop	es			;  ...
+	mov	cx,512			; set up an array of 'FF's
+	mov	ax,0ffffh		;  (used for XOR operations in 
+	mov	di,offset boxx+10	;  the 8514/A zoom-box routines)
+	rep	stosw			;  ...
+	cmp	boxcount,0		; is there an old box up?
+	je	draw8514		;  nope.  Skip this code.
+	mov	ax,boxx			; restore bottom line
+	mov	cx,boxx+2		;  ...
+	mov	bx,boxy			;  ...
+	mov	dx,boxy			;  ...
+	mov	si, offset boxx+10	; point to a line of 'ff's
+	call	fr85zoom		; do it
+	mov	ax,boxx			; restore top line
+	mov	cx,boxx+2		;  ...
+	mov	bx,boxy+2		;  ...
+	mov	dx,boxy+2		;  ...
+	mov	si, offset boxx+10	; point to a line of 'ff's
+	call	fr85zoom		; do it
+	mov	ax,boxx			; restore left
+	mov	cx,boxx			;  ...
+	mov	bx,boxy			;  ...
+	mov	dx,boxy+2		;  ...
+	mov	si, offset boxx+10	; point to a line of 'ff's
+	call	fr85zoom		; do it
+	mov	ax,boxx+2		; restore right
+	mov	cx,boxx+2		;  ...
+	mov	bx,boxy			;  ...
+	mov	dx,boxy+2		;  ...
+	mov	si, offset boxx+10	; point to a line of 'ff's
+	call	fr85zoom		; do it
+	mov	boxcount,0		; flag zoom-box is down
+draw8514:
+	mov	ax,ixmax		; save coords for later
+	mov	cx,ixmin		;  ...
+	mov	bx,iymax		;  ...
+	mov	dx,iymin		;  ...
+	mov	boxx,ax			; save coords for later
+	mov	boxx+2,cx		;  ...
+	mov	boxy,bx			;  ...
+	mov	boxy+2,dx		;  ...
+	cmp	newbox,0		; time to draw a new box?
+	je	end8514			;  nope
+	mov	ax,ixmax		; draw top line
+	mov	cx,ixmin		;  ...
+	mov	bx,iymin		;  ...
+	mov	dx,iymin		;  ...
+	mov	si, offset boxx+10	; point to a line of 'ff's
+	call	fr85zoom		; do it
+	mov	ax,ixmax		; draw bottom line
+	mov	cx,ixmin		;  ...
+	mov	bx,iymax		;  ...
+	mov	dx,iymax		;  ...
+	mov	si, offset boxx+10	; point to a line of 'ff's
+	call	fr85zoom		; do it
+	mov	ax,ixmin		; draw left line
+	mov	cx,ixmin		;  ...
+	mov	bx,iymax		;  ...
+	mov	dx,iymin		;  ...
+	mov	si, offset boxx+10	; point to a line of 'ff's
+	call	fr85zoom		; do it
+	mov	ax,ixmax		; draw right line
+	mov	cx,ixmax		;  ...
+	mov	bx,iymax		;  ...
+	mov	dx,iymin		;  ...
+	mov	si, offset boxx+10	; point to a line of 'ff's
+	call	fr85zoom		; do it
+	mov	boxcount,100		; flag zoom-box is up
+end8514:
+	jmp	endofdrawbox		;  we done
+not8514:
 
 	mov	step,1			; default step:  every pixel
 	mov	ax,ixmax		; just how big is this zoom-box?
@@ -2598,6 +3261,7 @@ noHGC:
 	mov	ax,offset nullwrite	; set up null write-a-dot routine
 	mov	bx,offset mcgaread	; set up null read-a-dot  routine
 	mov	cx,offset normaline 	; set up normal linewrite routine
+	mov	dx,offset mcgareadline	; set up normal linewrite routine
 	jmp	videomode		; return to common code
 
 videomodeisgood:
@@ -2623,7 +3287,7 @@ videomodetable 	dw	offset dullnormalmode	; mode 0
 	dw	offset diskmode		; mode 11
 	dw	offset f8514mode	; mode 12
 	dw	offset cgacolor		; mode 13
-	dw	offset dullnormalmode	; mode 14
+	dw	offset tandy1000tlmode	; mode 14
 	dw	offset trident256mode	; mode 15
 	dw	offset chipstech256mode	; mode 16
 	dw	offset ati256mode	; mode 17
@@ -2642,15 +3306,24 @@ videomodetable 	dw	offset dullnormalmode	; mode 0
 	dw	offset dullnormalmode	; mode 30
 	dw	offset dullnormalmode	; mode 31
 
+tandy1000tlmode:
+	mov	ax,offset tandywrite	; set up the Tandy write-a-dot routine
+	mov	bx,offset tandyread	; set up the Tandy read-a-dot  routine
+	mov	cx,offset normaline 	; set up the normal linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
+	jmp	videomode		; return to common code
 dullnormalmode:
 	mov	ax,offset normalwrite	; set up the BIOS write-a-dot routine
 	mov	bx,offset normalread	; set up the BIOS read-a-dot  routine
 	mov	cx,offset normaline 	; set up the normal linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
 	jmp	videomode		; return to common code
 mcgamode:
 	mov	ax,offset mcgawrite	; set up MCGA write-a-dot routine
 	mov	bx,offset mcgaread	; set up MCGA read-a-dot  routine
 	mov	cx,offset mcgaline 	; set up the MCGA linewrite routine
+;	mov	cx,offset normaline 	; set up the normal linewrite routine
+	mov	dx,offset mcgareadline 	; set up the normal lineread  routine
 	jmp	videomode		; return to common code
 tseng16mode:
         mov     tseng,1			; set chipset flag
@@ -2698,6 +3371,8 @@ vgamode:
 	mov	ax,offset vgawrite	; set up EGA/VGA write-a-dot routine.
 	mov	bx,offset vgaread	; set up EGA/VGA read-a-dot  routine
 	mov	cx,offset vgaline 	; set up the EGA/VGA linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	dx,offset vgareadline   ; set up the normal lineread  routine
 	jmp	videomode		; return to common code
 tseng256mode:
 	mov	tseng,1			; set chipset flag
@@ -2744,29 +3419,39 @@ super256mode:
 	mov	ax,offset super256write	; set up superVGA write-a-dot routine
 	mov	bx,offset super256read	; set up superVGA read-a-dot  routine
 	mov	cx,offset super256line 	; set up the  linewrite routine
+	mov	dx,offset super256readline ; set up the normal lineread  routine
+;	mov	dx,offset normalineread ; set up the normal lineread  routine
 	jmp	videomode		; return to common code
 tweak256mode:
 	mov	oktoprint,0		; NOT OK to printf() in this mode
 	mov	ax,offset tweak256write	; set up tweaked-256 write-a-dot
 	mov	bx,offset tweak256read	; set up tweaked-256 read-a-dot
-	mov	cx,offset tweak256line 	; set up the normal linewrite routine
+	mov	cx,offset tweak256line 	; set up tweaked-256 read-a-line
+;	mov	cx,offset normaline 	; set up the normal linewrite routine
+;	mov	dx,offset normalineread ; set up the normal lineread  routine
+	mov	dx,offset tweak256readline ; set up the normal lineread  routine
 	jmp	videomode		; return to common code
 cgacolor:
 	mov	ax,offset cgawrite	; set up CGA write-a-dot
 	mov	bx,offset cgaread	; set up CGA read-a-dot
+;	mov	cx,offset normaline 	; set up the normal linewrite routine
 	mov	cx,offset normaline 	; set up the normal linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
 	jmp	videomode		; return to common code
 ati1024mode:
 	mov	ativga,1		; set ATI flag.
 	mov	ax,offset ati1024write	; set up ATI1024 write-a-dot
 	mov	bx,offset ati1024read	; set up ATI1024 read-a-dot
+;	mov	cx,offset normaline 	; set up the normal linewrite routine
 	mov	cx,offset normaline 	; set up the normal linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
 	jmp	videomode		; return to common code
 diskmode:
 	call	diskstart		; start up the disk routines
 	mov	ax,offset diskwrite	; set up disk-vid write-a-dot routine
 	mov	bx,offset diskread	; set up disk-vid read-a-dot routine
 	mov	cx,offset normaline 	; set up the normal linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
 	mov	diskflag,1		; flag "disk-end" needed.
 	jmp	videomode		; return to common code
 yourownmode:
@@ -2774,6 +3459,7 @@ yourownmode:
 	mov	ax,offset videowrite	; set up ur-own-vid write-a-dot routine
 	mov	bx,offset videoread	; set up ur-own-vid read-a-dot routine
 	mov	cx,offset normaline 	; set up the normal linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
 	mov	videoflag,1		; flag "your-own-end" needed.
 	jmp	videomode		; return to common code
 targaMode:				; TARGA MODIFIED 2 June 89 - j mclain
@@ -2782,6 +3468,7 @@ targaMode:				; TARGA MODIFIED 2 June 89 - j mclain
 	mov	bx,offset tgaread	; 
 ;	mov	cx,offset tgaline 	; 
 	mov	cx,offset normaline 	; set up the normal linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
 	mov	tgaflag,1		; 
 	jmp	videomode		; return to common code
 f8514mode:                     ; 8514 modes
@@ -2798,12 +3485,16 @@ hgcmode:
 	mov	ax,offset hgcwrite	; set up HGC write-a-dot routine
 	mov	bx,offset hgcread	; set up HGC read-a-dot  routine
 	mov	cx,offset normaline	; set up normal linewrite routine
+	mov	dx,offset normalineread ; set up the normal lineread  routine
 	mov	HGCflag,1		; flag "HGC-end" needed.
 	jmp	videomode		; return to common code
 f85ok:
 	mov	ax,offset f85write  	; 
 	mov	bx,offset f85read   	; 
 	mov	cx,offset f85line   	; 
+	mov	dx,offset f85readline  	; 
+;	mov	cx,offset normaline 	; set up the normal linewrite routine
+;	mov	dx,offset normalineread ; set up the normal lineread  routine
 	mov	f85flag,1       	; 
 	mov	oktoprint,0     	; NOT OK to printf() in this mode
 	jmp	videomode       	; return to common code
@@ -2813,6 +3504,7 @@ videomode:
 	mov	dotwrite,ax		; save the results
 	mov	dotread,bx		;  ...
 	mov	linewrite,cx		;  ...
+	mov	lineread,dx		;  ...
 
 	mov	ax,colors		; calculate the "and" value
 	dec	ax			; to use for eventual color 
@@ -2888,6 +3580,18 @@ setvideobios_doit:
 	push	bp			; some BIOS's don't save this
 	int	10h			; do it via the BIOS.
 	pop	bp			; restore the saved register
+	cmp	dotmode,14		; Tandy mode?
+	jne	setvideobios_notandy	;  nope.
+	cmp	ax,3			; trying to get into text mode?
+	je	setvideobios_notandy	;  yup - avoid tandy-specific code.
+	cmp	ax,6			; trying to get into text mode?
+	je	setvideobios_notandy	;  yup - avoid tandy-specific code.
+	cmp	ax,83h			; trying to get into text mode?
+	je	setvideobios_notandy	;  yup - avoid tandy-specific code.
+	cmp	ax,86h			; trying to get into text mode?
+	je	setvideobios_notandy	;  yup - avoid tandy-specific code.
+	call	tandysetup		; tandy-specific setup
+setvideobios_notandy:
 	cmp	dotmode,28		; VESA mode?
 	jne	setvideobios_worked	;  Nope. Return.
 	cmp	ah,0			; did it work?
@@ -3142,6 +3846,8 @@ tnot8514:
 	je	setfortextnocga		;  not this one
 	cmp	ydots,348		; (only Hercules modes have this res)
 	je	setfortextcga		;  ...
+	cmp	dotmode,14		; (klooge for Tandy 640x200x16)
+	je	setfortextcga
 	cmp	videoax,7		;  ...
 	ja	setfortextnocga		;  not this one
 setfortextcga:
@@ -3158,6 +3864,12 @@ setfortextcga:
 	mov	ax,0b000h		; (from here)
 	mov	cx,4000h		; (save this many words)
 setfortextcganoherc:
+	cmp	dotmode,14		; (klooge for Tandy 640x200x16)
+	jne	setfortextnotandy
+	mov	di,0			; save the video data here
+	mov	ax,0a000h		; video data starts here <XXX>
+	mov	cx,4000h		; save this many words
+setfortextnotandy:
 	push	ds			; save DS for a tad
 	mov	ds,ax			;  reset DS
 	cld				; clear the direction flag
@@ -3225,11 +3937,15 @@ f85isgraphics:
 	jmp	setforgraphicsreturn
 gnot8514:
 	cmp	videoax,0		; check for CGA modes
-	je	setforgraphicsnocga	;  not this one
+	je	setforgraphicsnocga_x	;  not this one
 	cmp	ydots,348		; (only Hercules modes have this res)
 	je	setforgraphicscga	;  ...
+	cmp	dotmode,14		; (klooge for Tandy 640x200x16)
+	je	setforgraphicscga	;  ...
 	cmp	videoax,7		;  ...
-	ja	setforgraphicsnocga	;  not this one
+	jbe	setforgraphicscga	;  CGA mode
+setforgraphicsnocga_x:
+	jmp	setforgraphicsnocga
 setforgraphicscga:
 	cmp	ydots,348		;check for Hercules-specific dotmode
 	jne	tnotHGC2		;  (nope.  dull-normal stuff)
@@ -3237,6 +3953,10 @@ setforgraphicscga:
 	mov	HGCflag,1		; flag "HGC-end" needed.
 	jmp	short twasHGC2		; bypass the normal setvideo call
 tnotHGC2:
+	cmp	dotmode,14		; tandy 640x200x16 mode?
+	jne	tnottandy1		;  nope
+	mov	orvideo,80h		; set the video to preserve memory
+tnottandy1:
 	mov	ax,videoax		; set up the video call
 	mov	bx,videobx		;  ...
 	mov	cx,videocx		;  ...
@@ -3255,6 +3975,12 @@ twasHGC2:
 	mov	ax,0b000h		; (to here)
 	mov	cx,4000h		; (restore this many words)
 setforgraphicscganoherc:
+	cmp	dotmode,14		; tandy 640x200x16 mode?
+	jne	tnottandy2		;  nope
+	mov	si,0			; (restore 32K)
+	mov	ax,0a000h		; (to here)
+	mov	cx,4000h		; (restore this many words)
+tnottandy2:
 	push	ds			; save DX for a tad
 	mov	es,ax			; load the dest seg into ES
 	mov	ds,bx			; restore it from the source seg
@@ -3454,26 +4180,77 @@ putbly:	inc	dx			; next y-dot
 	ret				; we done.
 putblock	endp
 
-; ***************Function out_line(color) *********************
+; ***************Function out_line(pixels,linelen) *********************
 
 ;	This routine is a 'line' analog of 'putcolor()', and sends an
 ;	entire line of pixels to the screen (0 <= xdot < xdots) at a clip
 ;	Called by the GIF decoder
 
-out_line	proc	uses di si es, ycolor:word
-	mov	ax,rowcount		; sanity check: don't proceed
-	cmp	ax,ydots		; beyond the end of the screen
+out_line	proc	uses di si es, pixels:word, linelen:word
+        xor	cx,cx			; start on left side
+	mov	dx,rowcount		; sanity check: don't proceed
+	cmp	dx,ydots		; beyond the end of the screen
 	ja	out_lineret		;  ...
 	mov	ax,0a000h		; EGA, VGA, MCGA starts here
 	mov	es,ax			; save it here during this routine
-	mov	si,offset ycolor	; get the color for dot 'x'
+        mov	ax, linelen		; how many pixels to read
+	dec	ax			; last pixel column
+	mov	si,offset pixels	; get the color for dot 'x'
         call    linewrite		; mode-specific linewrite routine
         inc	rowcount		; next row
 out_lineret:
         xor	ax,ax			; return 0
 	ret
+
 out_line	endp
 
+; ***Function get_line(int row,int startcol,int stopcol, unsigned char *pixels) ***
+
+;	This routine is a 'line' analog of 'getcolor()', and gets a segment
+;	of a line from the screen and stores it in pixels[] at one byte per
+;       pixel
+;	Called by the GIF decoder
+
+get_line	proc uses di si es, row:word, startcol:word, stopcol:word, pixels:word
+        mov	cx,startcol		; sanity check: don't proceed
+	cmp	cx,xdots		; beyond the right end of the screen
+	ja	get_lineret		;  ...
+	mov	dx,row			; sanity check: don't proceed
+	cmp	dx,ydots		; beyond the bottom of the screen
+	ja	get_lineret		;  ...
+        mov	ax, stopcol		; how many pixels to read
+	mov	di,offset pixels	; get the color for dot 'x'
+        call    lineread		; mode-specific linewrite routine
+get_lineret:
+        xor	ax,ax			; return 0
+	ret
+get_line	endp
+
+; ***Function put_line(int row,int startcol,int stopcol, unsigned char *pixels) ***
+
+;	This routine is a 'line' analog of 'putcolor()', and puts a segment
+;	of a line from the screen and stores it in pixels[] at one byte per
+;       pixel
+;	Called by the GIF decoder
+
+put_line	proc uses di si es, row:word, startcol:word, stopcol:word, pixels:word
+        mov	cx,startcol		; sanity check: don't proceed
+	cmp	cx,xdots		; beyond the right end of the screen
+	ja	put_lineret		;  ...
+	mov	dx,row			; sanity check: don't proceed
+	cmp	dx,ydots		; beyond the bottom of the screen
+	ja	put_lineret		;  ...
+	mov	ax,0a000h		; EGA, VGA, MCGA starts here
+	mov	es,ax			; save it here during this routine
+        mov	ax, stopcol		; how many pixels to read
+	cmp	ax,xdots		; beyond the right end of the screen
+	ja	put_lineret		;  ...
+	mov	si,offset pixels	; put the color for dot 'x'
+        call    linewrite		; mode-specific linewrite routine
+put_lineret:
+        xor	ax,ax			; return 0
+	ret
+put_line	endp
 
 ; PUTSTR.asm puts a string directly to video display memory. Called from C by:
 ;    putstring(row, col, attr, string, divider) where

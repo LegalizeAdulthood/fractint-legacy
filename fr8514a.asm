@@ -12,12 +12,15 @@ ENDIF
 
 
 HOPEN	equ	8
+HSMX	equ	9
 HINT	equ	16
 HLDPAL	equ	19
 HBBW	equ	21
 HBBR	equ	23
 HBBCHN	equ	24
+HBBC	equ	25
 HQMODE	equ	29
+HRECT	equ	32
 HCLOSE	equ	34
 HINIT	equ	48
 HSYNC	equ	49
@@ -46,6 +49,7 @@ hclosedata	dw	2, 0
 hinitdata	dw	2, 0
 bbw		dw	10, 8, 0, 0, 0, 0
 bbr		dw	12, 8, 0, 0, 0, 0, 0
+smx		dw	2, 0
 chn		dw	6
 		dd	linedata
 		dw	1
@@ -235,7 +239,7 @@ close8514	endp
 
 
 
-fr85wdot	proc	far
+fr85wdot	proc	far uses si
 
 	mov	linedata, al
 
@@ -243,6 +247,7 @@ fr85wdot	proc	far
 	mov	bbw + 6, 1
 	add	cx, xadj
 	add	dx, yadj
+
 	mov	bbw + 8, cx
 	mov	bbw + 10, dx
 	mov	si, offset bbw
@@ -256,23 +261,24 @@ fr85wdot	proc	far
 	mov	ax, HBBCHN
 	call	callafi
 
+fr85wdotx:
 	ret
 
 fr85wdot	endp
 
 
-fr85wbox	proc	far
+fr85wbox	proc	far uses si
 
 	add	ax, xadj
-	add	bx, yadj
+	add	cx, xadj
+	add	dx, yadj
+	sub	ax, cx
 	mov	chn + 2, si		;point to data
-	mov	bbw + 4, cx		;define the rectangle
-	mov	bbw + 6, dx
-	mov	bbw + 8, ax
-	mov	bbw + 10, bx
-	mov	ax, dx
-	mul	cx
 	mov	chn + 6, ax
+	mov	bbw + 4, ax		;define the rectangle
+	mov	bbw + 6, 1
+	mov	bbw + 8, cx
+	mov	bbw + 10, dx
 
 	mov	si, offset bbw
 	mov	ax, HBBW
@@ -287,8 +293,7 @@ fr85wbox	proc	far
 fr85wbox	endp
 
 
-fr85rdot	proc	far
-
+fr85rdot	proc	far uses si
 
 	mov	bbr + 4, 1		;define the rectangle
 	mov	bbr + 6, 1
@@ -300,18 +305,85 @@ fr85rdot	proc	far
 	mov	ax, HBBR
 	call	callafi
 
-	mov	chn, 1			;get the data
 	mov	si, offset chn
+	mov	word ptr [si + 2], offset linedata
+	mov	word ptr [si + 6], 1	;send the data
 	mov	ax, HBBCHN
 	call	callafi
 
 
 	mov	al, linedata
 
-
+fr85rdotx:
 	ret
 
 fr85rdot	endp
+
+fr85rbox	proc	far uses si
+
+	add	ax, xadj
+	add	cx, xadj
+	add	dx, yadj
+	sub	ax, cx
+	mov	chn + 2, di		;point to data
+	mov	chn + 6, ax
+	mov	bbr + 4, ax		;define the rectangle
+	mov	bbr + 6, 1
+	mov	bbr + 10, cx
+	mov	bbr + 12, dx
+
+	mov	si, offset bbr
+	mov	ax, HBBR
+	call	callafi
+
+	mov	si, offset chn
+	mov	ax, HBBCHN
+	call	callafi
+
+	ret
+
+fr85rbox	endp
+
+fr85zoom	proc	far uses si
+
+	add	ax, xadj		; ending col
+	add	bx, yadj		; ending row
+	add	cx, xadj		; starting col
+	add	dx, yadj		; starting row
+	sub	ax, cx			; how many columns?
+	inc	ax			;  this many
+	sub	bx, dx			; how many rows?
+	inc	bx			;  this many
+	mov	bbw + 4, ax		; width
+	mov	bbw + 6, bx		; height
+	mov	bbw + 8, cx		; source col
+	mov	bbw + 10, dx		; source row
+	add	ax, bx			; how many dots??
+	dec	ax			;  this many
+	mov	chn + 2, si		;point to data
+	mov	chn + 6, ax
+
+	mov	si, offset smx		; define the mix
+	mov	smx+2, 0016h		; screen XOR new
+	mov	ax, HSMX		; set the mix
+	call	callafi			; do it
+
+	mov	si, offset bbw		; set the blit
+	mov	ax, HBBW		; blit mem to vid mem
+	call	callafi			; do it
+
+	mov	si, offset chn		; set the move
+	mov	ax, HBBCHN		; chaining
+	call	callafi			; do it
+
+	mov	si, offset smx		; define the mix
+	mov	smx+2, 0002h		; overlay
+	mov	ax, HSMX		; set the mix
+	call	callafi			; do it
+
+	ret
+
+fr85zoom	endp
 
 w8514pal	proc	far
 

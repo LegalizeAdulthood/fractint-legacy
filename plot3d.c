@@ -12,6 +12,10 @@
 #define MAGENTA	    3
 
 int whichimage;
+
+/* MRR */
+extern int fractype;
+
 extern int mapset;
 extern int xadjust;
 extern int yadjust;
@@ -102,7 +106,37 @@ void plot3dsuperimpose16(int x,int y,int color)
    }
 }
 
+/* MRR - changed function */
 void plot3dsuperimpose256(x,y,color)
+{
+   int tmp;
+   if (color != 0)             /* Keeps index 0 still 0 */
+   {
+       /* my mind is fried - lower indices = darker colors is EASIER! */
+       color = colors - color; /*  Reverses color order */
+       color = 1 + color / 18; /*  Looks weird but maps colors 1-255 to 15
+                                   relatively even ranges */
+   }
+   tmp = getcolor(x,y);
+   /* map to 16 colors */
+   if(whichimage == 1) /* RED */
+   {
+      if(red_local_left < x && x < red_local_right)
+         putcolor(x,y,color|(tmp&240));
+             /* Overwrite prev Red don't mess w/blue */
+   }
+   else if(whichimage == 2) /* BLUE */
+   {
+      if(blue_local_left < x && x < blue_local_right)
+      {
+         color = color <<4;
+         putcolor(x,y,color|(tmp&15));
+            /* Overwrite previous blue, don't mess with existing red */
+      }
+   }
+}
+/* MRR - added function */
+void plotIFS3dsuperimpose256(x,y,color)
 {
    int tmp;
    if (color != 0)             /* Keeps index 0 still 0 */
@@ -162,7 +196,13 @@ plot_setup()
       break;  
    case 2:
       if(colors == 256)
-         standardplot = plot3dsuperimpose256;
+
+/* MRR - select different plot function if IFS3d */
+         if (fractype != 27)
+             standardplot = plot3dsuperimpose256;
+         else
+             standardplot = plotIFS3dsuperimpose256;
+
       else
          standardplot = plot3dsuperimpose16;
       break;
@@ -280,3 +320,4 @@ plot_setup()
       spindac(0,1); /* load it, but don't spin */
    }
 }
+
