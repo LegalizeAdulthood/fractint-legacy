@@ -6,12 +6,17 @@
 #include <string.h>
 #include <time.h>
 #include <signal.h>
+
 #ifndef XFRACT
 #include <io.h>
+#endif
+
+#ifndef USE_VARARGS
 #include <stdarg.h>
 #else
 #include <varargs.h>
 #endif
+
 #include <ctype.h>
 
   /* #include hierarchy for fractint is a follows:
@@ -81,7 +86,7 @@ int compiled_by_turboc = 0;
         int     sxoffs,syoffs;          /* physical top left of logical screen */
         int     xdots, ydots;           /* # of dots on the logical screen     */
         double  dxsize, dysize;         /* xdots-1, ydots-1         */
-        int     colors;                 /* maximum colors available */
+        int     colors = 256;           /* maximum colors available */
         long    maxit;                  /* try this many iterations */
         int     boxcount;               /* 0 if no zoom-box yet     */
         int     zrotate;                /* zoombox rotation         */
@@ -93,8 +98,8 @@ int compiled_by_turboc = 0;
         long    creal, cimag;           /* real, imag'ry parts of C */
         long    delx, dely;             /* screen pixel increments  */
         long    delx2, dely2;           /* screen pixel increments  */
-        LDBL   delxx, delyy;           /* screen pixel increments  */
-        LDBL   delxx2, delyy2;         /* screen pixel increments  */
+        LDBL    delxx, delyy;           /* screen pixel increments  */
+        LDBL    delxx2, delyy2;         /* screen pixel increments  */
         long    delmin;                 /* for calcfrac/calcmand    */
         double  ddelmin;                /* same as a double         */
         double  param[MAXPARAMS];       /* parameters               */
@@ -129,8 +134,11 @@ int compiled_by_turboc = 0;
         int     viewcrop;               /* nonzero to crop default coords */
         float   finalaspectratio;       /* for view shape and rotation */
         int     viewxdots,viewydots;    /* explicit view sizing */
+        int     video_cutboth;          /* nonzero to keep virtual aspect */
+        int     zscroll;                /* screen/zoombox 0 fixed, 1 relaxed */
 
-        HISTORY  far *history = NULL;
+/*      HISTORY  far *history = NULL; */
+        U16 history = 0;
         int maxhistory = 10;
 
 /* variables defined by the command line/files processor */
@@ -170,6 +178,8 @@ int no_sub_images;
 int autobrowse,doublecaution;
 char brwscheckparms,brwschecktype;
 char browsemask[13];
+int scale_map[12] = {1,2,3,4,5,6,7,8,9,10,11,12}; /*RB, array for mapping notes to a (user defined) scale */
+
 
 #define RESTART           1
 #define IMAGESTART        2
@@ -199,7 +209,12 @@ static void my_floating_point_err(int sig)
       overflow = 1;
 }
 
-void main(int argc, char **argv)
+#ifdef XFRACT
+int
+#else
+void
+#endif
+main(int argc, char **argv)
 {
    int     resumeflag;
    int     kbdchar;                     /* keyboard key-hit value       */
@@ -210,6 +225,7 @@ void main(int argc, char **argv)
    signal( SIGFPE, my_floating_point_err );
 
    initasmvars();                       /* initialize ASM stuff */
+   InitMemory();
    checkfreemem(0);
    load_videotable(1); /* load fractint.cfg, no message yet if bad */
 #ifdef XFRACT
@@ -225,9 +241,25 @@ restart:   /* insert key re-starts here */
    no_sub_images = FALSE;
    toosmall = 6;
    minbox   = 3;
-   strcpy(browsemask,"*.GIF");
+   strcpy(browsemask,"*.gif");
    strcpy(browsename,"            ");
    name_stack_ptr= -1; /* init loaded files stack */
+   
+   evolving = FALSE;
+   paramrangex = 4;
+   opx = newopx = -2.0;
+   paramrangey = 3;
+   opy = newopy = -1.5;
+   odpx = odpy = 0;
+   gridsz = 9;
+   fiddlefactor = 1;
+   fiddle_reduction = 1.0;
+   this_gen_rseed = (unsigned int)clock_ticks();
+   srand(this_gen_rseed);
+   initgene(); /*initialise pointers to lots of fractint variables for the evolution engine*/
+   start_showorbit = 0;
+   showdot = -1; /* turn off showdot if entered with <g> command */
+
    if (fract_dir1==NULL)
        fract_dir1 = ".";
    calc_status = -1;                    /* no active fractal image */
@@ -243,8 +275,14 @@ restart:   /* insert key re-starts here */
    memcpy(olddacbox,dacbox,256*3);      /* save in case colors= present */
 
    if (debugflag == 8088)                cpu =  86; /* for testing purposes */
-   if (debugflag == 2870 && fpu >= 287 ) fpu = 287; /* for testing purposes */
-   if (debugflag ==  870 && fpu >=  87 ) fpu =  87; /* for testing purposes */
+   if (debugflag == 2870 && fpu >= 287 ) {
+      fpu = 287; /* for testing purposes */
+      cpu = 286;
+   }
+   if (debugflag ==  870 && fpu >=  87 ) {
+      fpu =  87; /* for testing purposes */
+      cpu =  86;
+   }
    if (debugflag ==   70)                fpu =   0; /* for testing purposes */
    if (getenv("NO87")) fpu = 0;
    fract_dir1 = getenv("FRACTDIR");
@@ -256,24 +294,8 @@ restart:   /* insert key re-starts here */
 #else
    fract_dir2 = ".";
 #endif
-   if (fpu == 0)       iit = 0;
    if (fpu >= 287 && debugflag != 72)   /* Fast 287 math */
       setup287code();
-
-   /* IIT math coprocessor chip logic */
-   if(iit == 0 && fpu)
-      if(IITCoPro())
-         iit = 3;  /* detect iit chip */
-   if(iit < 0) iit = 0;  /* user wants chip turned off */
-   if(iit>0)
-   {
-      if(F4x4Check())
-         iit = 2;    /* semaphore TSR is installed */
-      else if(iit == 3)
-         iit = 0;    /* we detetct chip but no tsr - don't use */
-      /* else user forced iit == 1 */
-   }
-
    adapter_detect();                    /* check what video is really present */
    if (debugflag >= 9002 && debugflag <= 9100) /* for testing purposes */
       if (video_type > (debugflag-9000)/2)     /* adjust the video value */
@@ -293,7 +315,7 @@ restart:   /* insert key re-starts here */
 #endif
 
    max_colors = 256;                    /* the Windows version is lower */
-   max_kbdcount=(cpu==386) ? 80 : 30;   /* check the keyboard this often */
+   max_kbdcount=(cpu>=386) ? 80 : 30;   /* check the keyboard this often */
 
    if (showfile && initmode < 0) {
       intro();                          /* display the credits screen */
@@ -341,6 +363,7 @@ restorestart:
            strcpy(file_name_stack[name_stack_ptr],browsename);
      }
 
+      evolving = viewwindow = 0;
       showfile = 0;
       helpmode = -1;
       tabmode = 1;
@@ -415,7 +438,11 @@ imagestart:                             /* calc/display a new image */
 #endif
       if (kbdchar == 'd') {                     /* shell to DOS */
          setclear();
+#ifndef XFRACT
          printf("\n\nShelling to DOS - type 'exit' to return\n\n");
+#else
+         printf("\n\nShelling to Linux/Unix - type 'exit' to return\n\n");
+#endif
          shell_to_dos();
          goto imagestart;
          }
@@ -468,6 +495,10 @@ imagestart:                             /* calc/display a new image */
          get_browse_params();
          goto imagestart;
          }
+      if (kbdchar == 6) {                       /* ctrl f = sound parms*/
+         get_sound_params();
+         goto imagestart;
+         }
       if (kbdchar == 'f') {                     /* floating pt toggle */
          if (usr_floatflag == 0)
             usr_floatflag = 1;
@@ -490,6 +521,7 @@ imagestart:                             /* calc/display a new image */
    helpmode = HELPMAIN;         /* now use this help mode */
    resumeflag = 0;  /* allows taking goto inside big_while_loop() */
 resumeloop:
+   param_history(0); /* save old history */
    /* this switch processes gotos that are now inside function */
    switch(big_while_loop(&kbdmore,&stacked,resumeflag))
    {
@@ -502,12 +534,17 @@ resumeloop:
    default:
       break;
    }
+#ifdef XFRACT
+   return(0);
+#endif
 }
 
 int check_key()
 {
    int key;
    if((key = keypressed()) != 0) {
+      if (show_orbit)
+         scrub_orbit();
       if(key != 'o' && key != 'O') {
          fflush(stdout);
          return(-1);
@@ -524,7 +561,7 @@ int check_key()
      timer(1,NULL,int width)            decoder
      timer(2)                           encoder
   */
-#ifndef XFRACT
+#ifndef USE_VARARGS
 int timer(int timertype,int(*subrtn)(),...)
 #else
 int timer(va_alist)
@@ -539,7 +576,7 @@ va_dcl
    int i;
    int do_bench;
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
    va_start(arg_marker,subrtn);
 #else
    int timertype;

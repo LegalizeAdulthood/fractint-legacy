@@ -52,13 +52,18 @@
 #define INCLUDE_COMMON  /* tell helpcom.h to include common code */
 
 
-#ifndef XFRACT
+#ifdef XFRACT
+#define strupr strlwr
+#else
 #include <io.h>
+#endif
+
+#ifndef USE_VARARGS
 #include <stdarg.h>
 #else
 #include <varargs.h>
-#define strupr strlwr
 #endif
+
 #include <fcntl.h>
 #include <string.h>
 #include <ctype.h>
@@ -78,6 +83,12 @@
 #include "port.h"
 #include "helpcom.h"
 
+#ifdef XFRACT
+extern int stricmp(char *, char *);
+extern int strnicmp(char *, char *, int);
+extern int filelength(int);
+extern int _splitpath(char *,char *,char *,char *,char *);
+#endif
 
 /*
  * When defined, SHOW_ERROR_LINE will cause the line number in HC.C where
@@ -295,7 +306,7 @@ void print_msg(char *type, int lnum, char *format, va_list arg)
    }
 
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 void fatal(int diff, char *format, ...)
 #else
 void fatal(va_alist)
@@ -304,7 +315,7 @@ void fatal(va_alist)
    {
    va_list arg;
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
    va_start(arg, format);
 #else
    int diff;
@@ -324,7 +335,7 @@ void fatal(va_alist)
    }
 
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 void error(int diff, char *format, ...)
 #else
 void error(va_alist)
@@ -333,7 +344,7 @@ void error(va_alist)
    {
    va_list arg;
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
    va_start(arg, format);
 #else
    int diff;
@@ -350,7 +361,7 @@ void error(va_alist)
    }
 
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 void warn(int diff, char *format, ...)
 #else
 void warn(va_alist)
@@ -358,7 +369,7 @@ void warn(va_alist)
 #endif
    {
    va_list arg;
-#ifndef XFRACT
+#ifndef USE_VARARGS
    va_start(arg, format);
 #else
    int diff;
@@ -375,7 +386,7 @@ void warn(va_alist)
    }
 
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 void notice(char *format, ...)
 #else
 void notice(va_alist)
@@ -383,7 +394,7 @@ void notice(va_alist)
 #endif
    {
    va_list arg;
-#ifndef XFRACT
+#ifndef USE_VARARGS
    va_start(arg, format);
 #else
    char *format;
@@ -396,7 +407,7 @@ void notice(va_alist)
    }
 
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 void msg(char *format, ...)
 #else
 void msg(va_alist)
@@ -404,13 +415,13 @@ va_dcl
 #endif
    {
    va_list arg;
-#ifdef XFRACT
+#ifdef USE_VARARGS
    char *format;
 #endif
 
    if (quiet_mode)
       return;
-#ifndef XFRACT
+#ifndef USE_VARARGS
    va_start(arg, format);
 #else
    va_start(arg);

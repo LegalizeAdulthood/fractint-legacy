@@ -33,7 +33,7 @@
 ;
 ;       keypressed()
 ;       getakey()
-;       buzzer()
+;       buzzer() ; renamed to buzzerpcspkr()
 ;       delay()
 ;       tone()
 ;       snd()
@@ -62,12 +62,6 @@
 ;       cputype()
 ;       fputype()
 ;
-; ---- IIT FPU Support
-;
-;       load_mat()
-;       mult_vec_iit()
-;       IITCoPro()
-;
 
 
 ;                        required for compatibility if Turbo ASM
@@ -91,6 +85,8 @@ ENDIF
         extrn   slideshw:far
         extrn   recordshw:far
         extrn   stopslideshow:far
+        extrn   mute:far
+        extrn   scrub_orbit:far
 
 .DATA
 
@@ -106,13 +102,13 @@ ENDIF
         extrn   got_status:word         ; in calcfrac.c
         extrn   currow:word             ; in calcfrac.c
         extrn   slides:word             ; in cmdfiles.c
-
+        extrn   show_orbit:word         ; in calcfrac.c
+        extrn   taborhelp:word          ; in fracsubr.c
 
 ; ************************ Public variables *****************************
 
 public          cpu                     ; used by 'calcmand'
 public          fpu                     ; will be used by somebody someday
-public          iit                     ; IIT fpu?
 public          lookatmouse             ; used by 'calcfrac'
 public          saveticks               ; set by fractint
 public          savebase                ; set by fractint
@@ -129,7 +125,7 @@ public          overflow                ; Mul, Div overflow flag: 0 means none
 public          keybuffer                       ; needed for ungetakey
 public          prefix, suffix, dstack, decoderline ; for the Decoder
 public          tstack                          ; for the prompting routines
-public          strlocn, teststring, block      ; used by the Encoder
+public          strlocn, block                  ; used by the Encoder
 public          boxx, boxy, boxvalues           ; zoom-box arrays
 public          olddacbox                       ; temporary DAC saves
 public          rlebuf                          ; Used ty the TARGA En/Decoder
@@ -175,13 +171,12 @@ public          paldata, stbuff                 ; 8514A arrays, (FR8514A.ASM)
 ; Note that decoder using an 8514a is worst case, uses all arrays at once.
 ; Keep db lengths even so that word alignment is preserved for speed.
 
-block           label   byte            ; encoder(266)
+block           label   byte            ; encoder(4k), loadfile(4k),
 suffix          dw      2048 dup(0)     ; decoder(4k), vidswitch(256),
                                         ; savegraphics/restoregraphics(4k)
 
 tstack          label   byte            ; prompts(4k), ifsload(4k),
                                         ; make_batch(4k)
-teststring      label   byte            ; encoder(100)
 olddacbox       label   byte            ; fractint(768), prompts(768)
 dstack          dw      2048 dup(0)     ; decoder(4k), solidguess(4k), btm(2k)
                                         ;   zoom(2k), printer(2400)
@@ -204,9 +199,8 @@ stbuff          db      415 dup(0)      ; 8514a(415)
 ; ************************ Internal variables *****************************
 
                 align   2
-cpu             dw      0               ; cpu type: 86, 186, 286, or 386
+cpu             dw      0               ; cpu type: 86, 186, 286, 386, 486, 586...
 fpu             dw      0               ; fpu type: 0, 87, 287, 387
-iit             dw      0               ; iit fpu:  0=no, 1=yes
 _dataseg_xx     dw      0               ; our "near" data segment
 
 overflow        dw      0               ; overflow flag
@@ -308,7 +302,7 @@ cmpextra        endp
 ;       z = multiply(x,y,n)
 ;
 ;       requires the presence of an external variable, 'cpu'.
-;               'cpu' == 386 if a 386 is present.
+;               'cpu' >= 386 if a >=386 is present.
 
 .8086
 
@@ -338,7 +332,7 @@ UNFRAME MACRO regs
 multiply        proc    x:dword, y:dword, n:word
 
         cmp     cpu,386                 ; go-fast time?
-        jne     slowmultiply            ; no.  yawn...
+        jb      slowmultiply            ; no.  yawn...
 
 .386                                    ; 386-specific code starts here
 
@@ -510,7 +504,7 @@ multiply        endp
 ;       z = divide(x,y,n);      /* z = x / y; */
 ;
 ;       requires the presence of an external variable, 'cpu'.
-;               'cpu' == 386 if a 386 is present.
+;               'cpu' >= 386 if a >=386 is present.
 
 
 .8086
@@ -518,7 +512,7 @@ multiply        endp
 divide          proc    uses di si es, x:dword, y:dword, n:word
 
         cmp     cpu,386                 ; go-fast time?
-        jne     slowdivide              ; no.  yawn...
+        jb      slowdivide              ; no.  yawn...
 
 .386                                    ; 386-specific code starts here
 
@@ -720,6 +714,11 @@ keypressed1:
         mov     keybuffer,0                     ; say no key hit
         xor     ax,ax
         push    ax
+        cmp     show_orbit,0
+        je      noscrub1
+        call    far ptr scrub_orbit             ; clean up the orbits
+        mov     taborhelp,1
+noscrub1:
         call    far ptr help                    ; help!
         pop     ax
 ;       call    far ptr restore_active_ovly     ; help might've clobbered ovly
@@ -735,6 +734,11 @@ keypressed3:
         cmp     tabmode,0                       ; tab enabled?
         je      keypressedx                     ;  nope
         mov     keybuffer,0                     ; say no key hit
+        cmp     show_orbit,0
+        je      noscrub2
+        call    far ptr scrub_orbit             ; clean up the orbits
+        mov     taborhelp,1
+noscrub2:
         call    far ptr tab_display             ; show the TAB status
 ;       call    far ptr restore_active_ovly     ; tab might've clobbered ovly
         sub     ax,ax
@@ -752,9 +756,12 @@ gknhloop:
 getakeynohelp endp
 
 getakey proc
-        cmp     soundflag,1                     ; is the sound on?
-        jl      getakeyloop                     ; ok, sound is off
-        call    far ptr nosnd                   ; turn off sound
+        mov     bx,soundflag
+        and     bx,7                            ; is the sound on?
+        jz      getakeyloop                     ; ok, sound is off
+        cmp     bx,1                            ; if = 1, just using buzzer
+        je      getakeyloop
+        call    far ptr mute                    ; turn off sound
 getakeyloop:
         call    far ptr getkeynowait            ; check for keystroke
         jnc     getakeyloop                     ;  no key, loop till we get one
@@ -844,7 +851,7 @@ getkeyyup:
         ret
 getkeynowait endp
 
-; ****************** Function buzzer(int buzzertype) *******************
+; ****************** Function buzzerpcspkr(int buzzertype) *******************
 ;
 ;       Sound a tone based on the value of the parameter
 ;
@@ -869,9 +876,9 @@ buzzer2         dw      40,500          ; "error" condition (razzberry)
 
 ; ***********************************************************************
 
-buzzer  proc    uses si, buzzertype:word
-        cmp     soundflag,0             ; is the sound supressed?
-        je      buzzerreturn            ;  yup.  bail out.
+buzzerpcspkr  proc    uses si, buzzertype:word
+        test    soundflag,08h           ; is the speaker sound supressed?
+        jz      buzzerreturn            ;  yup.  bail out.
         mov     si, offset buzzer0      ; normal completion frequency
         cmp     buzzertype,0            ; normal completion?
         je      buzzerdoit              ; do it
@@ -893,7 +900,7 @@ buzzerdoit:
         jmp     short buzzerdoit        ; get the next tone
 buzzerreturn:
         ret                             ; we done
-buzzer  endp
+buzzerpcspkr  endp
 
 ; ***************** Function delay(int delaytime) ************************
 ;
@@ -966,9 +973,9 @@ tone    endp
 
 snd     proc    hertz:word              ;Sound the speaker
         cmp     hertz, 20
-        jle     hertzbad
+        jl      hertzbad
         cmp     hertz, 5000
-        jge     hertzbad
+        jg      hertzbad
         mov     ax,0                    ;Convert hertz
         mov     dx, 12h                 ;for use by routine
         div     hertz
@@ -1459,8 +1466,12 @@ readticker endp
 ;       186     80186 or 80188
 ;       286     80286
 ;       386     80386 or 80386sx
+;       486     80486 or 80486sx
+;       586     pentium
 ;       -286    80286 in protected mode
 ;       -386    80386 or 80386sx in protected or 32-bit address mode
+;       -486    80486 or 80486sx in protected or 32-bit address mode
+;       -586    pentium in protected or 32-bit address mode
 ;
 ; The function ndptype() returns an integer based on the type of NDP
 ; it found, as follows:
@@ -1471,8 +1482,11 @@ readticker endp
 ;       87      8087
 ;       287     80287
 ;       387     80387
+;       487     80487
+;       587     80587
 ;
-; No provisions are made for the 80486 CPU/FPU or Weitek FPA chips.
+; No provisions are made for the Weitek FPA chips.  For the 80486 and above,
+; if an FPU is present it is CPU + 1.
 ;
 ; Neither function takes any arguments or affects any external storage,
 ; so there should be no memory-model dependencies.
@@ -1490,9 +1504,12 @@ cputype proc
         mov     ax, 186
         mov     cl, 32                  ;   186 uses count mod 32 = 0;
         shl     ax, cl                  ;   86 shifts 32 so ax = 0
-        jnz     exit                    ; Non-zero: no shift, so 186
+;        jnz     exit                    ; Non-zero: no shift, so 186
+        jz      notexit
+        jmp     exit                    ; Non-zero: no shift, so 186
+notexit:
         mov     ax, 86                  ; Zero: shifted out all bits
-        jmp     short exit
+        jmp     exit
 not86:
         pushf                           ; Test 16 or 32 operand size:
         mov     ax, sp                  ;   Pushed 2 or 4 bytes of flags?
@@ -1508,14 +1525,70 @@ is16bit:
         add     sp, 4                   ; Discard 2 words of GDT pointer
         pop     ax                      ; Get third word
         inc     ah                      ; 286 stores -1, 386 stores 0 or 1
-        jnz     is386
+        jnz     is32bit
 is286:
         mov     ax, 286
-        jmp     short testprot          ; Check for protected mode
+        jmp     testprot                ; Check for protected mode
 is32bit:
-        db      66h                     ; 16-bit override in 32-bit mode
+.386
+        pushfd                          ; save extended flags
+        mov     eax,040000h
+        push    eax                     ; push 40000h onto stack
+        popfd                           ; pop extended flags
+        pushfd                          ; push extended flags
+        pop     eax                     ; put in eax
+        popfd                           ; clean the stack
+        and     eax,040000h             ; is bit 18 set?
+        jne     tst486                  ; yes, it's a 486
 is386:
         mov     ax, 386
+        jmp     short testprot          ; Check for protected mode
+tst486:
+        pushfd                          ; push flags to save them
+        pushfd                          ; push flags to look at
+        pop     eax                     ; get eflags
+        mov     ebx, eax                ; save for later
+        xor     eax, 200000h            ; toggle bit 21
+        push    eax
+        popfd                           ; load modified eflags to CPU
+        pushfd                          ; push eflags to look at
+        pop     eax                     ; get current eflags
+        popfd                           ; restore original flags
+        xor     eax, ebx                ; check if bit changed 
+        jnz     is586                   ; changed, it's a Pentium
+is486:
+        mov     ax, 486
+        jmp     short testprot          ; Check for protected mode
+is586:
+        push    ecx                ; CPUID changes eax to edx
+        push    edx
+        mov     eax, 1             ; get family info function
+;                                  ; get the CPUID information
+        db      0Fh, 0A2h          ;  into eax, ebx, ecx, edx
+        and     eax, 0F00h         ; find family info
+        shr     eax, 8             ; move to al
+        pop     edx
+        pop     ecx
+        cmp     ax,4               ; 4 = 80486, some 486's have CPUID
+        je      is486
+        cmp     ax,5               ; 5 = pentium
+        ja      is686
+        mov     ax,586
+        jmp     testprot
+is686:
+        cmp     ax,6               ; 6 = pentium pro
+        ja      is786
+        mov     ax,686
+        jmp     testprot
+is786:
+        cmp     ax,7
+        ja      is886
+        mov     ax,786             ; 7 = ??????
+        jmp     testprot
+is886:
+        mov     ax,886             ; 8 = ??????
+
+.286P
 testprot:
         smsw    cx                      ; Protected?  Machine status -> CX
         ror     cx,1                    ; Protection bit -> carry flag
@@ -1544,7 +1617,7 @@ fputype proc
         cmp     ah, 03h                 ; Test for 64-bit precision flags
         je      gotone                  ; Got one!  Now let's find which
         xor     ax, ax
-        jmp     short fexit             ; No NDP found
+        jmp     fexit             ; No NDP found
 gotone:
         and     control, not 0080h      ; IEM = 0 (interrupts on)
         fldcw   control
@@ -1568,8 +1641,33 @@ not87:
         jnz     got387                  ; 387 will compare correctly
         mov     ax, 287
         jmp     short freset
-got387:                                 ; Only one left (until 487/Weitek
-        mov     ax, 387                 ;   test is added)
+got387:                                 ; add 1 to cpu # if fpu and >= 386
+        cmp     cpu, 386
+        jg      got487
+        mov     ax, 387
+        jmp     short freset
+got487:
+        cmp     cpu, 486
+        jg      got587
+        mov     ax, 487
+        jmp     short freset
+got587:
+        cmp     cpu, 586
+        jg      got687
+        mov     ax, 587
+        jmp     short freset
+got687:
+        cmp     cpu, 686
+        jg      got787
+        mov     ax, 687
+        jmp     short freset
+got787:
+        cmp     cpu, 786
+        jg      got887
+        mov     ax, 787
+        jmp     short freset
+got887:
+        mov     ax, 887
 freset:
         fninit                          ; in case tests have had strange
         finit                           ; side-effects, reset
@@ -1892,10 +1990,10 @@ emmquery        proc
         int     21h                     ; do it.
         push    ax                      ; save the IOCTL handle.
 
-        mov     ah,3eh                  ; function 3H = close
-        int     21h                     ; BX still cintains handle
-        pop     ax                      ; restore AX for the status query
+        mov     ah,3eh                  ; function 3eH = close
+        int     21h                     ; BX still contains handle
         jc      emmqueryfailed          ; huh?  close FAILED?
+        pop     ax                      ; restore AX for the status query
 
         or      al,al                   ; was the status 0?
         jz      emmqueryfailed          ; well then, it wasn't EMM!
@@ -1938,7 +2036,7 @@ emmallocate     proc    pages:word      ; allocate EMM pages
         mov     bx,pages                ; BX = # of 16K pages
         mov     ah,43h                  ; ask for the memory
         int     67h                     ; EMM call
-        mov     emm_zeroflag,0          ; clear the klooge flag
+;        mov     emm_zeroflag,0          ; clear the klooge flag
         cmp     ah,0                    ; did the call work?
         jne     emmallocatebad          ;  nope.
         mov     ax,dx                   ; yup.  save the handle here
@@ -1961,6 +2059,7 @@ emmdeallocatestart:
         cmp     emm_zeroflag,1          ; was it really a zero handle?
         jne     emmdeallocatecontinue   ;  nope.  proceed.
         mov     dx,0                    ; yup.  use zero instead.
+        mov     emm_zeroflag,0          ; clear the klooge flag
 emmdeallocatecontinue:
         mov     ah,45h                  ; EMM function: deallocate
         int     67h                     ; EMM call
@@ -2015,6 +2114,8 @@ emmclearpage    endp
 ;                               ; returns 0 if no XMM
 ;       xmmlongest()            ; return size of largest available
 ;                               ; XMM block in Kbytes (or zero if none)
+;       xmmfree()               ; return amount of available
+;                               ; XMM blocks in Kbytes (or zero if none)
 ;       handle = xmmallocate(Kbytes)    ; allocate XMM block in Kbytes
 ;                                       ; returns handle # if OK, or else 0
 ;       xmmreallocate(handle, Kbytes)   ; change size of handle's block
@@ -2072,6 +2173,13 @@ xmmlongest      proc                    ; query length of largest avail block
         ret
 xmmlongest      endp
 
+xmmfree      proc                       ; query total avail extended memory
+        mov     ah, 08h                 ;
+        call    [xmscontrol]
+        mov     ax, dx
+        mov     dx, 0
+        ret
+xmmfree      endp
 
 xmmallocate     proc    ksize:word
         mov     ah,09h                  ; Allocate extended memory block
@@ -2121,187 +2229,4 @@ xmmmoveextended proc uses si, MoveStruct:word
 
 xmmmoveextended endp
 
-
-; ********************* IIT FPU Chip Support Routines ******************
-;                    for use with 2C87 and 3C87 FPU chips
-;
-; load_mat(double matrix[16])    ; Load a 4x4 matrix of doubles into IIT
-;                                ; IIT registers
-;
-; mult_vec_iit(double vector[3]) ; Multiply matrix times vector. Routine
-;                                ; is not completely general - makes use of
-;                                ; the fact that Fractint 3D vectors always
-;                                ; have a fourth component of 1. Only three
-;                                ; array elements are actually accessed.
-;                                ; Source and target vectors are the same.
-;
-; IITCoPro()                     ; Detect IIT chip - return 1. Do not call
-;                                ; unless at least a 287 already detected.
-;
-; Code adapted by Tim Wegner from IIT documentation and detect routine
-; sent by Jonathan Osuch and modified by Charles Marslett -- 01/29/91
-;
-; The following routines were provided by IIT to implement a semaphore
-; system to protect the IIT extra registers from multi-tasking:
-;
-; F4x4Check()                    ; returns 1 if semaphore TSR loaded
-; F4x4Lock()                     ; returns 1 if semaphore free and locks
-; F4x4Free()                     ; frees locked semaphore
-
-.286
-.287
-.data
-one dq 1.0
-.code
-;
-;load_mat(double *array)
-;
-load_mat proc   array:WORD
-        finit
-        db      0DBh,0EBh       ; select register set 0
-        fwait
-        mov     bx, array
-        fld     QWORD PTR [bx+64 ] ; load row 3
-        fld     QWORD PTR [bx+72 ]
-        fld     QWORD PTR [bx+80 ]
-        fld     QWORD PTR [bx+88 ]
-        fld     QWORD PTR [bx+96 ] ; load row 4
-        fld     QWORD PTR [bx+104]
-        fld     QWORD PTR [bx+112]
-        fld     QWORD PTR [bx+120]
-
-        finit
-        db      0DBh,0EAh       ; select register set 1
-        fld     QWORD PTR [bx+0 ] ; load row 1
-        fld     QWORD PTR [bx+8 ]
-        fld     QWORD PTR [bx+16]
-        fld     QWORD PTR [bx+24]
-        fld     QWORD PTR [bx+32] ; load row 2
-        fld     QWORD PTR [bx+40]
-        fld     QWORD PTR [bx+48]
-        fld     QWORD PTR [bx+56]
-
-        finit
-        db      0DBh,0E8h       ; select register set 0
-        fwait
-        ret
-load_mat endp
-
-.code
-;
-;mult_vec_iit(vector)
-;
-mult_vec_iit proc uses bx, vector:WORD
-        mov     bx,vector
-        fld     one ; last component always 1 in fractint
-;       fld     QWORD PTR [bx+24 ] ; 4
-        fld     QWORD PTR [bx+16 ] ; 3
-        fld     QWORD PTR [bx+8  ] ; 2
-        fld     QWORD PTR [bx+0  ] ; 1
-
-        db      0DBh,0F1h       ; multiply the column vector
-        fwait
-        fstp    QWORD PTR [bx+0  ] ; 1
-        fstp    QWORD PTR [bx+8  ] ; 2
-        fstp    QWORD PTR [bx+16 ] ; 3
-;       fstp    QWORD PTR [bx+24 ] ; 4 vectors length 3 in Fractint
-
-        fwait
-        ret
-mult_vec_iit endp
-
-;
-; IITCoPro()
-;
-
-.data
-testdata db 0FFh,0FFh,00h,00h,00h,00h,00h,00h,00h,00h
-.code
-
-IITCoPro proc
-         finit
-         fld   tbyte ptr testdata
-         fstp  tbyte ptr temp
-         fwait
-         mov   ax,word ptr temp
-         or    ax,ax                     ; test for 1st word of result zero
-         mov   ax,1                      ; return 1 if next branch taken
-         jz    must_be_IIT               ;  result was zero, is IIT
-         xor   ax,ax                     ; return 0
-must_be_IIT:
-         ret
-IITCoPro endp
-
-.8086
-.8087
-
-eIIT2fService           equ     0C0h            ; user services: 0C0h - 0FFh
-
-; services provided by int 2F
-eInstallationCheck      equ     0               ; <== must be zero
-eSetSemaphore           equ     1
-eClearSemaphore         equ     2
-
-.code
-F4x4Check       PROC    FAR
-; IIT F4x4 semaphore installation check
-
-        inc     bp
-        push    bp
-        mov     bp, sp
-        mov     ax, (eIIT2fService SHL 8) + eInstallationCheck
-        mov     bx, 'II'
-        mov     cx, 'Ts'
-        mov     dx, 'em'
-        int     2Fh
-        cmp     ax, (eIIT2fService SHL 8) + 0FFh
-        jne     not_installed
-        cmp     bx, 'OK'
-        jne     not_installed
-        cmp     cx, ' I'
-        jne     not_installed
-        cmp     dx, 'IT'
-        jne     not_installed
-installed:
-        mov     ax, 1
-        pop     bp
-        dec     bp
-        ret
-not_installed:
-        xor     ax, ax
-        pop     bp
-        dec     bp
-        ret
-F4x4Check       ENDP
-
-
-F4x4Lock        PROC    FAR
-        inc     bp
-        push    bp
-        mov     bp, sp
-        mov     ax, (eIIT2fService SHL 8) + eSetSemaphore
-        mov     bx, 'II'
-        mov     cx, 'Ts'
-        mov     dx, 'em'
-        int     2Fh
-        pop     bp
-        dec     bp
-        ret
-F4x4Lock        ENDP
-
-
-F4x4Free        PROC    FAR
-        inc     bp
-        push    bp
-        mov     bp, sp
-        mov     ax, (eIIT2fService SHL 8) + eClearSemaphore
-        mov     bx, 'II'
-        mov     cx, 'Ts'
-        mov     dx, 'em'
-        int     2Fh
-        pop     bp
-        dec     bp
-        ret
-F4x4Free        ENDP
-        END
-
+	END

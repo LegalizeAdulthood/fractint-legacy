@@ -6,7 +6,10 @@ ENDIF
 
 .model medium, c
 
+; CAE removed this for TC users only 10 Oct 1998
+IFNDEF ??version
 .DATA
+ENDIF
 
 XDOTS        =       0
 YDOTS        =       1  SHL 1
@@ -91,7 +94,10 @@ BOARD    STRUC
       wWBH      dw    ?
 BOARD    ENDS
 
+; CAE removed this for TC users only 10 Oct 1998
+IFNDEF ??version
 .FARDATA
+ENDIF
 
 extrn TPlus:WORD
 

@@ -13,3 +13,5 @@ nmake "CC=cl /Gs /DC6" "AS=masm /ML" "LINKER=link" "OptT=/Oeciltaz" "OptS=/Oslea
 goto exit
 
 :exit
+if exist f_errs.txt type f_errs.txt
+

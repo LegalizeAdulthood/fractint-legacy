@@ -3,7 +3,6 @@
 #ifndef FRACTINT_H
 #define FRACTINT_H
 
-
 typedef BYTE BOOLEAN;
 
 #ifndef C6
@@ -47,8 +46,13 @@ typedef char * USEGTYPE;
 #define CONTINUE          4
 
 /* these are used to declare arrays for file names */
+#ifdef XFRACT
+#define FILE_MAX_PATH  256       /* max length of path+filename  */
+#define FILE_MAX_DIR   256       /* max length of directory name */
+#else
 #define FILE_MAX_PATH  80       /* max length of path+filename  */
 #define FILE_MAX_DIR   80       /* max length of directory name */
+#endif
 #define FILE_MAX_DRIVE  3       /* max length of drive letter   */
 
 #if 1
@@ -66,9 +70,14 @@ names. So for now humor us and let's keep the names short.
 #define FILE_MAX_EXT    64       /* max length of extension      */
 #endif
 
+#define MAXMAXLINELENGTH  128   /* upper limit for maxlinelength for PARs */
+#define MINMAXLINELENGTH  40    /* lower limit for maxlinelength for PARs */
+
+#define MSGLEN 80               /* handy buffer size for messages */
 #define MAXCMT 57               /* length of par comments       */
 #define MAXPARAMS 10            /* maximum number of parameters */
-#define MAXPIXELS 2048          /* Maximum pixel count across/down the screen */
+#define MAXPIXELS   32767       /* Maximum pixel count across/down the screen */
+#define OLDMAXPIXELS 2048       /* Limit of some old fixed arrays */
 #define MINPIXELS 10            /* Minimum pixel count across/down the screen */
 #define DEFAULTASPECT ((float)0.75)/* Assumed overall screen dimensions, y/x  */
 #define DEFAULTASPECTDRIFT ((float)0.02) /* drift of < 2% is forced to 0% */
@@ -237,7 +246,10 @@ struct fractal_info         /*  for saving data in GIF file     */
     double dinvert[3];
     short logcalc;
     short stoppass;
-    short future[24];     /* for stuff we haven't thought of yet */
+    short quick_calc;
+    double closeprox;
+    short nobof;
+    short future[18];     /* for stuff we haven't thought of yet */
 };
 
 #define ITEMNAMELEN 18   /* max length of names in .frm/.l/.ifs/.fc */
@@ -323,7 +335,7 @@ struct history_info
     short bflength;
     short yadjust;
     short old_demm_colors;
-    char filename[80];
+    char filename[FILE_MAX_PATH];
     char itemname[ITEMNAMELEN+1];
     unsigned char dac[256][3];
     char  maxfn;
@@ -332,6 +344,9 @@ struct history_info
     char useinitorbit;
     short logcalc;
     short stoppass;
+    short ismand;
+    double closeprox;
+    short nobof;
 };
 
 typedef struct history_info HISTORY;
@@ -342,7 +357,71 @@ struct formula_info         /*  for saving formula data in GIF file     */
     short uses_p1;
     short uses_p2;
     short uses_p3;
-    short future[10];       /* for stuff we haven't thought of, yet */
+    short uses_ismand;
+    short ismand;
+    short uses_p4;
+    short uses_p5;
+    short future[6];       /* for stuff we haven't thought of, yet */
+};
+
+#ifndef XFRACT
+enum stored_at_values
+   {
+   NOWHERE,
+   EXTRA,
+   FARMEM,
+   EXPANDED,
+   EXTENDED,
+   DISK
+   };
+#endif
+
+#ifdef XFRACT
+enum stored_at_values
+   {
+   NOWHERE,
+   FARMEM,
+   DISK
+   };
+#endif
+
+#define NUMGENES 21
+
+typedef    struct evolution_info EVOLUTION_INFO;
+/*
+ * Note: because non-MSDOS machines store structures differently, we have
+ * to do special processing of the evolution_info structure in loadfile.c and
+ * encoder.c.  See decode_evolver_info() in general.c.
+ * Make sure changes to the structure here get reflected there.
+ */
+#ifndef XFRACT
+#define EVOLVER_INFO_SIZE sizeof(evolution_info)
+#else
+/* This value should be the MSDOS size, not the Unix size. */
+#define EVOLVER_INFO_SIZE 200
+#endif
+
+struct evolution_info      /* for saving evolution data in a GIF file */
+{
+   short evolving;
+   short gridsz;
+   unsigned short this_gen_rseed;
+   double fiddlefactor;
+   double paramrangex;
+   double paramrangey;
+   double opx;
+   double opy;
+   short odpx;
+   short odpy;
+   short px;
+   short py;
+   short sxoffs;
+   short syoffs;
+   short xdots;
+   short ydots;
+   short mutate[NUMGENES];
+   short ecount; /* count of how many images have been calc'ed so far */
+   short future[68 - NUMGENES];      /* total of 200 bytes */
 };
 
 #define MAXVIDEOMODES 300       /* maximum entries in fractint.cfg        */
@@ -367,7 +446,7 @@ extern  double   f_at_rad;      /* finite attractor radius  */
 struct moreparams
 {
    int      type;                       /* index in fractalname of the fractal */
-   char     *param[MAXPARAMS-4];        /* name of the parameters */
+   char     far *param[MAXPARAMS-4];    /* name of the parameters */
    double   paramvalue[MAXPARAMS-4];    /* default parameter values */
 };
 
@@ -377,7 +456,7 @@ struct fractalspecificstuff
 {
    char  *name;                         /* name of the fractal */
                                         /* (leading "*" supresses name display) */
-   char  *param[4];                     /* name of the parameters */
+   char  far *param[4];                 /* name of the parameters */
    double paramvalue[4];                /* default parameter values */
    int   helptext;                      /* helpdefs.h HT_xxxx, -1 for none */
    int   helpformula;                   /* helpdefs.h HF_xxxx, -1 for none */
@@ -453,12 +532,16 @@ typedef struct alternatemathstuff ALTERNATE;
 #define MULT        -4
 #define SUM         -5
 #define ATAN        -6
+#define FMOD        -7
+#define TDIS        -8
 #define ZMAG       -59
 #define BOF60      -60
 #define BOF61      -61
 #define EPSCROSS  -100
 #define STARTRAIL -101
 #define PERIOD    -102
+#define FMODI     -103
+#define ATANI     -104
 
 /* defines for bailoutest */
 enum bailouts { Mod, Real, Imag, Or, And, Manh, Manr };
@@ -484,6 +567,14 @@ enum Minor  {left_first, right_first};
 #define  BF_MATH    16384    /* supports arbitrary precision        */
 #define  LD_MATH    32768    /* supports long double                */
 
+
+/* more bitmasks for evolution mode flag */
+#define FIELDMAP        1    /*steady field varyiations across screen */
+#define RANDWALK        2    /* newparm = lastparm +- rand()                   */
+#define RANDPARAM       4    /* newparm = constant +- rand()                   */
+#define NOGROUT         8    /* no gaps between images                                   */
+
+
 extern struct fractalspecificstuff far fractalspecific[];
 extern struct fractalspecificstuff far *curfractalspecific;
 
@@ -499,10 +590,14 @@ extern struct fractalspecificstuff far *curfractalspecific;
 #define lsqr(x) (multiply((x),(x),bitshift))
 #endif
 
-#define CMPLXmod(z)       (sqr((z).x)+sqr((z).y))
+#define CMPLXmod(z)     (sqr((z).x)+sqr((z).y))
 #define CMPLXconj(z)    ((z).y =  -((z).y))
-#define LCMPLXmod(z)       (lsqr((z).x)+lsqr((z).y))
+#define LCMPLXmod(z)    (lsqr((z).x)+lsqr((z).y))
 #define LCMPLXconj(z)   ((z).y =  -((z).y))
+
+#define PER_IMAGE   (fractalspecific[fractype].per_image)
+#define PER_PIXEL   (fractalspecific[fractype].per_pixel)
+#define ORBITCALC   (fractalspecific[fractype].orbitcalc)
 
 typedef  _LCMPLX LCMPLX;
 
@@ -580,24 +675,50 @@ is not in the data structure */
 #define DBL_EPSILON 2.2204460492503131e-16
 #endif
 
-/* gcc doesn't like the real DBL_MAX for some reason */
-#ifdef XFRACT
-#ifdef DBL_MAX
-#undef DBL_MAX
-#define DBL_MAX 1.79769313486231e+308
-#endif
-#endif
-
 #ifndef XFRACT
 #define UPARR "\x18"
 #define DNARR "\x19"
 #define RTARR "\x1A"
 #define LTARR "\x1B"
+#define UPARR1 "\x18"
+#define DNARR1 "\x19"
+#define RTARR1 "\x1A"
+#define LTARR1 "\x1B"
+#define FK_F1  "F1"
+#define FK_F2  "F2"
+#define FK_F3  "F3"
+#define FK_F4  "F4"
+#define FK_F5  "F5"
+#define FK_F6  "F6"
+#define FK_F7  "F7"
+#define FK_F8  "F8"
+#define FK_F9  "F9"
 #else
 #define UPARR "K"
 #define DNARR "J"
 #define RTARR "L"
 #define LTARR "H"
+#define UPARR1 "up(K)"
+#define DNARR1 "down(J)"
+#define RTARR1 "left(L)"
+#define LTARR1 "right(H)"
+#define FK_F1  "Shift-1"
+#define FK_F2  "Shift-2"
+#define FK_F3  "Shift-3"
+#define FK_F4  "Shift-4"
+#define FK_F5  "Shift-5"
+#define FK_F6  "Shift-6"
+#define FK_F7  "Shift-7"
+#define FK_F8  "Shift-8"
+#define FK_F9  "Shift-9"
+#endif
+
+#ifndef XFRACT
+#define Fractint  "Fractint"
+#define FRACTINT  "FRACTINT"
+#else
+#define Fractint  "Xfractint"
+#define FRACTINT  "XFRACTINT"
 #endif
 
 #define JIIM  0
@@ -612,6 +733,7 @@ struct workliststuff    /* work list entry for std escape time engines */
         int yybegin;    /* start row within window, for 2pass/ssg resume */
         int sym;        /* if symmetry in window, prevents bad combines */
         int pass;       /* for 2pass and solid guessing */
+        int xxbegin;    /* start col within window, =0 except on resume */
 };
 
 typedef struct workliststuff        WORKLIST;
@@ -845,16 +967,20 @@ typedef struct frm_jump_st {
 struct ext_blk_2 {
    char got_data;
    int length;
-   char far *resume_data;
+   int resume_data;
    };
 
 struct ext_blk_3 {
    char got_data;
    int length;
    char form_name[40];
-   int uses_p1;
-   int uses_p2;
-   int uses_p3;
+   short uses_p1;
+   short uses_p2;
+   short uses_p3;
+   short uses_ismand;
+   short ismand;
+   short uses_p4;
+   short uses_p5;
    };
 
 struct ext_blk_4 {
@@ -868,6 +994,30 @@ struct ext_blk_5 {
    int length;
    char far *apm_data;
    };
+
+/* parameter evolution stuff */
+struct ext_blk_6 {
+   char got_data;
+   int length;
+   short evolving;
+   short gridsz;
+   unsigned short this_gen_rseed;
+   double fiddlefactor;
+   double paramrangex;
+   double paramrangey;
+   double opx;
+   double opy;
+   short  odpx;
+   short  odpy;
+   short  px;
+   short  py;
+   short  sxoffs;
+   short  syoffs;
+   short  xdots;
+   short  ydots;
+   short  ecount;
+   short  mutate[NUMGENES];
+};
 
 struct SearchPath {
    char par[FILE_MAX_PATH];
@@ -886,12 +1036,41 @@ struct affine
    double f;
 };
 
+struct baseunit { /* smallest part of a fractint 'gene' */
+   void *addr               ; /* address of variable to be referenced */
+   void (*varyfunc)(struct baseunit*,int,int); /* pointer to func used to vary it */
+                              /* takes random number and pointer to var*/
+   int mutate ;  /* flag to switch on variation of this variable */
+                  /* 0 for no mutation, 1 for x axis, 2 for y axis */
+                  /* in steady field maps, either x or y=yes in random modes*/ 
+   char name[16]; /* name of variable (for menu ) */
+   char level;    /* mutation level at which this should become active */
+};
+
+typedef struct baseunit    GENEBASE;
+
 #define sign(x) (((x) < 0) ? -1 : ((x) != 0)  ? 1 : 0)
+
+/* 
+ * The following typedefs allow declaring based data
+ * types that are stored in the code segment under MSC,
+ * and thus may be overlaid. Use only for constant data.
+ * Be sure to use the data right away, since arrays thus
+ * declared do not exist when the overlay they belong to
+ * is swapped out.
+ */
 
 #if (_MSC_VER >= 700)
 typedef char __based(__segname("_CODE")) FCODE;
 #else
 typedef char far FCODE;
+#endif
+
+/* pointer to FCODE */
+#if (_MSC_VER >= 700)
+typedef FCODE * __based(__segname("_CODE")) PFCODE;
+#else
+typedef FCODE * PFCODE;
 #endif
 
 #if (_MSC_VER >= 700)
@@ -904,6 +1083,12 @@ typedef BYTE far BFCODE;
 typedef short __based(__segname("_CODE")) SIFCODE;
 #else
 typedef short far SIFCODE;
+#endif
+
+#if (_MSC_VER >= 700)
+typedef short __based(__segname("_CODE")) USFCODE;
+#else
+typedef short far USFCODE;
 #endif
 
 #if (_MSC_VER >= 700)
@@ -925,11 +1110,18 @@ typedef long far LFCODE;
 #endif
 
 #if (_MSC_VER >= 700)
+typedef unsigned long __based(__segname("_CODE")) ULFCODE;
+#else
+typedef unsigned long far ULFCODE;
+#endif
+
+#if (_MSC_VER >= 700)
 typedef double __based(__segname("_CODE")) DFCODE;
 #else
 typedef double far DFCODE;
 #endif
 #endif
+
 
 #if _MSC_VER == 800
 #ifndef FIXTAN_DEFINED

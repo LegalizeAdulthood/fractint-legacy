@@ -359,7 +359,7 @@ bn_t half_a_bn(bn_t r)
 /* SIDE-EFFECTS: n1 and n2 are changed to their absolute values         */
 bn_t unsafe_full_mult_bn(bn_t r, bn_t n1, bn_t n2)
     {
-    int sign1, sign2, samevar;
+    int sign1, sign2 = 0, samevar;
     int i, j, k, steps, doublesteps, carry_steps;
     bn_t n1p, n2p;      /* pointers for n1, n2 */
     bn_t rp1, rp2, rp3; /* pointers for r */
@@ -426,7 +426,7 @@ bn_t unsafe_full_mult_bn(bn_t r, bn_t n1, bn_t n2)
 /* SIDE-EFFECTS: n1 and n2 are changed to their absolute values         */
 bn_t unsafe_mult_bn(bn_t r, bn_t n1, bn_t n2)
     {
-    int sign1, sign2, samevar;
+    int sign1, sign2 = 0, samevar;
     int i, j, k, steps, doublesteps, carry_steps, skips;
     bn_t n1p, n2p;      /* pointers for n1, n2 */
     bn_t rp1, rp2, rp3; /* pointers for r */

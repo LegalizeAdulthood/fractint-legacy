@@ -6,7 +6,10 @@ echo *                                                          *
 echo *  The following demonstration of Fractint will only work  *
 echo *  with a VGA or higher resolution video system.           *
 echo *  The demo should be run in a directory containing all    *
-echo *  the Fractint release files.                             *
+echo *  the Fractint release files. The evolver demo requires   *
+echo *  the SF5 640x480 mode, and the sound demo needs a sound  *
+echo *  and speakers installed, otherwise, only vanilla VGA     *
+echo *  and features are used.                                  *
 echo *                                                          *
 echo ************************************************************
 echo.
@@ -17,11 +20,14 @@ echo 3:  New stuff in version 19.4
 echo 4:  New stuff in version 19.5
 echo 5:  New stuff in version 19.6
 echo 6:  Advanced commands demo
-echo 7:  All six demos
+echo 7:  New for 20.0 - Evolver
+echo 8:  New for 20.0 - Sound
+echo 9:  All six demos
 sschoice
 echo.
-if errorlevel 8 goto top
-if errorlevel 7 goto all
+if errorlevel 9 goto all
+if errorlevel 8 goto sound
+if errorlevel 7 goto evolver
 if errorlevel 6 goto advanced
 if errorlevel 5 goto newin196
 if errorlevel 4 goto newin195
@@ -30,6 +36,16 @@ if errorlevel 2 goto newin19
 if errorlevel 1 goto basic
 if errorlevel 0 goto end
 goto top
+
+:sound
+fractint savename=.\ filename=.\ curdir=yes autokey=play autokeyname=snddemo1.key
+goto top
+
+
+:evolver
+fractint savename=.\ filename=.\ curdir=yes  autokey=play autokeyname=explore.key
+goto top
+
 
 :advanced
 fractint savename=.\ filename=.\ curdir=yes @demo.par/Mandel_Demo autokey=play autokeyname=advanced.key
@@ -76,6 +92,8 @@ del new19???.gif
 del new1940?.gif
 del demo195.par
 del demo196?.gif
+fractint savename=.\ filename=.\ curdir=yes autokey=play autokeyname=snddemo1.key
+fractint savename=.\ filename=.\ curdir=yes autokey=play autokeyname=explore.key
 goto top
 
 :n195s
@@ -105,4 +123,5 @@ fractint savename=.\ filename=.\ curdir=yes @demo.par/Mandel_Demo autokey=play a
 goto %r%
 
 :end
+set r=
 echo Have a nice day!

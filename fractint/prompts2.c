@@ -24,14 +24,16 @@
 #include <malloc.h>
 #endif
 
+#ifdef XFRACT
+#include <fcntl.h>
+#endif
+
 #ifdef __hpux
 #include <sys/param.h>
-#define getwd(a) getcwd(a,MAXPATHLEN)
 #endif
 
 #ifdef __SVR4
 #include <sys/param.h>
-#define getwd(a) getcwd(a,MAXPATHLEN)
 #endif
 
   /* see Fractint.c for a description of the "include"  hierarchy */
@@ -90,13 +92,12 @@ char commandmask[13] = {"*.par"};
    }
 int get_toggles()
 {
-   static FCODE o_hdg[]={"Basic Options\n\
-(not all combinations make sense)"};
+   static FCODE o_hdg[]={"Basic Options\n(not all combinations make sense)"};
    char hdg[sizeof(o_hdg)];
    char far *choices[20];
    char far *ptr;
    int oldhelpmode;
-   char prevsavename[81];
+   char prevsavename[FILE_MAX_DIR+1];
    char *savenameptr;
    struct fullscreenvalues uvalues[25];
    int i, j, k;
@@ -106,15 +107,20 @@ int get_toggles()
    int old_biomorph,old_decomp;
    int old_fillcolor;
    int old_stoppass;
-   static char *calcmodes[] ={"1","2","3","g","g1","g2","g3","g4","g5","g6","b","t"};
-   static char *soundmodes[5]={s_yes,s_no,s_x,s_y,s_z};
+   double old_closeprox;
+   char *calcmodes[] ={"1","2","3","g","g1","g2","g3","g4","g5","g6","b","s","t","d"};
+   char *soundmodes[5]={s_off,s_beep,s_x,s_y,s_z};
+   char *insidemodes[]={"numb",s_maxiter,s_zmag,s_bof60,s_bof61,s_epscross,
+                         s_startrail,s_period,s_atan,s_fmod};
+   char *outsidemodes[]={"numb",s_iter,s_real,s_imag,s_mult,s_sum,s_atan,
+                         s_fmod,s_tdis};
 
    far_strcpy(hdg,o_hdg);
    ptr = (char far *)MK_FP(extraseg,0);
 
    k = -1;
 
-   LOADCHOICES("Passes (1, 2, 3, g[uessing], b[oundary trace], t[esseral])");
+   LOADCHOICES("Passes (1,2,3, g[uessing], b[oundary], t[esseral], d[iffu.])");
    uvalues[k].type = 'l';
    uvalues[k].uval.ch.vlen = 3;
    uvalues[k].uval.ch.llen = sizeof(calcmodes)/sizeof(*calcmodes);
@@ -129,54 +135,71 @@ int get_toggles()
                           : (usr_stdcalcmode == 'g' && stoppass == 4) ? 7
                           : (usr_stdcalcmode == 'g' && stoppass == 5) ? 8
                           : (usr_stdcalcmode == 'g' && stoppass == 6) ? 9
-                          : (usr_stdcalcmode == 'b') ? 10 : 11;
+                          : (usr_stdcalcmode == 'b') ? 10 
+			  : (usr_stdcalcmode == 's') ? 11
+			  : (usr_stdcalcmode == 't') ? 12
+			  :        /* "d"iffusion */   13;
    old_usr_stdcalcmode = usr_stdcalcmode;
    old_stoppass = stoppass;
-
+#ifndef XFRACT
    LOADCHOICES("Floating Point Algorithm");
    uvalues[k].type = 'y';
    uvalues[k].uval.ch.val = usr_floatflag;
-
+#endif
    LOADCHOICES("Maximum Iterations (2 to 2,147,483,647)");
    uvalues[k].type = 'L';
    uvalues[k].uval.Lval = old_maxit = maxit;
 
-   LOADCHOICES("Inside Color (<nnn>,maxiter,zmag,bof60,bof61,epscr,star,per)");
-   uvalues[k].type = 's';
-   if(inside == -59)
-      strcpy(uvalues[k].uval.sval,s_zmag);
-   else if(inside == -60)
-      strcpy(uvalues[k].uval.sval,s_bof60);
-   else if(inside == -61)
-      strcpy(uvalues[k].uval.sval,s_bof61);
-   else if(inside == -100)
-      strcpy(uvalues[k].uval.sval,s_epscross);
-   else if(inside == -101)
-      strcpy(uvalues[k].uval.sval,s_startrail);
-   else if(inside == -102)
-      strcpy(uvalues[k].uval.sval,s_period);
-   else if(inside == -1)
-      strcpy(uvalues[k].uval.sval,s_maxiter);
+   LOADCHOICES("Inside Color (0-# of colors, if Inside=numb)");
+   uvalues[k].type = 'i';
+   if (inside >= 0)
+      uvalues[k].uval.ival = inside;
    else
-      sprintf(uvalues[k].uval.sval,"%d",inside);
+      uvalues[k].uval.ival = 0;
+
+   LOADCHOICES("Inside (numb,maxit,zmag,bof60,bof61,epscr,star,per,atan,fmod)");
+   uvalues[k].type = 'l';
+   uvalues[k].uval.ch.vlen = 12;
+   uvalues[k].uval.ch.llen = sizeof(insidemodes)/sizeof(*insidemodes);
+   uvalues[k].uval.ch.list = insidemodes;
+   if(inside >= 0)  /* numb */
+      uvalues[k].uval.ch.val = 0;
+   else if(inside == -1)  /* maxiter */
+      uvalues[k].uval.ch.val = 1;
+   else if(inside == ZMAG)
+      uvalues[k].uval.ch.val = 2;
+   else if(inside == BOF60)
+      uvalues[k].uval.ch.val = 3;
+   else if(inside == BOF61)
+      uvalues[k].uval.ch.val = 4;
+   else if(inside == EPSCROSS)
+      uvalues[k].uval.ch.val = 5;
+   else if(inside == STARTRAIL)
+      uvalues[k].uval.ch.val = 6;
+   else if(inside == PERIOD)
+      uvalues[k].uval.ch.val = 7;
+   else if(inside == ATANI)
+      uvalues[k].uval.ch.val = 8;
+   else if(inside == FMODI)
+      uvalues[k].uval.ch.val = 9;
    old_inside = inside;
 
-   LOADCHOICES("Outside Color (<nnn>,iter,real,imag,mult,summ,atan)");
-   uvalues[k].type = 's';
-   if(outside == -1)
-      strcpy(uvalues[k].uval.sval,s_iter);
-   else if(outside == -2)
-      strcpy(uvalues[k].uval.sval,s_real);
-   else if(outside == -3)
-      strcpy(uvalues[k].uval.sval,s_imag);
-   else if(outside == -4)
-      strcpy(uvalues[k].uval.sval,s_mult);
-   else if(outside == -5)
-      strcpy(uvalues[k].uval.sval,s_sum);
-   else if(outside == -6)
-      strcpy(uvalues[k].uval.sval,s_atan);
+   LOADCHOICES("Outside Color (0-# of colors, if Outside=numb)");
+   uvalues[k].type = 'i';
+   if (outside >= 0)
+      uvalues[k].uval.ival = outside;
    else
-      sprintf(uvalues[k].uval.sval,"%d",outside);
+      uvalues[k].uval.ival = 0;
+
+   LOADCHOICES("Outside (numb,iter,real,imag,mult,summ,atan,fmod,tdis)");
+   uvalues[k].type = 'l';
+   uvalues[k].uval.ch.vlen = 4;
+   uvalues[k].uval.ch.llen = sizeof(outsidemodes)/sizeof(*outsidemodes);
+   uvalues[k].uval.ch.list = outsidemodes;
+   if(outside >= 0)  /* numb */
+      uvalues[k].uval.ch.val = 0;
+   else
+      uvalues[k].uval.ch.val = -outside;
    old_outside = outside;
 
    LOADCHOICES("Savename (.GIF implied)");
@@ -193,12 +216,12 @@ int get_toggles()
    uvalues[k].type = 'y';
    uvalues[k].uval.ch.val = overwrite;
 
-   LOADCHOICES("Sound (no, yes, x, y, z)");
+   LOADCHOICES("Sound (off, beep, x, y, z)");
    uvalues[k].type = 'l';
-   uvalues[k].uval.ch.vlen = 3;
+   uvalues[k].uval.ch.vlen = 4;
    uvalues[k].uval.ch.llen = 5;
    uvalues[k].uval.ch.list = soundmodes;
-   uvalues[k].uval.ch.val = 1 + (old_soundflag = soundflag);
+   uvalues[k].uval.ch.val = (old_soundflag = soundflag)&7;
 
    if (rangeslen == 0) {
       LOADCHOICES("Log Palette (0=no,1=yes,-1=old,+n=cmprsd,-n=sqrt, 2=auto)");
@@ -218,17 +241,21 @@ int get_toggles()
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = old_decomp = decomp[0];
 
-   LOADCHOICES("Fill Color (normal,<nnn>) (works with passes=t and =b)");
+   LOADCHOICES("Fill Color (normal,#) (works with passes=t, b and d)");
    uvalues[k].type = 's';
    if(fillcolor < 0)
       strcpy(uvalues[k].uval.sval,s_normal);
    else
       sprintf(uvalues[k].uval.sval,"%d",fillcolor);
    old_fillcolor = fillcolor;
-
+#ifdef XFRACT
    LOADCHOICES("Orbit delay (0 = none)");
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = orbit_delay;
+#endif
+   LOADCHOICES("Proximity value for inside=epscross and fmod");
+   uvalues[k].type = 'f'; /* should be 'd', but prompts get messed up JCO */
+   uvalues[k].uval.dval = old_closeprox = closeprox;
 
    oldhelpmode = helpmode;
    helpmode = HELPXOPTS;
@@ -248,84 +275,109 @@ int get_toggles()
    if(stoppass < 0 || stoppass > 6 || usr_stdcalcmode != 'g')
       stoppass = 0;
 
-   if (old_usr_stdcalcmode != usr_stdcalcmode) j = 1;
-   if (old_stoppass != stoppass) j = 1;
-
+   if (old_usr_stdcalcmode != usr_stdcalcmode) j++;
+   if (old_stoppass != stoppass) j++;
+#ifndef XFRACT
    if (uvalues[++k].uval.ch.val != usr_floatflag) {
       usr_floatflag = (char)uvalues[k].uval.ch.val;
-      j = 1;
+      j++;
       }
-
+#endif
    ++k;
    maxit = uvalues[k].uval.Lval;
    if (maxit < 0) maxit = old_maxit;
    if (maxit < 2) maxit = 2;
 
-/* 'maxit' is an int so it is always <= 32767, MCP 12-3-91
-   if (maxit > 32767) maxit = 32767;
-*/
+   if (maxit != old_maxit) j++;
 
-   if (maxit != old_maxit) j = 1;
+   inside = uvalues[++k].uval.ival;
+   if (inside < 0) inside = -inside;
+   if (inside >= colors) inside = (inside % colors) + (inside / colors);
 
-   if(strncmp(strlwr(uvalues[++k].uval.sval),s_zmag,4)==0)
-      inside = -59;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_bof60,5)==0)
-      inside = -60;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_bof61,5)==0)
-      inside = -61;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_epscross,3)==0)
-      inside = -100;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_startrail,4)==0)
-      inside = -101;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_period,3)==0)
-      inside = -102;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_maxiter,5)==0)
-      inside = -1;
-   else
-      inside = atoi(uvalues[k].uval.sval);
-   if (inside != old_inside) j = 1;
+   { int tmp;
+   tmp = uvalues[++k].uval.ch.val;
+   if (tmp > 0)
+      switch (tmp)
+      {
+      case 1:
+         inside = -1;  /* maxiter */
+         break;
+      case 2:
+         inside = ZMAG;
+         break;
+      case 3:
+         inside = BOF60;
+         break;
+      case 4:
+         inside = BOF61;
+         break;
+      case 5:
+         inside = EPSCROSS;
+         break;
+      case 6:
+         inside = STARTRAIL;
+         break;
+      case 7:
+         inside = PERIOD;
+         break;
+      case 8:
+         inside = ATANI;
+         break;
+      case 9:
+         inside = FMODI;
+         break;
+      }
+   }
+   if (inside != old_inside) j++;
 
-   if(strncmp(strlwr(uvalues[++k].uval.sval),s_real,4)==0)
-      outside = -2;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_imag,4)==0)
-      outside = -3;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_mult,4)==0)
-      outside = -4;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_sum,4)==0)
-      outside = -5;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_atan,4)==0)
-      outside = -6;
-   else if(strncmp(strlwr(uvalues[k].uval.sval),s_iter,4)==0)
-      outside = -1;
-   else
-      outside = atoi(uvalues[k].uval.sval);
-   if (outside != old_outside) j = 1;
+   outside = uvalues[++k].uval.ival;
+   if (outside < 0) outside = -outside;
+   if (outside >= colors) outside = (outside % colors) + (outside / colors);
+
+   { int tmp;
+   tmp = uvalues[++k].uval.ch.val;
+   if (tmp > 0)
+      outside = -tmp;
+   }
+   if (outside != old_outside) j++;
 
    strcpy(savenameptr,uvalues[++k].uval.sval);
    if (strcmp(savename,prevsavename))
       resave_flag = started_resaves = 0; /* forget pending increment */
    overwrite = (char)uvalues[++k].uval.ch.val;
 
-   soundflag = uvalues[++k].uval.ch.val - 1;
-   if (soundflag != old_soundflag && (soundflag > 1 || old_soundflag > 1))
-      j = 1;
+   soundflag = ((soundflag >> 3) << 3) | (uvalues[++k].uval.ch.val);
+   if (soundflag != old_soundflag && ((soundflag&7) > 1 || (old_soundflag&7) > 1))
+      j++;
 
    LogFlag = uvalues[++k].uval.Lval;
-   if (LogFlag != old_logflag) j = 1;
+   if (LogFlag != old_logflag) {
+      j++;
+      Log_Auto_Calc = 0;  /* turn it off, use the supplied value */
+   }
 
    usr_biomorph = uvalues[++k].uval.ival;
-   if (usr_biomorph != old_biomorph) j = 1;
+   if (usr_biomorph >= colors) usr_biomorph = (usr_biomorph % colors) + (usr_biomorph / colors);
+   if (usr_biomorph != old_biomorph) j++;
 
    decomp[0] = uvalues[++k].uval.ival;
-   if (decomp[0] != old_decomp) j = 1;
+   if (decomp[0] != old_decomp) j++;
 
    if(strncmp(strlwr(uvalues[++k].uval.sval),s_normal,4)==0)
       fillcolor = -1;
    else
       fillcolor = atoi(uvalues[k].uval.sval);
-   if (fillcolor != old_fillcolor) j = 1;
-
+   if (fillcolor < 0) fillcolor = -1;
+   if (fillcolor >= colors) fillcolor = (fillcolor % colors) + (fillcolor / colors);
+   if (fillcolor != old_fillcolor) j++;
+#ifdef XFRACT
    orbit_delay = uvalues[++k].uval.ival;
+#endif
+   ++k;
+   closeprox = uvalues[k].uval.dval;
+   if (closeprox != old_closeprox) j++;
+
+/* if (j >= 1) j = 1; need to know how many prompts changed for quick_calc JCO 6/23/2001 */
 
    return(j);
 }
@@ -347,7 +399,7 @@ int get_toggles2()
    int i, j, k;
 
    int old_rotate_lo,old_rotate_hi;
-   int old_distestwidth;
+   int old_distestwidth, old_periodicity;
    double old_potparam[3],old_inversion[3];
    long old_usr_distest;
 
@@ -385,8 +437,6 @@ int get_toggles2()
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = old_distestwidth = distestwidth;
 
-
-
    LOADCHOICES("Inversion radius or \"auto\" (0 means off)");
    LOADCHOICES("          center X coordinate or \"auto\"");
    LOADCHOICES("          center Y coordinate or \"auto\"");
@@ -408,6 +458,10 @@ int get_toggles2()
    LOADCHOICES("              to   color (1 ... 255)");
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = old_rotate_hi = rotate_hi;
+
+   LOADCHOICES("Periodicity (0=off, <0=show, >0=on, -255..+255)");
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_periodicity = usr_periodicitycheck;
 
    oldhelpmode = helpmode;
    helpmode = HELPYOPTS;
@@ -473,9 +527,19 @@ int get_toggles2()
       rotate_lo = old_rotate_lo;
       rotate_hi = old_rotate_hi;
       }
+   usr_periodicitycheck = uvalues[++k].uval.ival;
+   if (usr_periodicitycheck > 255) usr_periodicitycheck = 255;
+   if (usr_periodicitycheck < -255) usr_periodicitycheck = -255;
+   if (usr_periodicitycheck != old_periodicity) j = 1;
 
    return(j);
 }
+
+/* for videomodes added new options "virtual x/y" that change "sx/ydots" */
+/* for diskmode changed "viewx/ydots" to "virtual x/y" that do as above  */
+/* (since for diskmode they were updated by x/ydots that should be the   */
+/* same as sx/ydots for that mode)                                       */
+/* videotable and videoentry are now updated even for non-disk modes     */
 
 /* --------------------------------------------------------------------- */
 /*
@@ -490,57 +554,160 @@ int get_view_params()
 {
    static FCODE o_hdg[]={"View Window Options"};
    char hdg[sizeof(o_hdg)];
-   char far *choices[8];
+   char far *choices[16];
    char far *ptr;
 
    int oldhelpmode;
    struct fullscreenvalues uvalues[25];
    int i, k;
    float old_viewreduction,old_aspectratio;
-   int old_viewwindow,old_viewxdots,old_viewydots;
+   int old_viewwindow,old_viewxdots,old_viewydots,old_sxdots,old_sydots;
+   unsigned long estm_xmax=32767,estm_ymax=32767;
+#ifndef XFRACT
+   unsigned long vidmem = (unsigned long)video_vram << 16;
+   int truebytes = videoentry.dotmode/1000;
+
+   if (dotmode == 28)          /* setvideo might have changed mode 27 to 28 */
+      dotmode = videoentry.dotmode%100;
+#endif
 
    far_strcpy(hdg,o_hdg);
    ptr = (char far *)MK_FP(extraseg,0);
+
+/*
+   Because the scrolling (and virtual screen width) must be
+   aligned to 8 bytes, that gives:
+
+   8 pixels for 8 bit (truebytes == 0; ++truebytes == 1;)
+   4 pixels for 15 bit (truebytes == 1; ++truebytes == 2;)
+   4 pixels for 16 bit (truebytes == 2;)
+   8 pixels for 24 bit (truebytes == 3;)
+   2 pixels for 32 bit (truebytes == 4;)
+
+   so for odd truebytes (8 and 24 bit) it does &= ..FFF8 (&= -8)
+   if truebytes==2 (15 and 16 bit) it does &= ..FFFC (&= -4)
+   if truebytes==4 (32 bit) it does &= ..FFFE (&= -2)
+*/
+
+#ifndef XFRACT
+   if (dotmode == 28 && virtual) {
+      /* virtual screen limits estimation */
+      if (truebytes < 2)
+         ++truebytes;
+      vidmem /= truebytes;
+      estm_xmax = vesa_yres ? vidmem/vesa_yres : 0;
+      estm_ymax = vesa_xres ? vidmem/vesa_xres : 0;
+      estm_xmax &= truebytes&1 ? -8 : truebytes - 6;
+   }
+#endif
 
    old_viewwindow    = viewwindow;
    old_viewreduction = viewreduction;
    old_aspectratio   = finalaspectratio;
    old_viewxdots     = viewxdots;
    old_viewydots     = viewydots;
+   old_sxdots        = sxdots;
+   old_sydots        = sydots;
 
 get_view_restart:
    /* fill up the previous values arrays */
    k = -1;
 
-   LOADCHOICES("Preview display? (no for full screen)");
-   uvalues[k].type = 'y';
-   uvalues[k].uval.ch.val = viewwindow;
+   if (dotmode != 11) {
+      LOADCHOICES("Preview display? (no for full screen)");
+      uvalues[k].type = 'y';
+      uvalues[k].uval.ch.val = viewwindow;
 
-   LOADCHOICES("Auto window size reduction factor");
-   uvalues[k].type = 'f';
-   uvalues[k].uval.dval = viewreduction;
+      LOADCHOICES("Auto window size reduction factor");
+      uvalues[k].type = 'f';
+      uvalues[k].uval.dval = viewreduction;
 
-   LOADCHOICES("Final media overall aspect ratio, y/x");
-   uvalues[k].type = 'f';
-   uvalues[k].uval.dval = finalaspectratio;
+      LOADCHOICES("Final media overall aspect ratio, y/x");
+      uvalues[k].type = 'f';
+      uvalues[k].uval.dval = finalaspectratio;
 
-   LOADCHOICES("Crop starting coordinates to new aspect ratio?");
-   uvalues[k].type = 'y';
-   uvalues[k].uval.ch.val = viewcrop;
+      LOADCHOICES("Crop starting coordinates to new aspect ratio?");
+      uvalues[k].type = 'y';
+      uvalues[k].uval.ch.val = viewcrop;
 
-   LOADCHOICES("Explicit size x pixels (0 for auto size)");
-   uvalues[k].type = 'i';
-   uvalues[k].uval.ival = viewxdots;
+      LOADCHOICES("Explicit size x pixels (0 for auto size)");
+      uvalues[k].type = 'i';
+      uvalues[k].uval.ival = viewxdots;
 
-   LOADCHOICES("              y pixels (0 to base on aspect ratio)");
-   uvalues[k].type = 'i';
-   uvalues[k].uval.ival = viewydots;
+      LOADCHOICES("              y pixels (0 to base on aspect ratio)");
+      uvalues[k].type = 'i';
+      uvalues[k].uval.ival = viewydots;
+   }
 
    LOADCHOICES("");
    uvalues[k].type = '*';
 
-   LOADCHOICES("Press F4 to reset view parameters to defaults.");
-   uvalues[k].type = '*';
+#ifndef XFRACT
+   if (virtual && dotmode == 28 && chkd_vvs && !video_scroll) {
+      LOADCHOICES("Your graphics card does NOT support virtual screens.");
+      uvalues[k].type = '*';
+   }
+#endif
+
+   if (dotmode == 11 || (virtual && dotmode == 28)) {
+      LOADCHOICES("Virtual screen total x pixels");
+      uvalues[k].type = 'i';
+      uvalues[k].uval.ival = sxdots;
+
+      if (dotmode == 11) {
+         LOADCHOICES("                     y pixels");
+      }
+      else {
+         LOADCHOICES("                     y pixels (0: by aspect ratio)");
+      }
+      uvalues[k].type = 'i';
+      uvalues[k].uval.ival = sydots;
+   }
+
+#ifndef XFRACT
+   if (virtual && dotmode == 28) {
+      char dim[50];
+      static FCODE xmsg[] = {"Video memory limits: (for y = "};
+      static FCODE ymsg[] = {"                     (for x = "};
+      static FCODE midxmsg[] = {") x <= "};
+      static FCODE midymsg[] = {") y <= "};
+      char *scrolltypes[] ={"fixed","relaxed"};
+
+      LOADCHOICES("Keep aspect? (cuts both x & y when either too big)");
+      uvalues[k].type = 'y';
+      uvalues[k].uval.ch.val = video_cutboth;
+
+      LOADCHOICES("Zoombox scrolling (f[ixed], r[elaxed])");
+      uvalues[k].type = 'l';
+      uvalues[k].uval.ch.vlen = 7;
+      uvalues[k].uval.ch.llen = sizeof(scrolltypes)/sizeof(*scrolltypes);
+      uvalues[k].uval.ch.list = scrolltypes;
+      uvalues[k].uval.ch.val = zscroll;
+
+      LOADCHOICES("");
+      uvalues[k].type = '*';
+
+      sprintf(dim,"%Fs%4u%Fs%lu",(char far *)xmsg,vesa_yres,(char far *)midxmsg,estm_xmax);
+      far_strcpy(ptr,(char far *)dim);
+      choices[++k]= ptr;
+      ptr += sizeof(dim);
+      uvalues[k].type = '*';
+
+      sprintf(dim,"%Fs%4u%Fs%lu",(char far *)ymsg,vesa_xres,(char far *)midymsg,estm_ymax);
+      far_strcpy(ptr,(char far *)dim);
+      choices[++k]= ptr;
+      ptr += sizeof(dim);
+      uvalues[k].type = '*';
+
+      LOADCHOICES("");
+      uvalues[k].type = '*';
+   }
+#endif
+
+   if (dotmode != 11) {
+      LOADCHOICES("Press "FK_F4" to reset view parameters to defaults.");
+      uvalues[k].type = '*';
+   }
 
    oldhelpmode = helpmode;     /* this prevents HELP from activating */
    helpmode = HELPVIEW;
@@ -550,34 +717,128 @@ get_view_restart:
       return(-1);
       }
 
-   if (i == F4) {
+   if (i == F4 && dotmode != 11) {
       viewwindow = viewxdots = viewydots = 0;
       viewreduction = (float)4.2;
       viewcrop = 1;
       finalaspectratio = screenaspect;
+      if (dotmode == 28) {
+         sxdots = vesa_xres ? vesa_xres : old_sxdots;
+         sydots = vesa_yres ? vesa_yres : old_sydots;
+         video_cutboth = 1;
+         zscroll = 1;
+      }
       goto get_view_restart;
       }
 
    /* now check out the results (*hopefully* in the same order <grin>) */
    k = -1;
 
-   viewwindow = uvalues[++k].uval.ch.val;
+   if (dotmode != 11) {
+      viewwindow = uvalues[++k].uval.ch.val;
 
-   viewreduction = (float)uvalues[++k].uval.dval;
+      viewreduction = (float)uvalues[++k].uval.dval;
 
-   if ((finalaspectratio = (float)uvalues[++k].uval.dval) == 0)
-      finalaspectratio = screenaspect;
+      finalaspectratio = (float)uvalues[++k].uval.dval;
 
-   viewcrop = uvalues[++k].uval.ch.val;
+      viewcrop = uvalues[++k].uval.ch.val;
 
-   viewxdots = uvalues[++k].uval.ival;
-   viewydots = uvalues[++k].uval.ival;
+      viewxdots = uvalues[++k].uval.ival;
+      viewydots = uvalues[++k].uval.ival;
+   }
+
+   ++k;
+
+   if (virtual && dotmode == 28 && chkd_vvs && !video_scroll)
+      ++k;  /* add 1 if not supported line is inserted */
+
+   if (dotmode == 11 || (virtual && dotmode == 28)) {
+      sxdots = uvalues[++k].uval.ival;
+      sydots = uvalues[++k].uval.ival;
+#ifndef XFRACT
+      video_cutboth = uvalues[++k].uval.ch.val;
+      zscroll = uvalues[++k].uval.ch.val;
+#endif
+
+      if ((unsigned long)sxdots > estm_xmax)
+         sxdots = (int)estm_xmax;
+      if (sxdots < 2)
+         sxdots = 2;
+      if (sydots == 0 && dotmode == 28) { /* auto by aspect ratio request */
+         if (finalaspectratio == 0.0) {
+            if (viewwindow && viewxdots != 0 && viewydots != 0)
+               finalaspectratio = (float)viewydots/viewxdots;
+            else
+               finalaspectratio = old_aspectratio;
+         }
+         sydots = (int)(finalaspectratio * sxdots + 0.5);
+      }
+      if ((unsigned long)sydots > estm_ymax)
+         sydots = (int)estm_ymax;
+      if (sydots < 2)
+         sydots = 2;
+   }
+
+#ifndef XFRACT
+   if (virtual && dotmode == 28) {
+
+      /* virtual screen smaller than physical screen, use view window */
+      if (sxdots < vesa_xres && sydots < vesa_yres) {
+         viewwindow = 1;
+         viewxdots = sxdots;
+         viewydots = sydots;
+         sxdots    = vesa_xres;
+         sydots    = vesa_yres;
+      } else {
+         viewwindow = 0; /* make sure it is off */
+         viewxdots = 0;
+         viewydots = 0;
+      }
+
+      /* if virtual screen is too large */
+      if( (unsigned long)((sxdots < vesa_xres) ? vesa_xres : sxdots)
+            * ((sydots < vesa_yres) ? vesa_yres : sydots) > vidmem) {
+        /* and we have to keep ratio */
+        if (video_cutboth) {
+           double tmp,virtaspect = (double)sydots / sxdots;
+
+           /* we need vidmem >= x * y == x * x * virtaspect */
+           tmp = sqrt(vidmem / virtaspect);
+           sxdots = (tmp > (double)estm_xmax) ? (int)estm_xmax : (int)tmp;
+           sxdots &= truebytes&1 ? -8 : truebytes - 6;
+           if (sxdots < 2)
+               sxdots = 2;
+           tmp = sxdots * virtaspect;
+           sydots = (tmp > (double)estm_ymax) ? (int)estm_ymax : (int)tmp;
+           /* if sydots < 2 here, then sxdots > estm_xmax */
+        }
+        else { /* cut only the y value */
+           sydots = (int)((double)vidmem / ((sxdots < vesa_xres) ? vesa_xres : sxdots));
+        }
+      }
+   }
+#endif
+
+   if (dotmode == 11 || (virtual && dotmode == 28)) {
+      videoentry.xdots = sxdots;
+      videoentry.ydots = sydots;
+      far_memcpy((char far *)&videotable[adapter],(char far *)&videoentry,
+                    sizeof(videoentry));
+      if (finalaspectratio == 0.0)
+         finalaspectratio = (float)sydots/sxdots;
+   }
+
+   if (viewxdots != 0 && viewydots != 0 && viewwindow && finalaspectratio == 0.0)
+      finalaspectratio = (float)viewydots/viewxdots;
+   else if (finalaspectratio == 0.0 && (viewxdots == 0 || viewydots == 0))
+      finalaspectratio = old_aspectratio;
 
    if (finalaspectratio != old_aspectratio && viewcrop)
       aspectratio_crop(old_aspectratio,finalaspectratio);
 
    i = 0;
    if (viewwindow != old_viewwindow
+      || sxdots != old_sxdots || sydots != old_sydots
       || (viewwindow
          && (  viewreduction != old_viewreduction
             || finalaspectratio != old_aspectratio
@@ -609,8 +870,15 @@ int get_cmd_string()
    helpmode = HELPCOMMANDS;
    i = field_prompt(0,msg,NULL,cmdbuf,60,NULL);
    helpmode = oldhelpmode;
-   if (i >= 0 && cmdbuf[0] != 0)
+   if (i >= 0 && cmdbuf[0] != 0) {
        i = cmdarg(cmdbuf, 2);
+       if(debugflag == 98)
+       {
+          backwards_v18();
+          backwards_v19();
+          backwards_v20();
+       }
+   }
 
    return(i);
 }
@@ -732,7 +1000,7 @@ int get_rds_params(void) {
    char rds4[sizeof(o_rds4)];
    char rds5[sizeof(o_rds5)];
    char rds6[60];
-   static char *stereobars[] = {"none", "middle", "top"};
+   char *stereobars[] = {"none", "middle", "top"};
    struct fullscreenvalues uvalues[7];
    char far *rds_prompts[7];
    int oldhelpmode;
@@ -779,7 +1047,7 @@ int get_rds_params(void) {
       uvalues[k++].type = 'y';
 
 
-      if(*stereomapname != 0)
+      if(*stereomapname != 0 && image_map)
       {
          char *p;
          uvalues[k].uval.ch.val = reuse;
@@ -817,16 +1085,17 @@ int get_rds_params(void) {
          grayflag         = (char)uvalues[k++].uval.ch.val;
          calibrate        = (char)uvalues[k++].uval.ch.val;
          image_map        = (char)uvalues[k++].uval.ch.val;
-         if(*stereomapname)
+         if(*stereomapname && image_map)
             reuse         = (char)uvalues[k++].uval.ch.val;
          else
             reuse = 0;
          if(image_map && !reuse)
          {
             static FCODE tmp[] = {"Select an Imagemap File"};
-            /* rds3 only a convenient buffer */
-            far_strcpy(rds3,tmp);
-            if(getafilename(rds3,masks[1],stereomapname))
+            char tmp1[sizeof(tmp)];
+            /* tmp1 only a convenient buffer */
+            far_strcpy(tmp1,tmp);
+            if(getafilename(tmp1,masks[1],stereomapname))
                continue;
          }
       }
@@ -904,10 +1173,25 @@ void goodbye()                  /* we done.  Bail out */
 {
    char goodbyemessage[40];
    int ret;
-   static FCODE gbm[]={"   Thank You for using FRACTINT"};
+   static FCODE gbm[]={"   Thank You for using "FRACTINT};
 #ifndef XFRACT
    union REGS r;
 #endif
+   if (resume_info != 0)
+      end_resume();
+   if (evolve_handle != 0)
+      MemoryRelease(evolve_handle);
+   if (gene_handle != 0)
+      MemoryRelease(gene_handle);
+   if (imgboxhandle != 0 || prmboxhandle != 0)
+      ReleaseParamBox();
+   if (history != 0)
+      MemoryRelease(history);
+   if (oldhistory_handle != 0)
+      MemoryRelease(oldhistory_handle);
+   enddisk();
+   discardgraphics();
+   ExitCheck();
    far_strcpy(goodbyemessage, gbm);
 #ifdef WINFRACT
    return;
@@ -932,10 +1216,6 @@ void goodbye()                  /* we done.  Bail out */
       discardgraphics(); /* if any emm/xmm tied up there, release it */
    }
    stopslideshow();
-#ifndef XFRACT
-   if (made_dsktemp)
-      dir_remove(tempdir,diskfilename);
-#endif
    end_help();
    ret = 0;
    if (initbatch == 3) /* exit with error code for batch file */
@@ -1014,7 +1294,7 @@ int  fr_findnext()              /* Find next file (or subdir) meeting above path
              if ((searchname[0]=='*' || strcmp(searchname,thisname)==0) &&
                      (searchext[0]=='*' || strcmp(searchext,thisext)==0)) {
                  strncpy(DTA.filename,dirEntry->d_name,13);
-                 DTA.filename[12]=='\0';
+                 DTA.filename[12]='\0';
                  strcpy(tmpname,searchdir);
                  strcat(tmpname,"/");
                  strcat(tmpname,dirEntry->d_name);
@@ -1089,7 +1369,7 @@ static int speedstate;
 int getafilename(char *hdg,char *template,char *flname)
 {
    int rds;  /* if getting an RDS image map */
-   static FCODE o_instr[]={"Press F6 for default directory, F4 to toggle sort "};
+   static FCODE o_instr[]={"Press "FK_F6" for default directory, "FK_F4" to toggle sort "};
    char far *instr;
    int masklen;
    char filename[FILE_MAX_PATH]; /* 13 is big enough for Fractint, but not Xfractint */
@@ -1212,13 +1492,17 @@ retry_dir:
                splitpath(DTA.filename,NULL,NULL,fname,ext);
                /* just using speedstr as a handy buffer */
                makepath(speedstr,drive,dir,fname,ext);
+#ifndef XFRACT
                strlwr(DTA.filename);
+#endif
                far_strncpy(choices[++filecount]->name,DTA.filename,13);
                choices[filecount]->type = 0;
             }
             else
             {
+#ifndef XFRACT
                strlwr(DTA.filename);
+#endif
                far_strncpy(choices[++filecount]->name,DTA.filename,13);
                choices[filecount]->type = 0;
             }
@@ -1358,9 +1642,7 @@ retry_dir:
       }
       else /* speedstate == SEARCHPATH */
       {
-         char fullpath[80];
-      /* if (strchr(speedstr,'.') == NULL)
-            strcat(speedstr,masks[1]); */
+         char fullpath[FILE_MAX_DIR];
          findpath(speedstr,fullpath);
          if(fullpath[0])
             strcpy(flname,fullpath);
@@ -1417,22 +1699,22 @@ static int filename_speedstr(int row, int col, int vid,
 
 int isadirectory(char *s)
 {
+#ifdef _MSC_VER
    int len;
    char sv;
-#ifdef _MSC_VER
    unsigned attrib = 0;
 #endif
    despace(s);  /* scrunch out white space */
    if(strchr(s,'*') || strchr(s,'?'))
       return(0); /* for my purposes, not a directory */
 
+#ifdef _MSC_VER
    len = strlen(s);
    if(len > 0)
       sv = s[len-1];   /* last char */
    else
       sv = 0;
 
-#ifdef _MSC_VER
    if(_dos_getfileattr(s, &attrib) == 0 && ((attrib&_A_SUBDIR) != 0))
    {
       return(1);  /* not a directory or doesn't exist */
@@ -1558,7 +1840,7 @@ int splitpath(char far *template,char *drive,char *dir,char *fname,char *ext)
 }
 #endif
 
-makepath(char *template,char *drive,char *dir,char *fname,char *ext)
+int makepath(char *template,char *drive,char *dir,char *fname,char *ext)
 {
    if(template)
       *template = 0;
@@ -1629,8 +1911,9 @@ static int expand_dirname(char *dirname,char *drive)
 {
    fix_dirname(dirname);
    if (dirname[0] != SLASHC) {
-      char buf[81],curdir[81];
+      char buf[FILE_MAX_DIR+1],curdir[FILE_MAX_DIR+1];
 #ifndef XFRACT
+      int i=0;
       union REGS regs;
       struct SREGS sregs;
       curdir[0] = 0;
@@ -1642,9 +1925,15 @@ static int expand_dirname(char *dirname,char *drive)
       segread(&sregs);
       intdosx(&regs, &regs, &sregs);
 #else
-      getwd(curdir);
+      getcwd(curdir,FILE_MAX_DIR);
 #endif
       strcat(curdir,SLASH);
+#ifndef XFRACT
+      while (curdir[i] != 0) {
+         curdir[i] = (char)tolower(curdir[i]);
+         i++;
+      }
+#endif
       while (strncmp(dirname,DOTSLASH,2) == 0) {
          strcpy(buf,&dirname[2]);
          strcpy(dirname,buf);
@@ -1749,7 +2038,7 @@ gc_loop:
       values[nump].uval.dval = Skew;
       LOADPROMPTS("");
       values[nump].type = '*';
-      LOADPROMPTS("Press F7 to switch to \"corners\" mode");
+      LOADPROMPTS("Press "FK_F7" to switch to \"corners\" mode");
       values[nump].type = '*';
       }
 
@@ -1774,11 +2063,11 @@ gc_loop:
       values[nump].uval.dval = xx3rd;
       prompts[++nump] = yprompt;
       values[nump].uval.dval = yy3rd;
-      LOADPROMPTS("Press F7 to switch to \"center-mag\" mode");
+      LOADPROMPTS("Press "FK_F7" to switch to \"center-mag\" mode");
       values[nump].type = '*';
    }
 
-   LOADPROMPTS("Press F4 to reset to type default values");
+   LOADPROMPTS("Press "FK_F4" to reset to type default values");
    values[nump].type = '*';
 
    oldhelpmode = helpmode;
@@ -1914,7 +2203,7 @@ get_brws_restart:
    uvalues[k].type = 'y';
    uvalues[k].uval.ch.val = brwscheckparms;
 
-   LOADCHOICES("Confirm file deletes (y/n)" );
+   LOADCHOICES("Confirm file deletes (y/n)");
    uvalues[k].type='y';
    uvalues[k].uval.ch.val = doublecaution;
 
@@ -1932,7 +2221,7 @@ get_brws_restart:
    LOADCHOICES("");
    uvalues[k].type = '*';
 
-   LOADCHOICES("Press F4 to reset browse parameters to defaults.");
+   LOADCHOICES("Press "FK_F4" to reset browse parameters to defaults.");
    uvalues[k].type = '*';
 
    oldhelpmode = helpmode;     /* this prevents HELP from activating */
@@ -1987,6 +2276,11 @@ get_brws_restart:
        !stricmp(browsemask,old_browsemask) )
         i = -3;
 
+   if (evolving) { /* can't browse */
+      autobrowse = 0;
+      i = 0;
+   }
+
    return(i);
 }
 
@@ -2016,7 +2310,9 @@ int merge_pathnames(char *oldfullpath, char *newfilename, int mode)
    char dir[FILE_MAX_DIR];
    char fname[FILE_MAX_FNAME];
    char ext[FILE_MAX_EXT];
+#ifndef XFRACT
    char temp_path[FILE_MAX_PATH];
+#endif
 
    char drive1[FILE_MAX_DRIVE];
    char dir1[FILE_MAX_DIR];
@@ -2046,9 +2342,9 @@ int merge_pathnames(char *oldfullpath, char *newfilename, int mode)
       newfilename[3] = 0;
       isadir = 1;
       }
-   /* if dot, slash, its the current directory, set up full path */
+   /* if dot, slash, '0', its the current directory, set up full path */
    if(newfilename[0] == '.' &&
-           newfilename[1] == SLASHC) {
+           newfilename[1] == SLASHC && newfilename[2] == 0) {
       temp_path[0] = (char)('a' + _getdrive() - 1);
       temp_path[1] = ':';
       temp_path[2] = 0;
@@ -2057,11 +2353,28 @@ int merge_pathnames(char *oldfullpath, char *newfilename, int mode)
       strcpy(newfilename,temp_path);
       isadir = 1;
       }
+   /* if dot, slash, its relative to the current directory, set up full path */
+   if(newfilename[0] == '.' &&
+           newfilename[1] == SLASHC) {
+      int len, test_dir=0;
+      temp_path[0] = (char)('a' + _getdrive() - 1);
+      temp_path[1] = ':';
+      temp_path[2] = 0;
+      if (strrchr(newfilename,'.') == newfilename)
+        test_dir = 1;  /* only one '.' assume its a directory */
+      expand_dirname(newfilename,temp_path);
+      strcat(temp_path,newfilename);
+      strcpy(newfilename,temp_path);
+      if (!test_dir) {
+         len = strlen(newfilename);
+         newfilename[len-1] = 0; /* get rid of slash added by expand_dirname */
+      }
+   }
 #endif
    /* check existence */
    if(isadir==0 || isafile==1)
    {
-       if(fr_findfirst(newfilename) == 0)
+       if(fr_findfirst(newfilename) == 0) {
           if(DTA.attribute & SUBDIR) /* exists and is dir */
           {
              fix_dirname(newfilename);  /* add trailing slash */
@@ -2070,6 +2383,7 @@ int merge_pathnames(char *oldfullpath, char *newfilename, int mode)
           }
           else
              isafile = 1;
+       }
    }
 
    splitpath(newfilename,drive,dir,fname,ext);

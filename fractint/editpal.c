@@ -101,11 +101,12 @@
  *                      mode is waiting for #.
  *
  *   03-21-97 AMC     Made '"' work the same as '@' and made 'œ' work like
- *  (seems to work)     '#' for those of us on this side of the Atlantic!
+ *                      '#' for those of us on this side of the Atlantic!
  *                    The original palette is now stored in the other slots
  *                      on startup, so you can 'undo all' if you haven't
  *                      overwritten them already. Undo could do this, but
  *                      this is handy.
+ *   05-22-97 TIW     Replaced movedata with far_memcopy()
  */
 
 #ifdef DEBUG_UNDO
@@ -113,7 +114,8 @@
 #endif
 
 #include <string.h>
-#ifndef XFRACT
+
+#ifndef USE_VARARGS
 #include <stdarg.h>
 #else
 #include <varargs.h>
@@ -331,14 +333,14 @@ int clip_getcolor(int x, int y)
    }
 
 
-void hline(int x, int y, int width, int color)
+static void hline(int x, int y, int width, int color)
    {
    memset(line_buff, color, width);
    clip_put_line(y, x, x+width-1, line_buff);
    }
 
 
-void vline(int x, int y, int depth, int color)
+static void vline(int x, int y, int depth, int color)
    {
    while (depth-- > 0)
       clip_putcolor(x, y++, color);
@@ -409,7 +411,7 @@ void displayc(int x, int y, int fg, int bg, int ch)
    }
 
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 static void displayf(int x, int y, int fg, int bg, char *format, ...)
 #else
 static void displayf(va_alist)
@@ -421,7 +423,7 @@ va_dcl
 
    va_list arg_list;
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
    va_start(arg_list, format);
 #else
    int x,y,fg,bg;
@@ -1331,7 +1333,7 @@ static void CEditor_SetHidden(CEditor *this, BOOLEAN hidden)
 
 static int CEditor_Edit(CEditor *this)
    {
-   int key;
+   int key = 0;
    int diff;
 
    this->done = FALSE;
@@ -1709,7 +1711,7 @@ static void RGBEditor_Draw(RGBEditor *this)
 
 static int RGBEditor_Edit(RGBEditor *this)
    {
-   int key;
+   int key = 0;
 
    this->done = FALSE;
 
@@ -1766,12 +1768,14 @@ static PALENTRY RGBEditor_GetRGB(RGBEditor *this)
  *
  */
 
+/*
 enum stored_at_values
    {
    NOWHERE,
    DISK,
    MEMORY
    } ;
+*/
 
 /*
 
@@ -2292,7 +2296,7 @@ static BOOLEAN PalTable__MemoryAlloc(PalTable *this, long size)
       }
    else
       {
-      this->stored_at = MEMORY;
+      this->stored_at = FARMEM;
       return (TRUE);
       }
    }
@@ -2316,7 +2320,7 @@ static void PalTable__SaveRect(PalTable *this)
       case DISK:
          break;
 
-      case MEMORY:
+      case FARMEM:
          if (this->memory != NULL)
             farmemfree(this->memory);
          this->memory = NULL;
@@ -2335,7 +2339,7 @@ static void PalTable__SaveRect(PalTable *this)
          {
          getrow(this->x, this->y+yoff, width, buff);
          hline (this->x, this->y+yoff, width, bg_color);
-         movedata(FP_SEG(bufptr), FP_OFF(bufptr), FP_SEG(ptr), FP_OFF(ptr), width);
+         far_memcpy(ptr,bufptr, width);
          ptr = (char far *)normalize(ptr+width);
          }
       Cursor_Show();
@@ -2401,7 +2405,7 @@ static void PalTable__RestoreRect(PalTable *this)
          Cursor_Show();
          break;
 
-      case MEMORY:
+      case FARMEM:
          {
          char far  *ptr = this->memory;
          char far  *bufptr = buff; /* MSC needs this indirection to get it right */
@@ -2409,7 +2413,7 @@ static void PalTable__RestoreRect(PalTable *this)
          Cursor_Hide();
          for (yoff=0; yoff<depth; yoff++)
             {
-            movedata(FP_SEG(ptr), FP_OFF(ptr), FP_SEG(bufptr), FP_OFF(bufptr), width);
+            far_memcpy(bufptr, ptr, width);
             putrow(this->x, this->y+yoff, width, buff);
             ptr = (char far *)normalize(ptr+width);
             }
@@ -2801,8 +2805,8 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
          }
 
       case '@':    /* swap g<->b */
-      case '"':    /* for Europeans!  AMC */
-      case 151:    /* for French keyboards */
+      case '"':    /* UK keyboards */
+      case 151:    /* French keyboards */
          {
          int a = this->curr[0],
              b = this->curr[1];
@@ -2826,8 +2830,8 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
          }
 
       case '#':    /* swap r<->b */
-      case 156:    /* AMC: This seems to work instead of the pound sign */
-      case '$':    /* AMC: If all else fails! (I'd rather not use this) */
+      case 156:    /* UK keyboards (pound sign) */
+      case '$':    /* For French keyboards */
          {
          int a = this->curr[0],
              b = this->curr[1];
@@ -3038,16 +3042,10 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
 
          if ( this->save_pal[which] != NULL )
             {
-            struct SREGS seg;
-
             Cursor_Hide();
 
             PalTable__SaveUndoData(this, 0, 255);
-
-            segread(&seg);
-            movedata(FP_SEG(this->save_pal[which]), FP_OFF(this->save_pal[which]),
-                     seg.ds, (USEGTYPE)(this->pal), 256*3);
-
+            far_memcpy(this->pal,this->save_pal[which],256*3);
             PalTable__UpdateDAC(this);
 
             PalTable__SetCurr(this, -1, 0);
@@ -3072,11 +3070,7 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
 
          if ( this->save_pal[which] != NULL )
             {
-            struct SREGS seg;
-
-            segread(&seg);
-            movedata(seg.ds, (USEGTYPE)(this->pal), FP_SEG(this->save_pal[which]),
-                    FP_OFF(this->save_pal[which]), 256*3);
+            far_memcpy(this->save_pal[which],this->pal,256*3);
             }
          else
             buzzer(3); /* oops! short on memory! */
@@ -3262,25 +3256,17 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
       PalTable__DrawStatus(this, FALSE);
    }
 
-
 static void PalTable__MkDefaultPalettes(PalTable *this)  /* creates default Fkey palettes */
+{
+   int i;
+   for(i=0; i<8; i++) /* copy original palette to save areas */
    {
-   PALENTRY     black,
-                white;
-   PALENTRY     temp[256];
-   int          ctr;
-   struct SREGS seg;
-
-   black.red = black.green = black.blue = 0;
-   white.red = white.green = white.blue = 63;
-   mkpalrange(&black, &white, temp, 256, 1); /* boring! */
-
-   segread(&seg);
-
-   for (ctr=0; ctr<8; ctr++)   /* copy temp into all fkey saves */
-      movedata(seg.ss, (USEGTYPE)(temp), FP_SEG(this->save_pal[ctr]),
-               FP_OFF(this->save_pal[ctr]), 256*3);
+      if (this->save_pal[i] != NULL)
+      {
+         far_memcpy(this->save_pal[i], this->pal, 256*3);
+      }
    }
+}
 
 
 
@@ -3307,8 +3293,6 @@ static PalTable *PalTable_Construct(void)
          {
          for (ctr=0; ctr<8; ctr++)
             this->save_pal[ctr] = mem_block + (256*ctr);
-
-         PalTable__MkDefaultPalettes(this);
          }
       farmemfree(temp);
       }
@@ -3345,9 +3329,14 @@ static PalTable *PalTable_Construct(void)
    RGBEditor_SetRGB(this->rgb[0], this->curr[0], &this->pal[this->curr[0]]);
    RGBEditor_SetRGB(this->rgb[1], this->curr[1], &this->pal[this->curr[0]]);
 
-   PalTable__SetPos(this, 0, 0);
+   if (video_scroll) {
+      PalTable__SetPos(this, video_startx, video_starty);
+      csize = ( (vesa_yres-(PalTable_PALY+1+1)) / 2 ) / 16;
+   } else {
+      PalTable__SetPos(this, 0, 0);
+      csize = ( (sydots-(PalTable_PALY+1+1)) / 2 ) / 16;
+   }
 
-   csize = ( (sydots-(PalTable_PALY+1+1)) / 2 ) / 16;
    if (csize<CSIZE_MIN)
       csize = CSIZE_MIN;
    PalTable__SetCSize(this, csize);
@@ -3420,7 +3409,7 @@ static void PalTable_Destroy(PalTable *this)
 
 static void PalTable_Process(PalTable *this)
    {
-   int ctr,i;
+   int ctr;
 
    getpalrange(0, colors, this->pal);
 
@@ -3463,23 +3452,7 @@ static void PalTable_Process(PalTable *this)
    PalTable__SetCurr(this, this->active,          PalTable__GetCursorColor(this));
    PalTable__SetCurr(this, (this->active==1)?0:1, PalTable__GetCursorColor(this));
    Cursor_Show();
-
-   /* Store original palette in slots (AMC) */
-   for(i=0;i<8;i++)
-      {
-      if ( this->save_pal[i] != NULL )
-         {
-         struct SREGS seg;
-
-         segread(&seg);
-         movedata(seg.ds, (USEGTYPE)(this->pal), FP_SEG(this->save_pal[i]),
-            FP_OFF(this->save_pal[i]), 256*3);
-         }
-      else
-         buzzer(3); /* Short on memory! */
-      }
-   /* End of AMC's new section */
-
+   PalTable__MkDefaultPalettes(this);
    this->done = FALSE;
 
    while ( !this->done )
@@ -3509,6 +3482,9 @@ void EditPalette(void)       /* called by fractint */
    if ( (font8x8 = findfont(0)) == NULL )
       return ;
 
+   if (sxdots < 133 || sydots < 174)
+      return; /* prevents crash when physical screen is too small */
+
    plot = putcolor;
 
    line_buff = newx(max(sxdots,sydots));
@@ -3532,4 +3508,3 @@ void EditPalette(void)       /* called by fractint */
    syoffs = oldsyoffs;
    delete(line_buff);
    }
-

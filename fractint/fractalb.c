@@ -246,7 +246,7 @@ void bfcornerstofloat(void)
       yy3rd = (double)bftofloat(bfy3rd);
    }
    for(i=0;i<MAXPARAMS;i++)
-      if(typehasparm(fractype,i))
+      if(typehasparm(fractype,i,NULL))
          param[i] = (double)bftofloat(bfparms[i]);
 }
 
@@ -668,7 +668,7 @@ int mandelbn_per_pixel()
    copy_bn(bnold.x, bnparm.x);
    copy_bn(bnold.y, bnparm.y);
 
-   if(inside == -60 || inside == -61)
+   if((inside == BOF60 || inside == BOF61) && !nobof)
    {
       /* kludge to match "Beauty of Fractals" picture since we start
          Mandelbrot iteration with init rather than 0 */
@@ -714,7 +714,7 @@ int mandelbf_per_pixel()
    copy_bf(bfold.x, bfparm.x);
    copy_bf(bfold.y, bfparm.y);
 
-   if(inside == -60 || inside == -61)
+   if((inside == BOF60 || inside == BOF61) && !nobof)
    {
       /* kludge to match "Beauty of Fractals" picture since we start
          Mandelbrot iteration with init rather than 0 */
@@ -741,6 +741,7 @@ int mandelbf_per_pixel()
    return (1);                  /* 1st iteration has been done */
 }
 
+int
 juliabn_per_pixel()
 {
    /* old.x = xxmin + col*delx + row*delx2 */
@@ -768,6 +769,7 @@ juliabn_per_pixel()
    return (1);                  /* 1st iteration has been done */
 }
 
+int
 juliabf_per_pixel()
 {
    /* old.x = xxmin + col*delx + row*delx2 */
@@ -795,7 +797,7 @@ juliabf_per_pixel()
    return (1);                  /* 1st iteration has been done */
 }
 
-
+int
 JuliabnFractal()
 {
    /* Don't forget, with bn_t numbers, after multiplying or squaring */
@@ -816,6 +818,7 @@ JuliabnFractal()
    return bignumbailout();
 }
 
+int
 JuliabfFractal()
 {
    /* new.x = tmpsqrx - tmpsqry + parm.x;   */
@@ -829,6 +832,7 @@ JuliabfFractal()
    return bigfltbailout();
 }
 
+int
 JuliaZpowerbnFractal()
 {
    _BNCMPLX parm2;
@@ -846,6 +850,7 @@ JuliaZpowerbnFractal()
    return bignumbailout();
 }
 
+int
 JuliaZpowerbfFractal()
 {
    _BFCMPLX parm2;
@@ -869,6 +874,7 @@ JuliaZpowerbfFractal()
 the following is an example of how you can take advantage of the bn_t
 format to squeeze a little more precision out of the calculations.
 */
+int
 JuliabnFractal()
 {
    int oldbnlength;

@@ -6,7 +6,7 @@
 
 ; Fast floating-point routines for Fractint.
 
-;   (c) Copyright 1992-1995 Chuck Ebbert.  All rights reserved.
+;   (c) Copyright 1992-1998 Chuck Ebbert.  All rights reserved.
 
 ; This program is an assembler version of the C 'execution engine' part
 ;    of Mark Peterson's FRACTINT Formula Parser.  Many of the operator
@@ -20,6 +20,18 @@
 ;    build the compiler, otherwise the interpreter will be built.
 ;    COMPILER must also be #defined in PARSERFP.C to build compiler.
 
+; 5 Dec 1999 bug fix: removed loop unroll because the modified return
+;    address was skipping over functions that needed to execute.
+
+; 1 Dec 1998 speed improvements:
+;    Functions Clr2, LT2, LodLT2, LTE2, LodLTE2, GT2, LodGT2,
+;    LodGTE2, AndClr2, OrClr2, LodLTEAnd2 were modified to alter
+;    their return address on the stack, forcing an exit from
+;    the evaluation loop.  This allows the code to run
+;    faster because it doesn't have to test for loop end.
+;    The loop was also unrolled one time for further gains.
+
+; ---------------------------------------------------------------------------
 
 ;    This code may be freely distributed and used in non-commercial
 ;    programs provided the author is credited either during program
@@ -31,7 +43,10 @@
 
 
 ;             Date      Init   Change description
-
+;
+;           5 Dec 1999   JCO   Removed loop unroll
+;           1 Dec 1998   CAE   Speed improvements
+;           5 Apr 1998   JCO   Added LoadRealPwr (0,0) domain check
 ;           6 Mar 1997   TIW   Added if/else support
 ;           7 Aug 1996   TIW   Added scrnpix constant
 ;           4 Aug 1996   TIW   Added whitesq variable support
@@ -365,6 +380,15 @@ GEN_SQRT           macro               ;                           CAE 15Feb95
       fmul         st(2),st            ; mag cos mag*sin
       fmulp        st(1),st            ; mag*cos mag*sin
       ENDM
+
+; ---------------------------------------------------------------------------
+; CAE 1 Dec 1998 added macro
+
+ALTER_RET_ADDR     macro
+;;;      mov          WORD PTR [sp],offset past_loop
+      pop          bx
+      push         offset past_loop
+      ENDM
 ; ---------------------------------------------------------------------------
 ; external functions
    extrn           _invertz2:far
@@ -389,9 +413,16 @@ _DATA              segment word public use16 'DATA'
    extrn           _col:WORD, _row:WORD
    extrn           _Arg1:WORD, _Arg2:WORD
    extrn           _pfls:DWORD, _v:DWORD
-   extrn           _debugflag:WORD
+   extrn           _ldcheck:WORD
    extrn           _jump_index:WORD, _InitJumpIndex:WORD
    extrn           _jump_control:DWORD
+   extrn           _delxx:TBYTE
+   extrn           _delxx2:TBYTE
+   extrn           _delyy:TBYTE
+   extrn           _delyy2:TBYTE
+   extrn           _xxmin:QWORD
+   extrn           _yymax:QWORD
+   extrn           _use_grid:WORD
 _DATA               ends
 
 ; ---------------------------------------------------------------------------
@@ -921,6 +952,9 @@ oldwayR:
    BEGN_OPER       Clr2                ; Test ST, clear FPU
       ftst
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       fninit                           ; fstsw will complete first
       and          ah,01000000b        ; return 1 if zf=1
       shr          ax,14               ; AX will be returned by fFormula()
@@ -1071,9 +1105,9 @@ oldwayR:
    ; Now take the log of the # on st.
       INCL_OPER    Pwr, Log            ; l.x l.y y.x y.y
       cmp          ax,1                ; log domain error?
-      jne          domainok            ; nope
-      cmp          _debugflag, 94      ; user wants old pwr?
-      je           domainok            ; yup
+      jne          short domainok      ; nope
+      test         _ldcheck, 1         ; user wants old pwr?
+      jnz          short domainok      ; yup
       POP_STK      4                   ; clear stack completely
       fldz                             ; 0
       fldz                             ; 0 0
@@ -1112,6 +1146,16 @@ domainok:
    BEGN_OPER       LodRealPwr          ; lod, real, power         CAE 6NOV93
    ; First take the log of the # on st.
       INCL_OPER    LodRealPwr, Log     ; l.x l.y
+      cmp          ax,1                ; log domain error?
+      jne          short domainok2     ; nope
+      cmp          _ldcheck, 1         ; user wants old lodrealpwr?
+      je           short domainok2     ; yup
+      POP_STK      2                   ; clear stack completely
+      fldz                             ; 0
+      fldz                             ; 0 0
+      EXIT_OPER    LodRealPwr          ; return (0,0)
+   PARSALIGN
+domainok2:
    ; Inline multiply by a real.
       FIXUP        LodRealPwr, fld, X  ; y.x, x.x, x.y
       fmul         st(2),st            ; y.x, x.x, z.y
@@ -1301,7 +1345,6 @@ domainok:
       fsubr                            ; 1-x -y 1+x y
       INCL_OPER    ATanh, Div          ; d.x d.y
    ; From FPU387.ASM
-   ; Log is called by Pwr and is also called directly.
       ftst
       fstsw        ax
       sahf
@@ -1479,15 +1522,15 @@ End_Log_ATan:
 ; End of new functions.                                          TIW 30Jun96
 ; --------------------------------------------------------------------------
    BEGN_INCL       Jump                ;
-      mov	   ax,JCSZ             ; ax = sizeof(jump control struct)
-      imul	   _jump_index         ; address of jump_control[jump_index]
+      mov          ax,JCSZ             ; ax = sizeof(jump control struct)
+      imul         _jump_index         ; address of jump_control[jump_index]
       push         es
       les          bx, _jump_control
       add          bx,ax
-      mov	   ax,WORD PTR es:[bx+8]; jump_index = DestJumpIndex 
-      mov	   bx,WORD PTR es:[bx+2]; bx = JumpOpPtr
+      mov          ax,WORD PTR es:[bx+8]; jump_index = DestJumpIndex 
+      mov          bx,WORD PTR es:[bx+2]; bx = JumpOpPtr
       pop          es
-      mov	   _jump_index,ax
+      mov          _jump_index,ax
       add          bx, WORD PTR _pfls  ; 
    END_INCL        Jump                ;
 ; --------------------------------------------------------------------------
@@ -1539,6 +1582,9 @@ LTfalse:
    ; returns !(Arg2->d.x < Arg1->d.x) in ax
       fcom         st(2)               ; compare arg1, arg2
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       fninit
       sahf
       setbe        al                  ; return (Arg1 <= Arg2) in AX
@@ -1563,6 +1609,9 @@ LodLTfalse:
    ; returns !(Arg2->d.x < Arg1->d.x) in ax
       FIXUP        LodLT2, fcom, X     ; compare arg2, arg1
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       fninit                           ; clear fpu
       sahf
       setae        al                  ; set al when arg2 >= arg1
@@ -1603,6 +1652,9 @@ GTfalse:
    ; returns !(Arg2->d.x > Arg1->d.x) in ax
       fcom         st(2)               ; compare arg1, arg2
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       fninit
       sahf
       setae        al                  ; return (Arg1 >= Arg2) in AX
@@ -1627,6 +1679,9 @@ LodGTfalse:
    ; returns !(Arg2->d.x > Arg1->d.x) in AX
       FIXUP        LodGT2, fcom, X     ; compare arg2, arg1
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       fninit                           ; clear fpu
       sahf
       setbe        al                  ; set al when arg2 <= arg1
@@ -1651,6 +1706,9 @@ LTEfalse:
    ; return !(Arg2->d.x <= Arg1->d.x) in AX
       fcom         st(2)               ; comp Arg1 to Arg2
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       fninit                           ; clear stack
       and          ah,1                ; mask cf
       shr          ax,8                ; ax=1 when arg1 < arg1
@@ -1674,6 +1732,9 @@ LodLTEfalse:
    ; return !(Arg2->d.x <= Arg1->d.x) in AX
       FIXUP        LodLTE2, fcom, X    ; comp Arg2 to Arg1
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       fninit
       sahf
       seta         al
@@ -1702,6 +1763,9 @@ LodLTEMulfalse:
    ; Arg2->d.x = (double)(Arg2->d.x <= Arg1->d.x);
       FIXUP        LodLTEAnd2, fcom, X ; comp Arg2 to Arg1
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       sahf
       fxch         st(2)               ; logical.x arg2.y arg2.x junk ...
       ja           LTEA2RFalse         ; right side is false, Arg2 > Arg1
@@ -1750,6 +1814,9 @@ LodGTEfalse:
    ; return !(Arg2->d.x >= Arg1->d.x) in AX
       FIXUP        LodGTE2, fcom, X    ; compare arg2, arg1
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       fninit                           ; clear fpu
       and          ah,1                ; mask cf
       shr          ax,8                ; shift it (AX = 1 when arg2 < arg1)
@@ -1866,6 +1933,9 @@ Arg2False:
    ;  Returns !(Arg1 && Arg2) in ax
       ftst                             ; y.x y.y x.x x.y
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       sahf
       jz           short Arg1False2
       fxch         st(2)               ; x.x y.y y.x x.y
@@ -1889,6 +1959,9 @@ Arg2False2:
    ;  Returns !(Arg1 || Arg2) in ax
       ftst                             ; y.x y.y x.x x.y
       fstsw        ax
+                                       ;                      CAE 1 Dec 1998
+      ALTER_RET_ADDR                   ; change return address on stack
+
       sahf
       jnz          short ORArg1True
       fxch         st(2)               ; x.x y.y y.x x.y
@@ -2015,16 +2088,20 @@ _fFormula          proc far
       lds          cx,_fLastOp         ; ds:cx -> last token
       mov          es,ax               ; es -> DGROUP
    assume          es:DGROUP, ds:nothing
-   align           16                  ; already aligned 16
-      push         si                  ; 1-byte instruction
-inner_loop:                            ; loop revised            CAE 09OCT93
-      cmp          bx,cx               ; time to quit yet?
-      jae          short past_loop     ; yes, bx points to last token
-      add          bx,4                ; point to next token
-      push         offset PARSERA_TEXT:inner_loop ; push return addr first
-      mov          si,WORD PTR [bx+2]  ; now set si to operand pointer
-      jmp          WORD PTR [bx]       ; ...and jump to operator fn
-past_loop:                             ; 15-byte loop
+      push         si
+
+   ;;;;align           8
+inner_loop:                            ; new loop             CAE 1 Dec 1998
+      mov          si,WORD PTR [bx+2]
+      call         WORD PTR [bx]
+;      mov          si,WORD PTR [bx+6]  ; now set si to operand pointer
+;      call         WORD PTR [bx+4]     ; ...and jump to operator fn
+;      add          bx,8     ; JCO removed loop unroll, 12/5/99
+      add          bx,4
+      jmp          short inner_loop
+
+   ;;;;align           8
+past_loop:
    ; NOTE: AX was set by the last operator fn called.
       mov          si,_PtrToZ          ; ds:si -> z
       mov          di,offset DGROUP:_new ; es:di -> new
@@ -2080,7 +2157,9 @@ checker_is_1:
       rep          movsd
       jmp          after_load
 skip_invert:
-   ;   /* v[5].a.d.x = */ (v[0].a.d.x = dx0[col]+dShiftx);
+      cmp          _use_grid,0          ; inversion support added
+      je           skip_grid  
+   ;   v[0].a.d.x = dx0[col]+dShiftx;
       mov          ax,_col
       shl          ax,3
       les          bx,_dx0
@@ -2093,7 +2172,7 @@ skip_invert:
       fadd         QWORD PTR es:[bx]
       les          bx,_v
       fstp         QWORD PTR es:[bx+CPFX]
-   ;   /* v[5].a.d.x = */ (v[0].a.d.y = dy0[row]+dShifty);
+   ;  v[0].a.d.y = dy0[row]+dShifty;
       mov          ax,_row
       shl          ax,3
       les          bx,_dy0
@@ -2105,7 +2184,32 @@ skip_invert:
       add          bx,ax
       fadd         QWORD PTR es:[bx]
       les          bx,_v
-      fstp         QWORD PTR es:[bx+CPFX+8] ; make this an fstp
+      fstp         QWORD PTR es:[bx+CPFX+8]
+      jmp          after_load
+skip_grid:
+   ;  v[0].a.d.x = (double)(xxmin + col*delxx + row*delxx2); 
+      fild         WORD PTR _row
+      fld          TBYTE PTR _delxx2
+      fmulp        st(1),st(0)
+      fild         WORD PTR _col
+      fld          TBYTE PTR _delxx
+      fmulp        st(1),st(0)
+      faddp        st(1),st(0)
+      fadd         QWORD PTR _xxmin
+      les          bx,_v
+      fstp         QWORD PTR es:[bx+CPFX]
+      fwait
+   ;  v[0].a.d.y = (double)(yymax - row*delyy - col*delyy2); */
+      fild         WORD PTR _row
+      fld          TBYTE PTR _delyy
+      fmulp        st(1),st(0)
+      fsubr        QWORD PTR _yymax
+      fild         WORD PTR _col
+      fld          TBYTE PTR _delyy2
+      fmulp        st(1),st(0)
+      fsubp        st(1),st(0)
+      les          bx,_v
+      fstp         QWORD PTR es:[bx+CPFX+8]
 after_load:
       mov          di,offset DGROUP:_s ; di points to stack overflow area
       mov          ax,ds
@@ -2132,7 +2236,8 @@ skip_initloop:
       mov          ax,es
       mov          ds,ax
    assume          ds:DGROUP, es:nothing ; for the rest of the program
-      sub          bx,4                ; make initopptr point 1 token b4 1st
+;
+;                                      ; subtract removed     CAE 1 Dec 1998
       mov          _InitOpPtr, bx      ; InitOptPtr = OpPtr;
       UNFRAME      <di, si>
       xor          ax,ax
@@ -2238,7 +2343,9 @@ _fform_per_pixel   proc far
       rep          movsd
       jmp          after_load
 skip_invert:
-   ;   /* v[5].a.d.x = */ (v[0].a.d.x = dx0[col]+dShiftx);
+      cmp          _use_grid,0          ; inversion support added
+      je           skip_grid  
+   ;   v[0].a.d.x = dx0[col]+dShiftx;
       mov          ax,_col
       shl          ax,3
       les          bx,_dx0
@@ -2251,7 +2358,7 @@ skip_invert:
       fadd         QWORD PTR es:[bx]
       les          bx,_v
       fstp         QWORD PTR es:[bx+CPFX]
-   ;   /* v[5].a.d.x = */ (v[0].a.d.y = dy0[row]+dShifty);
+   ;  v[0].a.d.y = dy0[row]+dShifty;
       mov          ax,_row
       shl          ax,3
       les          bx,_dy0
@@ -2263,7 +2370,32 @@ skip_invert:
       add          bx,ax
       fadd         QWORD PTR es:[bx]
       les          bx,_v
-      fstp         QWORD PTR es:[bx+CPFX+8] ; make this an fstp
+      fstp         QWORD PTR es:[bx+CPFX+8]
+      jmp          after_load
+skip_grid:
+   ;  v[0].a.d.x = (double)(xxmin + col*delxx + row*delxx2); 
+      fild         WORD PTR _row
+      fld          TBYTE PTR _delxx2
+      fmulp        st(1),st(0)
+      fild         WORD PTR _col
+      fld          TBYTE PTR _delxx
+      fmulp        st(1),st(0)
+      faddp        st(1),st(0)
+      fadd         QWORD PTR _xxmin
+      les          bx,_v
+      fstp         QWORD PTR es:[bx+CPFX]
+      fwait     
+   ;  v[0].a.d.y = (double)(yymax - row*delyy - col*delyy2); */
+      fild         WORD PTR _row
+      fld          TBYTE PTR _delyy
+      fmulp        st(1),st(0)
+      fsubr        QWORD PTR _yymax
+      fild         WORD PTR _col
+      fld          TBYTE PTR _delyy2
+      fmulp        st(1),st(0)
+      fsubp        st(1),st(0)
+      les          bx,_v
+      fstp         QWORD PTR es:[bx+CPFX+8] 
 after_load:
       mov          di,offset DGROUP:_s ; di points to stack overflow area
       mov          ax,ds

@@ -25,9 +25,6 @@
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifdef XFRACT
-#include <unistd.h>
-#endif
   /* see Fractint.c for a description of the "include"  hierarchy */
 #include "port.h"
 #include "prototyp.h"
@@ -925,21 +922,19 @@ int help(int action)
    return(0);
    }
 
+#ifndef XFRACT
 static int dos_version(void)
    {
-#ifndef XFRACT
    union REGS r;
 
    r.x.ax = 0x3000;
    intdos(&r, &r);
 
    return (r.h.al*100 + r.h.ah);
-#else
-   return 0;
-#endif
    }
 
 static char s_fractintexe[] = "FRACTINT.EXE";
+#endif
 
 static int can_read_file(char *path)
    {
@@ -1440,7 +1435,7 @@ ErrorAbort:
 int init_help(void)
    {
    struct help_sig_info hs;
-   char                 path[81];
+   char                 path[FILE_MAX_PATH+1];
 
    help_file = -1;
 

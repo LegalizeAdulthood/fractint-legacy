@@ -14,7 +14,7 @@ comment {
  1) The fractal name through the open curly bracket must be on a single line.
  2) There is a hard-coded limit of 2000 formulas per formula file, only
     because of restrictions in the prompting routines.
- 3) Formulas can contain at most 2000 operations (references to variables and
+ 3) Formulas can contain at most 250 operations (references to variables and
     arithmetic); this is bigger than it sounds.
  4) Comment blocks can be set up using dummy formulas with no formula name
     or with the special name "comment".
@@ -290,6 +290,7 @@ REB005G {; Ron Barnett, 1993
     |z| <= 100
   }
 
+
 {--- BRADLEY BEACHAM -----------------------------------------------------}
 
 OK-01 { ;TRY P1 REAL = 10000, FN1 = SQR
@@ -323,6 +324,38 @@ OK-22 {
    v = fn1(v) * fn2(z)
    z = fn1(z) / fn2(v)
     |z| <= (5 + p1)
+  }
+
+OK-32 {
+  z = y = x = pixel, k = 1 + p1:
+   a = fn1(z)
+   b = (a <= y) * ((a * k) + y)
+   e = (a > y) * ((a * k) + x)
+   x = y
+   y = z
+   z = b + e
+    |z| <= (5 + p2)
+  }
+
+OK-34 {
+  z = pixel, c = (fn1(pixel) * p1):
+   x = abs(real(z))
+   y = abs(imag(z))
+   a = (x <= y) * (fn2(z) + y + c)
+   b = (x > y) * (fn2(z) + x + c)
+   z = a + b
+    |z| <= (10 + p2)
+  }
+
+OK-35 {
+  z = pixel, k = 1 + p1:
+   v = fn1(z)
+   x = (z*v)
+   y = (z/v)
+   a = (|x| <= |y|) * ((z + y) * k)
+   b = (|x| > |y|) * ((z + x) * k)
+   z = fn2((a + b) * v) + v
+    |z| <= (10 + p2)
   }
 
 OK-36 { ; DISSECTED MANDELBROT
@@ -367,13 +400,102 @@ OK-43 { ; DISSECTED SPIDER
     |z| <  (10 + p2)
   }
 
+Larry { ; Mutation of 'Michaelbrot' and 'Element'
+  ; Original formulas by Michael Theroux [71673,2767]
+  ; For 'Michaelbrot', set FN1 & FN2 =IDENT and P1 & P2 = default
+  ; For 'Element', set FN1=IDENT & FN2=SQR and P1 & P2 = default
+  ; p1 = Parameter (default 0.5,0), real(p2) = Bailout (default 4)
+  z = pixel
+  ; The next line sets c=default if p1=0, else c=p1
+  c = ((0.5,0) * (|p1|<=0) + p1)
+  ; The next line sets test=4 if real(p2)<=0, else test=real(p2)
+  test = (4 * (real(p2)<=0) + real(p2) * (0<p2)):
+   z = fn1(fn2(z*z)) + c
+    |z| <= test
+  }
+
+Moe { ; Mutation of 'Zexpe'.
+  ; Original formula by Lee Skinner [75450,3631]
+  ; For 'Zexpe', set FN1 & FN2 =IDENT and P1 = default
+  ; real(p1) = Bailout (default 100)
+  s = exp(1.,0.), z = pixel, c = fn1(pixel)
+  ; The next line sets test=100 if real(p1)<=0, else test=real(p1)
+  test = (100 * (real(p1)<=0) + real(p1) * (0<p1)):
+   z = fn2(z)^s + c
+    |z| <= test
+  }
+
+Groucho { ; Mutation of 'Fish2'.
+  ; Original formula by Dave Oliver via Tim Wegner
+  ; For 'Fish2', set FN1 & FN2 =IDENT and P1 & P2 = default
+  ; p1 = Parameter (default 1,0), real(p2) = Bailout (default 4)
+  z = c = pixel
+  ; The next line sets k=default if p1=0, else k=p1
+  k = ((1,0) * (|p1|<=0) + p1)
+  ; The next line sets test=4 if real(p2)<=0, else test=real(p2)
+  test = (4 * (real(p2)<=0) + real(p2) * (0<p2)):
+   z1 = c^(fn1(z)-k)
+   z = fn2(((c*z1)-k)*(z1))
+    |z| <= test
+  }
+
+Zeppo { ; Mutation of 'Liar4'.
+  ; Original formula by Chuck Ebbert [76306,1226]
+  ; For 'Liar4' set FN1 & FN2 =IDENT and P1 & P2 = default
+  ; p1 & p2 = Parameters (default 1,0 and 0,0)
+  z = pixel
+  ; The next line sets p=default if p1=0, else p=p1
+  p = (1 * (|p1|<=0) + p1):
+   z =fn1(1-abs(imag(z)*p-real(z)))+flip(fn2(1-abs(1-real(z)-imag(z))))-p2
+    |z| <= 1
+  }
+
+inandout02 {
+  ;p1 = Parameter (default 0), real(p2) = Bailout (default 4)
+  ;The next line sets test=4 if real(p2)<=0, else test=real(p2)
+  test = (4 * (real(p2)<=0) + real(p2) * (0<p2))
+  z = oldz = pixel:
+   a = (|z| <= |oldz|) * (fn1(z)) ;IN
+   b = (|oldz| < |z|) * (fn2(z))  ;OUT
+   oldz = z
+   z = a + b + p1
+    |z| <= test
+  }
+
+inandout03 {
+  ;p1 = Parameter (default 0), real(p2) = Bailout (default 4)
+  ;The next line sets test=4 if real(p2)<=0, else test=real(p2)
+  test = (4 * (real(p2)<=0) + real(p2) * (0<p2))
+  z = oldz = c = pixel:
+   a = (|z| <= |oldz|) * (c)    ;IN
+   b = (|oldz| < |z|)  * (z*p1) ;OUT
+   c = fn1(a + b)
+   oldz = z
+   z = fn2(z*z) + c
+    |z| <= test
+  }
+
+inandout04 {
+  ;p1 = Parameter (default 1), real(p2) = Bailout (default 4)
+  ;The next line sets k=default if p1=0, else k=p1
+  k = ((1) * (|p1|<=0) + p1)
+  ;The next line sets test=4 if real(p2)<=0, else test=real(p2)
+  test = (4 * (real(p2)<=0) + real(p2) * (0<p2))
+  z = oldz = c = pixel:
+   a = (|z| <= |oldz|) * (c)   ;IN
+   b = (|oldz| < |z|)  * (c*k) ;OUT
+   c = a + b
+   oldz = z
+   z = fn1(z*z) + c
+    |z| <= test
+  }
+
+
 {--- PIETER BRANDERHORST -------------------------------------------------}
 
-comment {
-  The following resulted from a FRACTINT bug. Version 13 incorrectly
+{ The following resulted from a FRACTINT bug. Version 13 incorrectly
   calculated Spider (see above). We fixed the bug, and reverse-engineered
-  what it was doing to Spider - so here is the old "spider"
-  }
+  what it was doing to Spider - so here is the old "spider" }
 
 Wineglass(XAXIS) {; Pieter Branderhorst
   c = z = pixel:
@@ -384,11 +506,9 @@ Wineglass(XAXIS) {; Pieter Branderhorst
 
 {--- JM COLLARD-RICHARD --------------------------------------------------}
 
-comment {
-  These are the original "Richard" types sent by Jm Collard-Richard. Their
+{ These are the original "Richard" types sent by Jm Collard-Richard. Their
   generalizations are tacked on to the end of the "Jm" list below, but
-  we felt we should keep these around for historical reasons.
-  }
+  we felt we should keep these around for historical reasons.}
 
 Richard1 (XYAXIS) {; Jm Collard-Richard
   z = pixel:
@@ -457,12 +577,10 @@ Richard11(XYAXIS) {; Jm Collard-Richard
     |z|<=50
   }
 
-comment {
-  These types are generalizations of types sent to us by the French
+{ These types are generalizations of types sent to us by the French
   mathematician Jm Collard-Richard. If we hadn't generalized them
   there would be --ahhh-- quite a few. With 26 possible values for
-  each fn variable, Jm_03, for example, has 456,976 variations!
-  }
+  each fn variable, Jm_03, for example, has 456,976 variations! }
 
 Jm_01 {; generalized Jm Collard-Richard type
   z=pixel,t=p1+4:
@@ -678,15 +796,15 @@ GenInvMand1_N { ; Jm Collard-Richard
     |z|<=4
   }
 
+
 {--- W. LEROY DAVIS ------------------------------------------------------}
 
-comment {
-  These are from: "AKA MrWizard W. LeRoy Davis;SM-ALC/HRUC"
+{ These are from: "AKA MrWizard W. LeRoy Davis;SM-ALC/HRUC"
       davisl@sm-logdis1-aflc.af.mil
   The first 3 are variations of:
          z
      gamma(z) = (z/e) * sqrt(2*pi*z) * R
-  }
+}
 
 Sterling(XAXIS) {; davisl
   z = Pixel:
@@ -798,6 +916,7 @@ M_Lagandre6 {
     |z| < 100
   }
 
+
 {--- CHUCK EBBERT & JON HORNER -------------------------------------------}
 
 comment {
@@ -876,41 +995,6 @@ F'M-SetInNewtonC(XAXIS) { ; same as F'M-SetInNewtonB except for bailout
     abs(|z| - real(lastsqr) ) >= p2
   }
 
-{--- SYLVIE GALLET -------------------------------------------------------}
-
-comment {
-  This formula uses Newton's formula applied to the real equation :
-     F(x,y) = 0 where F(x,y) = (x^3 + y^2 - 1 , y^3 - x^2 + 1)
-     starting with (x_0,y_0) = z0 = pixel
-  It calculates:
-     (x_(n+1),y_(n+1)) = (x_n,y_n) - (F'(x_n,y_n))^-1 * F(x_n,y_n)
-     where (F'(x_n,y_n))^-1 is the inverse of the Jacobian matrix of F.
-  }
-
-Newton_real { ; Sylvie Gallet [101324,3444], 1996
-  ; Newton's method applied to   x^3 + y^2 - 1 = 0
-  ;                              y^3 - x^2 + 1 = 0
-  ;                              solution (0,-1)
-  ; One parameter : real(p1) = bailout value
-  z = pixel , x = real(z) , y = imag(z) :
-   xy = x*y
-   d = 9*xy+4 , x2 = x*x , y2 = y*y
-   c = 6*xy+2
-   x1 = x*c - (y*y2 - 3*y - 2)/x
-   y1 = y*c + (x*x2 + 2 - 3*x)/y
-   z = (x1+flip(y1))/d , x = real(z) , y = imag(z)
-    (|x| >= p1) || (|y+1| >= p1)
-  }
-
-G-3-03-M  { ; Sylvie Gallet [101324,3444], 1996
-            ; Modified Gallet-3-03 formula
-  z = pixel :
-   x = real(z) , y = imag(z)
-   x1 = x - p1 * fn1(y*y + round(p2*fn2(y)))
-   y1 = y - p1 * fn1(x*x + round(p2*fn2(x)))
-   z = x1 + flip(y1)
-    |z| <= 4
-  }
 
 {--- CHRIS GREEN ---------------------------------------------------------}
 
@@ -1007,6 +1091,7 @@ OldHalleySin (XYAXIS) {
     0.0001 <= |s|
   }
 
+
 {--- RICHARD HUGHES ------------------------------------------------------}
 
 phoenix_m { ; Mandelbrot style map of the Phoenix curves
@@ -1017,6 +1102,7 @@ phoenix_m { ; Mandelbrot style map of the Phoenix curves
    nx=x, ny=y, x=x1, y=y1, z=x + flip(y)
     |z| <= 4
   }
+
 
 {--- GORDON LAMB ---------------------------------------------------------}
 
@@ -1068,6 +1154,7 @@ SJMAND11 {;Mandelbrot lambda function - lower bailout
     |z|<=4
   }
 
+
 {--- KEVIN LEE -----------------------------------------------------------}
 
 LeeMandel1(XYAXIS) {; Kevin Lee
@@ -1093,7 +1180,7 @@ LeeMandel3(XAXIS) {; Kevin Lee
 
 RCL_Cross1 { ; Ron Lewen
   ; Try p1=(0,1), fn1=sin and fn2=sqr.  Set corners at
-  ; -10/10/-7.5/7.5 to see a cross shape.  The larger
+  ; -10/10/-7.5/7.5 to see a cross shape.  The larger 
   ; lakes at the center of the cross have good detail
   ; to zoom in on.
   ; Use floating point.
@@ -1103,7 +1190,7 @@ RCL_Cross1 { ; Ron Lewen
   }
 
 RCL_Pick13 { ; Ron Lewen
-  ;  Formula from Frontpiece for Appendix C
+  ;  Formula from Frontpiece for Appendix C 
   ;  and Credits in Pickover's book.
   ;  Set p1=(3,0) to generate the Frontpiece
   ;  for Appendix C and to (2,0) for Credits
@@ -1124,7 +1211,7 @@ RCL_1 (XAXIS) { ; Ron Lewen
 
 RCL_Cosh (XAXIS) { ; Ron Lewen, 76376,2567
   ; Try corners=2.008874/-3.811126/-3.980167/3.779833/
-  ; -3.811126/3.779833 to see Figure 9.7 (P. 123) in
+  ; -3.811126/3.779833 to see Figure 9.7 (P. 123) in 
   ; Pickover's Computers, Pattern, Chaos and Beauty.
   ; Figures 9.9 - 9.13 can be found by zooming.
   ; Use floating point
@@ -1147,6 +1234,33 @@ RCL_10 { ; Ron Lewen, 76376,2567
   z=pixel:
    z=flip((z^2+pixel)/(pixel^2+z))
     |z| <= 4
+  }
+
+
+{--- JONATHAN OSUCH ------------------------------------------------------}
+
+BirdOfPrey(XAXIS_NOPARM) {
+  z=p1, x=1:
+   (x<10)*(z=sqr(z)+pixel)
+   (10<=x)*(z=cosxx(z)+pixel)
+   x=x+1
+    |z|<=4
+  }
+
+FractalFenderC(XAXIS_NOPARM) {;Spectacular!
+  z=p1,x=|z|:
+   (z=cosh(z)+pixel)*(1<x)+(z=z)*(x<=1)
+   z=sqr(z)+pixel,x=|z|
+    x<=4
+  }
+
+FractalFenderCa(XAXIS_NOPARM) {;Spectacular!
+  z=p1,x=|z|:
+   if (0.9999999999 < x)
+      z=cosh(z)+pixel
+   endif
+   z=sqr(z)+pixel,x=|z|
+    x<=4
   }
 
 {--- LEE SKINNER ---------------------------------------------------------}
@@ -1256,9 +1370,7 @@ Zexpe (XAXIS) {
     |z| <= 100
   }
 
-comment {
-  s = log(-1.,0.) / (0.,1.)   is   (3.14159265358979, 0.0)
-  }
+comment { s = log(-1.,0.) / (0.,1.)   is   (3.14159265358979, 0.0 }
 
 Exipi (XAXIS) {
   s = log(-1.,0.) / (0.,1.), z = Pixel:
@@ -1321,11 +1433,9 @@ TSinh (XAXIS) {; Tetrated Hyperbolic Sine - Improper Bailout
 
 {--- SCOTT TAYLOR --------------------------------------------------------}
 
-comment {
-  The following is from Scott Taylor.
+{ The following is from Scott Taylor.
   Scott says they're "Dog" because the first one he looked at reminded him
-  of a hot dog. This was originally several fractals, we have generalized it.
-  }
+  of a hot dog. This was originally several fractals, we have generalized it. }
 
 FnDog(XYAXIS) {; Scott Taylor
   z = Pixel, b = p1+2:
@@ -1409,6 +1519,10 @@ MyFractal {; Fractal Creations example
     |z| <= 4
   }
 
+Bogus1 {; Fractal Creations example
+  z = 0; z = z + * 2
+   |z| <= 4 }
+
 MandelTangent {; Fractal Creations example (revised for v.16)
   z = pixel:
    z = pixel * tan(z)
@@ -1422,14 +1536,15 @@ Mandel3 {; Fractal Creations example
     |z| <= 4
   }
 
+
 {--- AUTHORS UNKNOWN -----------------------------------------------------}
 
 moc {
-  z=0, c=pixel:
+	z=0, c=pixel:
    z=sqr(z)+c
    c=c+p1/c
     |z| <= 4
-  }
+	}
 
 Bali {;The difference of two squares
   z=x=1/pixel, c= fn1 (z):
@@ -1448,7 +1563,7 @@ Fatso {;
 Bjax {;
   z=c=2/pixel:
    z =(1/((z^(real(p1)))*(c^(real(p2))))*c) + c
-  }
+}
 
 ULI_4 {
   z = Pixel:
@@ -1467,3 +1582,4 @@ ULI_6 {
    z = fn1(p1+z)*fn2(p2-z)
     |z| <= p2+16
   }
+

@@ -377,6 +377,7 @@ lsysf_dodrawd   ENDP
         PUBLIC  lsysf_dodrawm
 
 lsysf_dodrawm   PROC    lsyscmd:ptr
+        mov     bx,lsyscmd      ; Get pointer to structure, to quiet warning
         LSYS_SINCOS 0           ;
         fmul    st,st(5)        ; c*aspect s xpos ypos size aspect
         fmul    st,st(4)        ; size*c*aspect s xpos ypos size aspect

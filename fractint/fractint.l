@@ -1,4 +1,3 @@
-
 Koch1 { ; Adrian Mariano
 ; from The Fractal Geometry of Nature by Mandelbrot
   Angle 6
@@ -166,6 +165,7 @@ Koch4 { ; Adrian Mariano
   f=+f--f++f-
   }
 
+
 Plant07 { ; Ken Philip, from The Science of Fractal Images p.285b
   axiom Z
   z=zFX[+Z][-Z]
@@ -196,6 +196,7 @@ Sierpinski3 { ; From Jim Hanan via Corbit
   angle 3
   }
 
+
 Peano3 {
   axiom x
   x=XFYFX+F+YFXFY-F-XFYFX
@@ -222,12 +223,14 @@ SierpinskiSquare {
   angle 4
   }
 
+
 Pentagram { ; created by Adrian Mariano
   angle 10
   axiom fx++fx++fx++fx++fx
 ; f=f[++++@1.618033989f]
   x=[++++@i1.618033989f@.618033989f!x!@i.618033989f]
   }
+
 
 QuadKoch { ; Adrian Mariano, from the Algorithmic Beauty of Plants
 	   ; Quadratic Koch island, Figure 1.7a p.9
@@ -312,13 +315,14 @@ Plant09 { ; Adrian Mariano
    x=X[-FFF][+FFF]FX
    y=YFX[+Y][-Y]
    angle 14
-   }
+}
 
 Plant10 { ; Adrian Mariano
    axiom f
    f=f[+ff][-ff]f[+ff][-ff]f
    angle 10
    }
+
 
 Plant11 { ; Adrian Mariano
    axiom f
@@ -428,6 +432,7 @@ KochCurve { ; Adrian Mariano
   F=F+F--F+F
   }
 
+
 Penrose1 { ; by Herb Savage
 ; based on Martin Gardner's "Penrose Tiles to Trapdoor Ciphers",
 ; Roger Penrose's rhombuses
@@ -438,7 +443,7 @@ Penrose1 { ; by Herb Savage
   Y=-WF++XF[+++YF++ZF]-
   Z=--YF++++WF[+ZF++++XF]--XF
   F=
-  }
+}
 
 ColorPenrose1 { ; by Herb Savage
 ; based on Martin Gardner's "Penrose Tiles to Trapdoor Ciphers",
@@ -571,3 +576,4 @@ Lars2Color{ ; By Jonathan Osuch [73277,1432]
   axiom C1+[F]++[F]++[F]++F
   F=F<1[+F][-F]>1
   }
+

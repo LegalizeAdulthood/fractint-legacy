@@ -35,7 +35,7 @@ clear_bn   PROC USES di, r:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -73,7 +73,7 @@ max_bn   PROC USES di, r:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -116,7 +116,7 @@ copy_bn   PROC USES di si, r:bn_t, n:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -165,7 +165,7 @@ cmp_bn   PROC USES di, n1:bn_t, n2:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -280,7 +280,7 @@ is_bn_not_zero   PROC n:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -332,7 +332,7 @@ add_bn   PROC USES di si, r:bn_t, n1:bn_t, n2:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -402,7 +402,7 @@ add_a_bn   PROC USES di, r:bn_t, n:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -468,7 +468,7 @@ sub_bn   PROC USES di si, r:bn_t, n1:bn_t, n2:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -538,7 +538,7 @@ sub_a_bn   PROC USES di, r:bn_t, n:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -604,7 +604,7 @@ neg_bn   PROC USES di, r:bn_t, n:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -699,7 +699,7 @@ neg_a_bn   PROC r:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -778,7 +778,7 @@ double_bn   PROC USES di, r:bn_t, n:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -844,7 +844,7 @@ double_a_bn   PROC r:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -908,7 +908,7 @@ half_bn   PROC USES di, r:bn_t, n:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -997,7 +997,7 @@ half_a_bn   PROC r:bn_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -1116,7 +1116,10 @@ already_pos2:
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      use_32_bit              ; use faster 32 bit code if possible
+;        jae     use_32_bit              ; use faster 32 bit code if possible
+        jb      wont_use_32bit
+        jmp     use_32_bit              ; use faster 32 bit code if possible
+wont_use_32bit:
 ENDIF
 
 IFDEF BIG16
@@ -1364,7 +1367,10 @@ already_pos2:
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      use_32_bit              ; use faster 32 bit code if possible
+;        jae     use_32_bit              ; use faster 32 bit code if possible
+        jb      cant_use_32bit
+        jmp     use_32_bit              ; use faster 32 bit code if possible
+cant_use_32bit:
 ENDIF
 
 IFDEF BIG16
@@ -1625,7 +1631,10 @@ already_pos:
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      use_32_bit              ; use faster 32 bit code if possible
+;        jae     use_32_bit              ; use faster 32 bit code if possible
+        jb      dont_use_32bit
+        jmp     use_32_bit              ; use faster 32 bit code if possible
+dont_use_32bit:
 ENDIF
 
 IFDEF BIG16
@@ -1984,7 +1993,10 @@ already_pos:
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      use_32_bit              ; use faster 32 bit code if possible
+;        jae     use_32_bit              ; use faster 32 bit code if possible
+        jb      skip_use_32bit
+        jmp     use_32_bit              ; use faster 32 bit code if possible
+skip_use_32bit:
 ENDIF
 
 IFDEF BIG16
@@ -2044,7 +2056,9 @@ IFDEF BIG16
         mov     rp2, ax                 ; start with rp2=rp1
 
         cmp     i, 0                    ; if bignumberlength is 2
-        je      skip_middle_terms_16
+;        je      skip_middle_terms_16
+        jne     top_outer_loop_16
+        jmp     skip_middle_terms_16
 
 top_outer_loop_16:
         mov     ax, steps               ; set inner loop counter
@@ -2116,8 +2130,10 @@ shifts_bottom_16:
         mov     carry_steps, ax
 
         dec     i
-        ja      top_outer_loop_16
-
+;        ja      top_outer_loop_16
+        jna     not_top_outer_loop_16
+        jmp     top_outer_loop_16
+not_top_outer_loop_16:
         ; All the middle terms have been multiplied.  Now double it.
         mov     ds, save_ds             ; restore ds to get bnlength
         push    bnlength                ; save bnlength
@@ -2446,7 +2462,7 @@ LOCAL   lu:dword  ; long unsigned integer in 32 bit math
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      use_32_bit              ; use faster 32 bit code if possible
+        jae     use_32_bit              ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -2520,7 +2536,7 @@ mult_a_bn_int   PROC USES di si, r:bn_t, u:word
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      use_32_bit              ; use faster 32 bit code if possible
+        jae     use_32_bit              ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -2602,7 +2618,7 @@ already_pos:
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      use_32_bit              ; use faster 32 bit code if possible
+        jae     use_32_bit              ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -2699,7 +2715,7 @@ already_pos:
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      use_32_bit              ; use faster 32 bit code if possible
+        jae     use_32_bit              ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -2778,7 +2794,7 @@ clear_bf   PROC USES di, r:bf_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -2821,7 +2837,7 @@ copy_bf   PROC USES di si, r:bf_t, n:bf_t
 
 IFDEF BIG16AND32
         cmp     cpu, 386                ; check cpu
-        je      short use_32_bit        ; use faster 32 bit code if possible
+        jae     short use_32_bit        ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -2872,7 +2888,10 @@ movebytes_set:
 
 IFDEF BIG16AND32
       cmp     cpu, 386              ; check cpu
-      je      use_32_bit            ; use faster 32 bit code if possible
+;      jae     use_32_bit            ; use faster 32 bit code if possible
+      jb      over_use_32bit
+      jmp     use_32_bit            ; use faster 32 bit code if possible
+over_use_32bit:
 ENDIF
 
 IFDEF BIG16
@@ -2938,13 +2957,18 @@ bottom_shift_16:
 
       ; round last byte
       cmp      byte ptr value[0], 80h  ;
-      jb       bottom                  ; no rounding necessary
+;      jb       bottom                  ; no rounding necessary
+      jnb      not_bottom1
+      jmp      bottom                  ; no rounding necessary
+not_bottom1:
       add      word ptr value[1], 1
       adc      word ptr value[3], 0
       adc      word ptr value[5], 0
       adc      word ptr value[7], 0
-      jnc      bottom
-
+;      jnc      bottom
+      jc       not_bottom2
+      jmp      bottom
+not_bottom2:
       ; to get to here, the pattern was rounded from +FFFF...
       ; to +10000... with the 1 getting moved to the carry bit
 ENDIF
@@ -3049,7 +3073,10 @@ floattobf   PROC USES di si, n:bf_t, f:REAL10
 
       ; check to see if f is 0
       cmp      byte ptr f[7], 0        ; f[7] can only be 0 if f is 0
-      jz       return                  ; if f is 0, bailout now
+;      jz       return                  ; if f is 0, bailout now
+      jnz      over_return
+      jmp      return                  ; if f is 0, bailout now
+over_return:
 
       mov      cx, 9                   ; need up to 9 bytes
       cmp      bflength, 10            ; but no more than bflength-1
@@ -3060,7 +3087,7 @@ movebytes_set:
 
 IFDEF BIG16AND32
       cmp     cpu, 386              ; check cpu
-      je      use_32_bit            ; use faster 32 bit code if possible
+      jae     use_32_bit            ; use faster 32 bit code if possible
 ENDIF
 
 IFDEF BIG16
@@ -3217,7 +3244,10 @@ set_movebytes:                      ; cx now holds movebytes
 
 IFDEF BIG16AND32
       cmp     cpu, 386              ; check cpu
-      je      use_32_bit            ; use faster 32 bit code if possible
+;      jae     use_32_bit            ; use faster 32 bit code if possible
+      jb      not_use_32_bit
+      jmp     use_32_bit            ; use faster 32 bit code if possible
+not_use_32_bit:
 ENDIF
 
 IFDEF BIG16
@@ -3268,7 +3298,10 @@ not_neg_16:
       ; Shift until most signifcant bit is set.
 top_shift_16:
       test     byte ptr value[8], 10000000b  ; test msb
-      jnz      bottom
+;      jnz      bottom
+      jz       over_bottom
+      jmp      bottom
+over_bottom:
       dec      dx                      ; decrement exponent
       shl      word ptr value[0], 1    ; shift left the 9 byte number
       rcl      word ptr value[2], 1

@@ -58,6 +58,7 @@ char    temp1[256];             /* temporary strings        */
 char    readname[FILE_MAX_PATH];/* name of fractal input file */
 char    tempdir[FILE_MAX_DIR] = {""}; /* name of temporary directory */
 char    workdir[FILE_MAX_DIR] = {""}; /* name of directory for misc files */
+char    orgfrmdir[FILE_MAX_DIR] = {""};/*name of directory for orgfrm files*/
 char    gifmask[13] = {""};
 char    PrintName[FILE_MAX_PATH]={"fract001.prn"}; /* Name for print-to-file */
 char    savename[FILE_MAX_PATH]={"fract001"};  /* save files using this name */
@@ -77,7 +78,7 @@ int     decomp[2];              /* Decomposition coloring */
 long    distest;
 int     distestwidth;
 char    overwrite = 0;  /* 0 if file overwrite not allowed */
-int     soundflag;              /* 0 if sound is off, 1 if on */
+int     soundflag;              /* sound control bitfield... see sound.c for useage*/
 int     basehertz;              /* sound=x/y/x hertz value */
 int     debugflag;              /* internal use only - you didn't see this */
 int     timerflag;              /* you didn't see this, either */
@@ -113,6 +114,7 @@ char    dontreadcolor=0;        /* flag for reading color from GIF */
 double  math_tol[2]={.05,.05};  /* For math transition */
 int Targa_Out = 0;              /* 3D fullcolor flag */
 int truecolor = 0;              /* escape time truecolor flag */
+int truemode = 0;               /* truecolor coloring scheme */
 char    colorfile[FILE_MAX_PATH];/* from last <l> <s> or colors=@filename */
 int functionpreloaded; /* if function loaded for new bifs, JCO 7/5/92 */
 float   screenaspect = DEFAULTASPECT;   /* aspect ratio of the screen */
@@ -122,6 +124,8 @@ int fastrestore = 0;          /* 1 - reset viewwindows prior to a restore
                                      and do not display warnings when video
                                      mode changes during restore */
 
+int orgfrmsearch = 0;            /* 1 - user has specified a directory for
+                                     Orgform formula compilation files */
 /* TARGA+ variables */
 int     TPlusFlag;              /* Use the TARGA+ if found  */
 int     MaxColorRes;            /* Default Color Resolution if available */
@@ -137,6 +141,8 @@ BYTE exitmode = 3;      /* video mode on exit */
 
 char    ai_8514;        /* Flag for using 8514a afi JCO 4/11/92 */
 int     Log_Fly_Calc = 0;   /* calculate logmap on-the-fly */
+int     Log_Auto_Calc = 0;  /* auto calculate logmap */
+int     nobof = 0; /* Flag to make inside=bof options not duplicate bof images */
 
 int        bios_palette;        /* set to 1 to force BIOS palette updates */
 int        escape_exit;         /* set to 1 to avoid the "are you sure?" screen */
@@ -208,6 +214,8 @@ char s_epscross[] =  "epsiloncross";
 char s_startrail[] =  "startrail";
 char s_normal[] =  "normal";
 char s_period[] = "period";
+char s_fmod[] = "fmod";
+char s_tdis[] = "tdis";
 char s_or[]     = "or";
 char s_and[]    = "and";
 char s_mod[]    = "mod";
@@ -220,12 +228,15 @@ char s_afi[] =              "afi";
 char s_ambient[] =          "ambient";
 char s_askvideo[] =         "askvideo";
 char s_aspectdrift[] =      "aspectdrift";
+char s_attack[] =           "attack";
+char s_atten[] =            "attenuate";
 char s_autokey[] =          "autokey";
 char s_autokeyname[] =      "autokeyname";
 char s_background[] =       "background";
 char s_bailout[] =          "bailout";
 char s_bailoutest[] =       "bailoutest";
 char s_batch[] =            "batch";
+char s_beep[] =             "beep";
 char s_biomorph[] =         "biomorph";
 char s_biospalette[] =      "biospalette";
 char s_brief[] =            "brief";
@@ -247,6 +258,7 @@ char s_cyclerange[] =       "cyclerange";
 char s_curdir[] =           "curdir";
 char s_debug[] =            "debug";
 char s_debugflag[] =        "debugflag";
+char s_decay[] =            "decay";
 char s_decomp[] =           "decomp";
 char s_distest[] =          "distest";
 char s_dither[] =           "dither";
@@ -255,6 +267,7 @@ char s_egamono[] =          "egamono";
 char s_epsf[] =             "epsf";
 char s_exitmode[] =         "exitmode";
 char s_exitnoask[] =        "exitnoask";
+char s_fastrestore[] =      "fastrestore";
 char s_filename[] =         "filename";
 char s_fillcolor[] =        "fillcolor";
 char s_filltype[] =         "filltype";
@@ -271,10 +284,10 @@ char s_halftone[] =         "halftone";
 char s_haze[] =             "haze";
 char s_hertz[] =            "hertz";
 char s_hgc[] =              "hgc";
+char s_high[] =             "high";
 char s_ifs[] =              "ifs";
 char s_ifs3d[] =            "ifs3d";
 char s_ifsfile[] =          "ifsfile";
-char s_iit[] =              "iit";
 char s_initorbit[] =        "initorbit";
 char s_inside[] =           "inside";
 char s_interocular[] =      "interocular";
@@ -293,6 +306,7 @@ char s_lname[] =            "lname";
 char s_logmap[] =           "logmap";
 char s_logmode[] =          "logmode";
 char s_longitude[] =        "longitude";
+char s_low[] =              "low";
 char s_makedoc[] =          "makedoc";
 char s_makemig[] =          "makemig";
 char s_makepar[] =          "makepar";
@@ -301,16 +315,18 @@ char s_manr[]    = "manr";
 char s_map[] =              "map";
 char s_maxcolorres[] =      "maxcolorres";
 char s_mcga[] =             "mcga";
+char s_mid[] =              "mid";
 char s_miim[] =             "miim";
+char s_nobof[] =            "nobof";
 char s_mono[] =             "mono";
-char s_noiit[] =            "noiit";
 char s_none[] =             "none";
 char s_noninterlaced[] =    "noninterlaced";
-char s_fastrestore[] =      "fastrestore";
+char s_off[] =              "off";
 char s_olddemmcolors[] =    "olddemmcolors";
 char s_orbitdelay[] =       "orbitdelay";
 char s_orbitname[] =        "orbitname";
 char s_orbitsave[] =        "orbitsave";
+char s_orgfrmdir[] =        "orgfrmdir";
 char s_origin[] =           "origin";
 char s_outside[] =          "outside";
 char s_overlay[] =          "overlay";
@@ -325,10 +341,12 @@ char s_pixel[] =            "pixel";
 char s_pixelzoom[] =        "pixelzoom";
 char s_play[] =             "play";
 char s_plotstyle[] =        "plotstyle";
+char s_polyphony[] =        "polyphony";
 char s_potential[] =        "potential";
 char s_preview[] =          "preview";
 char s_printer[] =          "printer";
 char s_printfile[] =        "printfile";
+char s_prox[] =             "proximity";
 char s_radius[] =           "radius";
 char s_ramvideo[] =         "ramvideo";
 char s_randomize[] =        "randomize";
@@ -336,6 +354,7 @@ char s_ranges[] =           "ranges";
 char s_ray[] =              "ray";
 char s_record[] =           "record";
 char s_release[] =          "release";
+char s_srelease[] =         "srelease";
 char s_reset[] =            "reset";
 char s_rleps[] =            "rleps";
 char s_rotation[] =         "rotation";
@@ -343,6 +362,7 @@ char s_roughness[] =        "roughness";
 char s_rseed[] =            "rseed";
 char s_savename[] =         "savename";
 char s_savetime[] =         "savetime";
+char s_scalemap[] =         "scalemap";
 char s_scalexyz[] =         "scalexyz";
 char s_showbox[] =          "showbox";
 char s_showdot[] =          "showdot";
@@ -351,8 +371,10 @@ char s_smoothing[] =        "smoothing";
 char s_sound[] =            "sound";
 char s_sphere[] =           "sphere";
 char s_stereo[] =           "stereo";
+char s_sustain[] =          "sustain";
 char s_symmetry[] =         "symmetry";
 char s_truecolor[] =        "truecolor";
+char s_truemode[] =         "truemode";
 char s_tempdir[] =          "tempdir";
 char s_workdir[] =          "workdir";
 char s_usegrayscale[] =     "usegrayscale";
@@ -369,8 +391,11 @@ char s_vesadetect[] =       "vesadetect";
 char s_vga[] =              "vga";
 char s_video[] =            "video";
 char s_viewwindows[] =      "viewwindows";
+char s_virtual[] =          "virtual";
+char s_volume[] =           "volume";
 char s_warn[] =             "warn";
 char s_waterline[] =        "waterline";
+char s_wavetype[]=          "wavetype";
 char s_xaxis[] =            "xaxis";
 char s_xyadjust[] =         "xyadjust";
 char s_xyaxis[] =           "xyaxis";
@@ -403,6 +428,7 @@ char s_srand [] =           "srand";
 char s_recip [] =           "recip";
 char s_ident [] =           "ident";
 char s_zero [] =            "zero";
+char s_one  [] =            "one";
 char s_asin [] =            "asin";
 char s_asinh [] =           "asinh";
 char s_acos [] =            "acos";
@@ -410,10 +436,12 @@ char s_acosh [] =           "acosh";
 char s_atanh [] =           "atanh";
 char s_cabs [] =            "cabs";
 char s_sqrt [] =            "sqrt";
+char s_ismand [] =          "ismand";
 static FCODE s_bfdigits []     = "bfdigits";
 static FCODE s_recordcolors [] = "recordcolors";
-
+static FCODE s_maxlinelength []= "maxlinelength";
 static FCODE s_mathtolerance[] = "mathtolerance";
+static FCODE s_minstack[]      = "minstack";
 static FCODE s_lzw []          = "tweaklzw";
 static FCODE s_sstoolsini []   = "sstools.ini";
 static FCODE s_fractintfrm []  = "fractint.frm";
@@ -527,7 +555,7 @@ int cmdfiles(int argc,char **argv)
    if(debugflag != 110)
        first_init = 0;
 /*       {
-            char msg[80];
+            char msg[MSGLEN];
             sprintf(msg,"cmdfiles colorpreloaded %d showfile %d savedac %d",
                 colorpreloaded, showfile, savedac);
             stopmsg(0,msg);
@@ -556,7 +584,7 @@ int load_commands(FILE *infile)
    ret = cmdfile(infile,2);
 /*
          {
-            char msg[80];
+            char msg[MSGLEN];
             sprintf(msg,"load commands colorpreloaded %d showfile %d savedac %d",
                 colorpreloaded, showfile, savedac);
             stopmsg(0,msg);
@@ -599,8 +627,7 @@ static void initvars_restart()          /* <ins> key init */
    dither_flag = 0;                     /* no dithering */
    askvideo = 1;                        /* turn on video-prompt flag */
    overwrite = 0;                       /* don't overwrite           */
-   soundflag = -1;                      /* sound is on               */
-   basehertz = 440;                     /* basic hertz rate          */
+   soundflag = 9;                       /* sound is on to PC speaker */
    initbatch = 0;                       /* not in batch mode         */
    checkcurdir = 0;                     /* flag to check current dire for files */
    initsavetime = 0;                    /* no auto-save              */
@@ -608,9 +635,12 @@ static void initvars_restart()          /* <ins> key init */
    viewwindow = 0;                      /* no view window            */
    viewreduction = (float)4.2;
    viewcrop = 1;
+   virtual = 1;                         /* virtual screen modes on   */
    ai_8514 = 0;                         /* no need for the 8514 API  */
    finalaspectratio = screenaspect;
    viewxdots = viewydots = 0;
+   video_cutboth = 1;                   /* keep virtual aspect */
+   zscroll = 1;                         /* relaxed screen scrolling */
    orbit_delay = 0;                     /* full speed orbits */
    debugflag = 0;                       /* debugging flag(s) are off */
    timerflag = 0;                       /* timer flags are off       */
@@ -672,6 +702,7 @@ static void initvars_restart()          /* <ins> key init */
    major_method = breadth_first;        /* default inverse julia methods */
    minor_method = left_first;   /* default inverse julia methods */
    truecolor = 0;              /* truecolor output flag */
+   truemode = 0;               /* set to default color scheme */
 }
 
 static void initvars_fractal()          /* init vars affecting calculation */
@@ -687,6 +718,9 @@ static void initvars_fractal()          /* init vars affecting calculation */
    maxit = 150;                         /* initial maxiter        */
    usr_stdcalcmode = 'g';               /* initial solid-guessing */
    stoppass = 0;                        /* initial guessing stoppass */
+   quick_calc = 0;
+   closeprox = 0.01;
+   ismand = 1;                          /* default formula mand/jul toggle */
 #ifndef XFRACT
    usr_floatflag = 0;                   /* turn off the float flag */
 #else
@@ -697,6 +731,7 @@ static void initvars_fractal()          /* init vars affecting calculation */
    curfractalspecific = &fractalspecific[0];
    initcorners = initparams = 0;
    bailout = 0;                         /* no user-entered bailout */
+   nobof = 0;  /* use normal bof initialization to make bof images */
    useinitorbit = 0;
    for (i = 0; i < MAXPARAMS; i++) param[i] = 0.0;     /* initial parameter values */
    for (i = 0; i < 3; i++) potparam[i]  = 0.0; /* initial potential values */
@@ -751,6 +786,18 @@ static void initvars_fractal()          /* init vars affecting calculation */
    neworbittype = JULIA;
    zdots = 128;
    initvars_3d();
+   basehertz = 440;                     /* basic hertz rate          */
+#ifndef XFRACT
+   fm_vol = 63;                         /* full volume on soundcard o/p */
+   hi_atten = 0;                        /* no attenuation of hi notes */
+   fm_attack = 5;                       /* fast attack     */
+   fm_decay = 10;                        /* long decay      */
+   fm_sustain = 13;                      /* fairly high sustain level   */
+   fm_release = 5;                      /* short release   */
+   fm_wavetype = 0;                     /* sin wave */
+   polyphony = 0;                       /* no polyphony    */
+   for(i=0;i<=11;i++) scale_map[i]=i+1;    /* straight mapping of notes in octave */
+#endif
 }
 
 static void initvars_3d()               /* init vars affecting 3d */
@@ -824,6 +871,7 @@ static int cmdfile(FILE *handle,int mode)
    {
       backwards_v18();
       backwards_v19();
+      backwards_v20();
    }
    return changeflag;
 }
@@ -949,6 +997,7 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
 
 
    argptr = curarg;
+#ifndef XFRACT
    while (*argptr) {                    /* convert to lower case */
       if (*argptr >= 'A' && *argptr <= 'Z')
          *argptr += 'a' - 'A';
@@ -958,6 +1007,7 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
          break;                         /* don't convert comment=value */
       ++argptr;
       }
+#endif
 
    if ((value = strchr(&curarg[1],'=')) != NULL) {
       if ((j = (value++) - curarg) > 1 && curarg[j-1] == ':')
@@ -1131,25 +1181,19 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
          bios_palette = yesnoval[0];
          return 3;
          }
+#endif
 
       if (far_strcmp(variable,s_fpu) == 0) {
-         if (far_strcmp(value,s_iit) == 0) {
-            fpu = 387;
-            iit = 1;
-            return 0;
-            }
-         if (far_strcmp(value,s_noiit) == 0) {
-            iit = -2;
-            return 0;
-            }
          if (far_strcmp(value,s_387) == 0) {
+#ifndef XFRACT
             fpu = 387;
-            iit = -2;
+#else
+            fpu = -1;
+#endif
             return 0;
             }
          goto badarg;
          }
-#endif
 
       if (far_strcmp(variable,s_exitnoask) == 0) {
          if (yesnoval[0] < 0) goto badarg;
@@ -1176,28 +1220,47 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
          strcpy(CommandFile,value);
          if(strchr(CommandFile,'.') == NULL)
             strcat(CommandFile,".par");
+         if(strcmp(readname,DOTSLASH)==0)
+            *readname = 0;
          if(next == NULL)
-            extract_filename(CommandName,readname);
+         {
+            if(*readname != 0)
+               extract_filename(CommandName,readname);
+            else if(*MAP_name != 0)   
+               extract_filename(CommandName,MAP_name);
+            else
+               goto badarg;
+         }   
          else
          {
             strncpy(CommandName,next,ITEMNAMELEN);
             CommandName[ITEMNAMELEN] = 0;
          }
          *s_makepar = 0; /* used as a flag for makepar case */
-         if(read_overlay() == 0)
+         if(*readname != 0)
          {
-            xdots = filexdots;
-            ydots = fileydots;
-            dxsize = xdots-1;
-            dysize = ydots-1;
-            calcfracinit();
-            make_batch_file();
+            if(read_overlay() != 0)
+               goodbye();
+         }
+         else if(*MAP_name != 0)
+         {
+            s_makepar[1] = 0; /* second char is flag for map */
+         }
+         xdots = filexdots;
+         ydots = fileydots;
+         dxsize = xdots-1;
+         dysize = ydots-1;
+         calcfracinit();
+         make_batch_file();
 #ifndef WINFRACT
 #ifndef XFRACT
+         if(*readname != 0)
             printf("copying fractal info in GIF %s to PAR %s/%s\n",
-                readname,CommandFile,CommandName);
+                   readname,CommandFile,CommandName);
+         else if (*MAP_name != 0)
+            printf("copying color info in map %s to PAR %s/%s\n",
+                MAP_name,CommandFile,CommandName);
 #endif
-         }
          goodbye();
 #endif
          }
@@ -1274,6 +1337,13 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       if(*value != 'y' && *value != 'c' && *value != 'a')
          goto badarg;
       recordcolors = *value;
+      return 0;
+      }
+
+   if (far_strcmp(variable,s_maxlinelength) == 0) {  /* maxlinelength= */
+      if(numval < MINMAXLINELENGTH || numval > MAXMAXLINELENGTH)
+         goto badarg;
+      maxlinelength = numval;
       return 0;
       }
 
@@ -1377,23 +1447,31 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       }
    if (far_strcmp(variable,s_inside) == 0 ) {       /* inside=? */
       if(far_strcmp(value,s_zmag)==0)
-         inside = -59;
+         inside = ZMAG;
       else if(far_strcmp(value,s_bof60)==0)
-         inside = -60;
+         inside = BOF60;
       else if(far_strcmp(value,s_bof61)==0)
-         inside = -61;
+         inside = BOF61;
       else if(far_strncmp(value,s_epscross,3)==0)
-         inside = -100;
+         inside = EPSCROSS;
       else if(far_strncmp(value,s_startrail,4)==0)
-         inside = -101;
+         inside = STARTRAIL;
       else if(far_strncmp(value,s_period,3)==0)
-         inside = -102;
+         inside = PERIOD;
+      else if(far_strncmp(value,s_fmod,3)==0)
+         inside = FMODI;
+      else if(far_strncmp(value,s_atan,3)==0)
+         inside = ATANI;
       else if(far_strcmp(value,s_maxiter)==0)
          inside = -1;
       else if(numval == NONNUMERIC)
          goto badarg;
       else
          inside = numval;
+      return 1;
+      }
+   if (far_strcmp(variable,s_prox) == 0 ) {       /* proximity=? */
+      closeprox = floatval[0];
       return 1;
       }
    if (far_strcmp(variable,s_fillcolor) == 0 ) {       /* fillcolor */
@@ -1412,6 +1490,12 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       return 1;
       }
 
+   if (far_strcmp(variable,s_nobof) == 0 ) {   /* nobof=? */
+      if (yesnoval[0] < 0) goto badarg;
+      nobof = yesnoval[0];
+      return 1;
+      }
+
    if (far_strcmp(variable,s_function) == 0) {      /* function=?,? */
       k = 0;
       while (*value && k < 4) {
@@ -1425,21 +1509,25 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
 
    if (far_strcmp(variable,s_outside) == 0 ) {      /* outside=? */
       if(far_strcmp(value,s_iter)==0)
-         outside = -1;
+         outside = ITER;
       else if(far_strcmp(value,s_real)==0)
-         outside = -2;
+         outside = REAL;
       else if(far_strcmp(value,s_imag)==0)
-         outside = -3;
+         outside = IMAG;
       else if(far_strcmp(value,s_mult)==0)
-         outside = -4;
+         outside = MULT;
       else if(far_strcmp(value,s_sum)==0)
-         outside = -5;
+         outside = SUM;
       else if(far_strcmp(value,s_atan)==0)
-         outside = -6;
+         outside = ATAN;
+      else if(far_strcmp(value,s_fmod)==0)
+         outside = FMOD;
+      else if(far_strcmp(value,s_tdis)==0)
+         outside = TDIS;
 
       else if(numval == NONNUMERIC)
          goto badarg;
-      else if(numval < -6 || numval > 255) goto badarg;
+      else if(numval < TDIS || numval > 255) goto badarg;
       else outside = numval;
       return 1;
       }
@@ -1464,7 +1552,8 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
    if (far_strcmp(variable,s_passes) == 0) {        /* passes=? */
       if ( charval[0] != '1' && charval[0] != '2' && charval[0] != '3'
         && charval[0] != 'g' && charval[0] != 'b'
-        && charval[0] != 't')
+	&& charval[0] != 't' && charval[0] != 's'
+	&& charval[0] != 'd' )
          goto badarg;
       usr_stdcalcmode = charval[0];
       if(charval[0] == 'g')
@@ -1473,6 +1562,12 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
          if(stoppass < 0 || stoppass > 6)
             stoppass = 0;
       }
+      return 1;
+      }
+
+   if (far_strcmp(variable,s_ismand) == 0 ) {        /* ismand=? */
+      if (yesnoval[0] < 0) goto badarg;
+      ismand = (short int)yesnoval[0];
       return 1;
       }
 
@@ -1509,6 +1604,7 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       int tmpranges[128];
       if (totparms != intparms) goto badarg;
       entries = prev = i = 0;
+      LogFlag = 0; /* ranges overrides logmap */
       while (i < totparms) {
          if ((j = intval[i++]) < 0) { /* striping */
             if ((j = 0-j) < 1 || j >= 16384 || i >= totparms) goto badarg;
@@ -1520,7 +1616,7 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
          tmpranges[entries++] = prev = j;
          }
       if (prev == 0) goto badarg;
-      if ((ranges = (int far *)farmemalloc(2L*entries)) == NULL) {
+      if ((ranges = (int far *)farmemalloc(sizeof(int)*entries)) == NULL) {
          static FCODE msg[] = {"Insufficient memory for ranges="};
          stopmsg(1,msg);
          return(-1);
@@ -1543,6 +1639,13 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
    if (far_strcmp(variable,s_lzw) == 0) {      /* tweaklzw=? */
       if (totparms >= 1) lzw[0] = intval[0];
       if (totparms >= 2) lzw[1] = intval[1];
+      return 0;
+      }
+
+   if (far_strcmp(variable,s_minstack) == 0) {      /* minstack=? */
+      if (totparms != 1)
+         goto badarg;
+      minstack = intval[0];
       return 0;
       }
 
@@ -1957,6 +2060,15 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       return 0;
       }
 
+   if (far_strcmp(variable,s_orgfrmdir) == 0 ) {   /* orgfrmdir=? */
+      if (valuelen > (FILE_MAX_DIR-1)) goto badarg;
+      if(isadirectory(value) == 0) goto badarg;
+      orgfrmsearch = 1;
+      strcpy(orgfrmdir,value);
+      fix_dirname(orgfrmdir);
+      return 0;
+   }
+
    if (far_strcmp(variable,s_biomorph) == 0 ) {     /* biomorph=? */
       usr_biomorph = numval;
       return 1;
@@ -2121,18 +2233,55 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       return 0;
       }
 
-   if (far_strcmp(variable,s_sound) == 0 ) {        /* sound=? */
-      soundflag = 0;
-      if (far_strncmp(value,"ye",2) == 0) {
-         soundflag = -1;
-         return(0);
-         }
-      if (charval[0] == 'x')
-         soundflag = 1;
-      if (charval[0] == 'y')
-         soundflag = 2;
-      if (charval[0] == 'z')
-         soundflag = 3;
+   if (far_strcmp(variable,s_sound) == 0 ) {        /* sound=?,?,? */
+      if (totparms > 5)
+         goto badarg;
+      soundflag = 0; /* start with a clean slate, add bits as we go */
+      if (totparms == 1)
+         soundflag = 8; /* old command, default to PC speaker */
+
+      /* soundflag is used as a bitfield... bit 0,1,2 used for whether sound
+         is modified by an orbits x,y,or z component. and also to turn it on
+         or off (0==off, 1==beep (or yes), 2==x, 3==y, 4==z),
+         Bit 3 is used for flagging the PC speaker sound,
+         Bit 4 for OPL3 FM soundcard output,
+         Bit 5 will be for midi output (not yet),
+         Bit 6 for whether the tone is quantised to the nearest 'proper' note
+          (according to the western, even tempered system anyway) */
+
+      if (charval[0] == 'n' || charval[0] == 'o')
+         soundflag = soundflag & 0xF8; 
+      else if ((far_strncmp(value,"ye",2) == 0) || (charval[0] == 'b'))
+         soundflag = soundflag | 1;
+      else if (charval[0] == 'x')
+         soundflag = soundflag | 2;
+      else if (charval[0] == 'y' && far_strncmp(value,"ye",2) != 0)
+         soundflag = soundflag | 3;
+      else if (charval[0] == 'z')
+         soundflag = soundflag | 4;
+      else
+         goto badarg;
+#ifndef XFRACT
+      if (totparms > 1) {
+       int i;
+         soundflag = soundflag & 7; /* reset options */
+         for (i = 1; i < totparms; i++) {
+          /* this is for 2 or more options at the same time */
+            if (charval[i] == 'f') { /* (try to)switch on opl3 fm synth */
+               if(initfm())
+                  soundflag = soundflag | 16;
+               else soundflag = (soundflag & 0xEF);
+            }
+            else if (charval[i] == 'p')
+               soundflag = soundflag | 8;
+            else if (charval[i] == 'm')
+               soundflag = soundflag | 32;
+            else if (charval[i] == 'q')
+               soundflag = soundflag | 64;
+            else
+               goto badarg;
+         } /* end for */
+      }    /* end totparms > 1 */
       return 0;
       }
 
@@ -2140,6 +2289,68 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       basehertz = numval;
       return 0;
       }
+
+   if (far_strcmp(variable,s_volume) == 0) {         /* Volume =? */
+      fm_vol = numval & 0x3F; /* 63 */
+      return 0;
+      }
+
+   if (far_strcmp(variable,s_atten) == 0) {
+      if (charval[0] == 'n')
+         hi_atten = 0;
+      else if (charval[0] == 'l')
+         hi_atten = 1;
+      else if (charval[0] == 'm')
+         hi_atten = 2;
+      else if (charval[0] == 'h')
+         hi_atten = 3;
+      else
+         goto badarg;
+      return 0;
+      }
+
+   if(far_strcmp(variable,s_polyphony) == 0) {
+      if (numval > 9)
+         goto badarg;
+      polyphony = abs(numval-1);
+      return(0);
+   } 
+
+   if(far_strcmp(variable,s_wavetype) == 0) { /* wavetype = ? */
+      fm_wavetype = numval & 0x0F;
+      return(0);
+   }
+
+   if(far_strcmp(variable,s_attack) == 0) { /* attack = ? */
+      fm_attack = numval & 0x0F;
+      return(0);
+   }
+
+   if(far_strcmp(variable,s_decay) == 0) { /* decay = ? */
+      fm_decay = numval & 0x0F;
+      return(0);
+   }
+
+   if(far_strcmp(variable,s_sustain) == 0) { /* sustain = ? */
+      fm_sustain = numval & 0x0F;
+      return(0);
+   }
+   
+   if(far_strcmp(variable,s_srelease) == 0) { /* release = ? */
+      fm_release = numval & 0x0F;
+      return(0);
+   }
+
+   if (far_strcmp(variable,s_scalemap) == 0) {      /* Scalemap=?,?,?,?,?,?,?,?,?,?,? */
+      int counter;
+      if (totparms != intparms) goto badarg;
+      for(counter=0;counter <=11;counter++)
+         if ((totparms > counter) && (intval[counter] > 0)
+           && (intval[counter] < 13))
+             scale_map[counter] = intval[counter];
+#endif
+      return(0);
+   } 
 
    if (far_strcmp(variable,s_periodicity) == 0 ) {  /* periodicity=? */
       usr_periodicitycheck=1;
@@ -2153,10 +2364,13 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
          goto badarg;
       else if(numval != 0)
          usr_periodicitycheck=numval;
+      if (usr_periodicitycheck > 255) usr_periodicitycheck = 255;
+      if (usr_periodicitycheck < -255) usr_periodicitycheck = -255;
       return 1;
       }
 
    if (far_strcmp(variable,s_logmap) == 0 ) {       /* logmap=? */
+      Log_Auto_Calc = 0;   /* turn this off if loading a PAR */
       if (charval[0] == 'y')
          LogFlag = 1;                           /* palette is logarithmic */
       else if (charval[0] == 'n')
@@ -2170,10 +2384,14 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
 
    if (far_strcmp(variable,s_logmode) == 0 ) {       /* logmode=? */
       Log_Fly_Calc = 0;                         /* turn off if error */
+      Log_Auto_Calc = 0;
       if (charval[0] == 'f')
          Log_Fly_Calc = 1;                      /* calculate on the fly */
       else if (charval[0] == 't')
          Log_Fly_Calc = 2;                      /* force use of LogTable */
+      else if (charval[0] == 'a') {
+         Log_Auto_Calc = 1;                     /* force auto calc of logmap */
+      }
       else goto badarg;
       return 1;
       }
@@ -2499,7 +2717,20 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
    if (far_strcmp(variable,s_truecolor) == 0) {     /* truecolor=? */
       if (yesnoval[0] < 0) goto badarg;
       truecolor = yesnoval[0];
-      return 2;
+      return 3;
+      }
+
+   if (far_strcmp(variable,s_truemode) == 0) {    /* truemode=? */
+      truemode = 0;                               /* use default if error */
+      if (charval[0] == 'd')
+         truemode = 0;                            /* use default color output */
+      if (charval[0] == 'i' || intval[0] == 1)
+         truemode = 1;                            /* use iterates output */
+      if (intval[0] == 2)
+         truemode = 2;
+      if (intval[0] == 3)
+         truemode = 3;
+      return 3;
       }
 
    if (far_strcmp(variable,s_usegrayscale) == 0) {     /* usegrayscale? */
@@ -2523,7 +2754,7 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
    if (far_strcmp(variable,s_background) == 0) {     /* background=?/? */
       if (totparms != 3 || intparms != 3) goto badarg;
                 for (i=0;i<3;i++)
-                        if (intval[i] & 0xff)
+                        if (intval[i] & ~0xff)
                                 goto badarg;
       back_color[0] = (BYTE)intval[0];
       back_color[1] = (BYTE)intval[1];
@@ -2561,6 +2792,12 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       if (yesnoval[0] < 0) goto badarg;
       checkcurdir = yesnoval[0];
       return 0;
+      }
+
+   if (far_strcmp(variable,s_virtual) == 0) {         /* virtual= */
+      if (yesnoval[0] < 0) goto badarg;
+      virtual = yesnoval[0];
+      return 1;
       }
 
 badarg:
@@ -2846,7 +3083,7 @@ int get_max_curarg_len(char *floatvalstr[], int totparms)
 /* call with NULL for badfilename to get pause for getakey() */
 int init_msg(int flags,char *cmdstr,char far *badfilename,int mode)
 {
-   static char far *modestr[4] =
+   char far *modestr[4] =
        {s_commandline,s_sstoolsini,s_at_cmd,s_at_cmd};
    static FCODE diags[] =
        {"Fractint found the following problems when parsing commands: "};

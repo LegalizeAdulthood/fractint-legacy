@@ -4,6 +4,58 @@ Of course, Fractint would never stoop to having a "common" problem.  These
 notes describe some, ahem, "special situations" which come up occasionally
 and which even we haven't the gall to label as "features".
 
+Fractint (alas!) is still a DOS program. It runs well under windows, but there
+can be problems. Here are some tips from some expert users.
+
+Jay Hill's Windows tips:\ 
+  For starters, make sure the DOS window properties are set to 
+  'Misc | Always suspend' = off." Unless you want the task to stop when it 
+  does not have focus. Also, you can put the Idle Sensitivity to high. Make 
+  settings on any other DOS windows you have open according to what they 
+  should be (or what you prefer). 
+
+  If your DOS window is full screen, press Alt-Enter to make it a Window window. 
+  Then click on the MSDOS icon in the upper left. WARNING, don't do this in a
+  high res graphics mode or in text mode (sometimes). The safest is F3 320x200 
+  graphics mode. Windows likes that mode. If you have a high res image, hit 'X'
+  to get the text screen and then Alt-ENTER to get the DOS Windows window... 
+  POW...your task will likely die. So ... don't do that: 
+
+  Some DOS programs eat up to 50% or 80% CPU time just sitting watching for 
+  key strokes. Clearly, these should be suspended when they don't have the 
+  focus. A simple DOS prompt, I have found, eats little time. 
+
+  Some web pages eat lots of time (watching prompt boxes) while others eat 
+  little (plain text or graphics with no links). 
+
+  It has been noted here before, you can make a shortcut to Fractint.exe and 
+  tailor its properties. I use in the program tab: command line: 
+
+  FRACTINT.EXE textsafe=save sound=off\
+
+  Under the screen tab: Usage: Full screen. 
+  Under Misc: Allow screen saver=off. 
+
+  You should coordinate your DOS windows according to what you are doing. 
+  I often change the settings for a short time, just to do some other task. 
+
+Damien M. Jones Windows tips:\
+  This is what works for me. Your mileage may vary. 
+
+  Create a shortcut to FRACTINT.EXE, right-click it, choose Properties. 
+  On the Memory tab: set all five drop-downs to "Auto". 
+  On the Screen tab: choose Full-screen and Fast ROM emulation, leave 
+  Dynamic memory allocation OFF. 
+  Under the Misc tab: turn OFF Allow screen saver. Turn ON Always suspend. 
+  Set the Idle sensitivity to about 1/4, closest to Low. 
+
+  In the SSTOOLS.INI file, put textsafe=save on a line by itself in the 
+  [fractint] section. (This helps preserve your screen when you switch away 
+  from FractInt, but only works if Always suspend is turned ON.) 
+
+  Having more than 8M of RAM helps too, that way Windows and FractInt aren't 
+  fighting over the same memory. 
+
 Hang during startup:\
   There might be a problem with Fractint's video detection logic and your
   particular video adapter. Try running with "fractint adapter=xxx" where
@@ -121,6 +173,36 @@ Disk video mode performance:\
   This won't be blindingly fast at the best of times, but there are things
   which can slow it down and can be tuned.  See {"Disk-Video" Modes}
   for details.
+
+Sound card output isn't working:\
+  If you get the message "FM hardware not present" when trying to switch on
+  output from your sound card then check that the drivers you installed with
+  the card have set the BLASTER environment variable. To do this go to a DOS
+  prompt and type SET, this command will list a bunch of lines like this:\
+  VARIABLE=VALUE\
+  ANOTHERVARIABLE=ANOTHER VALUE\
+  \
+  one of these should look like:\
+  BLASTER=A:220 I:5 D:3\
+  or similar, it's the A: entry that's important. If you don't have the variable
+  set then try putting the line:\
+  SET BLASTER=A:220\
+  in your autoexec.bat file, though be warned that if your sound hardware isn't
+  compatable or has its base i/o address set differently to the 220H, then unexpected
+  things may happen as fractint tries to write to hardware that isn't there.
+
+  If you get no warning message but still can't hear anything then try to
+  alter the volume of your card's output using whatever utility came with the
+  card. For windows 95 doubleclick on the small loudspeaker icon on your
+  task bar and play with the sliders, you may have to go to the mixer properties
+  menu and enable the control for the FM output to appear, this may be called
+  'synthesizer', 'FM', 'midi', or 'legacy' depending on your hardware.
+  Also fractint is unlikely to be able to continue sounding notes when running
+  in the background under windows 95, so you'll need to keep switching back and
+  forth until things are set right.
+  
+
+
 ;
 ;
 ;
@@ -142,7 +224,7 @@ Disk video mode performance:\
 
     A Little Math:
        { Summary of Fractal Types }
-       { Inside=bof60|bof61|zmag|period }
+       { Inside=bof60|bof61|zmag|fmod|period|atan }
        { Inside=epscross|startrail }
        { Finite Attractors }
        { Trig Identities }
@@ -493,10 +575,10 @@ this document, and another containing complete source code (including a
 ;
 ;
 ;
-~Topic=Inside=bof60|bof61|zmag|period
+~Topic=Inside=bof60|bof61|zmag|fmod|period|atan
 ~Format-,Online-
 
-INSIDE=BOF60|BOF61|ZMAG|PERIOD
+INSIDE=BOF60|BOF61|ZMAG|FMOD|PERIOD|ATAN
 ~Format+,Online+
 
 Here is an *ATTEMPTED* explanation of what the inside=bof60 and
@@ -537,11 +619,22 @@ inside=zmag is similar. This option colors inside pixels according to
 the magnitude of the orbit point when maxiter was reached, using the formula
 color = (x^2 + y^2) * maxiter/2 + 1.
 
+inside=fmod colors inside pixels according to the magnitude of the last orbit
+point which is within a set distance from the origin.  Then:\
+  color = magnitude * colors / closeprox\
+The magnitude used for the comparison is now based on the same calculation as
+is used for the bailout test.  The value of closeprox can be varied
+interactively.  This feature was contributed by Iain Stirling.
+
 inside=period colors pixels according to the length of their eventual cycle.
 For example, points that approach a fixed point have color=1.  Points that
 approach a 2-cycle have color=2.  Points that do not approach a cycle during
 the iterations performed have color=maxit.  This option works best with a
 fairly large number of iterations.
+
+inside=atan colors by determining the angle in degrees the last iterated
+value has with respect to the real axis, and using the absolute value.  This
+feature should be used with periodicity=0
 ;
 ;
 ;
@@ -560,6 +653,12 @@ fractal, if the orbit comes within .01 of the Y-axis, the orbit is terminated
 and the pixel is colored green. Similarly, the pixel is colored yellow if it
 approaches the X-axis. Strictly speaking, this is not an "inside" option
 because a point destined to escape could be caught by this bailout criterion.
+
+The test distance, 0.01, can now be changed interactively on the <x> screen
+and via the proximity=<nnn> command line parameter. A negative value of
+the test distance triggers an alternative variation of epsilon cross that
+colors the epsilon bands with the iteration; otherwise they are colored 
+normally to maintain compatibility.
 
 Hooper has another coloring scheme called "star trails" that involves
 detecting clusters of points being traversed by the orbit. A table of tangents
@@ -775,6 +874,7 @@ exponentiation; x^y is x to the y power.
    recip(x+iy) = (x-iy) / (x^2+y^2)
    flip(x+iy) = y + ix
    zero(x+iy) = 0
+   one(x+iy)  = 1
    cabs(x+iy) = sqrt(x^2 + y^2)
    floor(x+iy) = floor(x) + i*floor(y)
    ceil(x+iy)  = ceil(x) + i*ceil(y)
@@ -826,8 +926,8 @@ Then q1q2 = 1(x1x2 - y1y2 - z1z2 - w1w2) +
 
 ~Format+
 Quaternions are not the only possible four dimensional supersets of the
-complex numbers. William Hamilton, the discoverer of quaternions in the
-1830's, considered the alternative called the hypercomplex number system.
+complex numbers. William Rowan Hamilton, who discovered quaternions in 1843,
+considered the alternative called the hypercomplex number system.
 Unlike quaternions, the hypercomplex numbers satisfy the commutative law of
 multiplication. The law which fails is the field property that states that
 all non-zero elements of a field have a multiplicative inverse. For a non-zero
@@ -980,6 +1080,9 @@ Both Buttons:  (or the middle button, if you have three of them) While
 Zoom and Pan using the mouse typically consists of pushing in the left
 button, sizing the zoom box, letting go of the button, panning to the
 general area, then double-clicking the left button to perform the Zoom.
+
+For details of a special mode that takes advantage of the mouse when
+palette editing see {Freestyle mode tutorial}
 ;
 ;
 ;
@@ -1007,23 +1110,15 @@ The 'err' column in the video mode information indicates:
 DISTRIBUTION OF FRACTINT
 ~Format+,Online+
 
-New versions of FRACTINT are uploaded to the CompuServe network, and make
+New versions of FRACTINT are uploaded to the Fractint developer's web site at
+www.fractint.org, and make
 their way to other systems from that point.  FRACTINT is available as
 two self-extracting archive files - FRAINT.EXE (executable & documentation)
 and FRASRC.EXE (source code).
 
-The latest version can always be found in one of CompuServe's GO GRAPHICS
-forums. The GO GRAPHICS staff have provided the alias GO FRACTAL, which
-currently points to GO GRAPHDEV, therefore you should always be able to
-find us using GO FRACTAL. Fractint is located in the "Fractint Sources"
-library 3.
+The latest developer's version can also be found at www.fractint.org.
 
-If you're not a CompuServe subscriber, but
-wish to get more information about CompuServe and its graphics forums,
-feel free to call their 800 number (800-848-8199) and ask for operator
-number 229.
-
-If you don't have access to CompuServe, many other sites tend to carry
+Many other sites tend to carry
 these files shortly after their initial release (although sometimes
 using different naming conventions).  Look for frainnn.zip (executable
 package) and frasrnnn.zip (source), where nnn is the release number. Major
@@ -1039,18 +1134,10 @@ Via FTP, login to spanky.triumf.ca as ANONYMOUS, and change directories
 to [pub.fractals.programs.ibmpc], then download frainxxx.zip. (The directory
 syntax is in VAX format.)
 
-Another site to check out is the simtel archive, \
-ftp://ftp.simtel.net/pub/simtelnet/msdos/graphics/frainxxx.zip\
-where xxx is the release number.
-
-Your favorite local BBS probably carries these files as well (although
-perhaps not the latest versions) using naming conventions like FRA*.ZIP.
-
 The X Windows port of Fractint was written by Ken Shirriff and is available
-via FTP from ftp://ftp.cs.berkeley.edu/ucb/sprite/xf*, although this
-may not be up to date. You can find the latest copy at\
-http://spanky.triumf.ca/pub/fractals/programs/unix/XFRACTxxx.TGZ\
-where xxx is the Xfractint release number.
+via FTP from http://spanky.triumf.ca/pub/fractals/programs/unix/XFRACTxxx.zip\
+where xxx is the Xfractint release number.  Developer's versions of
+Xfractint are available at the Fractint developer's web site.
 ;
 ;
 ~Topic=Contacting the Authors
@@ -1059,31 +1146,20 @@ where xxx is the Xfractint release number.
 CONTACTING THE AUTHORS
 ~Format+,Online+
 Communication between the authors for development of the next version of
-Fractint takes place in a CompuServe (CIS) GO GRAPHICS GROUP (GGG) forum.
-Our forum changes from time to time as the GGG grows. You
-can always find us using the CompuServe GO FRACTAL command. Currently we are
-located in GRAPHDEV (Graphics Developers) forum, Section 3 (Fractint Sources).
+Fractint takes place in the fractint mailing list.
 
-Most of the authors have never met except on CompuServe. Access to the
-GRAPHDEV forum is open to any and all interested in computer generated
-fractals. New members are always welcome! Stop on by if you have any
-questions or just want to take a peek at what's getting tossed into the soup.
-This is by far the best way to have your questions answered or participate
-in discussion. Also, you'll find many GIF image files generated by fellow
-Fractint fans and many fractal programs as well in the GRAPHDEV forum's data
-libraries 3 through 6.
-
-If you're not a CompuServe subscriber, but wish to get more information
-about CompuServe and its graphics forums, feel free to call their 800
-number (800-848-8199) and ask for operator number 229.
+Most of the authors have never met except on CompuServe.  The development
+team has moved off of CompuServe and now uses a mailing list maintained by
+Tim Wegner (see below).  New members are always welcome! Stop on by if you
+have any questions or just want to take a peek at what's getting tossed into
+the soup.  This is by far the best way to have your questions answered or
+participate in a discussion.
 
 The following authors have agreed to the distribution of their addresses.
 Usenet/Internet/Bitnet/Whatevernet users can reach CIS users directly if
-they know the user ID (i.e., Bert Tyler's ID is 73477.433@compuserve.com).
+they know the user ID.
 
-Just remember that CIS charges by the minute, so it costs us a little bit
-to read a message -- don't kill us with kindness. And don't send all your
-mail to Bert -- spread it around a little! Postal addresses are listed below
+Postal addresses are listed below
 so that you have a way to send bug reports
 and ideas to the Stone Soup team.
 
@@ -1093,7 +1169,14 @@ our professional responsibilities, we are generally unable to answer it all.
 Several of us have reached the point where we can't answer any conventional
 mail. We *do* read and enjoy all the mail we receive, however. If you need a
 reply, the best thing to do is use email, which we are generally able to
-answer, or better yet, leave a message in CompuServe's GRAPHDEV.
+answer, or better yet, leave a message on the fractint list.
+
+Tim Wegner now runs a mailing list for fractint users to swap ideas and par
+data, you can subscribe by emailing majordomo@mailman.xmission.com with
+the line:\
+subscribe fractint\
+as the sole content of the message, you'll receive further instructions by
+return of email.
 
 (This address list has been pruned of names of folks we haven't heard
 from in a while. If your name has been removed, and you'd like to be listed,
@@ -1103,47 +1186,39 @@ just let us know and we'll add it back.)
 Current main authors:
 
 ~Format-
-Bert Tyler              [73477,433] on CIS
-Tyler Software          (which is also bert_tyler@compuserve.com, if
-124 Wooded Lane          you're on the Internet - see above)
-Villanova, PA 19085
-(610) 525-5478
 
-Timothy Wegner          [71320,675] on CIS
-4714 Rockwood           twegner@phoenix.net (Internet)
+Timothy Wegner          twegner@fractint.org
+4714 Rockwood
 Houston, TX 77004
 (713) 747-7543
 
-Jonathan Osuch          [73277,1432] on CIS
+Jonathan Osuch          josuch@fractint.org
 2110 Northview Drive
 Marion, IA  52302
 
-Wesley Loewer           loewer@tenet.edu on INTERNET
-
 George Martin           [76440,1143] on CIS
-155 E. Commerce Street, Suite 103
+209 E. Liberty          ggmartin@compuserve.com
 Milford, MI 48381
+
+Robin Bussell           [100604,643] on CIS
+13 Bayswater Rd         robin.b2@ukonline.co.uk
+Horfield
+Bristol
+Avon, England
 
 
 Contributing authors' addresses (in alphabetic order).
 
-Robin Bussell           [100604,643] on CIS
-13 Bayswater Rd         robin.bussell@lucent.com
-Horfield
-Bristol
-Avon, England
-(044)-0272-514451
-
 Prof Jm Collard-Richard jmc@math.ethz.ch
 
 Paul de Leeuw
-50 Henry Street
-Five Dock
-New South Wales
-2046
+16 Sunset Street
+Wyoming
+NSW 2250
 Australia
-+61-2-9396-2246 (Work)
-+61-2-9713-6064 (Home)
++61-2-8293-3055 (Work)
++61-2-4329-0870 (Home)
+
 
 ~OnlineFF
 Sylvie Gallet           [101324,3444] on CIS
@@ -1151,20 +1226,16 @@ Residence des Erables   sylvie_gallet@compuserve.com
 2 allee des Bouvreuils
 93700 DRANCY FRANCE
 
-Marc Reinig             [72410,77] on CIS
-3415 Merrill Rd.        72410.77@compuserve.com.
-Aptos, CA. 95003
-(408) 475-2132
-
-Michael Sargent         msargent@zoo.uvm.edu
-9 Yandow Drive
-S. Burlington, VT 05403
-(802) 862-6485
-
 Lee H. Skinner          [75450,3631] on CIS
 P.O. Box 14944
 Albuquerque, NM  87191
 (505) 293-5723
+
+Bert Tyler              bert_tyler@oef.com
+Tyler Software 
+124 Wooded Lane
+Villanova, PA 19085
+(610) 525-5478
 
 ~Format+
 ;
@@ -1248,7 +1319,7 @@ the credits screen for the contributions of the main authors, we list these
 here to facilitate those who would like to communicate with us on
 particular subjects.
 
-Main Authors of Version 19.
+Main Authors of Version 19 and later.
 
 BERT TYLER is the original author of Fractint.  He wrote the "blindingly
 fast" 386-specific 32 bit integer math code and the original video mode
@@ -1326,12 +1397,34 @@ George received an A.B. in Economics from Dartmouth College and a J.D from
 the University of Michigan. When not playing with Fractint, he practices
 law in a small village about 40 miles northwest of Detroit.
 
+
+ROBIN BUSSELL began contributing to fractint in rudimentary fashion with the
+autologmap routine and has been producing more and more complex interface
+enhancements as he gets better at what he refers to as 'this C programming lark'
+He is always grateful for the help the rest of the team have given in smoothing
+the rough edges of the ingredients he adds to the soup and regards the evolver
+feature as his greatest achievement to date.
+
+Robin had far too much fun at college in London to actually get any qualifications there
+and has since worked his way up from a workshop job fixing computers back in
+the final days of CPM, via some interesting work with Transputers ( an innovative
+British cpu that was designed to run in massively parallel configurations, and
+made a very good Mandlebrot set calculating machine when a few dozen or more were set
+to the task) , through to his current position of senior engineer for a third
+party suppport company where he spends his time travelling the south west of Britain
+sorting out peoples IT problems. Anyone wishing to offer him interesting work
+in anything to do with computers can find a CV at:
+http://web.ukonline.co.uk/robin.b2/rbcv.htm
+
+When not playing with computers Robin likes to relax by experimenting with kite
+powered traction and can often be found hurtling around the local beaches on the end of
+a few square metres of fabric and carbon fibre in various configurations.
 ;
 ;
 ~Topic=Other Fractal Products
-
 (Forgive us, but we just *have* to begin this section with a plug for
-*our* fractal products...)
+*our* fractal products even though the books are now out of print and 
+hard to find ...)
 
 Several of Fractint's programmers have written books about fractals,
 Fractint, and Winfract (the Windows version of Fractint).
@@ -1357,23 +1450,30 @@ Fractal Creations Second Edition includes:
 ;
 ~OnlineFF
 
-Several Fractint enthusiasts are selling Fractal CDs.  Two of the best are
-called "Fractal Frenzy" by Lee Skinner, and "Fractography" by Caren Park.
-Highly recommended original artwork in a variety of graphics formats.
+  Several Fractint enthusiasts are selling Fractal CDs.  Two of the best
+  are called "Fractal Dimensions" by Lee Skinner, and "Fractography" by
+  Caren Park.  Highly recommended original artwork in a variety of
+  graphics formats.
 
-You can receive the "Fractal Frenzy CD" by sending $39.95US + $5.00 S&H to
-   Walnut Creek CDROM\
-   1537 Palos Verdes Mall, Suite 260\
-   Walnut Creek, CA 94596\
+  You can receive the "Fractal Dimensions CD" by sending $29.95US +
+  $5.00 S&H (or $10.00 S&H outside USA) to
+
+     Lee H. Skinner
+     P. O. Box 14944
+     Albuquerque, NM  87191-4944
+     USA
+
+  This CD is in html format.  Another CD by Lee Skinner is "Visions 6: Super
+  Fractals".  This CD is $39.95US (plus $5.00 S&H) and is available from
+
+     Walnut Creek CDROM
+     1537 Palos Verdes Mall, Suite 260
+     Walnut Creek, CA 94596
 
 and the "Fractography" CD by sending $30.00US + $5.00 S&H (in US/Canada) to\
    Lost and Found Books\
    485 Front Street N, Suite A\
    Issaquah, WA 98027-2900\
-
-For information on the CyberLight Matrix CDROM by Rene Ertzinger, check out
-   the ArtByMath Fractal Gallery at http://www.ArtByMath.com. The CD features
-   some display software with unusual palette animation techniques.
 
 ~OnlineFF
 Michael Peters and Randall Scott have written a fractal program called HOP
@@ -1381,14 +1481,14 @@ based on the Martin orbit fractals. This program is much narrower than
 Fractint in the kind of thing that it does, but has many more animation
 effects and makes a great screen saver. Michael sent us the algorithms for
 the chip, quadruptwo, and threeply fractal types to give us a taste. The
-file is called HOPZIP.EXE in LIB 3 of CompuServe's GRAPHDEV forum.
+file is called HOPZIP.EXE in LIB 9 of CompuServe's DIGART forum.
 
 Michael has also written a handy utility called PARTOBAT which creates
 a batch file for generating all the images in a Fractint PAR file.
 
 George Martin has written a useful formula file organizing program,
-distributed as ORGFRM.ZIP, which also includes a  comprehensive collection
-of formulas. More than 6,000 formulas written by Fractint users are
+distributed as ORGFRM.ZIP, which also includes a comprehensive collection
+of formulas. More than 15,000 formulas written by Fractint users are
 included in the compilation, arranged alphabetically by name, and with
 the original source file shown in each formula by comment, making the
 compilation an encyclopedia of formulas written for Fractint. The most
@@ -1398,7 +1498,13 @@ includes a utility program, orgform.exe, which copies the formulas of
 ".frm" files into the compilation, skipping those formulas which are
 already included in the compilation. Formula writers are urged to consult
 this compilation in order to avoid giving a new formula an existing formula
-name. George can be reached at [76440,1143], or 76440.1143@compuserve.com.
+name. George can be reached at [76440,1143], or ggmartin@compuserve.com.
+
+Robin Bussell has knocked together a windows front end for fractint that makes
+rendering images from par information recieved in email a simple operation.
+Download it for free from http://web.ukonline.co.uk/robin.b2/pastengo.htm
+or check compuserve for pastengo.zip
+
 
 Noel Giffin (noel@triumf.ca), maintains a terrific web page for Fractint and
 fractals in general at spanky.triumf.ca. Highly recommended. His pages on
@@ -1476,13 +1582,36 @@ WEGNER, Timothy, TYLER, Bert, PETERSON, Mark, and Branderhorst, Pieter:
 ;
 ~Topic=Other Programs
 
-WINFRACT. Bert Tyler has ported Fractint to run under Windows 3!  The same
+~Label=@FDESIGN
+FDESIGN, by Doug Nelson (CIS ID 70431,3374) - a freeware IFS fractal
+generator available from CompuServe in DIGART LIB 9, and probably on your
+local BBS.  This program requires a VGA adapter and a Microsoft-compatible
+mouse, and a floating point coprocessor is highly recommended.  It
+generates IFS fractals in a *much* more intuitive fashion than Fractint.
+It can also (beginning with version 3.0) save its IFS formulas in
+Fractint-style .IFS files.
+
+BRAZIL Fractal Generator by David CHARDONNET - A freeware IFS fractal 
+generator and animator for Windows 95 and Win/NT 4.0 shares common fractal
+description language for sharing fractals between fractint and this program. 
+It can be downloaded from his website:\ 
+   http://www.geocities.com/CapeCanaveral/Lab/1837/index_a.html
+ 
+FRACTINT SCREEN SAVER by Thore Berntsen. This freeware screen saver works with
+Fractint. Check this out at:\
+   http://home.sol.no/\~thbernt/fintsave.htm\
+
+~OnlineFF
+The following pieces of software are pretty old now, but for now these 
+references are still here. Winfract is based on on old version of Fractint
+and is no longer maintained.
+
+WINFRACT. Bert Tyler has ported Fractint to run under Windows 3.  The same
 underlying code is used, with a Windows user interface.  Winfract has
 almost all the functionality of Fractint - the biggest difference is the
 absence of a zillion weird video modes.  Fractint for DOS will continue to
 be the definitive version.  Winfract is available from CompuServe in
-GRAPHDEV Lib 4, as WINFRA.ZIP (executable) and WINSRC.ZIP (source).
-
+DIGART LIB 9, as WINFRA.ZIP (executable) and WINSRC.ZIP (source).
 
 PICLAB, by Lee Crocker - a freeware image manipulation utility available
 from CompuServe in PICS Lib 10, as PICLAB.EXE.  PICLAB can do very
@@ -1491,16 +1620,6 @@ can be used to reduce 24 bit TGA files generated with the Fractint
 "lightname" option to GIF files.
 
 ~OnlineFF
-
-~Label=@FDESIGN
-FDESIGN, by Doug Nelson (CIS ID 70431,3374) - a freeware IFS fractal
-generator available from CompuServe in GRAPHDEV Lib 4, and probably on your
-local BBS.  This program requires a VGA adapter and a Microsoft-compatible
-mouse, and a floating point coprocessor is highly recommended.  It
-generates IFS fractals in a *much* more intuitive fashion than Fractint.
-It can also (beginning with version 3.0) save its IFS formulas in
-Fractint-style .IFS files.
-
 ~Label=@ACROSPIN
 ACROSPIN, by David Parker - An inexpensive commercial program that reads
 an object definition file and creates images that can be rapidly rotated
@@ -1509,6 +1628,222 @@ this program can read for orbit-type fractals and IFS fractals. Contact:
    David Parker                         801-966-2580\
    P O Box 26871                        800-227-6248\
    Salt Lake City, UT  84126-0871
+
+;
+;
+
+~Topic=Sound Controls, label=HELPSOUND
+
+On this screen, accessed by hitting ctrl-F, you'll find a few parameters
+that you recognise from the 'x' menu handily gathered together, plus a few
+new ones. You can find the descriptions for the basic parms over at the
+{Sound Parameters} help.
+
+The newer parameters now control whether fractint uses the PC speaker for
+sound, as in previous versions, or the output of a sound card, or both.
+
+Your present Sound card may boast all manner of gizmos and wotnots but fractint may
+well not be able to take advantage of them, this is simply due to our not including
+umpteen different drivers for all the different cards. Instead it just uses a
+simple approach that at least allows you to use multimedia speakers for
+the various noises of which fractint is capable.
+
+This DOS version of fractint uses the current lowest common denominator
+hardware among the variety of sound cards available, the yamaha OPL-3 FM synthesizer
+chipset which is found in most sound cards from the original AdLib, through
+the various soundblasters from creative labs, to the numerous cards that
+emulate them. 
+
+The OPL-3 chipset has within it several 'voices', each capable of generating
+sound independently of the others, and with a variety of controllable
+parameters. See {Advanced Sound Controls} for details.
+
+The sound card volume control given here will be overridden by any volume
+control applications that come with your OS, such as the windows 95 mixer
+control panel. Also, depending on your sound card and software, the output
+of the OPL-3 chipset may be controlled by a slider named 'synth', 'midi',
+ or possibly 'legacy'... if in doubt, experiment :-)
+
+The other parameter that needs explaining here is note pitch quantisation.
+When this is enabled, tones that are to be played are first rounded to the
+nearest note on the western even tempered scale (i.e. the notes that you find
+on a piano) as opposed to the full spectrum of frequencies. The
+{Advanced Sound Controls} screen also has a facility to restrict the notes
+played further so that you can produce tunes in a particular key, if you're
+so inclined.
+;
+;
+~Topic=Advanced Sound Controls, Label=HELPMUSIC
+The soundcard output from fractint is a tad more versatile than the simple
+tones of the PC speaker. This comes into its own when playing sounds based
+on fractal orbits, producing results from haunting chordal pulses through to
+unearthly arpeggios.
+
+The voices used to generate notes on the sound card have variable {Envelopes}
+and can be played polyphonically so we have three parameters to vary the
+sounds produced:
+
+POLYPHONY=nn\
+This controls how many different note are allowed to sound at once, voices are
+assigned cyclically as notes are played: i.e. after the first orbit is
+calculated a frequency is assigned to the first voice and that note is
+triggered on. Fractint then waits for one orbitdelay period, calculates the
+next orbit, assigns a frequency to the second voice, and triggers it on. 
+This continues until the number of voices sounding is equal to the polyphony
+value whereupon the first selected voice is triggered off and the note allowed
+to decay.
+That probably all sounds horrendously complex but just think of it as playing
+the organ, holding down each new note for as long as possible but with the
+polyphony value controlling how many fingers you have.
+
+WAVETYPE=nn\
+~Format-
+ WaveForm 0: Sine       WaveForm 1: Half-Sine
+  | /^\\                   | /^\\         /^\\
+  |/   \\       /          |/   \\       /   \\
+ Ä/ÄÄÄÄÄ\\ÄÄÄÄÄ/ÄÄ        Ä|ÄÄÄÄÄÁ-----ÁÄÄÄÄÄÁÄ
+  |      \\   /            |
+  |       \\_/             |
+
+ WaveForm 2: Abs-Sine   WaveForm 3: Pulse-Sine
+  | /^\\   /^\\             | /^|         /^|
+  |/   \\ /   \\ /          |/  |        /  |
+ Ä|ÄÄÄÄÄÁÄÄÄÄÄÁÄÄ        Ä|ÄÄÄÁ-------ÁÄÄÄÁÄÄÄ
+  |                       |
+
+ WaveForm 4: Sine - even periods only
+  | /^\\                     /^\\
+  |/   \\                   /   \\
+ Ä|ÄÄÄÄÄ\\ÄÄÄÄÄÂ-----------ÁÄÄÄÄÄ\\ÄÄÄÄÄÂÄ
+  |      \\   /                   \\   /
+  |       \\_/                     \\_/
+
+ WaveForm 5: Abs-Sine - even periods only
+  | /^\\   /^\\               /^\\   /^\\
+  |/   \\ /   \\             /   \\ /   \\
+ Ä|ÄÄÄÄÄÁÄÄÄÄÄÁ-----------ÁÄÄÄÄÄÁÄÄÄÄÄÁÄ
+  |
+
+ WaveForm 6: Square
+  |-----¿     Ú-----¿     Ú-----¿     Ú-
+  |     |     |     |     |     |     |
+ Ä|ÄÄÄÄÄ|ÄÄÄÄÄ|ÄÄÄÄÄ|ÄÄÄÄÄ|ÄÄÄÄÄ|ÄÄÄÄÄ|ÄÄ
+  |     |     |     |     |     |     |
+  |     À-----Ù     À-----Ù     À-----Ù
+
+ WaveForm 7: Derived Square
+  |          |\\                |\\
+  |         |  \\              |  \\
+ Ä|--__ÄÄÄÄ|ÄÄÄÄ\\------__ÄÄÄÄ|ÄÄÄÄ\\------
+  |    \\  |              \\  |
+  |     \\|                \\|
+~Format+
+
+ATTACK=nn\
+This controls the time taken for a note to hit full volume after being
+triggered on. Low values give a punchy percussive sound while long values
+give a softer bowed sound. If attack time is set too long and orbitdelay is
+low then notes are played too fast to ever achieve any volume and the net
+result is low or non existent output. To put it another way, if orbitdelay
+is low then this value should be low also.
+
+DECAY=nn\
+This controls the time taken for a note to die down to the sustain level. 
+Setting this time too low may produce a rhythmic click between notes.  
+The attack and decay values don't allow much fine control.
+
+SUSTAIN=nn\
+This controls the volume level at which a note is held.
+
+SRELEASE=nn\
+This controls the delay in time for releasing a note.  A release value of
+15 seems to equate to 'never let the note release' on the machine used to
+develop the sound card drivers.  But, as ever, with other manufacturer's
+emulations your mileage may vary.
+
+VOLUME=nn\
+It is possible to adjust the volume of an FM synth card.  This has no effect
+on the PC speaker.
+
+ATTENUATE=none|low|mid|high\
+On an FM synth card it is possible to attenuate the high pitched notes.  The
+default is none.  The low value attenuates at 1.5 dB/octave, the mid at
+3.0 dB/octave, and the high at 6.0 dB/octave.
+
+SCALEMAP=nn/nn/nn/...\
+The scale map list is a way of controlling which notes are played by fractint
+and only has any effect if note quantisation is switched on in the basic sound
+parameters screen. It can be very useful when the polyphony is up and the chords
+you're getting are more like dischords. :-)
+
+The way it works is this: When a sound is played with frequency quantisation on
+its frequency is rounded to the nearest 'proper' note on the musical scale,
+this note number is then looked up in the scale map table and substituted by the
+note indicated in that entry of the table.
+The end result of this is that, for instance, using this sequence of numbers
+as a scale map: \
+2,2,4,4,4,7,7,9,9,11,11,11 \
+Will ensure that fractint uses only the black notes on the keyboard, just the
+sharps and flats for a vaguely oriental feel (to my western ears anyway :-) ).
+
+The above probably appears to be sheer gobbledegook at first reading, sorry,
+but if you keep at it you'll unlock this powerful feature for keeping your
+fractals melodic.  (Unless you're totally turned on by microtonal frequencies
+in which case forget all this quantisation nonsense and tune in to the true
+sound of chaos!)
+
+The passes=1 setting ({Drawing Method}) almost always works best with sound. 
+~Topic=Envelopes
+
+Here's some more information about the concept of a note envelope for those 
+unfamiliar with sound synthesis terminology, it's all about how the dynamics 
+of a note are defined (i.e the way in which the loudness changes during the 
+life of a note)
+
+ Graph of a note's volume during it's life cycle:
+  
+    /\\______                     /\\_______           \
+__/          \\_____ ... _______/          \\_________ \
+0011111111110000000 ... 0000000111111111110000000000 \
+  A  D  S   R                  AAADSSSSSSSR          \
+
+The string of 0's and 1's represents the keyon/off state of the voice, 1's
+indicate the key being held down. The attack, decay, sustain, and release
+portions of the envelope are represented by ADSR, this is what happens:
+
+When the note is first triggered on the volume rises to peak volume at a
+rate determined by the attack value.
+
+Once at the full level the decay period starts and the volume dies down (at
+a rate set by the decay value) to a level that is set by the sustain
+value.
+
+The note continues to sound at this volume until triggered off (the 'key'
+is released) whereupon it dies down to zero volume at the release rate.
+
+And so on.  Now, with the current voice assignment method, while orbits are
+being generated continuously, timing looks like this (with four note polyphony 
+in this example)
+
+   Voice:\
+     1 *111.....*111....\
+     2 .*111.....*111...\
+     3 ..*111.....*111..\
+     4 ...*111.....*111.\
+     5 ....*111.....*111\
+     6 .....*111.....*11\
+     7 ......*111.....*1\
+     8 .......*111.....*\
+     9 ........*111.....\
+orbit: 12345678901234567\
+
+Where:\
+      . = key off (silent or releasing note)\
+      * = note assigned a value and triggered on, attack, decay, sustain phase
+          begins\
+      1 = note held on, you'll notice that above there are only ever four
+          notes held on at any one time, though more than four may be sounding
+          if there is a long release value.\
 ;
 ;
 ~Topic=Revision History
@@ -1530,6 +1865,213 @@ this program can read for orbit-type fractals and IFS fractals. Contact:
       {Versions  1 through 11}
 ;
 ~Topic=Version 19
+
+Version 19.6 new features include:
+
+Added new fractal types {=HT_ESCHER escher_julia} and {=HT_VL volterra-lotka}
+  courtesy Michael Sargent.
+
+Expanded formula parser capability to recognize "if..else" flow control
+  instructions. The format of an "if block" of instructions is:
+         IF(boolean)
+            statements
+         ELSEIF(boolean) [any number of these are permitted in a block]
+            statements
+         ELSE            [if used, only one is permitted in a block]
+            statements
+         ENDIF
+  Note that ELSEIF() does not require a separate ENDIF. Each branching
+  instruction must be a separate formula statement, separated from other
+  statements by a comma or an end of line. There is a limit of 200 branching
+  instructions per formula (ELSEIF counts as two branching instructions).
+  Unlimited nesting is permitted; each ELSEIF, ELSE, and ENDIF relates to
+  the immediately preceding "non endif'ed" IF. An IF() and its ENDIF cannot
+  traverse the end of the initialization section of the formula.
+
+Added tutorials to the distribution package: Bradley
+  Beacham's basic formula tutorial, Sylvie Gallet's PHC and PTC formula
+  tutorial, and George Martin's tutorial on the new if..else feature
+  of the formula parser. Required reading for formula writers.
+
+Added text scrolling capability in <z> and F2 screens. Scroll keys for
+  the <z> screen:
+         CTRL+DOWN_ARROW    Move screen down one line
+         CTRL+UP_ARROW      Move screen up one line
+         CTRL+RIGHT_ARROW   Move screen right one column
+         CTRL+LEFT_ARROW    Move screen left one column
+         CTRL+PAGE_DOWN     Move screen down one view screen
+         CTRL+PAGE_UP       Move screen up one view screen
+         CTRL+HOME          Go to beginning of entry
+         CTRL+END           Go to end of entry
+
+  Direction keys without the CONTROL key depressed maintain their current
+  roles in moving the cursor in the entry prompt boxes.
+
+  In the F2 screen, the same scrolling is available; the CONTROL key
+  does not need to be depressed.
+
+Added capability to place ifs, formula, and lsys entries in PAR files.
+  If not found in the file named in the parameter entry, formulas, ifs, and
+  lsystem entries called for in entries are looked for in the .par file
+  itself. The referenced entry must have the appropriate prefix in the
+  PAR file as follows:\
+
+       formulas  frm:\
+       lsystem   lsys:\
+       ifs       ifs:\
+
+  for example:\
+
+  frm:mandel \{\
+    z=c=pixel:\
+    z = z*z + c\
+    |z| < 4\
+  \}\
+
+  The prefix is an identifier, not part of the name itself. Thus, the
+  parameter in the image entry would read "formulaname=mandel". The
+  formulafile= parameter need not, and probably should not, name the
+  PAR file itself - the search of the PAR file is automatic.
+
+  Formulas, ifs, and lsys entries in a PAR file will not be shown on the
+  menu screen for the PAR file, and are accessible only in connection with
+  running the parameter entry which calls for the formula. Also, PAR
+  files are not searched when looking for a formula, ifs, or lsystem entry in
+  connection with restoring a .gif file. You will need to copy these entries
+  from the PAR file into .frm, .ifs, and .l files as applicable (taking
+  care, of course, to delete the identifier prefixes) in order to make
+  general use of them.
+
+Added command line option fastrestore=yes|no. Default is NO. When YES,
+  causes viewwindows to be set to NO before each restore, so that otherwise
+  normal gifs will not be drawn at the reduced aspect when viewwindows was
+  previously set to YES; and bypasses the warning which is displayed when a
+  restore is to be viewed in a video mode other than the one at which the gif
+  was saved. Combined with askvideo=no, all restores will automatically be
+  made at the user's default video mode. This feature will be helpful when
+  cycling through a group of gifs in autokey mode.
+
+Ctrl-Right used in file selection screens now skips over directory listings,
+  and if the cursor is on the last file, moves the cursor to the first file.
+  This makes possible uninterrupted cycling in autokey mode. The keyword for
+  this keystroke in a .key file is CTRL_RIGHT.\
+~OnlineFF
+  The following additional keystrokes were also implemented:\
+
+       Ctrl-Left (autokey symbol "CTRL_LEFT")\
+       Ctrl-Down ("CTRL_DOWN")\
+       Ctrl-Up   ("CTRL_UP")\
+       Ctrl-Home ("CTRL_HOME")\
+       Ctrl-End  ("CTRL_END")\
+
+   Run the following .key file with command line parameters fastrestore=yes
+   and askvideo=no (and, if you don't set your video mode in sstools.ini,
+   video=[your standard video mode]) and your coworkers will get a continuous
+   display of the .gif files in your default .gif directory when you go to
+   lunch (come on, we know you have Fractint on your hard drive at work):
+
+         "r"
+          MORE:
+          ENTER
+          CALCWAIT
+          WAIT 30
+          "R"
+          CTRL_RIGHT
+          GOTO MORE
+
+Added four new lsystem types to fractint.l.
+
+When palette editing mode is entered, the original palette is now stored
+  in the area associated with F2.
+
+Reduced the fractint.cfg resolution limit to 2x2 pixels.
+
+Fixed bug which caused a lockup when ranges= was used with maxit >= 32767.
+
+Fixed arbitrary precision and decoder crashes.
+
+Fixed an entry display scrolling bug.
+
+Fixed the integer mode frothy basin "censored" bug.
+
+Added backwards compatibility for inside=startrails.
+
+Fixed the 16-color color cycling inside the palette editor.  Fixed color
+  cycling when used with a maxit > 32767.  Pixels with iterations > 32767
+  now cycle in the same direction as those with iterations <= 32767.
+
+Fixed bug which caused an apparent lockup when find finite attractor was
+  used with maxit > 32767.
+
+Fixed viewwindows bug that caused extra points to be written when ydots
+  was not divisible by 4.
+
+Fixed Ant type so that it works with 16 digits.  Old pars will need to be
+  re-entered or have a decimal point added to the first two parameters.
+
+Changed MAXSTRING in the decoder from 64000 to 60000. This change eliminates
+  all the encoder bug examples we have, but we don't understand why it
+  works and we may not have fixed the problem.
+
+Fixed the logmap routine when used with a par/gif release <= 1920 and memory
+  for the LogTable is insufficient.
+
+Fixed the complexnewton type when used with a par/gif release <= 1920.
+
+Changed the keystroke behavior of the passes= field on the <x> screen.
+
+New logic autocenters all input screen menu titles.
+
+Changed the automatic resolution switching logic between float and arbitrary
+  precision.
+
+If user aborts before selecting a file in a file menu screen, the program
+  now remembers the last file name selected even if the directory has been
+  changed.
+
+Fixed writing 3d smooth factor to PAR.
+
+Fixed writing potential to PAR in makepar mode.
+
+Fixed redundant "Regenerate before <b> to get correct symmetry" messages
+  in divide and conquer mode.
+
+Fixed hi rez type 2 diffusion bug and parser error bug.
+
+Fixed crashing in disk video with too long a savename path.
+
+Added Adrian Mariano's diffusion fixes - a new color option, several bug
+  fixes, and improved documentation. Removed integer support which wasn't
+  being used anyway.
+
+Finally, we've added two undocumented commands to give expert users
+   workarounds for math type precision and GIF encoder problems.
+
+Added the mathtolerance=.05/.05 command. The first number controls the
+  integer/float transition, and the second number controls the float/arbitrary
+  precision transition. The default value of .05 means that the ratio between
+  the exact and calculated width and height is between .95 and 1.05. A larger
+  value than .05 (say .10) makes the test looser so that the lower precision
+  math is used longer. A value <= 0 means the test is always failed and the
+  higher precision math type is used. A value >= 1 means that the test is
+  always passed and the lower precision math type is used.
+
+  The automatic precision toggle is resolution dependent. The same image may
+  use float at 320x200 and arbitrary precision at 640x480. This is not a bug;
+  it has to work this way. At a given magnification more pixels require more
+  precision. There are other tests so even with mathtolerance=1/.05,
+  eventually Fractint will have to use float. The same is not true for
+  mathtolerance=.05/1. If you keep zooming Fractint will not rescue you;
+  eventually you'll get a nasty error message and the corners will be lost.
+
+Added the tweaklzw=nnn/nnn command. Fractint's GIF encoder occasionally
+  fails and produces bad GIF files. Tweaking encoder parameters might
+  allow saving in such a situation. The parameters reduce the
+  maximum size of the current string and maximum total length of the string
+  table, respectively. The default values are 0, which gives the old
+  encoder performance.
+
+
 Version 19.5 is a bug-fix release for version 19.4 based on the developer's
   version 19.40 patch 11. As always, we added a few new features along
   with the bug fixes.
@@ -2923,182 +3465,20 @@ Version 1.0, 9/88
 ;
 ;
 ;
-~Topic=Version13 to 14 Conversion
-
-A number of types in Fractint version 13 and earlier were generalized in
-version 14. We added a "backward compatibility" hook that (hopefully)
-automatically translates these to the new form when the old files are
-read. Files may be converted via:
-
-   FRACTINT OLDFILE.FRA SAVENAME=NEWFILE.GIF BATCH=YES
-
-In a few cases the biomorph flag was incorrectly set in older files.  In
-that case, add "biomorph=no" to the command line.
-
-This procedure can also be used to convert any *.fra file to the new
-GIF89a spec, which now allows storage of fractal information.
-
-
-~Format-
-TYPES CHANGED FROM VERSION 13 -
-
-
-V13 NAME                V14 NAME + PARAMETERS
---------                --------------------------------------
-
-LOGMAP=YES              LOGMAP=OLD   for identical Logmap type
-
-DEMJ                    JULIA DISTEST=nnn
-
-DEMM                    MANDEL DISTEST=nnn
-
-                        Note: DISTEST also available on many other types
-
-MANSINEXP               MANFN+EXP FUNCTION=SIN
-
-                        Note: New functions for this type are
-                              cos sinh cosh exp log sqr
-
-JULSINEXP               JULFN+EXP FUNCTION=SIN
-
-                        Note: New functions for this type are
-                              cos sinh cosh exp log sqr
-
-MANSINZSQRD             MANFN+ZSQRD FUNCTION=SQR/SIN
-
-                        Note: New functions for this type are
-                              cos sinh cosh exp log sqr
-
-JULSINZSQRD             JULFN+ZSQRD FUNCTION=SQR/SIN
-
-                        Note: New functions for this type are
-                              cos sinh cosh exp log sqr
-
-LAMBDACOS               LAMBDAFN FUNCTION=COS
-
-LAMBDACOSH              LAMBDAFN FUNCTION=COSH
-
-LAMBDAEXP               LAMBDAFN FUNCTION=EXP
-
-LAMBDASINE              LAMBDAFN FUNCTION=SIN
-
-LAMBDASINH              LAMBDAFN FUNCTION=SINH
-
-                        Note: New functions for this type are
-                              log sqr
-
-MANDELCOS               MANDELFN FUNCTION=COS
-
-MANDELCOSH              MANDELFN FUNCTION=COSH
-
-MANDELEXP               MANDELFN FUNCTION=EXP
-
-MANDELSINE              MANDELFN FUNCTION=SIN
-
-MANDELSINH              MANDELFN FUNCTION=SINH
-
-                        Note: New functions for this type are
-                              log sqr
-
-MANDELLAMBDA            MANDELLAMBDA INITORBIT=PIXEL
-
-POPCORN SYMMETRY=NONE   POPCORNJUL
-
--------------------------------------------------------------
-
-Formulas from FRACTINT.FRM in version 13
-
-MANDELGLASS             MANDELLAMBDA INITORBIT=.5/0
-
-INVMANDEL               V13 divide bug may cause some image differences.
-
-NEWTON4                 V13 divide bug may cause some image differences.
-
-SPIDER                  V13 divide bug may cause some image differences.
-
-MANDELSINE              MANDELFN FUNCTION=SIN BAILOUT=50
-
-MANDELCOSINE            MANDELFN FUNCTION=COS BAILOUT=50
-
-MANDELHYPSINE           MANDELFN FUNCTION=SINH BAILOUT=50
-
-MANDELHYPCOSINE         MANDELFN FUNCTION=COSH BAILOUT=50
-
-SCOTTSIN PARAMS=nnn     FN+FN FUNCTION=SIN/SQR BAILOUT=nnn+3
-
-SCOTTSINH PARAMS=nnn    FN+FN FUNCTION=SINH/SQR BAILOUT=nnn+3
-
-SCOTTCOS PARAMS=nnn     FN+FN FUNCTION=COS/SQR BAILOUT=nnn+3
-
-SCOTTCOSH PARAMS=nnn    FN+FN FUNCTION=COSH/SQR BAILOUT=nnn+3
-
-SCOTTLPC PARAMS=nnn     FN+FN FUNCTION=LOG/COS BAILOUT=nnn+3
-
-SCOTTLPS PARAMS=nnn     FN+FN FUNCTION=LOG/SIN BAILOUT=nnn+3
-                        Note: New functions for this type are
-                        sin/sin sin/cos sin/sinh sin/cosh sin/exp
-                        cos/cos cos/sinh cos/cosh cos/exp
-                        sinh/sinh sinh/cosh sinh/exp sinh/log
-                        cosh/cosh cosh/exp cosh/log
-                        exp/exp exp/log exp/sqr log/log log/sqr sqr/sqr
-
-SCOTTSZSA PARAMS=nnn    FN(Z*Z) FUNCTION=SIN BAILOUT=nnn+3
-
-SCOTTCZSA PARAMS=nnn    FN(Z*Z) FUNCTION=COS BAILOUT=nnn+3
-
-                        Note: New functions for this type are
-                        sinh cosh exp log sqr
-
-SCOTTZSZZ PARAMS=nnn    FN*Z+Z FUNCTION=SIN BAILOUT=nnn+3
-
-SCOTTZCZZ PARAMS=nnn    FN*Z+Z FUNCTION=COS BAILOUT=nnn+3
-
-                        Note: New functions for this type are
-                        sinh cosh exp log sqr
-
-SCOTTSZSB PARAMS=nnn    FN*FN FUNCTION=SIN/SIN BAILOUT=nnn+3
-
-SCOTTCZSB PARAMS=nnn    FN*FN FUNCTION=COS/COS BAILOUT=nnn+3
-
-SCOTTLTS PARAMS=nnn     FN*FN FUNCTION=LOG/SIN BAILOUT=nnn+3
-
-SCOTTLTC PARAMS=nnn     FN*FN FUNCTION=LOG/COS BAILOUT=nnn+3
-
-                        Note: New functions for this type are
-                        sin/cos sin/sinh sin/cosh sin/exp sin/sqr
-                        cos/sinh cos/cosh cos/exp cos/sqr
-                        sinh/sinh sinh/cosh sinh/exp sinh/log sinh/sqr
-                        cosh/cosh cosh/exp cosh/log cosh/sqr
-                        exp/exp exp/log exp/sqr log/log log/sqr sqr/sqr
-
-SCOTTSIC PARAMS=nnn     SQR(1/FN) FUNCTION=COS BAILOUT=nnn+3
-
-SCOTTSIS PARAMS=nnn     SQR(1/FN) FUNCTION=SIN BAILOUT=nnn+3
-
-TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
-
-                        Note: New function type sqr(1/fn) with
-                              sin cos sinh cosh exp log sqr
-
-                        Note: New function type sqr(fn) with
-                              sin cos sinh cosh exp log sqr
-~Format+
-;
-;
 ~Data=INTRO_AUTHORS
 ;
 ; FRACTINT intro screen primary authors
 ;
  Current Primary Authors
- Bert Tyler       [73477,433] (CompuServe) bert_tyler@compuserve.com (Internet)
- Timothy Wegner   [71320,675]              twegner@phoenix.net
- Jonathan Osuch   [73277,1432]             73277.1432@compuserve.com
- Wesley Loewer                             loewer@tenet.edu
- George Martin    [76440,1143]             76440.1143@compuserve.com
+ Timothy Wegner         twegner@fractint.org
+ Jonathan Osuch         josuch@fractint.org
+ George Martin          ggmartin@compuserve.com
+ Robin Bussell          robin.b2@ukonline.co.uk
  Contributing Authors
 
 
-; room for 13 authors at a time here
+
+; room for 14 authors at a time here
 
 
 
@@ -3111,7 +3491,7 @@ TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
 
 
  SPACEBAR toggles scrolling off/on
-   Copyright (C) 1990-97 The Stone Soup Group.  Fractint may be freely copied
+   Copyright (C) 1990-2004 The Stone Soup Group.  Fractint may be freely copied
    and distributed but may not be sold.  See help for more information.
 ;
 ;
@@ -3122,41 +3502,48 @@ TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
 ;
                   ...
  Michael Abrash   360x480x256, 320x400x256 VGA video modes
+ Rees Acheson     [70674,2606] (Author of MandelB) pentium speedups
  Joseph Albrecht  Tandy video, CGA video speedup
  Kevin Allen      kevina@microsoft.com Finite attractor, bifurcation engine
+ Humberto Baptista humberto@insite.com.br passes=d, latoocarfian type
  Steve Bennett    restore-from-disk logic
  Rob Beyer        [71021,2074] Barnsley IFS, Lorenz fractals
  Francois Blais   [70700,446] Lyapunov Fractals, LYAPUNOV.MAP
+ Scott D. Boyd    sdboyd56@swbell.net Xfractint user interface cleanup
  Dennis Bragg     [75300,2456] DXF Raytracing output option
  Pieter Branderhorst Past main author, solid guessing, menus
  Juan J. Buhler   jbuhler@gidef.edu.ar Diffusion options, inverse Julia type
  Mike Burkey      376x564x256, 400x564x256, and 832x612x256 VGA video modes
- Robin Bussell    [100604,643] Palette-editor "freestyle" option, "browser"
- John Bridges     [75300,2137] superVGA support, 360x480x256 mode
+ John Bridges     jbridges@netcom.com superVGA support, 360x480x256 mode
  Fulvio Cappelli  [100025,1507] ants options and speedup
+ Charlie Chernohorsky fractint@oblivion.cz Virtual VESA screen sizes & speedup
  Brian Corbino    [71611,702] Tandy 1000 640x200x16 video mode
  Lee Crocker      lcrocker@netcom.com Fast Newton, Inversion, Decomposition..
  Monte Davis      [71450,3542] Documentation
  Paul De Leeuw    RDS (Random Dot Stereogram) Feature
+ Jean-Pierre Demailly Jean-Pierre.Demailly@ujf-grenoble.fr Xfractint truecolor
  Chuck Ebbert     [76306,1226] cmprsd & sqrt logmap, fpu speedups, fast parser
  Dan Farmer       [74431,1075] orbits enhancements
  Richard Finegold [76701,153] 8/16/../256-Way Decomposition option
  Frank Fussenegger Mandelbrot speedups
- Sylvie Gallet    [101324,3444] Formula wizard and complex-to-screen logic
+ Sylvie Gallet    Sylvie_Gallet@compuserve.com Formula and math wizard
  Mike Gelvin      [73337,520] Mandelbrot speedups
  Luciano Genero   ants options and speedup
  Lawrence Gozum   [73437,2372] Tseng 640x400x256 Video Mode
  David Guenther   [70531,3525] Boundary Tracing algorithm
+ Jay Hill         ehill1@san.rr.com Windows notes
+ Mike Kaufman     [kaufman@mcs.com] mouse support, other features
  Norman Hills     [71621,1352] Ranges option
  Richard Hughes   [70461,3272] "inside=", "outside=" coloring options
  Bill Jemison     [70400,2537] orbitsave=sound option
- Mike Kaufman     [kaufman@mcs.com] mouse support, other features
+ Damien M. Jones  dmj@fractalus.com Windows notes
+ Wesley Loewer    [loewer@net2000ke.com] Past main author, AP and much more.
  Adrian Mariano   [adrian@cam.cornell.edu] Diffusion & L-Systems
  Charles Marslett [75300,1636] VESA video and IIT math chip support
- Andrew McCarthy  [andrewmc@athena.ucd.ie] European keyboard support
+ Andrew McCarthy  [andrewmc@netsoc.ucd.ie] European keyboard support
  Joe McLain       [75066,1257] TARGA Support, color-map files
  Bob Montgomery   [73357,3140] (Author of VPIC) Fast text I/O routines
- Bret Mulvey      plasma clouds
+ Bret Mulvey      bret_x@hotmail.com plasma clouds
  Roy Murphy       [76376,721] Lyapunov Fractals
  Ethan Nagel      [70022,2552] Palette editor, integrated help/doc system
  Yavuz Onder      yavuz@bnr.ca Postscript printer driver
@@ -3167,14 +3554,17 @@ TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
  Matt Saucier     [72371,3101] Printer Support
  Herb Savage      [75260,217] 'inside=bof60', 'inside=bof61' options
  Ken Shirriff     shirriff@eng.sun.com Quaternions, CA, Xfractint port
- Lee Skinner      [75450,3631] Tetrate fractal types and more
+ Lee Skinner      LeeHSkinner@compuserve.com Tetrate fractal types and more
  Michael Snyder   [75300,642] julia inverse and Julia-In-A-Window using MIIM
  Dean Souleles    [75115,1671] Hercules Support
  Kurt Sowa        [73467,2013] Color Printer Support
  Hugh Steele      cyclerange feature
+ Iain Stirling    Iain@flat2-2.freeserve.co.uk Inside=fmod and outside=fmod
  John Swenson     [75300,2136] Postscript printer features
  Chris Taylor     Floating&Fixed-point algorithm speedups, Tesseral Option
  Scott Taylor     [72401,410] PostScript, Kam Torus, many fn types.
+ Rich Thomson     rich.thomson@xmission.com Xfractint truecolor support
+ Bert Tyler       bert_tyler@oef.com, Original Fractint Author
  Bill Townsend    Mandelbrot Speedups
  Paul Varner      [73237,441] Extended Memory support for Disk Video
  Dave Warker      Integer Mandelbrot Fractals concept

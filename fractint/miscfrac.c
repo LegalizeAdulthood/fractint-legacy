@@ -25,22 +25,18 @@ static void set_Cellular_palette(void);
 
 U16  (_fastcall *getpix)(int,int)  = (U16(_fastcall *)(int,int))getcolor;
 
-#ifdef XFRACT
-BYTE dstack[4096];
-#endif
-
 typedef void (_fastcall *PLOT)(int,int,int);
 
 /***************** standalone engine for "test" ********************/
 
-int test()
+int test(void)
 {
    int startrow,startpass,numpasses;
    startrow = startpass = 0;
    if (resuming)
    {
       start_resume();
-      get_resume(sizeof(int),&startrow,sizeof(int),&startpass,0);
+      get_resume(sizeof(startrow),&startrow,sizeof(startpass),&startpass,0);
       end_resume();
    }
    if(teststart()) /* assume it was stand-alone, doesn't want passes logic */
@@ -50,25 +46,25 @@ int test()
    {
       for (row = startrow; row <= iystop; row=row+1+numpasses)
       {
-         register int col;
          for (col = 0; col <= ixstop; col++)       /* look at each point on screen */
          {
-            register color;
-            init.y = dy0[row]+dy1[col];
-            init.x = dx0[col]+dx1[row];
+            register int color;
+            init.x = dxpixel();
+            init.y = dypixel();
             if(keypressed())
             {
                testend();
                alloc_resume(20,1);
-               put_resume(sizeof(int),&row,sizeof(int),&passes,0);
+               put_resume(sizeof(row),&row,sizeof(passes),&passes,0);
                return(-1);
             }
             color = testpt(init.x,init.y,parm.x,parm.y,maxit,inside);
-            if (color >= colors) /* avoid trouble if color is 0 */
+            if (color >= colors) { /* avoid trouble if color is 0 */
                if (colors < 16)
                   color &= andcolor;
                else
                   color = ((color-1) % andcolor) + 1; /* skip color zero */
+            }
             (*plot)(col,row,color);
             if(numpasses && (passes == 0))
                (*plot)(col,row+1,color);
@@ -82,7 +78,7 @@ int test()
 
 /***************** standalone engine for "plasma" ********************/
 
-static int iparmx;      /* iparmx = parm.x * 16 */
+static int iparmx;      /* iparmx = parm.x * 8 */
 static int shiftvalue;  /* shift based on #colors */
 static int recur1=1;
 static int pcolors;
@@ -323,8 +319,15 @@ mode (and color-cycled only on VGA adapters [or EGA adapters in their\n\
       return(-1);
    }
    iparmx = (int)(param[0] * 8);
-   if (parm.x <= 0.0) iparmx = 16;
+   if (parm.x <= 0.0) iparmx = 0;
    if (parm.x >= 100) iparmx = 800;
+   param[0] = (double)iparmx / 8.0;  /* let user know what was used */
+   if (param[1] < 0) param[1] = 0;  /* limit parameter values */
+   if (param[1] > 1) param[1] = 1;
+   if (param[2] < 0) param[2] = 0;  /* limit parameter values */
+   if (param[2] > 1) param[2] = 1;
+   if (param[3] < 0) param[3] = 0;  /* limit parameter values */
+   if (param[3] > 1) param[3] = 1;
 
    if ((!rflag) && param[2] == 1)
       --rseed;
@@ -448,7 +451,7 @@ static void set_Plasma_palette()
    static Palettetype Blue   = { 0,  0,63 };
    int i;
 
-   if (mapdacbox) return;               /* map= specified */
+   if (mapdacbox || colorpreloaded) return;    /* map= specified */
 
    dac[0].red  = 0 ;
    dac[0].green= 0 ;
@@ -549,11 +552,11 @@ int diffusion()
    {
       start_resume();
       if (mode != 2)
-         get_resume(sizeof(int),&xmax,sizeof(int),&xmin,sizeof(int),&ymax,
-             sizeof(int),&ymin,0);
+         get_resume(sizeof(xmax),&xmax,sizeof(xmin),&xmin,sizeof(ymax),&ymax,
+             sizeof(ymin),&ymin,0);
       else
-         get_resume(sizeof(int),&xmax,sizeof(int),&xmin,sizeof(int),&ymax,
-             sizeof(int),&radius,0);
+         get_resume(sizeof(xmax),&xmax,sizeof(xmin),&xmin,sizeof(ymax),&ymax,
+             sizeof(radius),&radius,0);
       end_resume();
    }
 
@@ -654,11 +657,11 @@ int diffusion()
             {
                alloc_resume(20,1);
                if (mode!=2)
-                  put_resume(sizeof(int),&xmax,sizeof(int),&xmin, sizeof(int),&ymax,
-                      sizeof(int),&ymin,0);
+                  put_resume(sizeof(xmax),&xmax,sizeof(xmin),&xmin,
+                      sizeof(ymax),&ymax,sizeof(ymin),&ymin,0);
                else
-                  put_resume(sizeof(int),&xmax,sizeof(int),&xmin, sizeof(int),&ymax,
-                      sizeof(int),&radius,0);
+                  put_resume(sizeof(xmax),&xmax,sizeof(xmin),&xmin,
+                      sizeof(ymax),&ymax,sizeof(radius),&radius,0);
 
                plasma_check--;
                return 1;
@@ -776,7 +779,7 @@ int Bifurcation(void)
    if (resuming)
    {
       start_resume();
-      get_resume(sizeof(int),&column,0);
+      get_resume(sizeof(column),&column,0);
       end_resume();
    }
    array_size =  (iystop + 1) * sizeof(int); /* should be iystop + 1 */
@@ -815,9 +818,9 @@ int Bifurcation(void)
    }
 
    if (integerfractal)
-      linit.y = ly0[iystop];   /* Y-value of    */
+      linit.y = ymax - iystop*dely;            /* Y-value of    */
    else
-      init.y = dy0[iystop];   /* bottom pixels */
+      init.y = (double)(yymax - iystop*delyy); /* bottom pixels */
 
    while (column <= ixstop)
    {
@@ -825,13 +828,14 @@ int Bifurcation(void)
       {
          farmemfree((char far *)verhulst_array);
          alloc_resume(10,1);
-         put_resume(sizeof(int),&column,0);
+         put_resume(sizeof(column),&column,0);
          return(-1);
       }
+
       if (integerfractal)
-         lRate = lx0[column];
+         lRate = xmin + column*delx;
       else
-         Rate = dx0[column];
+         Rate = (double)(xxmin + column*delxx);
       verhulst();        /* calculate array once per column */
 
       for (row = iystop; row >= 0; row--) /* should be iystop & >=0 */
@@ -900,7 +904,7 @@ static void verhulst()          /* P. F. Verhulst (1845) */
       if (integerfractal)
          pixel_row = iystop - (int)((lPopulation - linit.y) / dely); /* iystop */
       else
-         pixel_row = iystop - (int)((Population - init.y) / deltaY);
+         pixel_row = iystop - (int)((Population - init.y) / delyy);
 
       /* if it's visible on the screen, save it in the column array */
       if (pixel_row <= (unsigned int)iystop) /* JCO 6/6/92 */
@@ -930,7 +934,7 @@ static void Bif_Period_Init()
    else
    {
       Bif_savedpop = -1.0;
-      Bif_closenuf = deltaY / 8.0;
+      Bif_closenuf = (double)delyy / 8.0;
    }
 }
 
@@ -999,8 +1003,8 @@ int LongBifurcVerhulstTrig()
     LCMPLXtrig0(ltmp, ltmp);
     ltmp.y = ltmp.x - multiply(ltmp.x,ltmp.x,bitshift);
     lPopulation += multiply(lRate,ltmp.y,bitshift);
-    return (overflow);
 #endif
+    return (overflow);
   }
 
 int BifurcStewartTrig()
@@ -1022,8 +1026,8 @@ int LongBifurcStewartTrig()
     lPopulation = multiply(ltmp.x,ltmp.x,bitshift);
     lPopulation = multiply(lPopulation,lRate,      bitshift);
     lPopulation -= fudge;
-    return (overflow);
 #endif
+    return (overflow);
   }
 
 int BifurcSetTrigPi()
@@ -1042,8 +1046,8 @@ int LongBifurcSetTrigPi()
     ltmp.y = 0;
     LCMPLXtrig0(ltmp, ltmp);
     lPopulation = multiply(lRate,ltmp.x,bitshift);
-    return (overflow);
 #endif
+    return (overflow);
   }
 
 int BifurcAddTrigPi()
@@ -1062,8 +1066,8 @@ int LongBifurcAddTrigPi()
     ltmp.y = 0;
     LCMPLXtrig0(ltmp, ltmp);
     lPopulation += multiply(lRate,ltmp.x,bitshift);
-    return (overflow);
 #endif
+    return (overflow);
   }
 
 int BifurcLambdaTrig()
@@ -1084,8 +1088,8 @@ int LongBifurcLambdaTrig()
     LCMPLXtrig0(ltmp, ltmp);
     ltmp.y = ltmp.x - multiply(ltmp.x,ltmp.x,bitshift);
     lPopulation = multiply(lRate,ltmp.y,bitshift);
-    return (overflow);
 #endif
+    return (overflow);
   }
 
 #define LCMPLXpwr(arg1,arg2,out)    Arg2->l = (arg1); Arg1->l = (arg2);\
@@ -1111,8 +1115,8 @@ int LongBifurcMay()
     LCMPLXpwr(ltmp, lparm2, ltmp);
     lPopulation = multiply(lRate,lPopulation,bitshift);
     lPopulation = divide(lPopulation,ltmp.x,bitshift);
-    return (overflow);
 #endif
+    return (overflow);
   }
 
 int BifurcMaySetup()
@@ -1141,7 +1145,7 @@ int popcorn()   /* subset of std engine */
    if (resuming)
    {
       start_resume();
-      get_resume(sizeof(int),&start_row,0);
+      get_resume(sizeof(start_row),&start_row,0);
       end_resume();
    }
    kbdcount=max_kbdcount;
@@ -1155,7 +1159,7 @@ int popcorn()   /* subset of std engine */
          if (StandardFractal() == -1) /* interrupted */
          {
             alloc_resume(10,1);
-            put_resume(sizeof(int),&row,0);
+            put_resume(sizeof(row),&row,0);
             return(-1);
          }
          reset_periodicity = 0;
@@ -1190,7 +1194,7 @@ int lyapunov_cycles(int, double, double, double);
 
 int lyapunov_cycles_in_c(long, double, double);
 
-lyapunov () {
+int lyapunov () {
     double a, b;
 
     if (keypressed()) {
@@ -1210,8 +1214,8 @@ lyapunov () {
         b = init.x;
         }
     else {
-        a = dy0[row]+dy1[col];
-        b = dx0[col]+dx1[row];
+        a = dypixel();
+        b = dxpixel();
         }
 #ifndef XFRACT
     /*  the assembler routines don't work for a & b outside the
@@ -1238,7 +1242,7 @@ lyapunov () {
 }
 
 
-lya_setup () {
+int lya_setup () {
     /* This routine sets up the sequence for forcing the Rate parameter
         to vary between the two values.  It fills the array lyaRxy[] and
         sets lyaLength to the length of the sequence.
@@ -1375,6 +1379,7 @@ jumpout:
 #define TABLEK        5
 #define TYPEKR        6
 #define RULELENGTH    7
+#define INTERUPT      8
 
 #define CELLULAR_DONE 10
 
@@ -1445,6 +1450,12 @@ void abort_cellular(int err, int t)
          stopmsg(0,msg);
          }
          break;
+      case INTERUPT:
+         {
+         static FCODE msg[]={"Interrupted, can't resume" };
+         stopmsg(0,msg);
+         }
+         break;
       case CELLULAR_DONE:
          break;
    }
@@ -1462,7 +1473,7 @@ void abort_cellular(int err, int t)
 #endif
 }
 
-cellular () {
+int cellular () {
    S16 start_row;
    S16 filled, notfilled;
    U16 cell_table[32];
@@ -1545,10 +1556,10 @@ cellular () {
    }
 #endif
    if (n == 0) { /* calculate a random rule */
-      n = rand15()%(int)k;
+      n = rand()%(int)k;
       for (i=1;i<(U16)rule_digits;i++) {
          n *= 10;
-         n += rand15()%(int)k;
+         n += rand()%(int)k;
       }
       param[1] = n;
    }
@@ -1591,7 +1602,7 @@ cellular () {
    notfilled = (S16)(1-filled);
    if (resuming && !nxtscreenflag && !lstscreenflag) {
       start_resume();
-      get_resume(sizeof(int),&start_row,0);
+      get_resume(sizeof(start_row),&start_row,0);
       end_resume();
       get_line(start_row,0,ixstop,cell_array[filled]);
    }
@@ -1605,7 +1616,7 @@ cellular () {
    else {
     if(rflag || randparam==0 || randparam==-1){
       for (col=0;col<=ixstop;col++) {
-         cell_array[filled][col] = (BYTE)(rand15()%(int)k);
+         cell_array[filled][col] = (BYTE)(rand()%(int)k);
       }
     } /* end of if random */
 
@@ -1630,15 +1641,16 @@ cellular () {
 /* This section can't be resumed since no screen output is generated */
 /* calculates the (lnnmbr - 1) generation */
    if (lstscreenflag) { /* line number != 0 & not resuming & not continuing */
-     for (row = start_row; row < (S16)lnnmbr; row++) {
+     U32 big_row;
+     for (big_row = (U32)start_row; big_row < lnnmbr; big_row++) {
       static FCODE msg[]={"Cellular thinking (higher start row takes longer)"};
-      
+
       thinking(1,msg);
       if(rflag || randparam==0 || randparam==-1){
        /* Use a random border */
        for (i=0;i<=(U16)r;i++) {
-         cell_array[notfilled][i]=(BYTE)(rand15()%(int)k);
-         cell_array[notfilled][ixstop-i]=(BYTE)(rand15()%(int)k);
+         cell_array[notfilled][i]=(BYTE)(rand()%(int)k);
+         cell_array[notfilled][ixstop-i]=(BYTE)(rand()%(int)k);
        }
       }
       else {
@@ -1674,9 +1686,7 @@ cellular () {
        notfilled = (S16)(1-filled);
        if (keypressed()) {
           thinking(0, NULL);
-          abort_cellular(CELLULAR_DONE, 0);
-          alloc_resume(10,1);
-          put_resume(sizeof(int),&row,0);
+          abort_cellular(INTERUPT, 0);
           return -1;
        }
      }
@@ -1692,8 +1702,8 @@ contloop:
       if(rflag || randparam==0 || randparam==-1){
        /* Use a random border */
        for (i=0;i<=(U16)r;i++) {
-         cell_array[notfilled][i]=(BYTE)(rand15()%(int)k);
-         cell_array[notfilled][ixstop-i]=(BYTE)(rand15()%(int)k);
+         cell_array[notfilled][i]=(BYTE)(rand()%(int)k);
+         cell_array[notfilled][ixstop-i]=(BYTE)(rand()%(int)k);
        }
       }
       else {
@@ -1731,7 +1741,7 @@ contloop:
        if (keypressed()) {
           abort_cellular(CELLULAR_DONE, 0);
           alloc_resume(10,1);
-          put_resume(sizeof(int),&row,0);
+          put_resume(sizeof(row),&row,0);
           return -1;
        }
    }
@@ -2046,8 +2056,8 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
          }
       else
          {
-         old.x = dx0[col]+dx1[row];
-         old.y = dy0[row]+dy1[col];
+         old.x = dxpixel();
+         old.y = dypixel();
          }
 
       while (!found_attractor
@@ -2068,8 +2078,11 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
 
          coloriter++;
 
-         if (show_orbit)
+         if (show_orbit) {
+            if (keypressed())
+               break;
             plot_orbit(old.x, old.y, -1);
+         }
 
          if (fabs(fsp->fl.f.halfa-old.y) < FROTH_CLOSE
                 && old.x >= fsp->fl.f.top_x1 && old.x <= fsp->fl.f.top_x2)
@@ -2079,11 +2092,12 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
                found_attractor = 1;
             else if (old.x <= fsp->fl.f.top_x3)
                found_attractor = 1;
-            else if (old.x >= fsp->fl.f.top_x4)
+            else if (old.x >= fsp->fl.f.top_x4) {
                if (!fsp->repeat_mapping)
                   found_attractor = 1;
-            else
-               found_attractor = 2;
+               else
+                  found_attractor = 2;
+             }
             }
          else if (fabs(FROTH_SLOPE*old.x - fsp->fl.f.a - old.y) < FROTH_CLOSE
                   && old.x <= fsp->fl.f.right_x1 && old.x >= fsp->fl.f.right_x2)
@@ -2092,16 +2106,18 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
                found_attractor = 2;
             else if (fsp->repeat_mapping && fsp->attractors == 3)
                found_attractor = 3;
-            else if (old.x >= fsp->fl.f.right_x3)
+            else if (old.x >= fsp->fl.f.right_x3) {
                if (!fsp->repeat_mapping)
                   found_attractor = 2;
                else
                   found_attractor = 4;
-            else if (old.x <= fsp->fl.f.right_x4)
+            }
+            else if (old.x <= fsp->fl.f.right_x4) {
                if (!fsp->repeat_mapping)
                   found_attractor = 3;
                else
                   found_attractor = 6;
+             }
             }
          else if (fabs(-FROTH_SLOPE*old.x - fsp->fl.f.a - old.y) < FROTH_CLOSE
                   && old.x <= fsp->fl.f.left_x1 && old.x >= fsp->fl.f.left_x2)
@@ -2110,16 +2126,18 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
                found_attractor = 2;
             else if (fsp->repeat_mapping && fsp->attractors == 3)
                found_attractor = 2;
-            else if (old.x >= fsp->fl.f.left_x3)
+            else if (old.x >= fsp->fl.f.left_x3) {
                if (!fsp->repeat_mapping)
                   found_attractor = 3;
                else
                   found_attractor = 5;
-            else if (old.x <= fsp->fl.f.left_x4)
+            }
+            else if (old.x <= fsp->fl.f.left_x4) {
                if (!fsp->repeat_mapping)
                   found_attractor = 2;
                else
                   found_attractor = 3;
+             }
             }
          }
       }
@@ -2133,8 +2151,8 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
          }
       else
          {
-         lold.x = lx0[col] + lx1[row];
-         lold.y = ly0[row] + ly1[col];
+         lold.x = lxpixel();
+         lold.y = lypixel();
          }
 
       while (!found_attractor && ((lmagnitud = (ltempsqrx=lsqr(lold.x)) + (ltempsqry=lsqr(lold.y))) < llimit)
@@ -2156,8 +2174,11 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
             }
          coloriter++;
 
-         if (show_orbit)
+         if (show_orbit) {
+            if (keypressed())
+               break;
             iplot_orbit(lold.x, lold.y, -1);
+         }
 
          if (labs(fsp->fl.l.halfa-lold.y) < FROTH_LCLOSE
               && lold.x > fsp->fl.l.top_x1 && lold.x < fsp->fl.l.top_x2)
@@ -2167,11 +2188,12 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
                found_attractor = 1;
             else if (lold.x <= fsp->fl.l.top_x3)
                found_attractor = 1;
-            else if (lold.x >= fsp->fl.l.top_x4)
+            else if (lold.x >= fsp->fl.l.top_x4) {
                if (!fsp->repeat_mapping)
                   found_attractor = 1;
-            else
-               found_attractor = 2;
+               else
+                  found_attractor = 2;
+             }
             }
          else if (labs(multiply(FROTH_LSLOPE,lold.x,bitshift)-fsp->fl.l.a-lold.y) < FROTH_LCLOSE
                   && lold.x <= fsp->fl.l.right_x1 && lold.x >= fsp->fl.l.right_x2)
@@ -2180,16 +2202,18 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
                found_attractor = 2;
             else if (fsp->repeat_mapping && fsp->attractors == 3)
                found_attractor = 3;
-            else if (lold.x >= fsp->fl.l.right_x3)
+            else if (lold.x >= fsp->fl.l.right_x3) {
                if (!fsp->repeat_mapping)
                   found_attractor = 2;
                else
                   found_attractor = 4;
-            else if (lold.x <= fsp->fl.l.right_x4)
+            }
+            else if (lold.x <= fsp->fl.l.right_x4) {
                if (!fsp->repeat_mapping)
                   found_attractor = 3;
                else
                   found_attractor = 6;
+             }
             }
          else if (labs(multiply(-FROTH_LSLOPE,lold.x,bitshift)-fsp->fl.l.a-lold.y) < FROTH_LCLOSE)
             {
@@ -2197,16 +2221,18 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
                found_attractor = 2;
             else if (fsp->repeat_mapping && fsp->attractors == 3)
                found_attractor = 2;
-            else if (lold.x >= fsp->fl.l.left_x3)
+            else if (lold.x >= fsp->fl.l.left_x3) {
                if (!fsp->repeat_mapping)
                   found_attractor = 3;
                else
                   found_attractor = 5;
-            else if (lold.x <= fsp->fl.l.left_x4)
+            }
+            else if (lold.x <= fsp->fl.l.left_x4) {
                if (!fsp->repeat_mapping)
                   found_attractor = 2;
                else
                   found_attractor = 3;
+             }
             }
          }
       }
@@ -2295,15 +2321,15 @@ int froth_per_pixel(void)
    {
    if (!integerfractal) /* fp mode */
       {
-      old.x = dx0[col]+dx1[row];
-      old.y = dy0[row]+dy1[col];
+      old.x = dxpixel();
+      old.y = dypixel();
       tempsqrx=sqr(old.x);
       tempsqry=sqr(old.y);
       }
    else  /* integer mode */
       {
-      lold.x = lx0[col]+lx1[row];
-      lold.y = ly0[row]+ly1[col];
+      lold.x = lxpixel();
+      lold.y = lypixel();
       ltempsqrx = multiply(lold.x, lold.x, bitshift);
       ltempsqry = multiply(lold.y, lold.y, bitshift);
       }

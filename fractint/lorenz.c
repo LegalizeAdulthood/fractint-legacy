@@ -18,7 +18,7 @@
 
 #define RANDOM(x)  (rand()%(x))
 /* BAD_PIXEL is used to cutoff orbits that are diverging. It might be better
-to test the actual floating point prbit values, but this seems safe for now.
+to test the actual floating point orbit values, but this seems safe for now.
 A higher value cannot be used - to test, turn off math coprocessor and
 use +2.24 for type ICONS. If BAD_PIXEL is set to 20000, this will abort
 Fractint with a math error. Note that this approach precludes zooming in very
@@ -219,11 +219,13 @@ int setup_convert_to_screen(struct affine *scrn_cnvt)
    if((det = (xx3rd-xxmin)*(yymin-yymax) + (yymax-yy3rd)*(xxmax-xxmin))==0)
       return(-1);
    xd = dxsize/det;
-   yd = dysize/det;
    scrn_cnvt->a =  xd*(yymax-yy3rd);
    scrn_cnvt->b =  xd*(xx3rd-xxmin);
    scrn_cnvt->e = -scrn_cnvt->a*xxmin - scrn_cnvt->b*yymax;
 
+   if((det = (xx3rd-xxmax)*(yymin-yymax) + (yymin-yy3rd)*(xxmax-xxmin))==0)
+      return(-1);
+   yd = dysize/det;
    scrn_cnvt->c =  yd*(yymin-yy3rd);
    scrn_cnvt->d =  yd*(xx3rd-xxmax);
    scrn_cnvt->f = -scrn_cnvt->c*xxmin - scrn_cnvt->d*yymax;
@@ -301,10 +303,11 @@ int orbit3dlongsetup()
 
       mxhits    = (int) param[2];
       run_length = (int) param[3];
-      if (mxhits == 0)
+      if (mxhits <= 0)
           mxhits = 1;
       else if (mxhits >= colors)
           mxhits = colors - 1;
+      param[2] = mxhits;
 
       setup_convert_to_screen(&cvt);
       /* Note: using bitshift of 21 for affine, 24 otherwise */
@@ -412,6 +415,11 @@ int orbit3dfloatsetup()
       waste = 2000;
    }
 
+   if(fractype==LATOO)        /* HB */
+   {
+      connect = 0;
+   }
+
    if(fractype==FPHENON || fractype==FPPICKOVER)
    {
       a =  param[0];
@@ -471,10 +479,11 @@ int orbit3dfloatsetup()
 
       mxhits    = (int) param[2];
       run_length = (int) param[3];
-      if (mxhits == 0)
+      if (mxhits <= 0)
           mxhits = 1;
       else if (mxhits >= colors)
           mxhits = colors - 1;
+      param[2] = mxhits;
 
       setup_convert_to_screen(&cvt);
 
@@ -1163,7 +1172,9 @@ int martin2dfloatorbit(double *x, double *y, double *z)
 int mandelcloudfloat(double *x, double *y, double *z)
 {
     double newx,newy,x2,y2;
+#ifndef XFRACT
     newx = *z; /* for warning only */
+#endif
     x2 = (*x)*(*x);
     y2 = (*y)*(*y);
     if (x2+y2>2) return 1;
@@ -1241,6 +1252,50 @@ int iconfloatorbit(double *x, double *y, double *z)
 #undef GAMMA
 #endif
 
+/* hb */
+#define PAR_A   param[0]
+#define PAR_B   param[1]
+#define PAR_C   param[2]
+#define PAR_D   param[3]
+
+int latoofloatorbit(double *x, double *y, double *z)
+{
+
+    double xold, yold, tmp;
+
+    xold = *z; /* for warning only */
+
+    xold = *x;
+    yold = *y;
+
+/*    *x = sin(yold * PAR_B) + PAR_C * sin(xold * PAR_B); */
+    old.x = yold * PAR_B;
+    old.y = 0;          /* old = (y * B) + 0i (in the complex)*/
+    CMPLXtrig0(old,new);
+    tmp = (double) new.x;
+    old.x = xold * PAR_B;
+    old.y = 0;          /* old = (x * B) + 0i */
+    CMPLXtrig1(old,new);
+    *x  = PAR_C * new.x + tmp;
+
+/*    *y = sin(xold * PAR_A) + PAR_D * sin(yold * PAR_A); */
+    old.x = xold * PAR_A;
+    old.y = 0;          /* old = (y * A) + 0i (in the complex)*/
+    CMPLXtrig2(old,new);
+    tmp = (double) new.x;
+    old.x = yold * PAR_A;
+    old.y = 0;          /* old = (x * B) + 0i */
+    CMPLXtrig3(old,new);
+    *y  = PAR_D * new.x + tmp;
+
+    return(0);
+}
+
+#undef PAR_A
+#undef PAR_B
+#undef PAR_C
+#undef PAR_D
+
 /**********************************************************************/
 /*   Main fractal engines - put in fractalspecific[fractype].calctype */
 /**********************************************************************/
@@ -1302,11 +1357,11 @@ int orbit2dfloat()
       p1 = &y;
       p2 = &z;
    }
-   if(soundflag==1)
+   if((soundflag&7) == 2)
       soundvar = &x;
-   else if(soundflag==2)
+   else if((soundflag&7) == 3)
       soundvar = &y;
-   else if(soundflag==3)
+   else if((soundflag&7) == 4)
       soundvar = &z;
 
    if(inside > 0)
@@ -1339,7 +1394,7 @@ int orbit2dfloat()
    {
       if(keypressed())
       {
-         nosnd();
+         mute();
          alloc_resume(100,1);
          put_resume(sizeof(count),&count,sizeof(color),&color,
              sizeof(oldrow),&oldrow,sizeof(oldcol),&oldcol,
@@ -1360,9 +1415,9 @@ int orbit2dfloat()
       row = (int)(cvt.c*x + cvt.d*y + cvt.f);
       if ( col >= 0 && col < xdots && row >= 0 && row < ydots )
       {
-         if (soundflag > 0)
+         if ((soundflag&7) > 1)
             w_snd((int)(*soundvar*100+basehertz));
-         if(fractype!=ICON)
+	 if((fractype!=ICON) && (fractype!=LATOO))
          {
          if(oldcol != -1 && connect)
             draw_line(col,row,oldcol,oldrow,color%colors);
@@ -1431,11 +1486,11 @@ int orbit2dlong()
       p1 = &y;
       p2 = &z;
    }
-   if(soundflag==1)
+   if((soundflag&7)==2)
       soundvar = &x;
-   else if(soundflag==2)
+   else if((soundflag&7)==3)
       soundvar = &y;
-   else if(soundflag==3)
+   else if((soundflag&7)==4)
       soundvar = &z;
    if(inside > 0)
       color = inside;
@@ -1467,7 +1522,7 @@ int orbit2dlong()
    {
       if(keypressed())
       {
-         nosnd();
+         mute();
          alloc_resume(100,1);
          put_resume(sizeof(count),&count,sizeof(color),&color,
              sizeof(oldrow),&oldrow,sizeof(oldcol),&oldcol,
@@ -1493,7 +1548,7 @@ int orbit2dlong()
       }
       if ( col >= 0 && col < xdots && row >= 0 && row < ydots )
       {
-         if (soundflag > 0)
+         if ((soundflag&7) > 1)
          {
             double yy;
             yy = *soundvar;
@@ -1568,7 +1623,7 @@ static int orbit3dlongcalc(void)
       }
       if(keypressed())
       {
-         nosnd();
+         mute();
          ret = -1;
          break;
       }
@@ -1583,10 +1638,10 @@ static int orbit3dlongcalc(void)
          {
             if(realtime)
                whichimage=1;
-            if (soundflag > 0)
+            if ((soundflag&7) > 1)
             {
                double yy;
-               yy = inf.viewvect[soundflag-1];
+               yy = inf.viewvect[((soundflag&7) - 2)];
                yy = yy/fudge;
                w_snd((int)(yy*100+basehertz));
             }
@@ -1668,7 +1723,7 @@ static int orbit3dfloatcalc(void)
 
       if(keypressed())
       {
-         nosnd();
+         mute();
          ret = -1;
          break;
       }
@@ -1683,8 +1738,9 @@ static int orbit3dfloatcalc(void)
          {
             if(realtime)
                whichimage=1;
-            if (soundflag > 0)
-               w_snd((int)(inf.viewvect[soundflag-1]*100+basehertz));
+            if ((soundflag&7) > 1) {
+               w_snd((int)(inf.viewvect[((soundflag&7) - 2)]*100+basehertz));
+            }
             if(oldcol != -1 && connect)
                draw_line(inf.col,inf.row,oldcol,oldrow,color%colors);
             else
@@ -1774,11 +1830,11 @@ int dynam2dfloat()
    p1 = &y;
 
 
-   if(soundflag==1)
+   if((soundflag&7)==2)
       soundvar = &x;
-   else if(soundflag==2)
+   else if((soundflag&7)==3)
       soundvar = &y;
-   else if(soundflag==3)
+   else if((soundflag&7)==4)
       soundvar = &z;
 
    count = 0;
@@ -1805,7 +1861,7 @@ int dynam2dfloat()
    {
       if(keypressed())
       {
-             nosnd();
+             mute();
              alloc_resume(100,1);
              put_resume(sizeof(count),&count, sizeof(color),&color,
                      sizeof(oldrow),&oldrow, sizeof(oldcol),&oldcol,
@@ -1820,7 +1876,7 @@ int dynam2dfloat()
           xstep = 0;
           ystep ++;
           if (ystep>d) {
-              nosnd();
+              mute();
               ret = -1;
               break;
           }
@@ -1849,7 +1905,7 @@ int dynam2dfloat()
           row = (int)(cvt.c*x + cvt.d*y + cvt.f);
           if ( col >= 0 && col < xdots && row >= 0 && row < ydots )
           {
-             if (soundflag > 0)
+             if ((soundflag&7) > 1)
                w_snd((int)(*soundvar*100+basehertz));
 
              if (count>=orbit_delay) {
@@ -1897,7 +1953,7 @@ int funny_glasses_call(int (*calc)(void))
    }
    if(glassestype && status == 0 && display3d)
    {
-      if(glassestype==3) /* photographer's mode */
+      if(glassestype==3)  { /* photographer's mode */
          if(active_system == 0) { /* dos version */
             int i;
 static FCODE firstready[]={"\
@@ -1920,7 +1976,10 @@ static FCODE firstready2[]={"First (Left Eye) image is complete"};
             stopmsg(0,firstready2);
             clear_screen();
             }
+      }
       whichimage = 2;
+      if(curfractalspecific->flags & INFCALC)
+         curfractalspecific->per_image(); /* reset for 2nd image */
       plot_setup();
       plot = standardplot;
       /* is there a better way to clear the graphics screen ? */
@@ -1986,8 +2045,8 @@ static int ifs3dfloat(void)
          ret = -1;
          break;
       }
-      r = rand15();      /* generate fudged random number between 0 and 1 */
-      r /= 32767;
+      r = rand();      /* generate a random number between 0 and 1 */
+      r /= RAND_MAX;
 
       /* pick which iterated function to execute, weighted by probability */
       sum = ifs_defn[12]; /* [0][12] */

@@ -19,9 +19,11 @@
 /*              Setup (once per fractal image) routines                 */
 /* -------------------------------------------------------------------- */
 
-MandelSetup()           /* Mandelbrot Routine */
+int
+MandelSetup(void)           /* Mandelbrot Routine */
 {
-   if (debugflag != 90 && ! invert && decomp[0] == 0 && rqlim == 4.0
+   if (debugflag != 90
+       && !invert && decomp[0] == 0 && rqlim == 4.0
        && bitshift == 29 && potflag == 0
        && biomorph == -1 && inside > -59 && outside >= -1
        && useinitorbit != 1 && using_jiim == 0 && bailoutest == Mod
@@ -36,9 +38,11 @@ MandelSetup()           /* Mandelbrot Routine */
    return(1);
 }
 
-JuliaSetup()            /* Julia Routine */
+int
+JuliaSetup(void)            /* Julia Routine */
 {
-   if (debugflag != 90 && ! invert && decomp[0] == 0 && rqlim == 4.0
+   if (debugflag != 90
+       && !invert && decomp[0] == 0 && rqlim == 4.0
        && bitshift == 29 && potflag == 0
        && biomorph == -1 && inside > -59 && outside >= -1
        && !finattract && using_jiim == 0 && bailoutest == Mod
@@ -54,7 +58,8 @@ JuliaSetup()            /* Julia Routine */
    return(1);
 }
 
-NewtonSetup()           /* Newton/NewtBasin Routines */
+int
+NewtonSetup(void)           /* Newton/NewtBasin Routines */
 {
    int i;
    if (debugflag != 1010)
@@ -172,13 +177,15 @@ NewtonSetup()           /* Newton/NewtBasin Routines */
 }
 
 
-StandaloneSetup()
+int
+StandaloneSetup(void)
 {
    timer(0,curfractalspecific->calctype);
    return(0);           /* effectively disable solid-guessing */
 }
 
-UnitySetup()
+int
+UnitySetup(void)
 {
    periodicitycheck = 0;
    FgOne = (1L << bitshift);
@@ -186,7 +193,8 @@ UnitySetup()
    return(1);
 }
 
-MandelfpSetup()
+int
+MandelfpSetup(void)
 {
    bf_math = 0;
    c_exp = (int)param[2];
@@ -212,20 +220,54 @@ MandelfpSetup()
            calcmandfp() can currently handle invert, any rqlim, potflag
            zmag, epsilon cross, and all the current outside options
                                                      Wes Loewer 11/03/91
+           Took out support for inside= options, for speed. 7/13/97
         */
         if (debugflag != 90
             && !distest
             && decomp[0] == 0
             && biomorph == -1
-            && (inside >= -1 || inside == -59 || inside == -100)
+            && (inside >= -1)
             /* uncomment this next line if more outside options are added */
-            /* && outside >= -5 */
+            && outside >= -6
             && useinitorbit != 1
+            && (soundflag & 0x07) < 2
             && using_jiim == 0 && bailoutest == Mod
             && (orbitsave&2) == 0)
         {
            calctype = calcmandfp; /* the normal case - use calcmandfp */
-           calcmandfpasmstart();
+#ifndef XFRACT
+           if (cpu >= 386 && fpu >= 387)
+           {
+              calcmandfpasmstart_p5();
+              calcmandfpasm = (long (*)(void))calcmandfpasm_p5;
+           }
+           else if (cpu == 286 && fpu >= 287)
+           {
+              calcmandfpasmstart();
+              calcmandfpasm = (long (*)(void))calcmandfpasm_287;
+           }
+           else
+
+           {
+              calcmandfpasmstart();
+              calcmandfpasm = (long (*)(void))calcmandfpasm_87;
+           }
+#else
+           {
+#ifdef NASM
+            if (fpu == -1)
+            {
+              calcmandfpasmstart_p5();
+              calcmandfpasm = (long (*)(void))calcmandfpasm_p5;
+            }
+            else
+#endif
+            {
+              calcmandfpasmstart();
+              calcmandfpasm = (long (*)(void))calcmandfpasm_c;
+            }
+           }
+#endif
         }
         else
         {
@@ -277,6 +319,8 @@ MandelfpSetup()
       floatparm = &tmp;
       attractors = 0;
       periodicitycheck = 0;
+      if(param[2] != 0)
+         symmetry = NOSYM;
       if(trigndx[0] == 14) /* FLIP */
         symmetry = NOSYM;
       break;
@@ -294,7 +338,8 @@ MandelfpSetup()
    return(1);
 }
 
-JuliafpSetup()
+int
+JuliafpSetup(void)
 {
    c_exp = (int)param[2];
    floatparm = &parm;
@@ -313,21 +358,54 @@ JuliafpSetup()
            calcmandfp() can currently handle invert, any rqlim, potflag
            zmag, epsilon cross, and all the current outside options
                                                      Wes Loewer 11/03/91
+           Took out support for inside= options, for speed. 7/13/97
         */
         if (debugflag != 90
             && !distest
             && decomp[0] == 0
             && biomorph == -1
-            && (inside >= -1 || inside == -59 || inside == -100)
+            && (inside >= -1)
             /* uncomment this next line if more outside options are added */
-            /* && outside >= -5 */
+            && outside >= -6
             && useinitorbit != 1
+            && (soundflag & 0x07) < 2
             && !finattract
             && using_jiim == 0 && bailoutest == Mod
             && (orbitsave&2) == 0)
         {
            calctype = calcmandfp; /* the normal case - use calcmandfp */
-           calcmandfpasmstart();
+#ifndef XFRACT
+           if (cpu >= 386 && fpu >= 387)
+           {
+              calcmandfpasmstart_p5();
+              calcmandfpasm = (long (*)(void))calcmandfpasm_p5;
+           }
+           else if (cpu == 286 && fpu >= 287)
+           {
+              calcmandfpasmstart();
+              calcmandfpasm = (long (*)(void))calcmandfpasm_287;
+           }
+           else
+           {
+              calcmandfpasmstart();
+              calcmandfpasm = (long (*)(void))calcmandfpasm_87;
+           }
+#else
+           {
+#ifdef NASM
+            if (fpu == -1)
+            {
+              calcmandfpasmstart_p5();
+              calcmandfpasm = (long (*)(void))calcmandfpasm_p5;
+            }
+            else
+#endif
+            {
+              calcmandfpasmstart();
+              calcmandfpasm = (long (*)(void))calcmandfpasm_c;
+            }
+           }
+#endif
         }
         else
         {
@@ -376,6 +454,8 @@ JuliafpSetup()
       get_julia_attractor (0.0, 0.0);   /* another attractor? */
       break;
    case HYPERCMPLXJFP:
+      if(param[2] != 0)
+         symmetry = NOSYM;
       if(trigndx[0] != SQR)
          symmetry=NOSYM;
    case QUATJULFP:
@@ -384,6 +464,36 @@ JuliafpSetup()
       if(param[4] != 0.0 || param[5] != 0)
          symmetry = NOSYM;
       break;
+   case FPPOPCORN:
+   case FPPOPCORNJUL:
+      {
+         int default_functions = 0;
+         if(trigndx[0] == SIN &&
+            trigndx[1] == TAN &&
+            trigndx[2] == SIN &&
+            trigndx[3] == TAN &&
+            fabs(parm2.x - 3.0) < .0001 &&
+            parm2.y == 0 &&
+            parm.y == 0)
+         {
+            default_functions = 1;
+            if(fractype == FPPOPCORNJUL)
+               symmetry = ORIGIN;
+         }
+         if(save_release <=1960)
+            curfractalspecific->orbitcalc = PopcornFractal_Old;
+         else if(default_functions && debugflag == 96)
+            curfractalspecific->orbitcalc = PopcornFractal;
+         else
+            curfractalspecific->orbitcalc = PopcornFractalFn;
+         get_julia_attractor (0.0, 0.0);   /* another attractor? */
+      }
+      break;
+   case FPCIRCLE:
+      if (inside == STARTRAIL) /* FPCIRCLE locks up when used with STARTRAIL */
+          inside = 0; /* arbitrarily set inside = NUMB */
+      get_julia_attractor (0.0, 0.0);   /* another attractor? */
+      break;
    default:
       get_julia_attractor (0.0, 0.0);   /* another attractor? */
       break;
@@ -391,7 +501,8 @@ JuliafpSetup()
    return(1);
 }
 
-MandellongSetup()
+int
+MandellongSetup(void)
 {
    FgHalf = fudge >> 1;
    c_exp = (int)param[2];
@@ -440,7 +551,8 @@ MandellongSetup()
    return(1);
 }
 
-JulialongSetup()
+int
+JulialongSetup(void)
 {
    c_exp = (int)param[2];
    longparm = &lparm;
@@ -474,6 +586,31 @@ JulialongSetup()
         symmetry = NOSYM;
       get_julia_attractor (0.0, 0.0);   /* another attractor? */
       break;
+   case LPOPCORN:
+   case LPOPCORNJUL:
+      {
+         int default_functions = 0;
+         if(trigndx[0] == SIN &&
+            trigndx[1] == TAN &&
+            trigndx[2] == SIN &&
+            trigndx[3] == TAN &&
+            fabs(parm2.x - 3.0) < .0001 &&
+            parm2.y == 0 &&
+            parm.y == 0)
+         {
+            default_functions = 1;
+            if(fractype == LPOPCORNJUL)
+               symmetry = ORIGIN;
+         }
+         if(save_release <=1960)
+            curfractalspecific->orbitcalc = LPopcornFractal_Old;
+         else if(default_functions && debugflag == 96)
+            curfractalspecific->orbitcalc = LPopcornFractal;
+         else
+            curfractalspecific->orbitcalc = LPopcornFractalFn;
+         get_julia_attractor (0.0, 0.0);   /* another attractor? */
+      }
+      break;
    default:
       get_julia_attractor (0.0, 0.0);   /* another attractor? */
       break;
@@ -481,7 +618,8 @@ JulialongSetup()
    return(1);
 }
 
-TrigPlusSqrlongSetup()
+int
+TrigPlusSqrlongSetup(void)
 {
    curfractalspecific->per_pixel =  julia_per_pixel;
    curfractalspecific->orbitcalc =  TrigPlusSqrFractal;
@@ -495,7 +633,8 @@ TrigPlusSqrlongSetup()
    return(JulialongSetup());
 }
 
-TrigPlusSqrfpSetup()
+int
+TrigPlusSqrfpSetup(void)
 {
    curfractalspecific->per_pixel =  juliafp_per_pixel;
    curfractalspecific->orbitcalc =  TrigPlusSqrfpFractal;
@@ -509,7 +648,8 @@ TrigPlusSqrfpSetup()
    return(JuliafpSetup());
 }
 
-TrigPlusTriglongSetup()
+int
+TrigPlusTriglongSetup(void)
 {
    FnPlusFnSym();
    if(trigndx[1] == SQR)
@@ -526,7 +666,8 @@ TrigPlusTriglongSetup()
    return(JulialongSetup());
 }
 
-TrigPlusTrigfpSetup()
+int
+TrigPlusTrigfpSetup(void)
 {
    FnPlusFnSym();
    if(trigndx[1] == SQR)
@@ -543,7 +684,8 @@ TrigPlusTrigfpSetup()
    return(JuliafpSetup());
 }
 
-FnPlusFnSym() /* set symmetry matrix for fn+fn type */
+int
+FnPlusFnSym(void) /* set symmetry matrix for fn+fn type */
 {
    static char far fnplusfn[7][7] =
    {/* fn2 ->sin     cos    sinh    cosh   exp    log    sqr  */
@@ -567,7 +709,8 @@ FnPlusFnSym() /* set symmetry matrix for fn+fn type */
    return(0);
 }
 
-LambdaTrigOrTrigSetup()
+int
+LambdaTrigOrTrigSetup(void)
 {
 /* default symmetry is ORIGIN  JCO 2/29/92 (changed from PI_SYM) */
    longparm = &lparm; /* added to consolidate code 10/1/92 JCO */
@@ -580,7 +723,8 @@ LambdaTrigOrTrigSetup()
    return(1);
 }
 
-JuliaTrigOrTrigSetup()
+int
+JuliaTrigOrTrigSetup(void)
 {
 /* default symmetry is XAXIS */
    longparm = &lparm; /* added to consolidate code 10/1/92 JCO */
@@ -593,7 +737,8 @@ JuliaTrigOrTrigSetup()
    return(1);
 }
 
-ManlamTrigOrTrigSetup()
+int
+ManlamTrigOrTrigSetup(void)
 { /* psuedo */
 /* default symmetry is XAXIS */
    longparm = &linit; /* added to consolidate code 10/1/92 JCO */
@@ -605,7 +750,8 @@ ManlamTrigOrTrigSetup()
    return(1);
 }
 
-MandelTrigOrTrigSetup()
+int
+MandelTrigOrTrigSetup(void)
 {
 /* default symmetry is XAXIS_NOPARM */
    longparm = &linit; /* added to consolidate code 10/1/92 JCO */
@@ -616,7 +762,8 @@ MandelTrigOrTrigSetup()
 }
 
 
-ZXTrigPlusZSetup()
+int
+ZXTrigPlusZSetup(void)
 {
 /*   static char far ZXTrigPlusZSym1[] = */
    /* fn1 ->  sin   cos    sinh  cosh exp   log   sqr */
@@ -688,7 +835,8 @@ ZXTrigPlusZSetup()
    return(JuliafpSetup());
 }
 
-LambdaTrigSetup()
+int
+LambdaTrigSetup(void)
 {
    int isinteger;
    if((isinteger = curfractalspecific->isinteger) != 0)
@@ -738,7 +886,8 @@ LambdaTrigSetup()
       return(JuliafpSetup());
 }
 
-JuliafnPlusZsqrdSetup()
+int
+JuliafnPlusZsqrdSetup(void)
 {
 /*   static char far fnpluszsqrd[] = */
    /* fn1 ->  sin   cos    sinh  cosh   sqr    exp   log  */
@@ -762,7 +911,8 @@ JuliafnPlusZsqrdSetup()
       return(JuliafpSetup());
 }
 
-SqrTrigSetup()
+int
+SqrTrigSetup(void)
 {
 /*   static char far SqrTrigSym[] = */
    /* fn1 ->  sin    cos    sinh   cosh   sqr    exp   log  */
@@ -782,7 +932,8 @@ SqrTrigSetup()
       return(JuliafpSetup());
 }
 
-FnXFnSetup()
+int
+FnXFnSetup(void)
 {
    static char far fnxfn[7][7] =
    {/* fn2 ->sin     cos    sinh    cosh  exp    log    sqr */
@@ -822,7 +973,8 @@ FnXFnSetup()
       return(JuliafpSetup());
 }
 
-MandelTrigSetup()
+int
+MandelTrigSetup(void)
 {
    int isinteger;
    if((isinteger = curfractalspecific->isinteger) != 0)
@@ -866,7 +1018,8 @@ MandelTrigSetup()
       return(MandelfpSetup());
 }
 
-MarksJuliaSetup()
+int
+MarksJuliaSetup(void)
 {
 #ifndef XFRACT
    if(param[2] < 1)
@@ -892,7 +1045,8 @@ MarksJuliaSetup()
    return(1);
 }
 
-MarksJuliafpSetup()
+int
+MarksJuliafpSetup(void)
 {
    if(param[2] < 1)
       param[2] = 1;
@@ -916,7 +1070,8 @@ MarksJuliafpSetup()
    return(1);
 }
 
-SierpinskiSetup()
+int
+SierpinskiSetup(void)
 {
    /* sierpinski */
    periodicitycheck = 0;                /* disable periodicity checks */
@@ -926,7 +1081,8 @@ SierpinskiSetup()
    return(1);
 }
 
-SierpinskiFPSetup()
+int
+SierpinskiFPSetup(void)
 {
    /* sierpinski */
    periodicitycheck = 0;                /* disable periodicity checks */
@@ -935,7 +1091,8 @@ SierpinskiFPSetup()
    return(1);
 }
 
-HalleySetup()
+int
+HalleySetup(void)
 {
    /* Halley */
    periodicitycheck=0;
@@ -975,7 +1132,8 @@ HalleySetup()
    return(1);
 }
 
-PhoenixSetup()
+int
+PhoenixSetup(void)
 {
    longparm = &lparm; /* added to consolidate code 10/1/92 JCO */
    floatparm = &parm;
@@ -1006,7 +1164,8 @@ PhoenixSetup()
    return(1);
 }
 
-PhoenixCplxSetup()
+int
+PhoenixCplxSetup(void)
 {
    longparm = &lparm;
    floatparm = &parm;
@@ -1051,7 +1210,8 @@ PhoenixCplxSetup()
    return(1);
 }
 
-MandPhoenixSetup()
+int
+MandPhoenixSetup(void)
 {
    longparm = &linit; /* added to consolidate code 10/1/92 JCO */
    floatparm = &init;
@@ -1082,7 +1242,8 @@ MandPhoenixSetup()
    return(1);
 }
 
-MandPhoenixCplxSetup()
+int
+MandPhoenixCplxSetup(void)
 {
    longparm = &linit; /* added to consolidate code 10/1/92 JCO */
    floatparm = &init;
@@ -1115,14 +1276,16 @@ MandPhoenixCplxSetup()
    return(1);
 }
 
-StandardSetup()
+int
+StandardSetup(void)
 {
    if(fractype==UNITYFP)
       periodicitycheck=0;
    return(1);
 }
 
-VLSetup()
+int
+VLSetup(void)
 {
    if (param[0] < 0.0) param[0] = 0.0;
    if (param[1] < 0.0) param[1] = 0.0;

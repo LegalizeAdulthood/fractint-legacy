@@ -19,92 +19,99 @@
 /*       parameters preceded by # are U32 parameters */
 
 /* for Mandelbrots */
-static char realz0[] = "Real Perturbation of Z(0)";
-static char imagz0[] = "Imaginary Perturbation of Z(0)";
+static char far realz0[] = "Real Perturbation of Z(0)";
+static char far imagz0[] = "Imaginary Perturbation of Z(0)";
 
 /* for Julias */
-static char realparm[] = "Real Part of Parameter";
-static char imagparm[] = "Imaginary Part of Parameter";
+static char far realparm[] = "Real Part of Parameter";
+static char far imagparm[] = "Imaginary Part of Parameter";
 
 /* for Newtons */
-static char newtdegree[] = "+Polynomial Degree (>= 2)";
+static char far newtdegree[] = "+Polynomial Degree (>= 2)";
 
 /* for MarksMandel/Julia */
-static char exponent[]   = "Real part of Exponent";
-static char imexponent[] = "Imag part of Exponent";
+static char far exponent[]   = "Real part of Exponent";
+static char far imexponent[] = "Imag part of Exponent";
 
 /* for Complex Newton */
-static char realroot[]   = "Real part of Root";
-static char imagroot[]   = "Imag part of Root";
-static char realdegree[] = "Real part of Degree";
-static char imagdegree[] = "Imag part of Degree";
+static char far realroot[]   = "Real part of Root";
+static char far imagroot[]   = "Imag part of Root";
+static char far realdegree[] = "Real part of Degree";
+static char far imagdegree[] = "Imag part of Degree";
 
 /* for Lorenz */
-static char timestep[]     = "Time Step";
+static char far timestep[]     = "Time Step";
 
 /* for formula */
-static char p1real[] = "Real portion of p1";
-static char p2real[] = "Real portion of p2";
-static char p3real[] = "Real portion of p3";
-static char p1imag[] = "Imaginary portion of p1";
-static char p2imag[] = "Imaginary portion of p2";
-static char p3imag[] = "Imaginary portion of p3";
+static char far p1real[] = "Real portion of p1";
+static char far p2real[] = "Real portion of p2";
+static char far p3real[] = "Real portion of p3";
+static char far p4real[] = "Real portion of p4";
+static char far p5real[] = "Real portion of p5";
+static char far p1imag[] = "Imaginary portion of p1";
+static char far p2imag[] = "Imaginary portion of p2";
+static char far p3imag[] = "Imaginary portion of p3";
+static char far p4imag[] = "Imaginary portion of p4";
+static char far p5imag[] = "Imaginary portion of p5";
 
 /* trig functions */
-static char recoeftrg1[] = "Real Coefficient First Function";
-static char imcoeftrg1[] = "Imag Coefficient First Function";
-static char recoeftrg2[] = "Real Coefficient Second Function";
-static char imcoeftrg2[] = "Imag Coefficient Second Function";
+static char far recoeftrg1[] = "Real Coefficient First Function";
+static char far imcoeftrg1[] = "Imag Coefficient First Function";
+static char far recoeftrg2[] = "Real Coefficient Second Function";
+static char far imcoeftrg2[] = "Imag Coefficient Second Function";
 
 /* MCP 7-7-91
-static char recoefsqr[] = "Real Coefficient Square Term";
-static char imcoefsqr[] = "Imag Coefficient Square Term";
+static char far recoefsqr[] = "Real Coefficient Square Term";
+static char far imcoefsqr[] = "Imag Coefficient Square Term";
 */
 
-static char recoef2nd[] = "Real Coefficient Second Term";
-static char imcoef2nd[] = "Imag Coefficient Second Term";
+static char far recoef2nd[] = "Real Coefficient Second Term";
+static char far imcoef2nd[] = "Imag Coefficient Second Term";
 
 /* KAM Torus */
-static char kamangle[] = "Angle (radians)";
-static char kamstep[] =  "Step size";
-static char kamstop[] =  "Stop value";
-static char pointsperorbit[] = "+Points per orbit";
+static char far kamangle[] = "Angle (radians)";
+static char far kamstep[] =  "Step size";
+static char far kamstop[] =  "Stop value";
+static char far pointsperorbit[] = "+Points per orbit";
 
 /* Newtbasin */
-static char stripes[] = "Enter non-zero value for stripes";
+static char far stripes[] = "Enter non-zero value for stripes";
 
 /* Gingerbreadman */
-static char initx[] = "Initial x";
-static char inity[] = "Initial y";
+static char far initx[] = "Initial x";
+static char far inity[] = "Initial y";
 
-/* popcorn */
-static char step[] = "Step size";
+/* popcorn and julia popcorn generalized */
+static char far step_x[] = "Step size (real)";
+static char far step_y[] = "Step size (imaginary)";
+static char far constant_x[] = "Constant C (real)";
+static char far constant_y[] = "Constant C (imaginary)";
 
 /* bifurcations */
-static char filt[] = "+Filter Cycles";
-static char seed[] = "Seed Population";
+static char far filt[] = "+Filter Cycles";
+static char far seed[] = "Seed Population";
 
 /* frothy basins */
-static char frothmapping[] = "+Apply mapping once (1) or twice (2)";
-static char frothshade[] =  "+Enter non-zero value for alternate color shading";
-static char frothavalue[] =  "A (imaginary part of C)";
+static char far frothmapping[] = "+Apply mapping once (1) or twice (2)";
+static char far frothshade[] =  "+Enter non-zero value for alternate color shading";
+static char far frothavalue[] =  "A (imaginary part of C)";
 
 /* symmetrical icon fractals */
-static char s_lambda[] = "Lambda";
-static char s_alpha[]  = "Alpha";
-static char s_beta[]   = "Beta";
-static char s_gamma[]  = "Gamma";
-static char s_omega[]  = "Omega";
-static char symdegree[] = "+Degree of symmetry";
+static char far s_lambda[] = "Lambda";
+static char far s_alpha[]  = "Alpha";
+static char far s_beta[]   = "Beta";
+static char far s_gamma[]  = "Gamma";
+static char far s_omega[]  = "Omega";
+static char far symdegree[] = "+Degree of symmetry";
 
-static char shiftval[] = "Function Shift Value";
+static char far shiftval[] = "Function Shift Value";
 
 /* plasma and ant */
 
-static char s_randomseed[] = "+Random Seed Value (0 = Random, 1 = Reuse Last)";
+static char far s_randomseed[] = "+Random Seed Value (0 = Random, 1 = Reuse Last)";
 
 /* ifs */
-static char color_method[] = "+Coloring method (0,1)";
+static char far color_method[] = "+Coloring method (0,1)";
 
 /* orbit fractals */
 static char A[] = "a";
@@ -121,23 +128,28 @@ static char CJ[] = "cj";
 static char CK[] = "ck";
 static char ZJ[] = "zj";
 static char ZK[] = "zk";
-static char notused[] = "notused";
+static char far notused[] = "notused";
 /* phoenix fractals */
-static char degreeZ[] = "Degree = 0 | >= 2 | <= -3";
+static char far degreeZ[] = "Degree = 0 | >= 2 | <= -3";
 
 /* empty string */
-static char ES[] = "";
+static char far ES[] = "";
 
 /* julia inverse */
-static char s_maxhits[] = "Max Hits per Pixel";
+static char far s_maxhits[] = "Max Hits per Pixel";
 #ifdef RANDOM_RUN
-static char randomruninterval[] = "Random Run Interval";
+static char far randomruninterval[] = "Random Run Interval";
 #endif
 /* halley */
-static char order[] = {"+Order (integer > 1)"};
-static char real_relax[] = {"Real Relaxation coefficient"};
-static char epsilon[] = {"Epsilon"};
-static char imag_relax[] = {"Imag Relaxation coefficient"};
+static char far order[] = {"+Order (integer > 1)"};
+static char far real_relax[] = {"Real Relaxation coefficient"};
+static char far epsilon[] = {"Epsilon"};
+static char far imag_relax[] = {"Imag Relaxation coefficient"};
+/* cellular */
+static char far cell_init[] = {"#Initial String | 0 = Random | -1 = Reuse Last Random"};
+static char far cell_rule[] = {"#Rule = # of digits (see below) | 0 = Random"};
+static char far cell_type[] = {"+Type (see below)"};
+static char far cell_strt[] = {"#Starting Row Number"};
 
 /* bailout defines */
 #define FTRIGBAILOUT 2500
@@ -156,8 +168,8 @@ MOREPARAMS moreparams[] =
     {PHOENIXFPCPLX    ,{ degreeZ, ES,          ES,ES,ES,ES},{0,0,0,0,0,0}},
     {MANDPHOENIXCPLX  ,{ degreeZ, ES,          ES,ES,ES,ES},{0,0,0,0,0,0}},
     {MANDPHOENIXFPCPLX,{ degreeZ, ES,          ES,ES,ES,ES},{0,0,0,0,0,0}},
-    {FORMULA          ,{ p3real,  p3imag,      ES,ES,ES,ES},{0,0,0,0,0,0}},
-    {FFORMULA         ,{ p3real,  p3imag,      ES,ES,ES,ES},{0,0,0,0,0,0}},
+    {FORMULA  ,{ p3real,p3imag,p4real,p4imag,p5real,p5imag},{0,0,0,0,0,0}},
+    {FFORMULA ,{ p3real,p3imag,p4real,p4imag,p5real,p5imag},{0,0,0,0,0,0}},
     {ANT              ,{ "+Wrap?",s_randomseed,ES,ES,ES,ES},{1,0,0,0,0,0}},
     {-1               ,{ NULL,NULL,NULL,NULL,NULL,NULL    },{0,0,0,0,0,0}}
 };
@@ -345,7 +357,7 @@ struct fractalspecificstuff far fractalspecific[]=
 
    {
    "plasma",
-      {"Graininess Factor (.1 to 50, default is 2)",
+      {"Graininess Factor (0 or 0.125 to 100, default is 2)",
        "+Algorithm (0 = original, 1 = new)",
        "+Random Seed Value (0 = Random, 1 = Reuse Last)",
        "+Save as Pot File? (0 = No,     1 = Yes)"
@@ -975,23 +987,23 @@ struct fractalspecificstuff far fractalspecific[]=
 
    {
    t_popcorn,
-      {step, ES, ES, ES},
-      {0.05, 0, 0, 0},
-      HT_POPCORN, HF_POPCORN, NOGUESS+NOTRACE+WINFRAC,
+      {step_x, step_y, constant_x, constant_y},
+      {0.05, 0, 3.00, 0},
+      HT_POPCORN, HF_POPCORN, NOGUESS+NOTRACE+WINFRAC+TRIG4,
       (float)-3.0, (float)3.0, (float)-2.25, (float)2.25,
       0, NOFRACTAL, NOFRACTAL, LPOPCORN, NOPLOT,
-      PopcornFractal, otherjuliafp_per_pixel, JuliafpSetup, popcorn,
+      PopcornFractalFn, otherjuliafp_per_pixel, JuliafpSetup, popcorn,
       STDBAILOUT
    },
 
    {
    t_popcorn+1,
-      {step, ES, ES, ES},
-      {0.05, 0, 0, 0},
-      HT_POPCORN, HF_POPCORN, NOGUESS+NOTRACE+WINFRAC,
+      {step_x, step_y, constant_x, constant_y},
+      {0.05, 0, 3.00, 0},
+      HT_POPCORN, HF_POPCORN, NOGUESS+NOTRACE+WINFRAC+TRIG4,
       (float)-3.0, (float)3.0, (float)-2.25, (float)2.25,
       16, NOFRACTAL, NOFRACTAL, FPPOPCORN, NOPLOT,
-      LPopcornFractal, long_julia_per_pixel, JulialongSetup, popcorn,
+      LPopcornFractalFn, long_julia_per_pixel, JulialongSetup, popcorn,
       STDBAILOUT
    },
 
@@ -1473,23 +1485,23 @@ struct fractalspecificstuff far fractalspecific[]=
 
    {
    t_popcornjul,
-      {step, ES, ES, ES},
-      {0.05, 0, 0, 0},
-      HT_POPCORN, HF_POPCJUL, WINFRAC,
+      {step_x, step_y, constant_x, constant_y},
+      {0.05, 0, 3.00, 0},
+      HT_POPCORN, HF_POPCJUL, WINFRAC+TRIG4,
       (float)-3.0, (float)3.0, (float)-2.25, (float)2.25,
-      0, NOFRACTAL, NOFRACTAL, LPOPCORNJUL, ORIGIN,
-      PopcornFractal, otherjuliafp_per_pixel, JuliafpSetup,StandardFractal,
+      0, NOFRACTAL, NOFRACTAL, LPOPCORNJUL, NOSYM,
+      PopcornFractalFn, otherjuliafp_per_pixel, JuliafpSetup,StandardFractal,
       STDBAILOUT
    },
 
    {
    t_popcornjul+1,
-      {step, ES, ES, ES},
-      {0.05, 0, 0, 0},
-      HT_POPCORN, HF_POPCJUL, WINFRAC,
+      {step_x, step_y, constant_x, constant_y},
+      {0.05, 0, 3.0, 0},
+      HT_POPCORN, HF_POPCJUL, WINFRAC+TRIG4,
       (float)-3.0, (float)3.0, (float)-2.25, (float)2.25,
-      16, NOFRACTAL, NOFRACTAL, FPPOPCORNJUL, ORIGIN,
-      LPopcornFractal, long_julia_per_pixel, JulialongSetup, StandardFractal,
+      16, NOFRACTAL, NOFRACTAL, FPPOPCORNJUL, NOSYM,
+      LPopcornFractalFn, long_julia_per_pixel, JulialongSetup, StandardFractal,
       STDBAILOUT
    },
 
@@ -1864,7 +1876,7 @@ struct fractalspecificstuff far fractalspecific[]=
 
    {
    "dynamic",
-      {"+# of intervals (<0 = connect)", "time step (<0 = Euler", A, B},
+      {"+# of intervals (<0 = connect)", "time step (<0 = Euler)", A, B},
       {50, .1, 1, 3},
       HT_DYNAM, HF_DYNAM, NOGUESS+NOTRACE+WINFRAC+TRIG1,
       (float)-20.0, (float)20.0, (float)-20.0, (float)20.0,
@@ -1899,11 +1911,7 @@ struct fractalspecificstuff far fractalspecific[]=
 
    {
    "cellular",
-      {"#Initial String | 0 = Random | -1 = Reuse Last Random",
-       "#Rule = # of digits (see below) | 0 = Random",
-       "+Type (see below)",
-       "+Starting Row Number"
-      },
+      {cell_init, cell_rule, cell_type, cell_strt},
       {11.0, 3311100320.0, 41.0, 0},
       HT_CELLULAR, HF_CELLULAR, NOGUESS+NOTRACE+NOZOOM+WINFRAC,
       (float)-1.0, (float)1.0, (float)-1.0, (float)1.0,
@@ -2257,88 +2265,29 @@ struct fractalspecificstuff far fractalspecific[]=
       {0.32, 0.043, 0, 0},
       HT_ESCHER, HF_ESCHER, WINFRAC,
       (float)-1.6, (float)1.6, (float)-1.2, (float)1.2,
-      0, NOFRACTAL, NOFRACTAL, NOFRACTAL, NOSYM,
+      0, NOFRACTAL, NOFRACTAL, NOFRACTAL, ORIGIN,
       EscherfpFractal, juliafp_per_pixel, StandardSetup, 
           StandardFractal,
       STDBAILOUT
    },                     
   
+/* From Pickovers' "Chaos in Wonderland"      */
+/* included by Humberto R. Baptista           */
+/* code adapted from king.cpp bt James Rankin */
 
-/*  the following demonstration drunkard's walk fractal requires
-    only the demowalk() routine in FRACTALS.C to be functional
-    (the definition of the positional value DEMOWALK in FRACTYPE.H
-    is not really required, but is good practice).
-*/
-/*
    {
-   "demowalk",
-      {"Average Stepsize (% of image)",
-       "Color (0 means rotate colors)",
-       ES, ES
-      },
-      {5, 0.0, 0, 0},
-      -1, -1, NORESUME+WINFRAC,
-      (float)-2.5, (float)1.5, (float)-1.5, (float)1.5,
+   "latoocarfian",
+      {A, B, C, D},
+      {-0.966918, 2.879879, 0.765145, 0.744728},
+      HT_LATOO, HF_LATOO, NOGUESS+NOTRACE+WINFRAC+INFCALC+MORE+TRIG4,
+      (float)-2.0, (float)2.0, (float)-1.5, (float)1.5,
       0, NOFRACTAL, NOFRACTAL, NOFRACTAL, NOSYM,
-      NULL, NULL, StandaloneSetup, demowalk,
+      (VF)latoofloatorbit, NULL, orbit3dfloatsetup, orbit2dfloat,
       NOBAILOUT
    },
-*/
-
-/*  the following demonstration Mandelbrot/Julia fractals require
-    only the definition of the four positional values DEMOMANDEL,
-    DEMOJULIA, DEMOMANDELFP, and DEMOJULIAFP in FRACTYPE.H to be
-    functional - and we only need *them* for the integer/floatingpoint
-    and Mandelbrot/Julia toggle items in their structure items.
-*/
-/*
-   {
-   "demomandel",
-      {realz0, imagz0, ES, ES},
-      {0, 0, 0, 0},
-      -1, -1, WINFRAC,
-      (float)-2.5, (float)1.5, (float)-1.5, (float)1.5,
-      1, DEMOJULIA,  NOFRACTAL, DEMOMANDELFP, XAXIS_NOPARM,
-      JuliaFractal, mandel_per_pixel, MandellongSetup, StandardFractal,
-      STDBAILOUT
-   },
 
    {
-   "demojulia",
-      {realparm, imagparm, ES, ES},
-      {0.3, 0.6, 0, 0},
-      -1, -1, WINFRAC,
-      (float)-2.0, (float)2.0, (float)-1.5, (float)1.5,
-      1, NOFRACTAL, DEMOMANDEL, DEMOJULIAFP, ORIGIN,
-      JuliaFractal, julia_per_pixel, JulialongSetup, StandardFractal,
-      STDBAILOUT
-   },
-
-   {
-   "*demomandel",
-      {realz0, imagz0, ES, ES},
-      {0, 0, 0, 0},
-      -1, -1, WINFRAC,
-      (float)-2.5, (float)1.5, (float)-1.5, (float)1.5,
-      0, DEMOJULIAFP, NOFRACTAL, DEMOJULIA, XAXIS_NOPARM,
-      JuliafpFractal, mandelfp_per_pixel, MandelfpSetup, StandardFractal,
-      STDBAILOUT
-   },
-
-   {
-   "*demojulia",
-      {realparm, imagparm, ES, ES},
-      {0.3, 0.6, 0, 0},
-      -1, -1, WINFRAC,
-      (float)-2.0, (float)2.0, (float)-1.5, (float)1.5,
-      0, NOFRACTAL, DEMOMANDELFP, DEMOMANDEL, ORIGIN,
-      JuliafpFractal, juliafp_per_pixel, JuliafpSetup, StandardFractal,
-      STDBAILOUT
-   },
-*/
-
-   {
-   NULL,            /* marks the END of the list */
+      NULL,            /* marks the END of the list */
       {NULL, NULL, NULL, NULL},
       {0, 0, 0, 0},
       -1, -1, 0,
@@ -2352,3 +2301,71 @@ struct fractalspecificstuff far fractalspecific[]=
 int num_fractal_types = (sizeof(fractalspecific)/
         sizeof(struct fractalspecificstuff)) -1;
 
+/*
+ *  Returns 1 if the formula parameter is not used in the current
+ *  formula.  If the parameter is used, or not a formula fractal,
+ *  a 0 is returned.  Note: this routine only works for formula types.
+ */
+int paramnotused(int parm)
+{
+   int ret = 0;
+
+   /* sanity check */
+   if (fractype != FORMULA && fractype != FFORMULA)
+      return (0);
+
+   switch (parm/2) {
+      case 0:
+         if (!uses_p1)
+            ret = 1;
+         break;
+      case 1:
+         if (!uses_p2)
+            ret = 1;
+         break;
+      case 2:
+         if (!uses_p3)
+            ret = 1;
+         break;
+      case 3:
+         if (!uses_p4)
+            ret = 1;
+         break;
+      case 4:
+         if (!uses_p5)
+            ret = 1;
+         break;
+      default:
+         ret = 0;
+         break;
+   }
+   return (ret);
+}
+
+/* 
+ *  Returns 1 if parameter number parm exists for type. If the
+ *  parameter exists, the parameter prompt string is copied to buf. 
+ *  Pass in NULL for buf if only the existence of the parameter is 
+ *  needed, and not the prompt string.
+ */
+int typehasparm(int type,int parm,char *buf)
+{
+   int extra;
+   char far *ret = NULL;
+   if(0 <= parm && parm < 4)
+      ret=fractalspecific[type].param[parm];
+   else if(parm >= 4 && parm < MAXPARAMS)
+      if((extra=find_extra_param(type)) > -1)
+         ret=moreparams[extra].param[parm-4];
+   if(ret)
+      if(*ret == 0)
+         ret = NULL;
+
+   if(type == FORMULA || type == FFORMULA)
+      if(paramnotused(parm))
+         ret = NULL;
+
+   if(ret && buf != NULL)
+      far_strcpy(buf,ret);
+   return(ret?1:0);
+}

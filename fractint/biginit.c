@@ -110,7 +110,9 @@ long maxstack = 0;
 int bf_save_len = 0;
 
 /* ??? for some strange reason, msc 7.0 hangs here without this pragma. ??? */
+#ifndef XFRACT
 #pragma optimize( "", off )
+#endif
 static void init_bf_2(void)
     {
     int i;
@@ -221,7 +223,7 @@ static void init_bf_2(void)
     /* sanity check */
     /* leave room for NUMVARS variables allocated from stack */
     /* also leave room for the safe area at top of segment */
-    if(ptr + NUMVARS*(bflength+2) > (long)0x10000l -(bflength+2)*22-ENDVID)
+    if(ptr + NUMVARS*(bflength+2) > maxstack)
        {
        char msg[80];
        char nmsg[80];
@@ -235,7 +237,7 @@ static void init_bf_2(void)
     /* room for 6 corners + 6 save corners + 10 params at top of extraseg */
     /* this area is safe - use for variables that are used outside fractal*/
     /* generation - e.g. zoom box variables */
-    ptr  = ((long)0x10000l-(bflength+2)*22-ENDVID);
+    ptr  = maxstack;
     bfxmin     = bnroot+ptr; ptr += bflength+2;
     bfxmax     = bnroot+ptr; ptr += bflength+2;
     bfymin     = bnroot+ptr; ptr += bflength+2;
@@ -260,7 +262,7 @@ static void init_bf_2(void)
     else /* first time through - nothing saved */
        {
        /* high variables */
-       far_memset(bnroot+((long)0x10000l-(bflength+2)*22-ENDVID),0,(bflength+2)*22);
+       far_memset(bnroot+maxstack,0,(bflength+2)*22);
        /* low variables */
        far_memset(bnroot,0,(unsigned)startstack);
        }
@@ -340,8 +342,9 @@ void free_bf_vars()
    bflength=rbflength=bfdecimals=0;
    }
 
+#ifndef XFRACT
 #pragma optimize( "", on )
-
+#endif
 
 /************************************************************************/
 /* Memory allocator routines start here.                                */
@@ -356,9 +359,9 @@ bn_t alloc_stack(size_t size)
       stopmsg(0,msg);
       return(0);
       }
-   stack_addr = (long)(stack_ptr-bnroot)+size+ENDVID;
+   stack_addr = (long)(stack_ptr-bnroot)+size; /* +ENDVID, part of bnroot */
 
-   if((stack_addr) > ((long)0x10000l-(bflength+2)*22))
+   if(stack_addr > maxstack)
       {
       static FCODE msg[] = {"Aborting, Out of Bignum Stack Space"};
       stopmsg(0,msg);
@@ -401,10 +404,14 @@ void init_bf_dec(int dec)
        decimals=bfdigits;   /* blindly force */
     else
        decimals = dec;
-    if (fractype == FPMANDELZPOWER || fractype == FPJULIAZPOWER)
+    if(bailout > 10)    /* arbitrary value */
+       /* using 2 doesn't gain much and requires another test */
+       intlength = 4;
+    else if (fractype == FPMANDELZPOWER || fractype == FPJULIAZPOWER)
        intlength = 2;
     /* the bailout tests need greater dynamic range */
-    else if(bailoutest == Real || bailoutest == Imag || bailoutest == And)
+    else if(bailoutest == Real || bailoutest == Imag || bailoutest == And ||
+            bailoutest == Manr)
        intlength = 2;
     else
        intlength = 1;
@@ -421,10 +428,14 @@ void init_bf_length(int bnl)
     {
     bnlength = bnl;
 
-    if (fractype == FPMANDELZPOWER || fractype == FPJULIAZPOWER)
+    if(bailout > 10)    /* arbitrary value */
+       /* using 2 doesn't gain much and requires another test */
+       intlength = 4;
+    else if (fractype == FPMANDELZPOWER || fractype == FPJULIAZPOWER)
        intlength = 2;
     /* the bailout tests need greater dynamic range */
-    else if(bailoutest == Real || bailoutest == Imag || bailoutest == And)
+    else if(bailoutest == Real || bailoutest == Imag || bailoutest == And ||
+            bailoutest == Manr)
        intlength = 2;
     else
        intlength = 1;

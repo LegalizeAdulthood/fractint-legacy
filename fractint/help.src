@@ -17,7 +17,7 @@
    { Introduction }                         { Distribution of Fractint }
    { Conditions on Use }                    { Contacting the Authors }
    { Getting Started }                      { The Stone Soup Story }
-   { New Features in 19.6 }                 { A Word About the Authors }
+   { New Features in 20.3.X }               { A Word About the Authors }
                                           { Other Fractal Products }
    { Display Mode Commands }
    { Color Cycling Commands }               { Fractint on Unix }
@@ -30,7 +30,7 @@
    { Palette Maps }                         { Bibliography }
                                           { Other Programs }
    { Startup Parameters\, Parameter Files }  { Revision History }
-   { Batch Mode }                           { Version13 to 14 Conversion }
+   { Batch Mode } 
    { "Disk-Video" Modes }                   { Printing Fractint Documentation }
 
 ~Format+
@@ -38,7 +38,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New Features in 19.6", FF}
+{     , 0, "New Features in 20.3.X", FF}
 {     , 0, "Introduction", "Conditions on Use", FF}
 
 {1.   , 0, Fractint Commands, FF}
@@ -56,9 +56,10 @@
 {1.12 , 1, "View Window"}
 {1.13 , 1, "Video Mode Function Keys"}
 {1.14 , 1, "Browse Commands"}
-{1.15 , 1, "RDS Commands"}
-{1.16 , 1, "Hints"}
-{1.17 , 1, "Fractint on Unix"}
+{1.15 , 1, "Evolver Commands"}
+{1.16 , 1, "RDS Commands"}
+{1.17 , 1, "Hints"}
+{1.18 , 1, "Fractint on Unix"}
 
 {2.   , 0, "Fractal Types", FF}
 {2.1  , 1, "The Mandelbrot Set"}
@@ -113,6 +114,7 @@
 {2.50 , 1, "Frothy Basins"}
 {2.51 , 1, "Volterra-Lotka Fractals"}
 {2.52 , 1, "Escher-Like Julia Sets"}
+{2.53 , 1, "Latoocarfian"}
 
 {3.   , 0, Doodads\, Bells\, and Whistles, FF}
 {3.1  , 1, "Drawing Method"}
@@ -126,8 +128,9 @@
 {3.9  , 1, "Continuous Potential"}
 {3.10 , 1, "Starfields"}
 {3.11 , 1, "Bailout Test"}
-{3.12 , 1, "Random Dot Stereograms (RDS)"}
-{3.13 , 1, "Freestyle mode tutorial"}
+{3.12 , 1, "Parameter Explorer/Evolver"}
+{3.13 , 1, "Random Dot Stereograms (RDS)"}
+{3.14 , 1, "Freestyle mode tutorial"}
 
 {4.   , 0, "\"3D\" Images", "3D Overview", FF}
 {4.1  , 1, "3D Mode Selection"}
@@ -157,6 +160,9 @@
 {5.11 , 1, "File Parameters"}
 {5.12 , 1, "Video Parameters"}
 {5.13 , 1, "Sound Parameters"}
+{5.13.1,2, "Sound Controls"}
+{5.13.2,2, "Advanced Sound Controls"}
+{5.13.3,2, "Envelopes"}
 {5.14 , 1, "Printer Parameters"}
 {5.15 , 1, "PostScript Parameters"}
 {5.16 , 1, "PaintJet Parameters"}
@@ -186,7 +192,7 @@
 
 {Appendix A, 0, Mathematics of the Fractal Types,
                    "Summary of Fractal Types",
-                   "Inside=bof60|bof61|zmag|period",
+                   "Inside=bof60|bof61|zmag|fmod|period|atan",
                    "Inside=epscross|startrail",
                    "Finite Attractors",
                    "Trig Identities",
@@ -216,7 +222,6 @@
                    "Versions  1 through 11",
                    FF}
 
-{Appendix H, 0, Version13 to Version 14 Type Mapping, "Version13 to 14 Conversion", FF}
 ;
 ; End of DoContents
 ;
@@ -265,212 +270,625 @@ integrated documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in 19.6
-Version 19.6 is an update of Fractint based on the developer's
-  version 19.50 patch 50. New features include:
+~Topic=New Features in 20.3.X
+This is a developer's "incremental" release. These incremental releases
+typically have a short life and are updated frequently. They may have
+bug fixes, and thus be more stable, but they may also have new features
+which very likely have new bugs.
 
-Added new fractal types {=HT_ESCHER escher_julia} and {=HT_VL volterra-lotka}
-  courtesy Michael Sargent.
+Version 20.3.0 is an update of Fractint 20.0 based on the developer's
+  version 20.2.05.  New features include:
 
-Expanded formula parser capability to recognize "if..else" flow control
-  instructions. The format of an "if block" of instructions is:
-         IF(boolean)
-            statements
-         ELSEIF(boolean) [any number of these are permitted in a block]
-            statements
-         ELSE            [if used, only one is permitted in a block]
-            statements
-         ENDIF
-  Note that ELSEIF() does not require a separate ENDIF. Each branching
-  instruction must be a separate formula statement, separated from other
-  statements by a comma or an end of line. There is a limit of 200 branching
-  instructions per formula (ELSEIF counts as two branching instructions).
-  Unlimited nesting is permitted; each ELSEIF, ELSE, and ENDIF relates to
-  the immediately preceding "non endif'ed" IF. An IF() and its ENDIF cannot
-  traverse the end of the initialization section of the formula.
+Version 20.3.0\
+Incremented the version number to accommodate backwards compatibility for
+  the inside=atan and outside=atan options.
+  
+  Fixed inside=atan and outside=atan to use the full color palette instead
+  of limiting to 180 colors.
 
-Added tutorials to the distribution package: Bradley
-  Beacham's basic formula tutorial, Sylvie Gallet's PHC and PTC formula
-  tutorial, and George Martin's tutorial on the new if..else feature
-  of the formula parser. Required reading for formula writers.
+  Added Charlie Chernohorsky's virtual screen zoombox fix.  See {View Window}.
 
-Added text scrolling capability in <z> and F2 screens. Scroll keys for
-  the <z> screen:
-         CTRL+DOWN_ARROW    Move screen down one line
-         CTRL+UP_ARROW      Move screen up one line
-         CTRL+RIGHT_ARROW   Move screen right one column
-         CTRL+LEFT_ARROW    Move screen left one column
-         CTRL+PAGE_DOWN     Move screen down one view screen
-         CTRL+PAGE_UP       Move screen up one view screen
-         CTRL+HOME          Go to beginning of entry
-         CTRL+END           Go to end of entry
+  Added Gerald Dobiasovsky's fixes for the demo key files needed because
+  of menu prompt changes and pan/zoom size changes.
 
-  Direction keys without the CONTROL key depressed maintain their current
-  roles in moving the cursor in the entry prompt boxes.
+  Fixed evolver parameter entry.
 
-  In the F2 screen, the same scrolling is available; the CONTROL key
-  does not need to be depressed.
+  Fixed hypercomplex fractal type to turn off symmetry when a cj parameter
+  is used.
 
-Added capability to place ifs, formula, and lsys entries in PAR files.
-  If not found in the file named in the parameter entry, formulas, ifs, and
-  lsystem entries called for in entries are looked for in the .par file
-  itself. The referenced entry must have the appropriate prefix in the
-  PAR file as follows:\
+  Fixed the plasma type to show the value of the parameter that is actually
+  used in the image genaration.
 
-       formulas  frm:\
-       lsystem   lsys:\
-       ifs       ifs:\
+  Fixed the plasma type so that a parameter file uses the colors included
+  in the parameter entry instead of the default colors.
 
-  for example:\
+  Revised the plasma type prompt to reflect the values that can actually be
+  used.
 
-  frm:mandel \{\
-    z=c=pixel:\
-    z = z*z + c\
-    |z| < 4\
-  \}\
+  Increased the Lsystem line length from 160 characters to 255 characters.
 
-  The prefix is an identifier, not part of the name itself. Thus, the
-  parameter in the image entry would read "formulaname=mandel". The
-  formulafile= parameter need not, and probably should not, name the
-  PAR file itself - the search of the PAR file is automatic.
+  Fixed the browser so that it recognized the fractal type stored in images.
 
-  Formulas, ifs, and lsys entries in a PAR file will not be shown on the
-  menu screen for the PAR file, and are accessible only in connection with
-  running the parameter entry which calls for the formula. Also, PAR
-  files are not searched when looking for a formula, ifs, or lsystem entry in
-  connection with restoring a .gif file. You will need to copy these entries
-  from the PAR file into .frm, .ifs, and .l files as applicable (taking
-  care, of course, to delete the identifier prefixes) in order to make
-  general use of them.
+  Fixed the Xfractint FPUcplxdiv and FPUcplxlog routines in fpu087.c to
+  match the Fractint assembler code.
 
-Added command line option fastrestore=yes|no. Default is NO. When YES,
-  causes viewwindows to be set to NO before each restore, so that otherwise
-  normal gifs will not be drawn at the reduced aspect when viewwindows was
-  previously set to YES; and bypasses the warning which is displayed when a
-  restore is to be viewed in a video mode other than the one at which the gif
-  was saved. Combined with askvideo=no, all restores will automatically be
-  made at the user's default video mode. This feature will be helpful when
-  cycling through a group of gifs in autokey mode.
+  Modified the Xfractint resume code to remove the Xfractint specific
+  sections since they are no longer needed (gcc macros match MSC macros).
 
-Ctrl-Right used in file selection screens now skips over directory listings,
-  and if the cursor is on the last file, moves the cursor to the first file.
-  This makes possible uninterrupted cycling in autokey mode. The keyword for
-  this keystroke in a .key file is CTRL_RIGHT.\
+Patch 5\
+Made changes to allow Xfractint to find files that use upper case letters.
+
+  Fixed a problem with the Cellular type that prevented entering an initial
+  row of greater than 32767 from working.  Added a message about not being
+  able to resume after interrupting prior to rows being displayed on screen.
+
+  Fixed an evolver bug which caused setting evolver parameters to turn
+  evolving on, even though evolving was actually turned off.
+
+  Added Charlie Chernohorsky's truecolor speed up and his implementation
+  of virtual screen sizes for the VESA modes (dotmode=28).  This feature
+  does not work consistently between different video cards, so it may be
+  turned off by using the startup command "virtual=n".
+  Use the <V> screen to set the desired virtual screen size.  See
+  {View Window}.  Please remember that if either X or Y is greater than 2048,
+  solid guessing is turned off.  This is for multiple reasons, so it is
+  likely it will NOT get fixed soon.  There is also a problem with the
+  colorbars that appear when saving an image leaving bits of corruption
+  on the screen.  This occurs in all the VESA truecolor modes.
+
+  Added Charlie to the scrolling list of contributors.
+
+  Added Charlie's fix for the l-system type which occurred when a push-pop
+  combination was on two different lines.
+
+  Fixed the PAGE-UP/PAGE-DN zoombox in Xfractint so that it now appears on
+  the screen.  Fixed ranges= in Xfractint so GIFs save correctly and
+  program doesn't end abruptly.
+
+Patch 4\
+Updated Paul de Leeuw's contact information.
+
+  Modified the Xfractint makefile and source files to allow compiling
+  without an assembler.
+
+Patch 3\
+This patch ran the Xfractint code through -Wall to clear up most of the
+  warnings.  Updated the Xfractint man page.  Turned on compiler
+  optimizations.
+
+  Fixed the documentation for the Latoocarfian fractal type thanks to
+  comments by Pierre Desjardins on the Fractint Bug List.
+
+Patch 2\
+This patch adds the assembly language version of the mandelbrot code to
+  Xfractint.  To use it, it is necessary to place the command line switch
+  fpu=387 in your sstools.ini file.  The NASM assembler was used, but if you
+  don't have it available, not to worry, the object file is included.
+
+  Modified the Xfractint C mandelbrot code to match the assembly version.
+
+Patch 1\
+Made a small change to the quickcalc logic used to recalculate the inside
+  pixels only when the iteration count is increased with a completed image.
+  Interrupting and resuming the calculation was leaving extra pixels on the
+  screen.
+
+  Patched the Xfractint fractint.h file to match the DOS version.
+
+  Fixed an Xfractint problem with color depths greater than 16 bits per pixel.
+
+Version 20.2.0\
+Incremented the version number to accommodate backwards compatibility for
+  the logmap option.
+
+  Modified the logmap routine so that the color with index # 2 would be
+  displayed.
+
+  Added a logmode=auto command line option that causes the logmap to adjust
+  automatically when zooming.  Changing almost anything will turn this
+  feature off.  It is best set using the <g> screen prompt.
+
+  Edited the help docs to document the move of the development area from
+  Compuserve to the web.
+
+Patch 13\
+Added parameters p4 and p5 to the evolver.  This required splitting the
+  tweak central screen into two pages.
+
+  Fixed an evolver bug that was causing the evolver to not exit cleanly.
+
+  Changed the compile options on evolve.c to eliminate aliasing, which
+  started to cause problems with this patch.
+
+Patch 12\
+Fixed a problem with a finished image not redrawing if the maxiter was
+  increased and another parameter was changed.
+
+  Added checks for p3, p4, and p5 to the browser for determining similar
+  images.
+
+  Updated Scott Boyd's email address.
+
+Xfractint fixes:
+  Fixed the command line -disk segmentation fault.
+
+  Fixed the Shell to Linux/Unix segmentation fault and the displayed prompt.
+
+  Fixed the bug causing colors= data to be incorrect when in a truecolor mode.
+
+  Removed or commented out extra lines of code and some experimental
+  routines.  Some of this code was stealing key strokes.
+
+  Changed the prompt for getting to the second <TAB> screen.
+
+Patch 11\
+Fixed a bug that caused a panned image to miss part of a line when the
+  image was panned while the first row was being generated.
+
+  Adjusted the time for keyboard checks when the showdot feature is used.  Now
+  the iterations stop much quicker when a key is pressed.
+
+  Fixed a problem with the float-only version that appeared when an incomplete
+  image was saved and restarted in the standard version.
+
+  Fixed a problem in Xfractint pointed out by Ken on the Fractint bug list.
+
+Patch 10\
+Took out a sanity check in the VESA detection routines that certain graphics
+  cards don't pass, but work fine anyway.
+
+Patch 9\
+Fixed evolver bug that occurred when some formula functions were evolved
+  and others were not being evolved.
+
+  Fixed a bug in the float-only version which truncated the image
+  coordinates when saved to a PAR.
+
+Patch 8\
+Added truecolor support to Fractint thanks to Bert Tyler.  While in a
+  truecolor mode, the following features are disabled/changed:\
+    Color Cycling\
+    Palette Editor brings up the contents of the MAP directory\
+    Saving the image still only produces a 256 color GIF\
+
+  Removed Bert's truecolor test code used with the test fractal type.
+
+  Updated Paul de Leeuw's contact information.
+
+Patch 7\
+Fixed a bug which caused the float only version to omit the name of the
+  formula/lsystem/ifs in saved GIFs.  Fixed the julia_inverse fractal type
+  broken with the first patch to version 20.0.
+
+  Incorporated Gerald Dobiasovsky's fix to make the background= command work.
+
+  Added truecolor support to Xfractint thanks to Rich Thomson and Jean-Pierre
+  Demailly.
+
+  Additional Xfractint fixes include the mandelcloud type and outside=atan
+  when used with type=mandel.
+
+Patch 6\
+Once again fixed the assignment of hotkeys to video modes so that the
+  fractint.cfg file is no longer corrupted.  This problem was caused by
+  the section of code dealing with the true-color video modes.
+
+  Updated copyright notice.
+
+Patch 5\
+Updated the disk video help docs.  The limit of disk video has been
+  32767x32767 since version 20.0.
+
+  Fixed the tab and evolver screens so that not using formula parameters
+  consecutively starting with p1 now displays the parameters properly.
+  The p4 and p5 parameters have still not been added to the evolver.
+
+  Setting directories in sstools.ini can now be done relative to the
+  current directory.  For example: .\\frm\\fract200.frm
+
+Patch 4\
+Modified the per image startup code for the circle type to turn off the
+  inside= option if startrail is used.  Since the inside=startrail option
+  was locking up Fractint, no backwards compatibility is available.
+
+  Made changes to the code for how sizeof() was being used.  This fixes a
+  long standing problem with the cellular type in Xfractint.
+
+  Modified the hard coded reading of GIF files in Xfractint to eliminate
+  the error message received after patch 3 changed the fractal_info
+  structure.
+
+  Fixed a problem with the Xfractint parameter, formula, and lsystem screens.
+
+Patch 3\
+Fixed the incremental redraw so that interrupting the redraw no longer sets
+  passes=1.
+
+  Added a command line option, nobof=yes, which allows the inside=bof60 and
+  bof61 options to function like the rest of the inside options.  With
+  nobof=yes the images in "The Beauty of Fractals" are no longer reproduced.
+
+  Increased the usable bailout values when using arbitrary precision math.
+  This is the best I can do with my minimal understanding of the ap-math
+  routines.  If you are seeing extraneous pixels on your ap-math images when
+  you use a high bailout, lower the bailout until they go away.
+
+  Made a change to the tab display routine to correct a problem with
+  displaying parameters when returning from the F6 and control-tab screens.
+
+Patch 2\
+Backed out the changes to the savegraphics() and restoregraphics() routines.
+
+  Updated Bret Mulvey's email address.
+
+Patch 1\
+Fixed the <TAB> display screen so the video memory doesn't get overwritten.
+  This clears up the problem with extraneous dots with some fractal types.
+  It should be possible to remove the textsafe=save from your sstools.ini
+  file.
+
+  Added Iain Stirling to the scrolling credits screen for his contribution
+  of the inside=fmod and outside=fmod options.
+
+  Reworded the error message received when more memory is requested than
+  is available on your disk drive.
+
+  The background= parameter, for 3D TGA files, is now saved to a PAR entry.
+
+  Fixed the error message that appears when a parsing error occurs on
+  startup.
+
+  Cleaned up the savegraphics() and restoregraphics() routines.  This should
+  make them faster.
+
+Version 20.1.0\
+Incremented the version number to accommodate backwards compatibility for
+  the inside=fmod option.
+
+  Fixed the assignment of hotkeys to video modes so that the fractint.cfg
+  file is no longer corrupted.  Made the showdot= feature reset with <INS>
+  if it is entered using the <g> screen.  Added a check for the video size
+  before invoking the palette editor.  Too small a size would crash Fractint.
+
+  Fixed an extraseg conflict which occurred with arbitrary precision when
+  the <tab> key was used with various screens open (x,y,b).  This conflict
+  also occurred when loading an ap math image at the video selection screen.
+  Cleaned up some of the ap math initialization code.
+
+  Fixed an obscure bug that left memory allocated when an unfinished image
+  was being reloaded, but a video mode was not selected (escape was pressed).
+
+  Added outside=fmod option.  This is an extension of the inside=fmod option.
+  The magnitude used for the comparison is now based on the same calculation as
+  is used for the bailout test.  This feature was contributed by Iain Stirling.
+  There is a problem with the mandel fractal type when outside=fmod is used
+  with inside=bof6x and bailoutest=real, imag, or manr.  This is likely due
+  to changes made in the code so that bof images could be reproduced.  Select
+  a different fractal type that produces the default mandel image to explore
+  using these parameters.
+
+  Added outside=tdis option.  This colors the pixels according to the total
+  distance traveled by the orbit.  This feature was suggested by Steve Robinson
+  on the Fractint Wish List.
+
+  Modified the inside and outside prompts on the <x> screen.  They are now
+  split into two separate prompts.  One for entering a color number and the
+  other for changing the option.  The left and right arrow keys can now be
+  used to change the inside and outside options.
+
+  Fixed a bug that was causing a crash when mathtolerance= was used and
+  fractal types ifs, ifs3d, or lsystem were selected.
+
+  Increased the minimum stack requirement for passes=s (SOI) to eliminate
+  crashes when the tab key was pressed.
+
+Patch 15\
+Added a prompt for the periodicity= option to the <y> Extended Options
+  screen.
+
+  Fixed another prompt problem with the stereogram prompt screen.
+  Put back in the evolver grid size limit based on screen resolution.
+
+  Fixed an evolver save problem when a zoom box was present just prior to
+  the save.  Note that the center image cannot be recreated once the
+  zoom box has been activated.  This is not a problem if you are working
+  from a saved image, just restore it.
+
+  Modified the routine that reports a view window that is too large so that
+  along with the full screen being used, the X and Y dimensions on the <v>
+  screen reflect the full screen dimensions.
+
+  The <v> screen can now be used to set the resolution of disk video
+  modes.  The limit is 32767x32767.  First select a disk video mode using
+  <del>.  Then on the <v> screen enter both an X and a Y value.  If you go
+  back to the <del> screen to see if the entry has been modified (it hasn't),
+  you will get strange results if you don't select a video mode.
+
+Patch 14\
+Fixed the generation of random numbers used by the evolver subimages.
+  Fixed the bug causing completed evolver images to regenerate when
+  restored.
+
+Patch 13\
+Added parameters p4 and p5 to the formula parser.  Fixed the symmetry
+  for cases where XAXIS_NOREAL and XAXIS_NOIMAG are used with the formula
+  parser and multiple parameters are used.  Each parameter is now checked.
+
+Patch 12\
+Fixed a 3D error introduced with patch 11.  Fixed the stereogram screen
+  prompts to prevent out of bounds array accesses.
+
+Patch 11\
+Fixed an off by one error in the Xfractint type=julia code.  Fixed the case
+  where the second image would not finish generating when the 3D parameter
+  Stereo=photo or stereo pair was used with an orbit type such as Lorenz.
+
+Patch 10\
+Fixed some user interface prompts that were wrong in Xfractint. Merged the
+  Xfractint version system with Fractint's. Thanks to Scott Boyd for 
+  these changes.
+
+Patch 9\
+Fixed a bug that occurred when maxhistory=0 was used.  Fixed a bug that
+  occurred when ismand was used in a formula and ctrl <o> was pressed.
+  Updated Jonathan's email address.
+
+Patch 8\
+Fixed a bug causing a lock up with lsystem and ifs fractal types when using
+  a disk video mode with an X or Y resolution greater than 2048.
+
+Patch 7\
+Updated Xfractint, copyright notice.
+
+Patch 6\
+Fixed fractint.cfg problems with extra commas or long lines. This allows
+  the output of makefcfg from certain video boards to be used without
+  editing.
+
+Added center, magxmag, and rotskew constants to parser. See 
+  {=@PREDEFCENTERMAG Center-Mag Predefined Variables}
+
+Patch 5\
+Added new command truemode=iter, which is used to switch the ouput to the
+  truecolor Targa file to the number of iterates for each pixel.
+
+Made selecting the evolver feature turn off truecolor=yes.  Each subimage was
+  being generated as a separate blank Targa file.
+
+Patch 4\
+Fixed the type=test bug.
+
+Removed Tim's compuserve email address.
+
+Patch 3\
+Fixed a bug in the pentium mandelbrot code that affected periodicity
+  checking.  Fixed a problem with skewed zoom boxes leaving dots on the
+  screen.  This also fixed browser boxes with the same problem.  Fixed
+  the zoom box so it is visible in 2-color modes.
+
+Patch 2\
+Fixed a bug in the formula parser.  Updated Tim Wegner's email address.
+
+Patch 1\
+Fixed the 2 and 16 color disk-video modes.  Using truecolor=yes now
+  results in writing a fractxxx.tga file instead of iterates.tga.  This
+  is not the same thing, so if somebody wants the output of the iterates.tga
+  file, let us know.  Fixed the 3D targa modes.
+
 ~OnlineFF
-  The following additional keystrokes were also implemented:\
+Version 20.0 is an update of Fractint based on the developer's
+  version 19.61 patch 85. You can report problems at:\
+  http://web.ukonline.co.uk/robin.b2/buglist.htm
+Major new features include:
 
-       Ctrl-Left (autokey symbol "CTRL_LEFT")\
-       Ctrl-Down ("CTRL_DOWN")\
-       Ctrl-Up   ("CTRL_UP")\
-       Ctrl-Home ("CTRL_HOME")\
-       Ctrl-End  ("CTRL_END")\
+The new Fractal Evolver by Robin Bussell. This feature randomly perturbs 
+  fractal parameters in a user-controlled way, letting you see a screen
+  full of postage-stamp variations of a fractal. See 
+  {=HELPEVOL Parameter explorer/evolver}
 
-   Run the following .key file with command line parameters fastrestore=yes
-   and askvideo=no (and, if you don't set your video mode in sstools.ini,
-   video=[your standard video mode]) and your coworkers will get a continuous
-   display of the .gif files in your default .gif directory when you go to
-   lunch (come on, we know you have Fractint on your hard drive at work):
+New sound routines from Robin Bussell.  Now <ctrl-f> brings up a menu for
+  changing the sounds made by Fractint.  The sound= prompt can now look like
+  this: sound=off|beep|x|y|z/pc|fm/quant. See {Sound Parameters}
 
-         "r"
-          MORE:
-          ENTER
-          CALCWAIT
-          WAIT 30
-          "R"
-          CTRL_RIGHT
-          GOTO MORE
+New 32767 x 32767 (32K) pixel limit. Removed the 2048 pixel limit for the size
+  of fractals. You can now define disk video modes larger than 2048 x 2048. 
 
-Added four new lsystem types to fractint.l.
+Added the experimental synchronous orbits (a.k.a. SOI) "fractal witchcraft" 
+  algorithm invoked using passes=s. This algorithm optimizes the computation of very 
+  deeply zoomed fractals by calculating parallel orbits, and subdividing 
+  when the orbits break formation. See {Drawing Method}
 
-When palette editing mode is entered, the original palette is now stored
-  in the area associated with F2.
+Other new features and changes include:
 
-Reduced the fractint.cfg resolution limit to 2x2 pixels.
+When resuming in pass=1, the calculation is now restarted at the last X value,
+  instead of at the beginning of the row. 
 
-Fixed bug which caused a lockup when ranges= was used with maxit >= 32767.
+Fixed browser so browsing images won't make the current image non-resumable.
 
-Fixed arbitrary precision and decoder crashes.
+During an image save to disk, the 's' key is now ignored.
 
-Fixed an entry display scrolling bug.
+Added Humberto Baptista's Epsilon Cross variation. It is triggered with a 
+  negative proximity. With a positive proximity value, the result should 
+  be backwards compatable. This assumes no one has made images with a 
+  negative proximity.
 
-Fixed the integer mode frothy basin "censored" bug.
+Changed the internal orbitdelay timer to use a new microsecond timer.
+  Changed the logic for controlling sound and orbit speed to make
+  it less machine dependent. Use debug=4020 to invoke the old timing
+  logic.
 
-Added backwards compatibility for inside=startrails.
+Modified autologmap so that it ignores symmetry.  
 
-Fixed the 16-color color cycling inside the palette editor.  Fixed color
-  cycling when used with a maxit > 32767.  Pixels with iterations > 32767
-  now cycle in the same direction as those with iterations <= 32767.
+Made the sound= prompts and batch output match the docs.  
 
-Fixed bug which caused an apparent lockup when find finite attractor was
-  used with maxit > 32767.
+Made the colors= information put into PARs the last item in the PAR.
 
-Fixed viewwindows bug that caused extra points to be written when ydots
-  was not divisible by 4.
+Added capability for makepar command to detect viewwindows and add to
+  PAR file.
 
-Fixed Ant type so that it works with 16 digits.  Old pars will need to be
-  re-entered or have a decimal point added to the first two parameters.
+Turned off view windows when the window is either too large or too small.
 
-Changed MAXSTRING in the decoder from 64000 to 60000. This change eliminates
-  all the encoder bug examples we have, but we don't understand why it
-  works and we may not have fixed the problem.
+Added an auto calc feature for the final aspect ratio if it is set to zero 
+  and the x and y sizes are specified.  
 
-Fixed the logmap routine when used with a par/gif release <= 1920 and memory
-  for the LogTable is insufficient.
+Fixed corners drift of integer fractals by disabling the logic that attempts
+   to keep the aspect fixed when zooming. 
 
-Fixed the complexnewton type when used with a par/gif release <= 1920.
+The <g> command no longer runs the backwards() routines unless
+  debug=98. 
 
-Changed the keystroke behavior of the passes= field on the <x> screen.
+Added tangent domain protection to integer version of popcorn that
+  prevents the "PI box" artifact. Brutal but works.
 
-New logic autocenters all input screen menu titles.
+~OnlineFF
+Generalized popcorn and popcornjul. There's a lot of possibility in
+  these new variations. The function variables are remembered as long 
+  as you stay within the popcorn family, otherwise they are set to
+  defaults. The integer version has an artifact in the F3 mode, probably
+  due to tan() being undefined.
 
-Changed the automatic resolution switching logic between float and arbitrary
-  precision.
+Included contributions from Humberto Baptista. These include Pickover's
+  Latoocarfian fractal type, as well as a passes=d[iffusion] option. 
 
-If user aborts before selecting a file in a file menu screen, the program
-  now remembers the last file name selected even if the directory has been
-  changed.
+The parser colors variable is now initialized to 256.
 
-Fixed writing 3d smooth factor to PAR.
+Fixed problem with the floating point Unity fractal type.  
 
-Fixed writing potential to PAR in makepar mode.
+Added Chuck Ebbert's parser speedup.  
 
-Fixed redundant "Regenerate before <b> to get correct symmetry" messages
-  in divide and conquer mode.
+Added checks for inside, outside, biomorph, and fillcolor entries larger
+  than the number of colors.
 
-Fixed hi rez type 2 diffusion bug and parser error bug.
+Added fix so that showorbit= can be turned off by restarting Fractint
+  with <INS>.
 
-Fixed crashing in disk video with too long a savename path.
+Adapted the browser so it would work with arbitrary precision images.
 
-Added Adrian Mariano's diffusion fixes - a new color option, several bug
-  fixes, and improved documentation. Removed integer support which wasn't
-  being used anyway.
+Added cpu/fpu detection for 486 and up.
 
-Finally, we've added two undocumented commands to give expert users
-   workarounds for math type precision and GIF encoder problems.
+Fixed the slow down of palette reset caused by slowing down color cycling.
 
-Added the mathtolerance=.05/.05 command. The first number controls the
-  integer/float transition, and the second number controls the float/arbitrary
-  precision transition. The default value of .05 means that the ratio between
-  the exact and calculated width and height is between .95 and 1.05. A larger
-  value than .05 (say .10) makes the test looser so that the lower precision
-  math is used longer. A value <= 0 means the test is always failed and the
-  higher precision math type is used. A value >= 1 means that the test is
-  always passed and the lower precision math type is used.
+Fixed inside=zmag and =fmod for arbitrary precision.
 
-  The automatic precision toggle is resolution dependent. The same image may
-  use float at 320x200 and arbitrary precision at 640x480. This is not a bug;
-  it has to work this way. At a given magnification more pixels require more
-  precision. There are other tests so even with mathtolerance=1/.05,
-  eventually Fractint will have to use float. The same is not true for
-  mathtolerance=.05/1. If you keep zooming Fractint will not rescue you;
-  eventually you'll get a nasty error message and the corners will be lost.
+More mandel/julia FPU speedup by assembling the > 8087 code without the
+  emulator fixups.  This was also used to speedup the FPU parser code.
 
-Added the tweaklzw=nnn/nnn command. Fractint's GIF encoder occasionally
-  fails and produces bad GIF files. Tweaking encoder parameters might
-  allow saving in such a situation. The parameters reduce the
-  maximum size of the current string and maximum total length of the string
-  table, respectively. The default values are 0, which gives the old
-  encoder performance.
+The mandel/julia optimizations are a combination of contributions from
+  Rees Acheson (author of MANDELB), Damien Jones, Agner Fog,
+  Terje Mathisen, Thomas Jentzsch, and Daniele Paccaloni.  Although
+  it would be hard to identify any one person's contribution, they all
+  played a great part in the pentium optimizations.
+
+Added inside=fmod and inside=atan. The inside=atan option should only be 
+  used with periodicity=0.
+
+Fixed a bug in loaddac() routine caused because bios doesn't zero top 8
+  entries when resetting the dac.
+
+Added two new features to <b> command. You can now specify "only" at
+   the "Record colors?", and added a maxlinelen field to specify how
+   wide the parameter file can be.
+
+Added support for maps to makepar command. Try something like:\
+   fractint map=lyapunov makepar=mymaps
+
+Improved color map compression in PAR files. Debug=910 uses old method, 
+   otherwise uses Sylvie Gallet's fix. Debug=920 uses lossless
+   compression for critical use.
+
+Removed a longstanding but unintended row limit of the encoder which
+  resulted in an "interrupted" message when saving long (> 5000 rows) files.
+
+Fixed bug with LodRealPwr in formula parser.
+
+Speedkey now works with unsorted lists. 
+
+Numbers in sound001.txt file names now increment.
+
+Added new based data type PFCODE which is a pointer to FCODE. This saves
+   memory with the array of parser error messages.
+
+Fixed bug that caused lockup when extended memory is used without any
+  expanded memory. 
+
+Fixed a bug in the spacing of file names in the file selection menu.
+
+Added Rich Thomson's Xfractint fixes for Silicon Graphics. 
+
+Fixed Julia pointer bug.
+
+Fixed a bug that caused the zoom box coordinates to be used if a doodad was
+  changed with a zoom box on the screen.
+
+Formula type and inversion now work with large images. Fractint now
+   does everything simplgifd does - make an appropriate diskvideo
+   mode, then load and save a MIG!! 
+
+Fixed a long standing bug in the popcorn fractal type and added backwards
+  compatibility.  Revised the popcorn type docs to clarify that when the
+  view window is used, it is possible to see orbits outside the "box".
+
+Fixed a bug that was causing garbage to be read when a non-Fractint GIF
+  image was read.
+
+Replaced the lzw logic with code based on the UNIX compress. This should 
+  eliminate very rare but very frustrating encoder problems.
+
+Added a function one() to formula parser, to complement ident() and zero().
+  The new function returns (1,0), and, like ident() and zero(), is only
+  available as a choice for fn1, fn2, fn3 or fn4.
+
+Disabled symmetry for synchronous orbits.
+
+Moved encoder default color palettes from near memory to overlayed data.
+
+Changed the grid lookups to a function. Fixed diskvideo viewwindows bug.
+  Moved zoom box function out of assembler to c. 
+
+Changed the direction of single color cycling when in color cycling mode.
+
+Added command line option orgfrmdir=[directory path]. When used, Fractint's
+  search for formulas will make a final check of the appropriate Orgform
+  compilation file in the specified directory (e.g. for a formula with the
+  name "abc", the only file searched in the specified directory will
+  be _a.frm). This feature will significantly reduce the time taken to
+  find a formula for users of the compilation.
+
+  For more about the Orgform compilation, see { Other Fractal Products }.
+
+Added a new minstack=<nnnn> command. Default value is 1100. This is
+  the minimum number of bytes returned by the stackavail() function
+  required in order to do another SOI recursion. People who get bad SOI
+  results at high resolutions should increase this value until the
+  symptoms go away. 
+
+Fixed the FPUatan bug that has been in the code in calmanfp.asm
+  since it was written.  It turns out that the major problem was that the FPU
+  stack was being overrun. 
+
+Rewrote the Mandelbrot FPU code.  Fixed the FPU versions of inside= real,
+  imag, mult, and summ.  Incremented the version number so the fix could
+  be backwards compatible.
+
+Added symmetry to Escher-Julia type. 
+
+Editpal changes from Andrew McCarthy.  Removed IIT coprocessor support.
+
+Parser changes: New code is only used to determine which functions
+  and variables will appear at top of "z" screen for a formula. Variable
+  names in fomrulas must now start with a letter or "_". Error checking
+  of formulas expanded. Formulas in Orgform compilation caught by the new
+  error checking have been rewritten.
+
+Fixed bug which appeared when an image entry and a formula in a .par file
+  had the same name.
+
+Added support for formula type to SPACE Mandelbrot/Julia toggle. Implemented
+  using new ismand parser constant.
+
+Added incremental redraw of images when maxiter is increased.  This works on
+  completed images that use inside=color.  None of the other inside=
+  options are supported.
 
 For information on previous versions, see { Revision History }.
 ;
@@ -514,7 +932,7 @@ systems using Intel's 80386 and 80486 microprocessors, where the integer
 math can be executed in their native 32-bit mode.
 
 Fractint works with many adapters and graphics modes from CGA to the
-1024x768, 256-color XGA mode. Even "larger" images, up to 2048x2048x256,
+1024x768, 256-color XGA mode. Even "larger" images, up to 32767x32767x256,
 can be plotted to expanded memory, extended memory, or disk: this bypasses
 the screen and allows you to create images with higher resolution than
 your current display can handle, and to run in "background" under multi-
@@ -633,6 +1051,7 @@ see "Command Line Parameters, Parameter Files, Batch Mode" for details.
    { \"3D\" Commands }
    { Video Mode Function Keys }
    { Browse Commands }
+   { Evolver Commands }
    { RDS Commands }
    { Hints }
 ;
@@ -718,8 +1137,17 @@ Commands marked with an '*' are also available at the credits screen.
 
 {Browse Commands}
   L(ook)                   Enter Browsing Mode
+
+{Evolver Commands}
+  Ctrl-E                   Bring up {=HELPEVOL explorer/evolver} control screen
+  Alt-1 ... Alt-7          Enter evolver mode with selected level of
+                           mutation: Alt-1 = low level, Alt-7 = maximum.
+                           (dont use the keypad, just the 'top row' numbers)
+                           When in evolve mode then just plain 1..7 also work
+
 {RDS Commands}
   Ctrl-S                   Access RDS parameter screen
+
 ~Doc+
 ;
 ;
@@ -815,6 +1243,7 @@ More options which we couldn't fit under the <X> command:\
   "invert=" parameters - see {Inversion}\
   "distest=" parameters - see {Distance Estimator Method}\
   "cyclerange=" - see {Color Cycling Commands}\
+  "periodicity=" - see {Periodicity Logic}\
 
 <Z>\
 Modify the parameters specific to the currently selected fractal type.
@@ -886,6 +1315,9 @@ startup filename.
 
 <L>\
 Enter Browsing Mode.  See {Browse Commands}.
+
+<Ctrl-E>\
+Enter Explorer/Evolver Mode.  See {Evolver Commands}.
 ;
 ;
 ;
@@ -1103,25 +1535,25 @@ After you press <B>, Fractint prompts for:
 
   Second, Third, and Fourth comment:  Additional comments to store in the
   file with the entry. These comments go in the file only, and are not
-  displayed by the <@> command. You can set these commenst from the
+  displayed by the <@> command. You can set these comments from the
   command line - see {=@COMMENTS Comment= Command}.
 
   Record colors?:  Whether color information should be included in the
   entry. Usually the default value displayed by Fractint is what you want.
   Allowed values are:\
-  "no" - Don't record colors.
+  "no" - Don't record colors.\
   "@mapfilename" - When these parameters are used, load colors from the
      named color map file. This is the default if you are currently using
-     colors from a color map file.
+     colors from a color map file.\
   "yes" - Record the colors in detail. This is the default when you've
      changed the display colors by using the palette editor or by color
      cycling. The only reason that this isn't what Fractint always does
      for the <B> command is that color information can be bulky - up to
-     nearly 1K of disk space. That may not
-     sound like much, but can add up when you consider the thousands of
-     wonderful images you may find you just *have* to record...
-     Smooth-shaded ranges of colors are compressed, so if that's used a
-     lot in an image the color information won't be as bulky.
+     nearly 3K of disk space per map - which adds up to a lot for many
+     images. Smooth-shaded ranges of colors are compressed, so if that's 
+     used a lot in an image the color information won't be as bulky.\
+  "only" - Record only the colors in the PAR file, without any other
+     parameters. This is useful for converting color maps to PAR entries.
 
   # of colors:  This only matters if "Record colors?" is set to "yes".  It
   specifies the number of colors to record. Recording less colors will
@@ -1134,13 +1566,17 @@ After you press <B>, Fractint prompts for:
   See the {=@RECORDCOLORS Recordcolors} command, which controls when mapfiles
   are used and when compressed colors are written to PAR files.
 
+  maxlinelength: This number controls the maximum width of a parameter
+  entry in a PAR file. The default is 72 characters.
+
   At the bottom of the input screen are inputs for Fractint's "pieces"
   divide-and-conquer feature. You can create multiple PAR entries that
   break an image up into pieces so that you can generate the image pieces
   one by one. There are two reasons for doing this. The first is in case the
   fractal is very slow, and you want to generate parts of the image at the
   same time on several computers. The second is that you might want to make
-  an image greater than 2048 x 2048. The parameters for this feature are:
+  an image greater than 2048 x 2048, the old pixel limit for Fractint. The 
+  parameters for this feature are:
      X Multiples - How many divisions of final image in the x direction\
      Y Multiples - How many divisions of final image in the y direction\
      Video mode  - Fractint video mode for each piece (e.g. "F3")\
@@ -1205,6 +1641,8 @@ chip.
    Inversion parameters - see{ Inversion }\
 
    Color cycling range - see{ Color Cycling Commands }\
+
+   Periodicity - see{ Periodicity Logic }\
 ;
 ;
 ~Topic=Image Coordinates Screen, Label=HELPCOORDS
@@ -1316,6 +1754,16 @@ These parameters can be used to:\
  o View saved GIF images which have pixel dimensions different from any
    mode supported by your hardware. This use of view windows occurs
    automatically when you restore such an image.
+ o Define a disk video mode up to 32767x32767.  First select a disk video
+   mode using <del>.  Then on the <v> screen enter both an X and a Y value
+   at the Virtual Screen Total Pixels prompts.
+ o Define a virtual video mode up to the size that fits in video memory.
+   First select a VESA video mode (dotmode=28) using <del>.  Then on the
+   <v> screen enter both an X and a Y value at the Virtual Screen Total
+   Pixels prompts.  The Keep Aspect prompt is used if the asked for virtual
+   screen is larger than video memory.  If set, the X and Y values will both
+   be reduced such that the ratio between them is maintained.  If not set,
+   just the Y value will be reduced.
 
 "Preview display"\
 Set this to "yes" to turn on view window, "no" for full screen display.
@@ -1334,7 +1782,8 @@ This is the height of the final image you want, divided by the width. The
 default is 0.75 because standard PC monitors have a height:width ratio of
 3:4. E.g. set this to 2.0 for an image twice as high as it is wide. The
 effect of this parameter is visible only when "preview display" is
-enabled.
+enabled.  If the explicit size of both x and y are set, setting this value
+to 0 will cause the appropriate value to be calculated based on x and y.
 
 "Crop starting coordinates"\
 This parameter affects what happens when you change the aspect ratio. If
@@ -1346,6 +1795,25 @@ prior image is "cropped" to avoid squeezing or stretching.
 Setting these to non-zero values over-rides the "reduction factor" with
 explicit sizes in pixels. If only the "x pixels" size is specified, the "y
 pixels" size is calculated automatically based on x and the aspect ratio.
+
+The following option is available when using disk video or virtual screen
+modes:
+
+"Virtual screen"\
+Setting these allow defining a virtual screen as large as the available
+video memory will permit.
+
+The following options are available when using virtual screen modes:
+
+"Keep aspect"\
+If this is set, when the asked for virtual screen is larger than video
+memory the X and Y values will both be reduced such that the ratio between
+them is maintained.  If not set, just the Y value will be reduced.
+
+"Zoombox scrolling"\
+The fixed setting tries to maintain the zoombox in the center of the
+screen by moving the virtual image.  The relaxed setting moves the virtual
+image when the zoombox reached the edges of the screen.
 
 More about final aspect ratio:  If you want to produce a high quality
 hard-copy image which is say 8" high by 5" down, based on a vertical
@@ -1553,7 +2021,7 @@ gives when deleting a file.  It won't get rid of the first prompt however.
 
 "Smallest window"\
 This parameter determines how small the image would have to be onscreen
-before it decides not to include it in the selection of files.  The size
+before the browser decides not to include it in the selection of files.  The size
 is entered in decimal pixels so, for instance, this could be set to 0.2 to
 allow images that are up to around three maximum zooms away (depending on
 the current video resolution) to be loaded instantly.  Set this to 0 to
@@ -1639,8 +2107,7 @@ see {Distribution of Fractint}.
 Xfractint is still under development and is not as reliable as the IBM PC
 version.
 
-Contact Ken Shirriff (shirriff@eng.sun.com) or Tim Wegner (twegner@phoenix,net)
-for more information on Xfractint.
+Contact xfractint@fractint.org for more information on Xfractint.
 ~FF
 Xfractint is a straight port of the IBM PC version.  Thus, it uses the
 IBM user interface.  If you do not have function keys, or Xfractint does
@@ -2105,10 +2572,11 @@ have no math co-processor, so watch out as the mouse movements get buffered.
 
 Once you've got the band in a satisfactory position then double click the left
 button to fix it in place.
-Continue like this for a while, adding different colours to the grey palette.6
+Continue like this for as long as you like, adding different colours to the
+grey palette.
 You'll notice how the band relates to the existing colour, the RGB values give
 the middle colour which are then smoothly shaded out to the colours at the ends
-of the band. Tthis can lead to some sudden jumps in the shading as the band is
+of the band. This can lead to some sudden jumps in the shading as the band is
 moved about the screen and the edges come to overlap different areas of colour.
 
 For really violent jumps in shading try starting with an image that has areas
@@ -2121,6 +2589,7 @@ the colour bands are calculated.
 
 I hope that you'll find this a useful tool in colouring an image. Remember that
 the 'h' key can be used to hide the palette box and expose the whole image.
+
 ;
 ~Topic=Palette Editing Command Summary, Label=HELPXHAIR
 ; This topic is online only.
@@ -2177,6 +2646,235 @@ the 'h' key can be used to hide the palette box and expose the whole image.
 
 ;
 ;
+~Topic=Parameter Explorer/Evolver, Label=HELPEVOL
+
+ Since fractint is such a wonderfully complex program it has more than a few
+ parameters to tweak and options to select. To the inexperienced 
+ user the choice is bewildering.  Even for the experts the chaotic nature of
+ the mathematical processes involved make it difficult to know what to
+ change in order to achieve the desired effect.
+ 
+ In order to help with this situation the Fractint parameter evolver has been
+ developed.  It varies those parameters for you and puts the results
+ on screen as a grid of small images. You can then choose the one which you
+ like best and regenerate it full screen, or if you don't like any of the
+ variations, you can try again to see if anything better turns up!
+
+ Enough explanations for now, lets see how easy it is to use:
+ 
+ With the default Mandlebrot set on the screen simply hold down the 'Alt' key
+ and press the '1' key on the top row (DON'T use the numeric keypad to the
+ right, it won't work). You'll see a screen full of images generated starting
+ from the middle and spiraling outwards. The perfect Mandlebrot set will be
+ in the middle and the others will be warped and distorted by having had the
+ initial value of Z perturbed at random... but you don't need to know that
+ (which is the whole point really!).
+
+ 'Alt-1' produces a low level of mutation of the fractal, only 'mild'
+ parameters are changed, those which have a more subtle effect. For much
+ wilder variations try pressing 'Alt-7' now. This give the maximum available
+ mutation with just about everything being twiddled and fiddled to rather
+ dramatic effect as you should now be seeing.
+
+ To select an image for full screen display simply bring up a zoombox by
+ pressing 'Page-up' once. The center image will now have a white box around
+ it. Hold down the 'Ctrl' key and use the arrow keys to move this box around
+ until it's outlining an image you like. Pressing 'B' will now exit from
+ evolver mode and redraw the selected image full size. If, rather than exiting
+ from evolver mode, you just press 'enter', then a whole new set of images
+ is generated, all based around the one you selected (which is now the middle
+ image of the new set).
+ 
+ From a basic point of view that's it!  Just press alt-number to scramble
+ things when you're out of inspiration, it works for any of the fractal
+ types in fractint including formulae... easy! (chaotic, but easy :-) )
+
+ As this is a Fractint feature, there is, of course, a lot more to it
+ than the basics described above...
+
+ For a start, there are some handy hotkeys to use, 'F2' and 'F3' are used to
+ alter the amount of mutation or the amount by which the selected parameters
+ can be varied. 'F2' halves the amount of mutation, 'F3' doubles it. So if
+ things on-screen are looking a bit samey just press 'F3' a few times to
+ crank up the mutation level.
+
+ Using 'F2' to decrease mutation levels is a way of moving towards a goal
+ image. Say that a set of images contained one that looked a little like,
+ maybe, a cats face and you wished to try and get something more cat like.
+ To achieve this simply select the desired image and press 'F2'. The newly
+ generated images should be more alike, though probably still quite widely
+ varied. With luck, one of the new images will be even more cat like. Select
+ this one and press 'F2' again. Continue like this, selecting the center image
+ again if there are no improvements in the current generation, until
+ eventually all the images are alike and you've arrived at your goal (or at
+ least you're probably as close as it's possible to get with that fractal
+ type).
+
+ As you look for more details in the images it is useful to reduce the number
+ of images per generation, thus producing larger sub images. Pressing 'F4'
+ will reduce the number of images per side on the grid by two and pressing
+ 'F5' increments the gridsize similarly.
+
+ 'F6' will switch between normal random mutation and 'spread' random mutation.
+ In 'spread' mode the amount of mutation allowed in an image is varied
+ according to each images position in the grid. Those images near the center
+ are allowed a lesser degree of freedom of mutation than those around the
+ outside. This produces a sea of images, stable at the center with wilder
+ variations around the edges. This mode is best used with larger gridsizes
+ and becomes completely silly at a gridsize of three!
+
+ 'Ctrl-e' brings up the evolver control screen on which you have manual access
+ to the evolution parameters varied by the hotkeys described above.\
+ These are:
+
+    Gridsize.            The number of sub images per side of the screen. Use
+                         odd numbers only.
+      
+    Max Mutation         The maximum amount by which a parameter may be varied
+                         
+    Mutation Reduction   The Max mutation value is multiplied by this between
+                         generations. This can be used to automatically goal 
+                         seek without having to use the 'F2' key.
+
+    Grouting             Turns on or off the gap between sub images, at large 
+                         values of gridsize this can reclaim valuable screen 
+                         area for display use.
+
+ Pressing 'F6' brings up a screen from which you can control what parameters
+ get varied and in what manner. You'll notice that as well as the mutation
+ modes 'random' and 'spread' there are other ways of stirring things around,
+ read on......
+
+ As well as randomly mutating parameter values (referred to as 'evolver mode'
+ or just 'evolving') a chosen set of parameters can be varied steadily across
+ the screen thus allowing the user to explore what happens as a parameter is
+ slowly changed ('explorer mode' or 'exploring'). For example, to get
+ acquainted with parameter exploring and produce a map of the Julia sets, try
+ this:\
+ Start Fractint and set the type to Julia and the resolution higher than
+ 320x200, once the default Julia set has been generated, press 'Ctrl-e' to
+ bring up the evolver/explorer control panel.
+
+ Set evolve mode to yes and then press 'F6' to bring up the screen that allows
+ you to choose what gets varied.
+ 
+ Now set the first entry (param1) to 'x' and the second (param2) to 'y'. This 
+ tells Fractint to vary param1 (the real part of c) across the screen and
+ param2 (the imaginary part of c) down the screen. Make sure all the other
+ parameters are set to 'no' so that nothing else gets changed to confuse
+ things.
+
+ Press 'Return' to go back to the main evolver control screen and you'll see
+ that a few more items have appeared. These control just how much the
+ parameters are varied across the screen and what their starting values
+ should be, leave them as they are but increase gridsz to 15. Also switch
+ on the parameter zoom box option.
+
+ When you exit this control screen with the 'Return' key, you'll see a grid of
+ Julia sets generated all mapped out onto the imaginary plane, squint and
+ you'll be able to spot the underlying Mset!
+
+ When you press 'Pageup' this time you'll notice that there are two boxes on
+ screen with a larger box centered around the normal selection box.
+ 'Ctrl-pageup' or 'Ctrl-pagedown' varies the size of this box which
+ represents the 'parameter' zoom box.  The parameter zoombox allows you to
+ look at smaller areas of the parameter space in more detail. To explain
+ this further look at how the Julia sets change across the screen, around
+ the area of 'seahorse valley' on the underlying Mset, the Julia sets
+ undergo a sharp change in character. This area of change can be examined
+ in more detail using parameter zooming. Make the outer zoombox a few grids
+ across and select an image in the area of this change with the outer box
+ straddling it. Look at the images right in the corners of the parm zoombox,
+ when you press 'Enter' and a new generation of images is generated the same
+ images will be in the corners of the screen with more sub images between
+ them, allowing a finer look at how the change progresses.  In this way, you
+ can observe the chaotic areas in parameter space with the unique pseudo four
+ dimensional view offered by the explorer.
+
+ In the example shown above, you were just exploring the variation in two
+ 'real' parameters, i.e. they can take fractional values, and the idea of
+ being able to create an image half way between two others is valid. However,
+ many of the parameters in fractint are discrete, i.e. can be only one of a
+ set of specific values. Examples of discrete parameters are inside colouring
+ method or decomposition values and the way in which these are explored is
+ different in that parameter zooming has no meaning for discrete parameters.
+
+ When a discrete parameter is set to vary with x or y it is simply cycled
+ through all possible values and round again. Words are getting clumsy so
+ it's time for another example methinks!
+
+ First press 'Insert' to restart Fractint and get everything back to its
+ default values for a fresh start. Set the fractal type to 'fn*fn' this type
+ requires the user to choose two trig functions and this choice is made on
+ the 'Z' screen. There are around thirty different functions to choose from
+ and checking out all the different combinations is a not inconsiderable task
+ manually. With the explorer, however, it's a piece of cake!
+
+ Set the screen resolution to the highest you can view and press 'Ctrl-e'
+ to bring up the control panel and enable evolving mode. Set the gridsize
+ to 29 and leave the parameters at their defaults. Now, press 'F6' to enter
+ 'variable tweak central' and set trig function 1 to 'x' and trig function 2
+ to 'y', and all the others to 'no'. Exit the two screens and you'll see
+ generated all of the different combinations possible even if they are rather
+ small examples!
+
+ To find out what particular combination of trig functions an image is using,
+ just select the image using the zoombox and bring up the 'z' screen. You
+ don't have to press 'Enter', simply highlighting the appropriate image with
+ the ctrl-arrow keys will do.
+
+ And that just about sums up the evolver! Much more could be written but it's
+ better experienced, try writing your formulae with more variable parameters
+ and trig functions so that their behavior can be investigated.
+
+ Try using it with any fractal type, if in doubt just see what happens!
+
+ It should be noted here that some of the fractal types such as the IFS do not
+ terminate, they run on forever and as such aren't usable with the evolver as
+ the first sub image would never finish to allow the next one to generate.
+ These fractal types are detected and you won't be allowed to start the evolver
+ with these.
+
+ There now only remains to mention that you can save image sets and restore
+ them later to carry on exploring from a different seed image:
+ 's' saves and 'r' restores as in normal fractint operation and the screenfull
+ is saved as a single gif file.
+
+ Have fun!  See {Evolver Commands}.
+;
+;
+~Topic=Evolver Commands
+~Format-
+   PageUp          When no Zoom Box is active, brings one up.
+                   When Zoom Box is active already, shrinks it.
+   PageDown        Expands the Zoom Box.
+                   Expanding past the screen size cancels the Zoom Box.
+~Doc-
+   \24 \25 \27 \26         Pans (Moves) the Zoom Box.
+   Ctrl- \24 \25 \27 \26   Moves the Zoom Box to the next subimage.
+~Doc+,Online-
+   Arrow key       Pans (Moves) the Zoom Box.
+   Ctrl-Arrow key  Moves the Zoom Box to the next subimage.
+~Online+
+   Enter           Redraws the Screen or area inside the Zoom Box.
+   Ctrl-Enter      'Zoom-out' - expands the image so that your current image
+                    is positioned inside the current zoom-box location.
+   Ctrl-Pad+/Pad-  Rotates the inner Zoom Box.
+   Ctrl-PgUp/PgDn  Changes inner Zoom Box vertical size.
+   Ctrl-Home/End   Changes inner Zoom Box shape.
+   Ctrl-Ins/Del    Changes inner Zoom Box color.
+   Ctrl-E          Brings up the evolver screen.
+   Space           Brings up the evolver screen once in evolver mode.
+   B               Turns off evolver if in evolver mode.
+   F2              Halves the amount of mutation.
+   F3              Doubles the amount of mutation.
+   F4              Generates fewer, bigger images.
+   F5              Generates more, smaller images.
+   F6              Switches to/from 'spread' mode with fewer mutations around
+                    the middle.
+~Format+
+
+
 ; Fractal Types:
 ~Include help2.src
 ;

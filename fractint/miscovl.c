@@ -5,14 +5,19 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+
 #ifndef XFRACT
 #include <malloc.h>
 #include <process.h>
-#include <stdarg.h>
 #include <io.h>
+#endif
+
+#ifndef USE_VARARGS
+#include <stdarg.h>
 #else
 #include <varargs.h>
 #endif
+
   /* see Fractint.c for a description of the "include"  hierarchy */
 #include "port.h"
 #include "prototyp.h"
@@ -21,10 +26,10 @@
 
 /* routines in this module      */
 
-static void write_batch_parms(char *colorinf,int maxcolor,int i, int j);
+static void write_batch_parms(char *colorinf,int colorsonly, int maxcolor,int i, int j);
 static void expand_comments(char far *target, char far *source);
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 static void put_parm(char *parm,...);
 #else
 static void put_parm();
@@ -32,11 +37,13 @@ static void put_parm();
 
 static void put_parm_line(void);
 static int getprec(double,double,double);
-extern int getprecbf(int);
+int getprecbf(int);
 static void put_float(int,double,int);
 static void put_bf(int slash,bf_t r, int prec);
 static void put_filename(char *keyword,char *fname);
+#ifndef XFRACT
 static int check_modekey(int curkey,int choice);
+#endif
 static int entcompare(VOIDCONSTPTR p1,VOIDCONSTPTR p2);
 static void update_fractint_cfg(void);
 static void strip_zeros(char *buf);
@@ -55,6 +62,7 @@ char s_seqd[]     = " %s=%d";
 char s_seqdd[]    = " %s=%d/%d";
 char s_seqddd[]   = " %s=%d/%d/%d";
 char s_seqldddd[]  = " %s=%ld/%d/%d/%d";
+char s_seqd12[]   = " %s=%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d";
 char s_seqy[]     = " %s=y";
 char s_x[]        = "x";
 char s_y[]        = "y";
@@ -80,35 +88,39 @@ FILE *parmfile;
 void make_batch_file()
 {
 #define MAXPROMPTS 18
+   int colorsonly = 0;
    static char far hdg[]={"Save Current Parameters"};
    /** added for pieces feature **/
-   double pdelx;
-   double pdely;
-   double pdelx2;
-   double pdely2;
+   double pdelx = 0.0;
+   double pdely = 0.0;
+   double pdelx2 = 0.0;
+   double pdely2 = 0.0;
    unsigned int pxdots, pydots, xm, ym;
-   double pxxmin, pyymax;
+   double pxxmin = 0.0, pyymax = 0.0;
    char vidmde[5];
    int promptnum;
    int piecespromts;
-   int have3rd;
+   int have3rd = 0;
    /****/
 
-   int i, j;
+   int i,j;
    char far *inpcommandfile, far *inpcommandname;
    char far *inpcomment[4];
    struct fullscreenvalues paramvalues[18];
    char far * choices[MAXPROMPTS];
    char far *ptr;
    int gotinfile;
-   char outname[81], buf[256], buf2[128];
-   FILE *infile;
+   char outname[FILE_MAX_PATH+1], buf[256], buf2[128];
+   FILE *infile = NULL;
    FILE *fpbat = NULL;
    char colorspec[14];
    int maxcolor;
-   int maxcolorindex;
-   char *sptr, *sptr2;
+   int maxcolorindex = 0;
+   char *sptr = NULL, *sptr2;
    int oldhelpmode;
+
+   if(s_makepar[1] == 0) /* makepar map case */
+      colorsonly = 1;
 
    /* put comment storage in extraseg */
    inpcommandfile = MK_FP(extraseg,0);
@@ -125,9 +137,12 @@ void make_batch_file()
    helpmode = HELPPARMFILE;
 
    maxcolor = colors;
-   colorspec[0] = 'y';
-   colorspec[1] = '\0';
-   if (gotrealdac && !reallyega)
+   strcpy(colorspec,"y");
+#ifndef XFRACT
+   if ((gotrealdac && !reallyega) || (istruecolor && !truemode))
+#else
+   if ((gotrealdac && !reallyega) || (istruecolor && !truemode) || fake_lut)
+#endif
    {
       --maxcolor;
 /*    if (maxit < maxcolor)  remove 2 lines */
@@ -158,7 +173,7 @@ void make_batch_file()
          sptr = colorfile;
       }
       else                      /* colors match no .map that we know of */
-         colorspec[0] = 'y';
+         strcpy (colorspec,"y");
 
       if (colorspec[0] == '@')
       {
@@ -210,12 +225,16 @@ prompt_user:
       LOADBATCHPROMPTS("Fourth comment");
       paramvalues[promptnum].type = 0x100 + MAXCMT - 1;
       paramvalues[promptnum++].uval.sbuf = inpcomment[3];
-      if (gotrealdac && !reallyega)
+#ifndef XFRACT
+      if ((gotrealdac && !reallyega) || (istruecolor && !truemode))
+#else
+      if ((gotrealdac && !reallyega) || (istruecolor && !truemode) || fake_lut)
+#endif
       {
          LOADBATCHPROMPTS("Record colors?");
          paramvalues[promptnum].type = 0x100 + 13;
          paramvalues[promptnum++].uval.sbuf = colorspec;
-         LOADBATCHPROMPTS("    (no | yes for full info | @filename to point to a map file)");
+         LOADBATCHPROMPTS("    (no | yes | only for full info | @filename to point to a map file)");
          paramvalues[promptnum++].type = '*';
          LOADBATCHPROMPTS("# of colors");
          maxcolorindex = promptnum;
@@ -224,6 +243,9 @@ prompt_user:
          LOADBATCHPROMPTS("    (if recording full color info)");
          paramvalues[promptnum++].type = '*';
       }
+      LOADBATCHPROMPTS("Maximum line length");
+      paramvalues[promptnum].type = 'i';
+      paramvalues[promptnum++].uval.ival = maxlinelength;
       LOADBATCHPROMPTS("");
       paramvalues[promptnum++].type = '*';
       LOADBATCHPROMPTS("    **** The following is for generating images in pieces ****");
@@ -244,29 +266,46 @@ prompt_user:
       if (fullscreen_prompt(hdg,promptnum, choices, paramvalues, 0, NULL) < 0)
          break;
 
+      if(*colorspec == 'o' || s_makepar[1] == 0)
+      {
+         strcpy(colorspec,"y");
+         colorsonly = 1;
+      }
+
       far_strcpy(CommandFile, inpcommandfile);
       if (has_ext(CommandFile) == NULL)
          strcat(CommandFile, ".par");   /* default extension .par */
       far_strcpy(CommandName, inpcommandname);
       for(i=0;i<4;i++)
          far_strncpy(CommandComment[i], inpcomment[i], MAXCMT);
-      if (gotrealdac && !reallyega)
+#ifndef XFRACT
+      if ((gotrealdac && !reallyega) || (istruecolor && !truemode))
+#else
+      if ((gotrealdac && !reallyega) || (istruecolor && !truemode) || fake_lut)
+#endif
          if (paramvalues[maxcolorindex].uval.ival > 0 &&
              paramvalues[maxcolorindex].uval.ival <= 256)
             maxcolor = paramvalues[maxcolorindex].uval.ival;
-
       promptnum = piecespromts;
+      {
+         int newmaxlinelength;
+         newmaxlinelength = paramvalues[promptnum-3].uval.ival;
+         if(maxlinelength != newmaxlinelength &&
+              newmaxlinelength >= MINMAXLINELENGTH &&
+              newmaxlinelength <= MAXMAXLINELENGTH)
+            maxlinelength = newmaxlinelength;    
+      }
       xm = paramvalues[promptnum++].uval.ival;
 
       ym = paramvalues[promptnum++].uval.ival;
 
       /* sanity checks */
       {
-      int i;
       long xtotal, ytotal;
+#ifndef XFRACT
+      int i;
 
       /* get resolution from the video name (which must be valid) */
-#ifndef XFRACT
       pxdots = pydots = 0;
       if ((i = check_vidmode_keyname(vidmde)) > 0)
           if ((i = check_vidmode_key(0, i)) >= 0) {
@@ -305,7 +344,10 @@ skip_UI:
             strcpy(colorspec, "y");
          else
             strcpy(colorspec, "n");
-         maxcolor = filecolors;
+         if(s_makepar[1] == 0)
+            maxcolor = 256;
+         else   
+            maxcolor = filecolors;
       }
       strcpy(outname, CommandFile);
       gotinfile = 0;
@@ -438,7 +480,7 @@ Continue to replace it, Cancel to back out"};
             for(last=-1,i=0;i<4;i++)
                if(*par_comment[i])
                   last=i;
-            for(i=0;i<last;i++)      
+            for(i=0;i<last;i++)
                if(*CommandComment[i]=='\0')
                   far_strcpy(CommandComment[i],";");
          }
@@ -454,11 +496,11 @@ Continue to replace it, Cancel to back out"};
             for(k=1;k<4;k++)
                if (CommandComment[k][0])
                   fprintf(parmfile, "%s%s\n", buf, CommandComment[k]);
-            if (patchlevel != 0)
-               fprintf(parmfile, "%s Version %d Patchlevel %d\n", buf,
-                  release, patchlevel); 
+            if (patchlevel != 0 && colorsonly == 0)
+               fprintf(parmfile, "%s %s Version %d Patchlevel %d\n", buf,
+                  Fractint, release, patchlevel); 
          }
-         write_batch_parms(colorspec, maxcolor, i, j);
+         write_batch_parms(colorspec, colorsonly, maxcolor, i, j);
          if(xm > 1 || ym > 1)
          {
             fprintf(parmfile,"  video=%s", vidmde);
@@ -509,7 +551,7 @@ static struct write_batch_data { /* buffer for parms to break lines nicely */
    char *buf;
    } *wbdata;
 
-static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
+static void write_batch_parms(char *colorinf, int colorsonly, int maxcolor, int ii, int jj)
 {
    char far *saveshared;
    int i,j,k;
@@ -536,7 +578,8 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
    far_memcpy(saveshared,boxx,10000);
    far_memset(boxx,0,10000);
    wb_data.buf = (char *)boxx;
-
+   if(colorsonly)
+      goto docolors;
    if (display3d <= 0) { /* a fractal was generated */
 
       /****** fractal only parameters in this section *******/
@@ -575,6 +618,8 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
       {
          put_filename(s_formulafile,FormFileName);
          put_parm( s_seqs,s_formulaname,FormName);
+         if (uses_ismand)
+            put_parm(" %s=%c",s_ismand,ismand?'y':'n');
       }
       if (fractype == LSYSTEM)
       {
@@ -596,6 +641,7 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
       if (usr_stdcalcmode != 'g')
          put_parm(" %s=%c",s_passes,usr_stdcalcmode);
 
+
       if (stoppass != 0)
          put_parm(" %s=%c%c",s_passes,usr_stdcalcmode,(char)stoppass + '0');
 
@@ -614,7 +660,8 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
          {
             cvtcentermag(&Xctr, &Yctr, &Magnification, &Xmagfactor, &Rotation, &Skew);
             put_parm(" %s=",s_centermag);
-            put_parm((delmin > 1000) ? "%g/%g" : "%+20.17lf/%+20.17lf", Xctr, Yctr);
+/*          convert 1000 fudged long to double, 1000/1<<24 = 6e-5 */
+            put_parm(ddelmin > 6e-5 ? "%g/%g" : "%+20.17lf/%+20.17lf", Xctr, Yctr);
          }
 #ifdef USE_LONG_DOUBLE
          put_parm("/%.7Lg",Magnification); /* precision of magnification not critical, but magnitude is */
@@ -626,8 +673,13 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
          if (fabs(Xmagfactor) > 0.5) /* or so, exact value isn't important */
             Xmagfactor = (sign(Xmagfactor) * (long)(fabs(Xmagfactor) * 1e4 + 0.5)) / 1e4;
          /* Just truncate these angles.  Who cares about 1/1000 of a degree */
+         /* Somebody does.  Some rotated and/or skewed images are slightly */
+         /* off when recreated from a PAR using 1/1000. */
+         /* JCO 08052001 */
+#if 0
          Rotation   = (long)(Rotation   * 1e3)/1e3;
          Skew       = (long)(Skew       * 1e3)/1e3;
+#endif
          if (Xmagfactor != 1 || Rotation != 0 || Skew != 0)
          { /* Only put what is necessary */
             /* The difference with Xmagfactor is that it is normally */
@@ -641,10 +693,12 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
                /* Use precision=6 here.  These angle have already been rounded        */
                /* to 3 decimal places, but angles like 123.456 degrees need 6         */
                /* sig figs to get 3 decimal places.  Trailing 0's are dropped anyway. */
-               put_float(1,Rotation,6);
+               /* Changed to 18 to address rotated and skewed problem w/ PARs */
+               /* JCO 08052001 */
+               put_float(1,Rotation,18);
                if (Skew != 0)
                {
-                  put_float(1,Skew,6);
+                  put_float(1,Skew,18);
                }
             }
          }
@@ -685,7 +739,7 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
 
       for(i = (MAXPARAMS-1); i >= 0; --i)
           if(typehasparm((fractype==JULIBROT || fractype==JULIBROTFP)
-                          ?neworbittype:fractype,i) != NULL) break;
+                          ?neworbittype:fractype,i,NULL)) break;
 
       if (i >= 0) {
         if (fractype == CELLULAR || fractype == ANT)
@@ -727,7 +781,7 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
       if(bailout && (potflag == 0 || potparam[2] == 0.0))
          put_parm(" %s=%ld",s_bailout,bailout);
 
-      if(bailoutest != Mod && (potflag == 0 || potparam[2] == 0.0)) {
+      if(bailoutest != Mod) {
          put_parm(" %s=",s_bailoutest);
          if (bailoutest == Real)
             put_parm( s_real);
@@ -752,39 +806,51 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
          put_parm(" %s=",s_inside);
          if (inside == -1)
             put_parm( s_maxiter);
-         else if (inside == -59)
+         else if (inside == ZMAG)
             put_parm(s_zmag);
-         else if (inside == -60)
+         else if (inside == BOF60)
             put_parm(s_bof60);
-         else if (inside == -61)
+         else if (inside == BOF61)
             put_parm(s_bof61);
-         else if (inside == -100)
+         else if (inside == EPSCROSS)
             put_parm(s_epscross);
-         else if (inside == -101)
+         else if (inside == STARTRAIL)
             put_parm(s_startrail);
-         else if (inside == -102)
+         else if (inside == PERIOD)
             put_parm(s_period);
+         else if (inside == FMODI)
+            put_parm(s_fmod);
+         else if (inside == ATANI)
+            put_parm(s_atan);
          else
             put_parm( "%d",inside);
+         }
+      if (closeprox != 0.01 && (inside == EPSCROSS || inside == FMODI
+          || outside==FMOD) ) {
+         put_parm(" %s=%.15g",s_prox,closeprox);
          }
       if (outside != -1)
       {
          put_parm(" %s=",s_outside);
-         if (outside == -2)
+         if (outside == REAL)
             put_parm(s_real);
-         else if (outside == -3)
+         else if (outside == IMAG)
             put_parm(s_imag);
-         else if (outside == -4)
+         else if (outside == MULT)
             put_parm(s_mult);
-         else if (outside == -5)
+         else if (outside == SUM)
             put_parm(s_sum);
-         else if (outside == -6)
+         else if (outside == ATAN)
             put_parm(s_atan);
+         else if (outside == FMOD)
+            put_parm(s_fmod);
+         else if (outside == TDIS)
+            put_parm(s_tdis);
          else
             put_parm( "%d",outside);
           }
 
-      if(LogFlag) {
+      if(LogFlag && !rangeslen) {
          put_parm( " %s=",s_logmap);
          if(LogFlag == -1)
             put_parm( "old");
@@ -794,7 +860,7 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
             put_parm( "%ld", LogFlag);
          }
 
-      if(Log_Fly_Calc) {
+      if(Log_Fly_Calc && LogFlag && !rangeslen) {
          put_parm( " %s=",s_logmode);
          if(Log_Fly_Calc == 1)
             put_parm( "fly");
@@ -912,6 +978,9 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
          put_parm( s_seqd,s_ambient,Ambient);
       if (haze)
          put_parm( s_seqd,s_haze,haze);
+      if (back_color[0] != 51 || back_color[1] != 153 || back_color[2] != 200)
+         put_parm( s_seqddd,s_background,back_color[0],back_color[1],
+                   back_color[2]);
       }
 
    if (display3d) {             /* universal 3d */
@@ -944,7 +1013,95 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
          put_parm("/%s",s_no);
       put_parm("/%d/%d",viewxdots,viewydots);
    }
-   if (*colorinf != 'n') 
+
+   if(colorsonly == 0)
+   {
+   if (rotate_lo != 1 || rotate_hi != 255)
+      put_parm( s_seqdd,s_cyclerange,rotate_lo,rotate_hi);
+
+   if(basehertz != 440)
+      put_parm(s_seqd,s_hertz,basehertz);
+
+  if(soundflag != 9) {
+   if((soundflag&7) == 0)
+      put_parm(s_seqs,s_sound,s_off);
+   else if((soundflag&7) == 1)
+      put_parm(s_seqs,s_sound,s_beep);
+   else if((soundflag&7) == 2)
+      put_parm(s_seqs,s_sound,s_x);
+   else if((soundflag&7) == 3)
+      put_parm(s_seqs,s_sound,s_y);
+   else if((soundflag&7) == 4)
+      put_parm(s_seqs,s_sound,s_z);
+#ifndef XFRACT
+   if((soundflag&7) && (soundflag&7) <=4) {
+      if(soundflag&8)
+         put_parm("/pc");
+      if(soundflag&16)
+         put_parm("/fm");
+      if(soundflag&32)
+         put_parm("/midi");
+      if(soundflag&64)
+         put_parm("/quant");
+   }
+#endif
+  }
+
+#ifndef XFRACT
+   if(fm_vol != 63)
+     put_parm(s_seqd,s_volume,fm_vol);
+
+   if(hi_atten != 0) {
+     if(hi_atten == 1)
+        put_parm(s_seqs,s_atten,s_low);
+     else if(hi_atten == 2)
+        put_parm(s_seqs,s_atten,s_mid);
+     else if(hi_atten == 3)
+        put_parm(s_seqs,s_atten,s_high);
+     else   /* just in case */
+        put_parm(s_seqs,s_atten,s_none);
+   }
+
+   if(polyphony != 0)
+     put_parm(s_seqd,s_polyphony,polyphony+1);
+   
+   if(fm_wavetype !=0)
+     put_parm(s_seqd,s_wavetype,fm_wavetype);
+   
+   if(fm_attack != 5)
+      put_parm(s_seqd,s_attack,fm_attack);
+
+   if(fm_decay != 10)
+      put_parm(s_seqd,s_decay,fm_decay);
+
+   if(fm_sustain != 13)
+      put_parm(s_seqd,s_sustain,fm_sustain);
+
+   if(fm_release != 5)
+      put_parm(s_seqd,s_srelease,fm_release);
+
+   if(soundflag&64) { /* quantize turned on */
+      for(i=0;i<=11;i++) if(scale_map[i] != i+1) i=15;
+      if(i>12) 
+         put_parm(s_seqd12,s_scalemap,scale_map[0],scale_map[1],scale_map[2],scale_map[3]
+            ,scale_map[4],scale_map[5],scale_map[6],scale_map[7],scale_map[8]
+            ,scale_map[9],scale_map[10],scale_map[11]);
+   }
+
+#endif
+
+   if(nobof > 0)
+      put_parm(s_seqs,s_nobof,s_yes);
+
+   if(orbit_delay > 0)
+      put_parm(s_seqd,s_orbitdelay,orbit_delay);
+
+   if(start_showorbit > 0)
+      put_parm(s_seqs,s_showorbit,s_yes);
+
+   }
+
+   if (*colorinf != 'n')
    {
       if(recordcolors=='c' && *colorinf == '@')
       {
@@ -952,7 +1109,8 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
          put_parm("; %s=",s_colors);
          put_parm(colorinf);
          put_parm_line();
-      }   
+      }
+docolors:
       put_parm(" %s=",s_colors);
       if (recordcolors !='c' && recordcolors != 'y' && *colorinf == '@')
          put_parm(colorinf);
@@ -960,6 +1118,9 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
          int curc,scanc,force,diffmag = -1;
          int delta,diff1[4][3],diff2[4][3];
          curc = force = 0;
+#ifdef XFRACT
+         if (fake_lut && !truemode) loaddac(); /* stupid kludge JCO 6/23/2001 */
+#endif
          for(;;) {
             /* emit color in rgb 3 char encoded form */
             for (j = 0; j < 3; ++j) {
@@ -972,6 +1133,8 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
             put_parm(buf);
             if (++curc >= maxcolor)      /* quit if done last color */
                break;
+            if(debugflag == 920)  /* lossless compression */
+               continue;
             /* Next a P Branderhorst special, a tricky scan for smooth-shaded
                ranges which can be written as <nn> to compress .par file entry.
                Method used is to check net change in each color value over
@@ -991,6 +1154,12 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
                   i = 3;
                for (k = 0; k <= i; ++k) {
                   for (j = 0; j < 3; ++j) { /* check pattern of chg per color */
+                     /* Sylvie Gallet's fix */
+                     if (debugflag != 910 && scanc > (curc+4) && scanc < maxcolor-5)
+                        if (abs(2*dacbox[scanc][j] - dacbox[scanc-5][j]
+                                - dacbox[scanc+5][j]) >= 2)
+                           break;
+                     /* end Sylvie's fix */       
                      delta = (int)dacbox[scanc][j] - (int)dacbox[scanc-k-1][j];
                      if (k == scanc - curc)
                         diff1[k][j] = diff2[k][j] = delta;
@@ -1010,8 +1179,6 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
             /* now scanc-1 is next color which must be written explicitly */
             if (scanc - curc > 2) { /* good, we have a shaded range */
                if (scanc != maxcolor) {
-                  static FCODE msg[] = {"Tell Tim Wegner to check diffmag MISCOVL.C"};
-                  if(diffmag < 0) stopmsg(0,msg);
                   if (diffmag < 3) {  /* not a sharp slope change? */
                      force = 2;       /* force more between ranges, to stop  */
                      --scanc;         /* "drift" when load/store/load/store/ */
@@ -1032,27 +1199,6 @@ static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
          }
       }
 
-   if (rotate_lo != 1 || rotate_hi != 255)
-      put_parm( s_seqdd,s_cyclerange,rotate_lo,rotate_hi);
-
-   if(basehertz != 440)
-      put_parm(s_seqd,s_hertz,basehertz);
-
-   if(start_showorbit != 0)
-
-   if(soundflag == 1)
-      put_parm(s_seqs,s_sound,s_x);
-   else if(soundflag == 2)
-      put_parm(s_seqs,s_sound,s_y);
-   else if(soundflag == 3)
-      put_parm(s_seqs,s_sound,s_z);
-
-   if(orbit_delay > 0)
-      put_parm(s_seqd,s_orbitdelay,orbit_delay);
-
-   if(start_showorbit > 0)
-      put_parm(s_seqs,s_showorbit,s_yes);
-
    while (wbdata->len) /* flush the buffer */
       put_parm_line();
    /* restore previous boxx data from extraseg */
@@ -1070,7 +1216,7 @@ static void put_filename(char *keyword,char *fname)
       }
 }
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 static void put_parm(char *parm,...)
 #else
 static void put_parm(va_alist)
@@ -1080,7 +1226,7 @@ va_dcl
    char *bufptr;
    va_list args;
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
    va_start(args,parm);
 #else
    char * parm;
@@ -1099,8 +1245,9 @@ va_dcl
       put_parm_line();
 }
 
-#define NICELINELEN 68
-#define MAXLINELEN  72
+int maxlinelength=72;
+#define MAXLINELEN  maxlinelength
+#define NICELINELEN (MAXLINELEN-4)
 
 static void put_parm_line()
 {
@@ -1189,7 +1336,7 @@ int getprecbf(int rezflag)
    bfyydel2  = alloc_stack(bflength+2);
    floattobf(one,1.0);
    if(rezflag == MAXREZ)
-      rez = MAXPIXELS -1;
+      rez = OLDMAXPIXELS -1;
    else
       rez = xdots-1;
 
@@ -1246,7 +1393,7 @@ int getprecdbl(int rezflag)
    int digits;
    LDBL rez;
    if(rezflag == MAXREZ)
-      rez = MAXPIXELS -1;
+      rez = OLDMAXPIXELS -1;
    else
       rez = xdots-1;
 
@@ -1348,7 +1495,7 @@ void shell_to_dos()
 {
    int drv;
    char *comspec;
-   char curdir[80],*s;
+   char curdir[FILE_MAX_DIR],*s;
    if ((comspec = getenv("COMSPEC")) == NULL)
       printf("Cannot find COMMAND.COM.\n");
    else {
@@ -1365,16 +1512,7 @@ void shell_to_dos()
 
 size_t showstack(void)
 {
-#ifdef _MSC_VER
-#if (_MSC_VER == 700 || _MSC_VER == 800)
-   return(_stackavail());
-/* add other implementations here */
-#elif (_MSC_VER == 600)
    return(stackavail());
-#endif
-#else
-   return(-1);
-#endif
 }
 
 long fr_farfree(void)
@@ -1399,8 +1537,8 @@ void showfreemem(void)
    char adapter_name[8];        /* entry lenth from VIDEO.ASM */
    char *adapter_ptr;
 
-   printf("\n CPU type: %d  FPU type: %d  IIT FPU: %d  Video: %d",
-          cpu, fpu, iit, video_type);
+   printf("\n CPU type: %d  FPU type: %d  Video: %d",
+          cpu, fpu, video_type);
 
    adapter_ptr = &supervga_list;
 
@@ -1442,7 +1580,7 @@ void showfreemem(void)
 }
 #endif
 
-edit_text_colors()
+int edit_text_colors()
 {
    int save_debugflag,save_lookatmouse;
    int row,col,bkgrd;
@@ -1531,15 +1669,18 @@ static int modes_changed;
 
 int select_video_mode(int curmode)
 {
-   static FCODE o_hdg2[]={"key...name......................xdot.ydot.colr.comment.................."};
+   static FCODE o_hdg2[]={"key...name.......................xdot..ydot.colr.comment.................."};
    static FCODE o_hdg1[]={"Select Video Mode"};
    char hdg2[sizeof(o_hdg2)];
    char hdg1[sizeof(o_hdg1)];
 
    int entnums[MAXVIDEOMODES];
    int attributes[MAXVIDEOMODES];
-   int i,j,k,ret;
+   int i,k,ret;
+#ifndef XFRACT
+   int j;
    int oldtabmode,oldhelpmode;
+#endif
 
    load_fractint_cfg(0);        /* load fractint.cfg to extraseg */
 
@@ -1596,7 +1737,7 @@ int select_video_mode(int curmode)
    tabmode = 0;
    helpmode = HELPVIDSEL;
    i = fullscreen_choice(CHOICEHELP,hdg1,hdg2,NULL,vidtbllen,NULL,attributes,
-                         1,16,72,i,format_vid_table,NULL,NULL,check_modekey);
+                         1,16,74,i,format_vid_table,NULL,NULL,check_modekey);
    tabmode = oldtabmode;
    helpmode = oldhelpmode;
    if (i == -1) {
@@ -1656,20 +1797,22 @@ void format_vid_table(int choice,char *buf)
               sizeof(videoentry));
    vidmode_keyname(videoentry.keynum,kname);
    biosflag = (char)((videoentry.dotmode % 100 == 1) ? 'B' : ' ');
-   sprintf(buf,"%-5s %-25s %4d %4d ",  /* 42 chars */
+   sprintf(buf,"%-5s %-25s %5d %5d ",  /* 44 chars */
            kname, videoentry.name, videoentry.xdots, videoentry.ydots);
    if((truecolorbits = videoentry.dotmode/1000) == 0)
-      sprintf(local_buf,"%s%3d",  /* 45 chars */
+      sprintf(local_buf,"%s%3d",  /* 47 chars */
            buf, videoentry.colors);
    else 
-      sprintf(local_buf,"%s%3s",  /* 45 chars */
-           buf, (truecolorbits == 3)?"64m":
-                (truecolorbits == 2)?"16k":
-                (truecolorbits == 1)?"15k":"???");
-   sprintf(buf,"%s%c %-25s",  /* 72 chars */
+      sprintf(local_buf,"%s%3s",  /* 47 chars */
+           buf, (truecolorbits == 4)?" 4g":
+                (truecolorbits == 3)?"16m":
+                (truecolorbits == 2)?"64k":
+                (truecolorbits == 1)?"32k":"???");
+   sprintf(buf,"%s%c %-25s",  /* 74 chars */
            local_buf, biosflag, videoentry.comment);
 }
 
+#ifndef XFRACT
 static int check_modekey(int curkey,int choice)
 {
    int i,j,k,ret;
@@ -1706,6 +1849,7 @@ static int check_modekey(int curkey,int choice)
       }
    return(ret);
 }
+#endif
 
 static int entcompare(VOIDCONSTPTR p1,VOIDCONSTPTR p2)
 {
@@ -1766,21 +1910,22 @@ static void update_fractint_cfg()
             j += 8;
             }
          buf[i] = 0;
-         if((truecolorbits = videoentry.dotmode/1000) == 0)
-            sprintf(colorsbuf,"%3d",videoentry.colors);
+         if((truecolorbits = vident.dotmode/1000) == 0)
+            sprintf(colorsbuf,"%3d",vident.colors);
          else 
             sprintf(colorsbuf,"%3s",
-               buf, (truecolorbits == 3)?"64m":
-                    (truecolorbits == 2)?"16k":
-                    (truecolorbits == 1)?"15k":"???");
-         fprintf(outfile,"%-4s,%s,%4x,%4x,%4x,%4x,%4d,%4d,%4d,%s,%s\n",
+                    (truecolorbits == 4)?" 4g":
+                    (truecolorbits == 3)?"16m":
+                    (truecolorbits == 2)?"64k":
+                    (truecolorbits == 1)?"32k":"???");
+         fprintf(outfile,"%-4s,%s,%4x,%4x,%4x,%4x,%4d,%5d,%5d,%s,%s\n",
                 kname,
                 buf,
                 vident.videomodeax,
                 vident.videomodebx,
                 vident.videomodecx,
                 vident.videomodedx,
-                vident.dotmode%1000,
+                vident.dotmode%1000, /* remove true-color flag, keep textsafe */
                 vident.xdots,
                 vident.ydots,
                 colorsbuf,
@@ -1882,6 +2027,7 @@ if (xstep == 0 && ystep == 0) {         /* first time through? */
                 temp[4] = '7';
                 temp[5] = 'a';
                 }
+            temp[12] = 0; /* reserved */
             if (fwrite(temp,13,1,out) != 1)     /* write out the header */
                 errorflag = 1;
             }                           /* end of first-time-through */
@@ -1910,6 +2056,7 @@ if (xstep == 0 && ystep == 0) {         /* first time through? */
             }
 
         for (;;) {                      /* process each information block */
+        memset(temp,0,10);
         if (fread(temp,1,1,in) != 1)    /* read the block identifier */
             inputerrorflag = 3;
 
@@ -2221,7 +2368,7 @@ static char *expand_var(char *var, char *buf)
    }
    else if(far_strcmp(var,s_calctime) == 0)
    {
-      get_calculation_time(buf);
+      get_calculation_time(buf,calctime);
       out = buf;
    }
    else if(far_strcmp(var,s_version) == 0)  /* 4 chars */

@@ -117,6 +117,8 @@ KEYPRESSDELAY   equ     32767   ; 7FFFh
 
         extrn   nextsavedincr:word              ; for incrementing AND value
         extrn   firstsavedand:dword             ; AND value
+        extrn   showdot:word
+        extrn   orbit_delay:word
 
 ; ************************ Internal variables *****************************
 
@@ -260,13 +262,18 @@ doeither:                               ; common Mandelbrot, Julia set code
         mov     orbit_ptr,0             ; clear orbits
 
         dec     kbdcount                ; decrement the keyboard counter
-        jns     short nokey             ;  skip keyboard test if still positive
+        jns     nokey                   ;  skip keyboard test if still positive
         mov     kbdcount,10             ; stuff in a low kbd count
         cmp     show_orbit,0            ; are we showing orbits?
         jne     quickkbd                ;  yup.  leave it that way.
+        cmp     orbit_delay,0           ; are we delaying orbits?
+        je      slowkbd                 ;  nope.  change it.
+        cmp     showdot,0               ; are we showing the current pixel?
+        jge     quickkbd                ;  yup.  leave it that way.
+slowkbd:
         mov     kbdcount,5000   ; else, stuff an appropriate count val
         cmp     cpu,386                 ; ("appropriate" to the CPU)
-        je      short kbddiskadj        ;  ...
+        jae     short kbddiskadj        ;  ...
 ;;      cmp     word ptr delmin+2,1     ; is 16-bit math good enough?
         cmp     word ptr delmin+2,8     ; is 16-bit math good enough?
         ja      kbddiskadj              ;  yes. test less often
@@ -302,7 +309,7 @@ nokey:
         cmp     show_orbit,0            ; is orbiting on?
         jne     no16bitcode             ;  yup.  slow down.
         cmp     cpu,386                 ; are we on a 386?
-        je      short code386bit        ;  YAY!! 386-class speed!
+        jae     short code386bit        ;  YAY!! 386-class speed!
 ;;      cmp     word ptr delmin+2,1     ; OK, we're desperate.  16 bits OK?
         cmp     word ptr delmin+2,8     ; OK, we're desperate.  16 bits OK?
         ja      yes16bitcode            ;  YAY!  16-bit speed!
@@ -596,8 +603,8 @@ coloradjust1:                           ;    at least one loop.
         jge     wedone                  ;  nope.
 ;       sub     ax,ax                   ; clear top half for next
 ;       mov     al,period               ;  reset color to periodicity flag
-        cmp     period,0
-        jz      wedone
+;        cmp     period,0
+;        jz      wedone
         mov     ax,7                    ; use color 7 (default white)
         jmp     short wedone
 
@@ -632,7 +639,10 @@ code16bit       proc    near
 
 start16bit:
         add     si,si                   ;CJLT-Convert to fg14
-        jo      end16bit                ;overflows if <-2 or >2
+;        jo      end16bit                ;overflows if <-2 or >2
+        jno     not_end16bit1
+        jmp     end16bit                ;overflows if <-2 or >2
+not_end16bit1:
         mov     ax,si                   ; compute (x * x)
         imul    si                      ; Answer is fg14+14-16=fg12
 ;       cmp     dx,0                    ;CJLT commented out-
@@ -641,14 +651,20 @@ start16bit:
 loop16bit1:
         shl     ax,1                    ;  ...
         rcl     dx,1                    ;  ...
-        jo      end16bit                ;  (oops.  overflow)
+;        jo      end16bit                ;  (oops.  overflow)
+        jno     not_end16bit2
+        jmp     end16bit                ;  (oops.  overflow)
+not_end16bit2:
 ;       loop    loop16bit1              ;CJLT...do it once only. dx now fg13.
         mov     bx,dx                   ; save this for a tad
 
 ;ditto for y*y...
 
         add     di,di                   ;CJLT-Convert to fg14
-        jo      end16bit                ;overflows if <-2 or >2
+;        jo      end16bit                ;overflows if <-2 or >2
+        jno     not_end16bit3
+        jmp     end16bit                ;overflows if <-2 or >2
+not_end16bit3:
         mov     ax,di                   ; compute (y * y)
         imul    di                      ;  ...
 ;       cmp     dx,0                    ; say, did we overflow? <V20-compat>

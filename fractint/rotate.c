@@ -39,7 +39,11 @@ int rotate_max,rotate_size;
 
 static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 
+#ifndef XFRACT
    if (gotrealdac == 0                  /* ??? no DAC to rotate! */
+#else
+   if (!(gotrealdac || fake_lut)        /* ??? no DAC to rotate! */
+#endif
      || colors < 16) {                  /* strange things happen in 2x modes */
       buzzer(2);
       return;
@@ -231,15 +235,15 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
          case '<':
          case ',':
             if (kbdchar == '>' || kbdchar == '.') {
-               direction = 1;
-               last = rotate_max;
-               next = rotate_lo;
-               incr = 999;
-               }
-            else {
                direction = -1;
                last = rotate_lo;
                next = rotate_max;
+               incr = 999;
+               }
+            else {
+               direction = 1;
+               last = rotate_max;
+               next = rotate_lo;
                incr = 999;
                }
             fkey = 0;
@@ -453,7 +457,7 @@ void save_palette()
 }
 
 
-void load_palette(void)
+int load_palette(void)
 {
    int i,oldhelpmode;
    char filename[80];
@@ -470,6 +474,6 @@ void load_palette(void)
       merge_pathnames(MAP_name,filename,0);
    }
    helpmode = oldhelpmode;
+   return (i);
 }
-
 

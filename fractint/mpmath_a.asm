@@ -1001,7 +1001,7 @@ PUBLIC MPcmp, MPmul, MPadd, MPdiv, MP2d, d2MP, fg2MP
 
 fg2MP:
    cmp   cpu, 386
-   je    Use386fg2MP
+   jae   Use386fg2MP
    jmp   fg2MP086
 
 Use386fg2MP:
@@ -1009,7 +1009,7 @@ Use386fg2MP:
 
 MPcmp:
    cmp   cpu, 386
-   je    Use386cmp
+   jae   Use386cmp
    jmp   MPcmp086
 
 Use386cmp:
@@ -1017,7 +1017,7 @@ Use386cmp:
 
 MPmul:
    cmp   cpu, 386
-   je    Use386mul
+   jae   Use386mul
    jmp   MPmul086
 
 Use386mul:
@@ -1025,7 +1025,7 @@ Use386mul:
 
 d2MP:
    cmp   cpu, 386
-   je    Use386d2MP
+   jae   Use386d2MP
    jmp   d2MP086
 
 Use386d2MP:
@@ -1033,7 +1033,7 @@ Use386d2MP:
 
 MPadd:
    cmp   cpu, 386
-   je    Use386add
+   jae   Use386add
    jmp   MPadd086
 
 Use386add:
@@ -1041,7 +1041,7 @@ Use386add:
 
 MPdiv:
    cmp   cpu, 386
-   je    Use386div
+   jae   Use386div
    jmp   MPdiv086
 
 Use386div:
@@ -1049,7 +1049,7 @@ Use386div:
 
 MP2d:
    cmp   cpu, 386
-   je    Use386MP2d
+   jae   Use386MP2d
    jmp   MP2d086
 
 Use386MP2d:

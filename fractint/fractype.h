@@ -2,12 +2,13 @@
 #define FRACTYPE_H
 
 #define SIN             0
-#define COS             1
+#define COS             1   /* Beware this is really COSXX */
 #define SINH            2
 #define COSH            3
 #define EXP             4
 #define LOG             5
 #define SQR             6
+#define TAN            10
 
 /* These MUST match the corresponding fractalspecific record in fractals.c */
 #define NOFRACTAL               -1
@@ -204,16 +205,6 @@
 #define THREEPLY               168
 #define VL                     169
 #define ESCHER                 170
-
-/* demonstration Mandelbrot and Julia fractals
-
-#define DEMOWALK            171
-#define DEMOMANDEL          172
-#define DEMOJULIA           173
-#define DEMOMANDELFP        174
-#define DEMOJULIAFP         175
-
-*/
-
+#define LATOO                  171
 
 #endif

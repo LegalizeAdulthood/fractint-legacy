@@ -7,6 +7,7 @@ Wesley Loewer's Big Numbers.        (C) 1994-95, Wesley B. Loewer
 #include <string.h>
   /* see Fractint.c for a description of the "include"  hierarchy */
 #include "port.h"
+#include "prototyp.h"
 #include "big.h"
 #ifndef BIG_ANSI_C
 #include <malloc.h>
@@ -193,7 +194,7 @@ bn_t strtobn(bn_t r, char *s)
 
 int strlen_needed()
    {
-   int length;
+   int length = 3;
 
    /* first space for integer part */
    switch(intlength)
@@ -226,7 +227,7 @@ char *unsafe_bntostr(char *s, int dec, bn_t r)
     {
     int l=0, d;
     bn_t onesbyte;
-    long longval;
+    long longval = 0;
 
     if (dec == 0)
         dec = decimals;
@@ -299,7 +300,7 @@ bn_t inttobn(bn_t r, long longval)
 long bntoint(bn_t n)
     {
     bn_t onesbyte;
-    long longval;
+    long longval = 0;
 
     onesbyte = n + bnlength - intlength;
     switch (intlength)

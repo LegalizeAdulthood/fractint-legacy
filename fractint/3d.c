@@ -186,6 +186,7 @@ int icross_product (IVECTOR v, IVECTOR w, IVECTOR cross)
 ***/
 
 /* normalize a vector to length 1 */
+int
 normalize_vector(VECTOR v)
 {
     double vlength;
@@ -226,8 +227,8 @@ int vmult(VECTOR s, MATRIX m, VECTOR t)
 /* multiply vector s by matrix m, result in s */
 /* use with a function pointer in line3d.c */
 /* must coordinate calling conventions with */
-/* mult_vec_iit in general.asm */
-void mult_vec_c(VECTOR s)
+/* mult_vec in general.asm */
+void mult_vec(VECTOR s)
 {
    VECTOR tmp;
    int i,j;
@@ -244,6 +245,7 @@ void mult_vec_c(VECTOR s)
 }
 
 /* perspective projection of vector v with respect to viewpont vector view */
+int
 perspective(VECTOR v)
 {
    double denom;
@@ -265,6 +267,7 @@ perspective(VECTOR v)
 }
 
 /* long version of vmult and perspective combined for speed */
+int
 longvmultpersp(LVECTOR s, LMATRIX m, LVECTOR t0, LVECTOR t, LVECTOR lview,
                int bitshift)
 {
@@ -336,6 +339,7 @@ longvmultpersp(LVECTOR s, LMATRIX m, LVECTOR t0, LVECTOR t, LVECTOR lview,
 
 /* Long version of perspective. Because of use of fixed point math, there
    is danger of overflow and underflow */
+int
 longpersp(LVECTOR lv, LVECTOR lview, int bitshift)
 {
    LVECTOR tmpview;

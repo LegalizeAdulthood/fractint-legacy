@@ -235,11 +235,12 @@ void _fastcall plot3dsuperimpose256(int x,int y,int color)
         {
             /* Overwrite prev Red don't mess w/blue */
             putcolor(x,y,color|(tmp&240));
-            if (Targa_Out)
+            if (Targa_Out) {
                 if (!ILLUMINE)
                     targa_color(x, y, color|(tmp&240));
                 else
                     targa_writedisk (x+sxoffs, y+syoffs, t_c, 0, 0);
+            }
         }
     }
     else if(whichimage == 2) /* BLUE */
@@ -248,7 +249,7 @@ void _fastcall plot3dsuperimpose256(int x,int y,int color)
             /* Overwrite previous blue, don't mess with existing red */
             color = color <<4;
             putcolor(x,y,color|(tmp&15));
-            if (Targa_Out)
+            if (Targa_Out) {
                 if (!ILLUMINE)
                     targa_color(x, y, color|(tmp&15));
                 else
@@ -256,6 +257,7 @@ void _fastcall plot3dsuperimpose256(int x,int y,int color)
                     targa_readdisk (x+sxoffs, y+syoffs, &T_RED, (BYTE *)&tmp, (BYTE *)&tmp);
                     targa_writedisk (x+sxoffs, y+syoffs, T_RED, 0, t_c);
                 }
+            }
         }
 }
 
@@ -284,11 +286,12 @@ void _fastcall plotIFS3dsuperimpose256(int x,int y,int color)
         if(red_local_left < x && x < red_local_right)
         {
             putcolor(x,y,color|tmp);
-            if (Targa_Out)
+            if (Targa_Out) {
                 if (!ILLUMINE)
                     targa_color(x, y, color|tmp);
                 else
                     targa_writedisk (x+sxoffs, y+syoffs, t_c, 0, 0);
+             }
         }
     }
     else if(whichimage == 2) /* BLUE */
@@ -296,7 +299,7 @@ void _fastcall plotIFS3dsuperimpose256(int x,int y,int color)
         {
             color = color <<4;
             putcolor(x,y,color|tmp);
-            if (Targa_Out)
+            if (Targa_Out) {
                 if (!ILLUMINE)
                     targa_color(x, y, color|tmp);
                 else
@@ -304,6 +307,7 @@ void _fastcall plotIFS3dsuperimpose256(int x,int y,int color)
                     targa_readdisk (x+sxoffs, y+syoffs, &T_RED, (BYTE *)&tmp, (BYTE *)&tmp);
                     targa_writedisk (x+sxoffs, y+syoffs, T_RED, 0, t_c);
                 }
+            }
         }
 }
 
@@ -322,11 +326,12 @@ void _fastcall plot3dalternate(int x,int y,int color)
         if(red_local_left < x && x < red_local_right)
         {
             putcolor(x,y,color>>1);
-            if (Targa_Out)
+            if (Targa_Out) {
                 if (!ILLUMINE)
                     targa_color(x, y, color>>1);
                 else
                     targa_writedisk (x+sxoffs, y+syoffs, t_c, 0, 0);
+            }
         }
     }
     else if((whichimage == 2) && ((x+y)&1) ) /* - upper half palette */
@@ -334,11 +339,12 @@ void _fastcall plot3dalternate(int x,int y,int color)
         if(blue_local_left < x && x < blue_local_right)
         {
             putcolor(x,y,(color>>1)+(colors>>1));
-            if (Targa_Out)
+            if (Targa_Out) {
                 if (!ILLUMINE)
                     targa_color(x, y, (color>>1)+(colors>>1));
                 else
                     targa_writedisk (x+sxoffs, y+syoffs, T_RED, 0, t_c);
+            }
         }
     }
 }

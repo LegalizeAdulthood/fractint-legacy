@@ -165,7 +165,7 @@ double *(*pMP2d)(struct MP m)                  = MP2d086 ;
 /* struct MP  *(*pfg2MP)(long x, int fg)          = fg2MP086; */
 
 void setMPfunctions(void) {
-   if(cpu == 386)
+   if(cpu >= 386)
    {
       pMPmul = MPmul386;
       pMPdiv = MPdiv386;
@@ -203,7 +203,7 @@ _CMPLX ComplexPower(_CMPLX xx, _CMPLX yy) {
 
    /* fixes power bug - if any complaints, backwards compatibility hook
       goes here TIW 3/95 */
-   if(debugflag != 94)
+   if(ldcheck == 0)
       if(xx.x == 0 && xx.y == 0) {
          z.x = z.y = 0.0;
          return(z);
@@ -212,7 +212,7 @@ _CMPLX ComplexPower(_CMPLX xx, _CMPLX yy) {
    FPUcplxlog(&xx, &cLog);
    FPUcplxmul(&cLog, &yy, &t);
 
-   if(fpu == 387)
+   if(fpu >= 387)
       FPUcplxexp387(&t, &z);
    else {
       if(t.x < -690)
@@ -540,8 +540,12 @@ long logtablecalc(long citer) {
    if (LogFlag > 0) { /* new log function */
       if ((unsigned long)citer <= lf)
          ret = 1;
-      else if((citer - lf) / log(citer - lf) <= mlf)
-         ret = (long)(citer - lf + (lf?1:0));
+      else if((citer - lf) / log(citer - lf) <= mlf) {
+         if (save_release < 2002)
+            ret = (long)(citer - lf + (lf?1:0));
+         else
+            ret = (long)(citer - lf);
+      }
       else
          ret = (long)(mlf * log(citer - lf)) + 1;
    } else if (LogFlag == -1) { /* old log function */

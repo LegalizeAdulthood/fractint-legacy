@@ -89,6 +89,9 @@
 
 #ifndef XFRACT
 #include <conio.h>
+#endif
+
+#ifndef USE_VARARGS
 #include <stdarg.h>
 #else
 #include <varargs.h>
@@ -136,7 +139,7 @@
 
 /********      PROTOTYPES     ********/
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 static void Printer_printf(char far *fmt,...);
 #else
 static void Printer_printf();
@@ -260,6 +263,7 @@ static UIFCODE pj_patterns [] = {
  *         135 <- changed red's value from this
  *           11 <- changed blue's value from this
  */
+#ifndef XFRACT
 static BFCODE  pj_reds[] = {
         229,  2,145,  7,227,  9,136, 5,
              17, 10, 17, 10, 16, 10, 16, 29, 16, 32, 15, 30, 15, 31,  9,
@@ -340,6 +344,7 @@ static BFCODE pj_blues[] = {
          86, 88, 96,110,114,125,137,     71, 81, 78, 68, 77, 76, 93, 92,
          90, 65, 77, 75, 92, 93, 96,117,119,126,138,     78, 79, 98,102,
         110,124,131,143,157,    173,185,200};
+#endif
 
 static void putitem(void);
 static void rleputxelval(int);
@@ -850,11 +855,12 @@ Print_Screen (void)
                 }
             }
             PRINTER_PRINTF1("\033*r0B"); /* end raster graphics */
-            if (!keypressed())
+            if (!keypressed()) {
                if (debugflag != 600)
                   printer(12); /* form feed */
                else
                   Printer_printf("\n\n");
+            }
             farmemfree(pixels);
             break;
             }
@@ -863,7 +869,7 @@ Print_Screen (void)
         case 6:         /***** PostScript Portrait & Landscape *****/
             {
             char convert[513];
-            if (!ColorPS)
+            if (!ColorPS) {
               for (i=0; i<256; ++i)
                 if (Printer_Compress) {
                     convert[i] = (char)((.3*255./63. * (double)dacbox[i][0])+
@@ -876,6 +882,7 @@ Print_Screen (void)
                                     (.59*255./63. * (double)dacbox[i][1])+
                                     (.11*255./63. * (double)dacbox[i][2])));
                 }
+            }
             i=0;
             j=0;
             for (y=0;((y<ydots)&&(!keypressed()));y++)
@@ -1335,7 +1342,7 @@ static void _fastcall print_title(int ptrid,int res,char *EndOfLine)
 
 /* This function prints a string to the the printer with BIOS calls. */
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 static void Printer_printf(char far *fmt,...)
 #else
 static void Printer_printf(va_alist)
@@ -1347,7 +1354,7 @@ char s[500];
 int x=0;
 va_list arg;
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 va_start(arg,fmt);
 #else
 char far *fmt;

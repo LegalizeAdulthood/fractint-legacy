@@ -25,7 +25,7 @@
 #include "prototyp.h"
 #include "helpdefs.h"
 
-char stereomapname[81] = {""};
+char stereomapname[FILE_MAX_DIR+1] = {""};
 int AutoStereo_depth = 100;
 double AutoStereo_width = 10;
 char grayflag = 0;              /* flag to use gray value rather than color
@@ -227,9 +227,6 @@ int do_AutoStereo(void)
    int bars, ct, kbdchar, barwidth;
    time_t ltime;
    unsigned char *buf = (unsigned char *)decoderline;
-
-   /* int same[MAXPIXELS],colour[MAXPIXELS] */
-
    /* following two lines re-use existing arrays in Fractint */
    int far *same;
    int far *colour;
@@ -248,6 +245,15 @@ int do_AutoStereo(void)
    savegraphics();                      /* save graphics image */
    memcpy(savedacbox, dacbox, 256 * 3);  /* save colors */
 
+   if(xdots > OLDMAXPIXELS)
+   {
+      static FCODE msg[] = 
+         {"Stereo not allowed with resolution > 2048 pixels wide"};
+      stopmsg(0,msg);
+      buzzer(1);
+      ret = 1;
+      goto exit_stereo;
+   }
 
    /* empircally determined adjustment to make WIDTH scale correctly */
    WIDTH = AutoStereo_width*.67;

@@ -40,7 +40,7 @@
 
 #include <string.h>
 
-#ifndef XFRACT
+#ifndef USE_VARARGS
 #include <stdarg.h>
 #else
 #include <varargs.h>
@@ -60,23 +60,15 @@
 #define MAXRECT         1024      /* largest width of SaveRect/RestoreRect */
 
 #define newx(size)     mem_alloc(size)
-#define delete(block)
-
-enum stored_at_values
-   {
-   NOWHERE,
-   DISK,
-   MEMORY
-   } ;
+#define delete(block)  block=NULL
 
 int show_numbers =0;              /* toggle for display of coords */
-int stored_at;
-char far *memory = NULL;            /* pointer to saved rectangle */
+U16 memory_handle = 0;
 FILE *file;
 int windows = 0;               /* windows management system */
 
-static int xc, yc;                       /* corners of the window */
-static int xd, yd;                       /* dots in the window    */
+int xc, yc;                       /* corners of the window */
+int xd, yd;                       /* dots in the window    */
 double xcjul = BIG;
 double ycjul = BIG;
 
@@ -96,11 +88,12 @@ void SetAspect(double aspect)
    xAspect = 0;
    yAspect = 0;
    aspect = fabs(aspect);
-   if (aspect != 1.0)
+   if (aspect != 1.0) {
       if (aspect > 1.0)
          yAspect = (unsigned int)(65536.0 / aspect);
       else
          xAspect = (unsigned int)(65536.0 * aspect);
+   }
 }
 
 void _fastcall c_putcolor(int x, int y, int color)
@@ -260,7 +253,7 @@ int Init_Queue(unsigned long request)
          request   = (unsigned long) largest * 128L;
 #endif
 
-   for (ListSize = request; ListSize > 1024; ListSize -= 512)
+   for (ListSize = request; ListSize > 1024; ListSize /= 2)
       switch (common_startdisk(ListSize * 8, 1, 256))
       {
          case 0:                        /* success */
@@ -436,38 +429,6 @@ DeQueueLong()
  * End MIIM section;
  */
 
-
-
-static BOOLEAN MemoryAlloc(long size)
-{
-   char far *temp;
-
-   if (debugflag == 420)
-      return(FALSE);
-   temp = (char far *)farmemalloc(FAR_RESERVE);   /* minimum free space */
-
-   if (temp == NULL)
-   {
-      stored_at = NOWHERE;
-      return (FALSE);   /* can't do it */
-   }
-
-   memory = (char far *)farmemalloc( size );
-   farmemfree(temp);
-
-   if ( memory == NULL )
-   {
-      stored_at = NOWHERE;
-      return (FALSE);
-   }
-   else
-   {
-      stored_at = MEMORY;
-      return (TRUE);
-   }
-}
-
-
 static void SaveRect(int x, int y, int width, int depth)
 {
    char buff[MAXRECT];
@@ -476,68 +437,20 @@ static void SaveRect(int x, int y, int width, int depth)
       return;
    /* first, do any de-allocationg */
 
-   switch( stored_at )
-   {
-   case NOWHERE:
-      break;
-
-   case DISK:
-      break;
-
-   case MEMORY:
-      if (memory != NULL)
-      {
-         farmemfree(memory);
-      }
-      memory = NULL;
-      break;
-   }
+   if (memory_handle != 0)
+      MemoryRelease(memory_handle);
 
    /* allocate space and store the rect */
 
    memset(dstack, color_dark, width);
-   if ( MemoryAlloc( (long)width*(long)depth) )
+   if ((memory_handle = MemoryAlloc( (U16)width, (long)depth, FARMEM)) != 0)
    {
-      char far  *ptr = memory;
-      char far  *bufptr = buff; /* MSC needs this indirection to get it right */
-
       Cursor_Hide();
       for (yoff=0; yoff<depth; yoff++)
       {
          getrow(x, y+yoff, width, buff);
          putrow(x, y+yoff, width, (char *)dstack);
-         movedata(FP_SEG(bufptr), FP_OFF(bufptr), FP_SEG(ptr), FP_OFF(ptr), width);
-         ptr = (char far *)normalize(ptr+width);
-      }
-      Cursor_Show();
-   }
-
-   else /* to disk */
-   {
-      stored_at = DISK;
-
-      if ( file == NULL )
-      {
-         file = dir_fopen(tempdir,scrnfile, "w+b");
-         if (file == NULL)
-         {
-            stored_at = NOWHERE;
-            buzzer(3);
-            return ;
-         }
-      }
-
-      rewind(file);
-      Cursor_Hide();
-      for (yoff=0; yoff<depth; yoff++)
-      {
-         getrow(x, y+yoff, width, buff);
-         putrow(x, y+yoff, width, (char *)dstack);
-         if ( fwrite(buff, width, 1, file) != 1 )
-         {
-            buzzer(3);
-            break;
-         }
+         MoveToMemory((BYTE *)buff, (U16)width, 1L, (long)(yoff), memory_handle);
       }
       Cursor_Show();
    }
@@ -551,89 +464,18 @@ static void RestoreRect(int x, int y, int width, int depth)
    if(hasinverse == 0)
       return;
 
-   switch ( stored_at )
-   {
-   case DISK:
-      rewind(file);
-      Cursor_Hide();
-      for (yoff=0; yoff<depth; yoff++)
-      {
-         if ( fread(buff, width, 1, file) != 1 )
-         {
-            buzzer(3);
-            break;
-         }
-         putrow(x, y+yoff, width, buff);
-      }
-      Cursor_Show();
-      break;
-
-   case MEMORY:
-      {
-         char far  *ptr = memory;
-         char far  *bufptr = buff; /* MSC needs this indirection to get it right */
-
-         Cursor_Hide();
-         for (yoff=0; yoff<depth; yoff++)
-         {
-            movedata(FP_SEG(ptr), FP_OFF(ptr), FP_SEG(bufptr), FP_OFF(bufptr), width);
-            putrow(x, y+yoff, width, buff);
-            ptr = (char far *)normalize(ptr+width);
-         }
-         Cursor_Show();
-         break;
-      }
-
-   case NOWHERE:
-      break;
-   } /* switch */
+    Cursor_Hide();
+    for (yoff=0; yoff<depth; yoff++)
+       {
+          MoveFromMemory((BYTE *)buff, (U16)width, 1L, (long)(yoff), memory_handle);
+          putrow(x, y+yoff, width, buff);
+       }
+    Cursor_Show();
 }
 
 /*
  * interface to FRACTINT
  */
-
-/* the following macros and function call the setup, per_pixel, and orbit
-   routines and calculate an orbit at row 0 column 0. Have to save and
-   restore the first elements of dx0 ... dy1 as well as row and col */
-
-#define PER_IMAGE   (fractalspecific[fractype].per_image)
-#define PER_PIXEL   (fractalspecific[fractype].per_pixel)
-#define ORBITCALC   (fractalspecific[fractype].orbitcalc)
-
-int do_fractal_routines(double cr, double ci, int (*func)(void))
-{
-   int ret;
-   int old_row, old_col;
-   old_row = row;  old_col = col;
-   row = col = 0;
-   if(integerfractal)
-   {
-      long old_lx0, old_lx1, old_ly0, old_ly1;
-      old_lx0 = *lx0; old_lx1 = *lx1;
-      old_ly0 = *ly0; old_ly1 = *ly1;
-      *lx0 = (long)(cr*fudge); *ly0 = (long)(ci*fudge); *lx1 = *ly1 = 0L;
-      ret = func();
-      *lx0 = old_lx0; *lx1 = old_lx1;
-      *ly0 = old_ly0; *ly1 = old_ly1;
-      old.x = lold.x; old.x /= fudge;
-      old.y = lold.y; old.y /= fudge;
-      init.x = linit.x; init.x /= fudge;
-      init.y = linit.y; init.y /= fudge;
-   }
-   else
-   {
-      double old_dx0, old_dx1, old_dy0, old_dy1;
-      old_dx0 = *dx0; old_dx1 = *dx1;
-      old_dy0 = *dy0; old_dy1 = *dy1;
-      *dx0 = cr; *dy0 = ci; *dx1 = *dy1 = 0.0;
-      ret = func();
-      *dx0 = old_dx0; *dx1 = old_dx1;
-      *dy0 = old_dy0; *dy1 = old_dy1;
-   }
-   row = old_row;  col = old_col;
-   return(ret);
-}
 
 _CMPLX SaveC = {-3000.0, -3000.0};
 
@@ -651,7 +493,7 @@ void Jiim(int which)         /* called by fractint */
    int xoff, yoff;                   /* center of the window  */
    int x, y;
    int still, kbdchar= -1;
-   int xcrsr,ycrsr;     /* coords of the cursor / offsets to move it  */
+
    long iter;
    int color;
    float zoom;
@@ -679,14 +521,14 @@ void Jiim(int which)         /* called by fractint */
       helpmode = HELP_ORBITS;
       hasinverse = 1;
 
-      #if 0 /* I don't think this is needed any more */
+#if 0 /* I don't think this is needed any more */
       /* Earth to Chuck Ebbert - remove this code when your code supports
          my changes to PARSER.C */
       if(fractype == FFORMULA)
       {
          debugflag = 90;
       }
-      #endif
+#endif
    }
    oldsxoffs = sxoffs;
    oldsyoffs = syoffs;
@@ -725,43 +567,45 @@ void Jiim(int which)         /* called by fractint */
  * end MIIM code.
  */
 
-
+   if (!video_scroll) {
+      vesa_xres = sxdots;
+      vesa_yres = sydots;
+   }
 
    if(sxoffs != 0 || syoffs != 0) /* we're in view windows */
    {
       savehasinverse = hasinverse;
       hasinverse = 1;
       SaveRect(0,0,xdots,ydots);
-      sxoffs = 0;
-      syoffs = 0;
+      sxoffs = video_startx;
+      syoffs = video_starty;
       RestoreRect(0,0,xdots,ydots);
       hasinverse = savehasinverse;
    }
 
-
-   if(xdots == sxdots || ydots == sydots ||
-       sxdots-xdots < sxdots/3 ||
-       sydots-ydots < sydots/3 ||
+   if(xdots == vesa_xres || ydots == vesa_yres ||
+       vesa_xres-xdots < vesa_xres/3 ||
+       vesa_yres-ydots < vesa_yres/3 ||
        xdots >= MAXRECT )
    {
       /* this mode puts orbit/julia in an overlapping window 1/3 the size of
          the physical screen */
       windows = 0; /* full screen or large view window */
-      xd = sxdots / 3;
-      yd = sydots / 3;
-      xc = xd * 2;
-      yc = yd * 2;
-      xoff = xd * 5 / 2;
-      yoff = yd * 5 / 2;
+      xd = vesa_xres / 3;
+      yd = vesa_yres / 3;
+      xc = video_startx + xd * 2;
+      yc = video_starty + yd * 2;
+      xoff = video_startx + xd * 5 / 2;
+      yoff = video_starty + yd * 5 / 2;
    }
-   else if(xdots > sxdots/3 && ydots > sydots/3)
+   else if(xdots > vesa_xres/3 && ydots > vesa_yres/3)
    {
       /* Julia/orbit and fractal don't overlap */
       windows = 1;
-      xd = sxdots-xdots;
-      yd = sydots-ydots;
-      xc = xdots;
-      yc = ydots;
+      xd = vesa_xres - xdots;
+      yd = vesa_yres - ydots;
+      xc = video_startx + xdots;
+      yc = video_starty + ydots;
       xoff = xc + xd/2;
       yoff = yc + yd/2;
 
@@ -770,12 +614,12 @@ void Jiim(int which)         /* called by fractint */
    {
       /* Julia/orbit takes whole screen */
       windows = 2;
-      xd = sxdots;
-      yd = sydots;
-      xc = 0;
-      yc = 0;
-      xoff = xd/2;
-      yoff = yd/2;
+      xd = vesa_xres;
+      yd = vesa_yres;
+      xc = video_startx;
+      yc = video_starty;
+      xoff = video_startx + xd/2;
+      yoff = video_starty + yd/2;
    }
 
    xfactor = (int)(xd/5.33);
@@ -794,10 +638,10 @@ void Jiim(int which)         /* called by fractint */
    setup_convert_to_screen(&cvt);
 
    /* reuse last location if inside window */
-   xcrsr = (int)(cvt.a*SaveC.x + cvt.b*SaveC.y + cvt.e + .5);
-   ycrsr = (int)(cvt.c*SaveC.x + cvt.d*SaveC.y + cvt.f + .5);
-   if(xcrsr < 0 || xcrsr >= xdots ||
-      ycrsr < 0 || ycrsr >= ydots)
+   col = (int)(cvt.a*SaveC.x + cvt.b*SaveC.y + cvt.e + .5);
+   row = (int)(cvt.c*SaveC.x + cvt.d*SaveC.y + cvt.f + .5);
+   if(col < 0 || col >= xdots ||
+      row < 0 || row >= ydots)
    {
       cr = (xxmax + xxmin) / 2.0;
       ci = (yymax + yymin) / 2.0;
@@ -810,8 +654,8 @@ void Jiim(int which)         /* called by fractint */
 
    old_x = old_y = -1;
 
-   xcrsr = (int)(cvt.a*cr + cvt.b*ci + cvt.e + .5);
-   ycrsr = (int)(cvt.c*cr + cvt.d*ci + cvt.f + .5);
+   col = (int)(cvt.a*cr + cvt.b*ci + cvt.e + .5);
+   row = (int)(cvt.c*cr + cvt.d*ci + cvt.f + .5);
 
    /* possible extraseg arrays have been trashed, so set up again */
    if(integerfractal)
@@ -819,7 +663,7 @@ void Jiim(int which)         /* called by fractint */
    else
       fill_dx_array();
 
-   Cursor_SetPos(xcrsr, ycrsr);
+   Cursor_SetPos(col, row);
    Cursor_Show();
    color = color_bright;
 
@@ -833,7 +677,7 @@ void Jiim(int which)         /* called by fractint */
 
    while (still)
    {
-      int dxcrsr, dycrsr;
+      int dcol, drow;
       if (actively_computing) {
           Cursor_CheckBlink();
       } else {
@@ -847,7 +691,7 @@ void Jiim(int which)         /* called by fractint */
             Cursor_WaitKey();
             kbdchar = getakey();
 
-            dxcrsr = dycrsr = 0;
+            dcol = drow = 0;
             xcjul = BIG;
             ycjul = BIG;
             switch (kbdchar)
@@ -856,60 +700,60 @@ void Jiim(int which)         /* called by fractint */
             case 1076:    /* keypad 5        */
                break;     /* do nothing */
             case CTL_PAGE_UP:
-               dxcrsr = 4;
-               dycrsr = -4;
+               dcol = 4;
+               drow = -4;
                break;
             case CTL_PAGE_DOWN:
-               dxcrsr = 4;
-               dycrsr = 4;
+               dcol = 4;
+               drow = 4;
                break;
             case CTL_HOME:
-               dxcrsr = -4;
-               dycrsr = -4;
+               dcol = -4;
+               drow = -4;
                break;
             case CTL_END:
-               dxcrsr = -4;
-               dycrsr = 4;
+               dcol = -4;
+               drow = 4;
                break;
             case PAGE_UP:
-               dxcrsr = 1;
-               dycrsr = -1;
+               dcol = 1;
+               drow = -1;
                break;
             case PAGE_DOWN:
-               dxcrsr = 1;
-               dycrsr = 1;
+               dcol = 1;
+               drow = 1;
                break;
             case HOME:
-               dxcrsr = -1;
-               dycrsr = -1;
+               dcol = -1;
+               drow = -1;
                break;
             case END:
-               dxcrsr = -1;
-               dycrsr = 1;
+               dcol = -1;
+               drow = 1;
                break;
             case UP_ARROW:
-               dycrsr = -1;
+               drow = -1;
                break;
             case DOWN_ARROW:
-               dycrsr = 1;
+               drow = 1;
                break;
             case LEFT_ARROW:
-               dxcrsr = -1;
+               dcol = -1;
                break;
             case RIGHT_ARROW:
-               dxcrsr = 1;
+               dcol = 1;
                break;
             case UP_ARROW_2:
-               dycrsr = -4;
+               drow = -4;
                break;
             case DOWN_ARROW_2:
-               dycrsr = 4;
+               drow = 4;
                break;
             case LEFT_ARROW_2:
-               dxcrsr = -4;
+               dcol = -4;
                break;
             case RIGHT_ARROW_2:
-               dxcrsr = 4;
+               dcol = 4;
                break;
             case 'z':
             case 'Z':
@@ -950,17 +794,17 @@ void Jiim(int which)         /* called by fractint */
             case 'P':
                get_a_number(&cr,&ci);
                exact = 1;
-               xcrsr = (int)(cvt.a*cr + cvt.b*ci + cvt.e + .5);
-               ycrsr = (int)(cvt.c*cr + cvt.d*ci + cvt.f + .5);
-               dxcrsr = dycrsr = 0;
+               col = (int)(cvt.a*cr + cvt.b*ci + cvt.e + .5);
+               row = (int)(cvt.c*cr + cvt.d*ci + cvt.f + .5);
+               dcol = drow = 0;
                break;
             case 'h':   /* hide fractal toggle */
             case 'H':   /* hide fractal toggle */
                if(windows == 2)
                   windows = 3;
-               else if(windows == 3 && xd == sxdots)
+               else if(windows == 3 && xd == vesa_xres)
                {
-                  RestoreRect(0, 0, xdots, ydots);
+                  RestoreRect(video_startx, video_starty, xdots, ydots);
                   windows = 2;
                }
                break;
@@ -985,55 +829,60 @@ void Jiim(int which)         /* called by fractint */
                }
             default:
                still = 0;
+/*             ismand = (short)(1 - ismand); */
             }  /* switch */
             if(kbdchar == 's' || kbdchar == 'S')
                goto finish;
-            if(dxcrsr > 0 || dycrsr > 0)
+            if(dcol > 0 || drow > 0)
                exact = 0;
-            xcrsr += dxcrsr;
-            ycrsr += dycrsr;
+            col += dcol;
+            row += drow;
 #ifdef XFRACT
             if (kbdchar == ENTER) {
                 /* We want to use the position of the cursor */
                 exact=0;
-                xcrsr = Cursor_GetX();
-                ycrsr = Cursor_GetY();
+                col = Cursor_GetX();
+                row = Cursor_GetY();
             }
 #endif
 
             /* keep cursor in logical screen */
-           if(xcrsr >= xdots)
-              xcrsr = xdots -1, exact = 0;
-           if(ycrsr >= ydots)
-              ycrsr = ydots -1, exact = 0;
-           if(xcrsr < 0)
-              xcrsr = 0, exact = 0;
-           if(ycrsr < 0)
-              ycrsr = 0, exact = 0;
+           if(col >= xdots) {
+              col = xdots -1; exact = 0;
+           }
+           if(row >= ydots) {
+              row = ydots -1; exact = 0;
+           }
+           if(col < 0) {
+              col = 0; exact = 0;
+           }
+           if(row < 0) {
+              row = 0; exact = 0;
+           }
 
-            Cursor_SetPos(xcrsr,ycrsr);
+            Cursor_SetPos(col,row);
          }  /* end while (keypressed) */
 
          if(exact == 0)
          {
             if(integerfractal)
             {
-               cr = lx0[xcrsr]+lx1[ycrsr];  /* supports rotated zoom boxes! */
-               ci = ly0[ycrsr]+ly1[xcrsr];
+               cr = lxpixel();
+               ci = lypixel();
                cr /= (1L<<bitshift);
                ci /= (1L<<bitshift);
             }
             else
             {
-               cr = dx0[xcrsr]+dx1[ycrsr];
-               ci = dy0[ycrsr]+dy1[xcrsr];
+               cr = dxpixel();
+               ci = dypixel();
             }
          }
          actively_computing = 1;
          if(show_numbers) /* write coordinates on screen */
          {
             char str[41];
-            sprintf(str,"%16.14f %16.14f %3d",cr,ci,getcolor(xcrsr,ycrsr));
+            sprintf(str,"%16.14f %16.14f %3d",cr,ci,getcolor(col,row));
             if(windows == 0)
             {
                /* show temp msg will clear self if new msg is a
@@ -1047,7 +896,7 @@ void Jiim(int which)         /* called by fractint */
                Cursor_Show();
             }
             else
-               displays(5, sydots-show_numbers, WHITE, BLACK, str,strlen(str));
+               displays(5, vesa_yres-show_numbers, WHITE, BLACK, str,strlen(str));
          }
          iter = 1;
          old.x = old.y = lold.x = lold.y = 0;
@@ -1080,15 +929,17 @@ void Jiim(int which)         /* called by fractint */
  * End MIIM code.
  */
          if(which == ORBIT)
-           do_fractal_routines(cr, ci,PER_PIXEL);
+         {
+           PER_PIXEL();
+         }  
          /* move window if bumped */
-         if(windows==0 && xcrsr>xc && xcrsr < xc+xd && ycrsr>yc && ycrsr < yc+yd)
+         if(windows==0 && col>xc && col < xc+xd && row>yc && row < yc+yd)
          {
             RestoreRect(xc,yc,xd,yd);
-            if (xc == xd*2)
-               xc = 2;
+            if (xc == video_startx + xd*2)
+               xc = video_startx + 2;
             else
-               xc = xd*2;
+               xc = video_startx + xd*2;
             xoff = xc + xd /  2;
             SaveRect(xc,yc,xd,yd);
          }
@@ -1166,13 +1017,15 @@ void Jiim(int which)         /* called by fractint */
          {
              old.x = old.y = 0.0; /* avoids math error */
              iter = 1;
+             r = 0;
          }
          iter++;
          color = ((count++)>>5)%colors; /* chg color every 32 pts */
          if(color==0)
           color = 1;
 
-         r = sqrt(old.x*old.x + old.y*old.y);
+/*       r = sqrt(old.x*old.x + old.y*old.y); calculated above */
+         r = sqrt(r);
          new.x = sqrt(fabs((r + old.x)/2));
          if (old.y < 0)
             new.x = -new.x;
@@ -1371,7 +1224,7 @@ finish:
          }
          else
             fillrect(xc, yc, xd, yd, color_dark);
-         if(windows == 3 && xd == sxdots) /* unhide */
+         if(windows == 3 && xd == vesa_xres) /* unhide */
          {
             RestoreRect(0, 0, xdots, ydots);
             windows = 2;
@@ -1391,11 +1244,18 @@ finish:
    Cursor_EndMouseTracking();
 #endif
    delete(line_buff);
+
+   if (memory_handle != 0) {
+      MemoryRelease(memory_handle);
+      memory_handle = 0;
+   }
+#if 0
    if (memory)                  /* done with memory, free it */
    {
       farmemfree(memory);
       memory = NULL;
    }
+#endif
 
    lookatmouse = oldlookatmouse;
    using_jiim = 0;

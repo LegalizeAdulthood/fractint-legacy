@@ -179,7 +179,7 @@ lsysi_dobslash_386       ENDP
 
         PUBLIC  lsysi_doat_386
 
-lsysi_doat_386  PROC    lsyscmd:ptr,N:DWORD
+lsysi_doat_386  PROC    lsyscmd:ptr ; not used, N:DWORD
         mov     bx,lsyscmd      ; Get pointer
         mov     eax,[bx.ssize]  ; Get size
         imul    [bx.num]        ; Mul by n

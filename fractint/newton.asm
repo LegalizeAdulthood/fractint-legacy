@@ -15,7 +15,7 @@
 ;    calculation, with the supporting code removed. Early versions of
 ;    newton.asm contained a complete newton fractal function.
 ;
-; Assembled by Microsoft Macro Assembler 5.1, for use with Microsoft C 5.1.
+; Assembled by Microsoft Macro Assembler 6.1, for use with Microsoft C 7.0.
 ;
 
 ; Required for compatibility if Turbo ASM (BT 5/20/89)
@@ -41,7 +41,10 @@ public  invertz2
         extrn   threshold:qword, floatmin:qword, floatmax:qword
         extrn   f_radius:qword, f_xcenter:qword, f_ycenter:qword
         extrn   roots:word, tempsqrx:qword
-
+        extrn   delxx:tbyte, delxx2:tbyte
+        extrn   delyy:tbyte, delyy2:tbyte
+        extrn   xxmin:qword, yymax:qword
+        extrn   use_grid:word
 statw   dw      ?
 
 .code
@@ -272,13 +275,20 @@ NewtonFractal2 endp
 ;
 ;
 ;
+; TW added support for no grid version - does not use dx0/dx1 pixel
+;    grid id use_grid == 0.
+
 public  invertz2
-invertz2 proc   uses si, zval:word      ; TW 11/03/89 changed zval to near
+invertz2 proc   uses si, zval:word
 
-        fld     f_xcenter
-        fld     f_ycenter
+        fld     f_xcenter   ;   xcent
+        fld     f_ycenter   ;   ycent xcent
+        mov     ax, ds
 
-        mov     bx, col
+        cmp     use_grid,0  ; inversion support added
+        je      skip_grid   ; don't use dx0 grid
+
+        mov     bx, col     ; use dx0 grid
         shl     bx, 1
         shl     bx, 1
         shl     bx, 1
@@ -288,34 +298,56 @@ invertz2 proc   uses si, zval:word      ; TW 11/03/89 changed zval to near
         shl     cx, 1
         shl     cx, 1
 
-        mov     ax, ds
         lds     si, dx0
         add     si, bx
-        fld     qword ptr [si]
+        fld     qword ptr [si]   ; dx0[col]  ycent xcent
         mov     ds, ax
         lds     si, dx1
         add     si, cx
-        fld     qword ptr [si]
-        fadd
-        fsub    st, st(2)
+        fld     qword ptr [si] ; dx1[row] dx0[col]       ycent xcent
+        fadd                   ; dx1[row]+dx0[col]       ycent xcent
+        fsub    st, st(2)      ; dx1[row]+dx0[col]-xcent ycent xcent
 
         mov     ds, ax
         lds     si, dy0
         add     si, cx
-        fld     qword ptr [si]
+        fld     qword ptr [si]  ; dy0[row]                dx1[row]+dx0[col]-xcent ycent xcent
         mov     ds, ax
         lds     si, dy1
         add     si, bx
-        fld     qword ptr [si]
-        fadd
-        fsub    st, st(2)
+        fld     qword ptr [si]  ; dy1[col] dy0[row]       dx1[row]+dx0[col]-xcent ycent xcent
+        fadd                    ; dy1[col]+dy0[row]       dx1[row]+dx0[col]-xcent ycent xcent
+        fsub    st, st(2)       ; dy1[col]+dy0[row]-ycent dx1[row]+dx0[col]-xcent ycent xcent
 
-        mov     ds, ax
-        fld     st(1)
-        fmul    st, st
-        fld     st(1)
-        fmul    st, st
-        fadd
+        jmp          after_load
+skip_grid:
+        fild    word ptr row     ; row ycent xcent
+        fld     tbyte ptr delxx2 ; delxx2 row ycent xcent
+        fmulp   st(1),st(0)      ; delxx2*row ycent xcent
+        fild    word ptr col     ; col delxx2*row ycent xcent
+        fld     tbyte ptr delxx  ; delxx col delxx2*row  ycent xcent
+        fmulp   st(1),st(0)      ; delxx*col delxx2*row  ycent xcent
+        faddp   st(1),st(0)      ; delxx*col+delxx2*row  ycent xcent
+        fadd    qword ptr xxmin  ; xxmin+delxx*col+delxx2*row ycent xcent       
+        fsub    st, st(2) ; xxmin+col*delxx+row*delxx2-xcent ycent xcent
+  
+        fild    word ptr row
+        fld     tbyte ptr delyy
+        fmulp   st(1),st(0)
+        fsubr   qword ptr yymax
+        fild    word ptr col
+        fld     tbyte ptr delyy2
+        fmulp   st(1),st(0)
+        fsubp   st(1),st(0)
+        fsub    st, st(2)
+after_load:
+
+        mov     ds, ax 
+        fld     st(1)    
+        fmul    st, st   
+        fld     st(1)    
+        fmul    st, st   
+        fadd             
 
         fcom    floatmin
         fstsw   statw
@@ -337,8 +369,7 @@ icom:
         faddp   st(2), st
         faddp   st(2), st
 
-;       lds     si, zval        ; TW 11/03/89 zval is now a near pointer
-        mov     si, zval        ; TW
+        mov     si, zval
         fstp    qword ptr [si+8]
         fstp    qword ptr [si]
 

@@ -268,7 +268,9 @@ filter_cycles_used_a:
         mov     ax,status_word          ;
         sahf                            ;  NewPopulation
 
-        ja      overflowed_with_Pop
+;        ja      overflowed_with_Pop
+        jna     filter_cycles_skip_overflow_check
+        jmp     overflowed_with_Pop
 filter_cycles_skip_overflow_check:
         add     di,2                    ; di += sizeof(*lyaRxy)
         loop    filter_cycles_count_top ; if --cx > 0 then loop

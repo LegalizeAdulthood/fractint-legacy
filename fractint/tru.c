@@ -59,8 +59,11 @@ main()
       {
          iter = 0;
          if((err=fread(&iter,3,1,fpin))==0)
+         {
+            printf("err at row %d col %d\n",j,i);
             exit(1);
-         printf("row %2d iter %6ld   \r",j,iter);
+         }   
+         printf("row %2d col %2d iter %8ld          \n",j,i,iter);
          /* map iterations to colors */
          rgbmap(maxiter,iter,&red,&green,&blue);
          fwrite(&blue, 1,1,fpout);

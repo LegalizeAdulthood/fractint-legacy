@@ -188,8 +188,8 @@ extern void lsysf_dosizedm(struct lsys_turtlestatef *cmd, long n);
 #ifdef XFRACT
 static void lsysf_dosizegf(struct lsys_turtlestatef *cmd)
 {
-    cmd->xpos += cmd->size * coss_f[cmd->angle];
-    cmd->ypos += cmd->size * sins_f[cmd->angle];
+    cmd->xpos += cmd->size * coss_f[(int)cmd->angle];
+    cmd->ypos += cmd->size * sins_f[(int)cmd->angle];
 
     if (cmd->xpos>cmd->xmax) cmd->xmax=cmd->xpos;
     if (cmd->ypos>cmd->ymax) cmd->ymax=cmd->ypos;
@@ -240,8 +240,8 @@ extern void lsysf_dodrawm(struct lsys_turtlestatef *cmd);
 #ifdef XFRACT
 static void lsysf_dodrawg(struct lsys_turtlestatef *cmd)
 {
-    cmd->xpos += cmd->size * coss_f[cmd->angle];
-    cmd->ypos += cmd->size * sins_f[cmd->angle];
+    cmd->xpos += cmd->size * coss_f[(int)cmd->angle];
+    cmd->ypos += cmd->size * sins_f[(int)cmd->angle];
 }
 #else
 extern void lsysf_dodrawg(struct lsys_turtlestatef *cmd);
@@ -252,8 +252,8 @@ static void lsysf_dodrawf(struct lsys_turtlestatef *cmd)
 {
     int lastx = (int) cmd->xpos;
     int lasty = (int) cmd->ypos;
-    cmd->xpos += cmd->size * coss_f[cmd->angle];
-    cmd->ypos += cmd->size * sins_f[cmd->angle];
+    cmd->xpos += cmd->size * coss_f[(int)cmd->angle];
+    cmd->ypos += cmd->size * sins_f[(int)cmd->angle];
     draw_line(lastx,lasty,(int) cmd->xpos, (int) cmd->ypos, cmd->curcolor);
 }
 #else
@@ -285,15 +285,14 @@ findsize(struct lsys_cmd far *command, struct lsys_turtlestatef *ts, struct lsys
    struct lsys_cmd far **rulind;
    int tran;
 
-if (overflow)     /* integer math routines overflowed */
-    return NULL;
+   if (overflow)     /* integer math routines overflowed */
+      return NULL;
 
-#ifndef __TURBOC__
    if (stackavail() < 400) { /* leave some margin for calling subrtns */
       ts->stackoflow = 1;
       return NULL;
-      }
-#endif
+   }
+
 
    while (command->ch && command->ch !=']') {
       if (! (ts->counter++)) {
@@ -420,15 +419,15 @@ drawLSysF(struct lsys_cmd far *command,struct lsys_turtlestatef *ts, struct lsys
    struct lsys_cmd far **rulind;
    int tran;
 
-if (overflow)     /* integer math routines overflowed */
-    return NULL;
+   if (overflow)     /* integer math routines overflowed */
+      return NULL;
 
-#ifndef __TURBOC__
+
    if (stackavail() < 400) { /* leave some margin for calling subrtns */
       ts->stackoflow = 1;
       return NULL;
-      }
-#endif
+   }
+
 
    while (command->ch && command->ch !=']') {
       if (!(ts->counter++)) {

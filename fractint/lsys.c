@@ -19,7 +19,9 @@ struct lsys_cmd {
 
 static int _fastcall readLSystemFile(char *);
 static void _fastcall free_rules_mem(void);
+static int _fastcall rule_present(char symbol);
 static int _fastcall save_rule(char *,char far **);
+static int _fastcall append_rule(char *rule, int index);
 static void free_lcmds(void);
 static struct lsys_cmd far * _fastcall findsize(struct lsys_cmd far *,struct lsys_turtlestatei *, struct lsys_cmd far **,int);
 static struct lsys_cmd far * drawLSysI(struct lsys_cmd far *command,struct lsys_turtlestatei *ts, struct lsys_cmd far **rules,int depth);
@@ -123,7 +125,7 @@ static int _fastcall readLSystemFile(char *str)
    char far **rulind;
    int err=0;
    int linenum,check=0;
-   char inline[161],fixed[161],*word;
+   char inline1[MAX_LSYS_LINE_LEN+1],fixed[MAX_LSYS_LINE_LEN+1],*word;
    FILE *infile;
    char msgbuf[481]; /* enough for 6 full lines */
 
@@ -136,17 +138,17 @@ static int _fastcall readLSystemFile(char *str)
    rulind= &ruleptrs[1];
    msgbuf[0]=(char)(linenum=0);
 
-   while(file_gets(inline,160,infile) > -1)  /* Max line length 160 chars */
+   while(file_gets(inline1,MAX_LSYS_LINE_LEN,infile) > -1)  /* Max line length chars */
    {
       static FCODE out_of_mem[] = {"Error:  out of memory\n"};
       linenum++;
-      if ((word = strchr(inline,';')) != NULL) /* strip comment */
+      if ((word = strchr(inline1,';')) != NULL) /* strip comment */
          *word = 0;
-      strlwr(inline);
+      strlwr(inline1);
 
-      if ((int)strspn(inline," \t\n") < (int)strlen(inline)) /* not a blank line */
+      if ((int)strspn(inline1," \t\n") < (int)strlen(inline1)) /* not a blank line */
       {
-         word=strtok(inline," =\t\n");
+         word=strtok(inline1," =\t\n");
          if (!strcmp(word,"axiom"))
          {
             if (save_rule(strtok(NULL," \t\n"),&ruleptrs[0])) {
@@ -163,21 +165,34 @@ static int _fastcall readLSystemFile(char *str)
          }
          else if (!strcmp(word,"}"))
             break;
-         else if (strcspn(word,"+-/\\@|!c<>][") == 0 && strlen(word) == 1)
+         else if (!word[1])
+         {
+            char *temp;
+            int index, memerr = 0;
+
+            if (strchr("+-/\\@|!c<>][", *word))
             {
                sprintf(&msgbuf[strlen(msgbuf)],
                "Syntax error line %d: Redefined reserved symbol %s\n",linenum,word);
                ++err;
                break;
             }
-         else if (strlen(word)==1)
-         {
-            char *temp;
-            temp = strtok(NULL," \t\n");
-            strcpy(fixed,word);
-            if (temp)
-                strcat(fixed,temp);
-            if (save_rule(fixed,rulind++)) {
+            temp = strtok(NULL," =\t\n");
+            index = rule_present(*word);
+
+            if (!index)
+            {
+               strcpy(fixed,word);
+               if (temp)
+                  strcat(fixed,temp);
+               memerr = save_rule(fixed,rulind++);
+            }
+            else if (temp)
+            {
+               strcpy(fixed,temp);
+               memerr = append_rule(fixed,index);
+            }
+            if (memerr) {
                 far_strcat(msgbuf, out_of_mem);
                 ++err;
                 break;
@@ -335,6 +350,15 @@ static void _fastcall free_rules_mem(void)
       if(ruleptrs[i]) farmemfree(ruleptrs[i]);
 }
 
+static int _fastcall rule_present(char symbol)
+{
+   int i;
+
+   for (i = 1; i < MAXRULES && ruleptrs[i] && *ruleptrs[i] != symbol ; i++)
+      ;
+   return (i < MAXRULES && ruleptrs[i]) ? i : 0;
+}
+
 static int _fastcall save_rule(char *rule,char far **saveptr)
 {
    int i;
@@ -348,6 +372,26 @@ static int _fastcall save_rule(char *rule,char far **saveptr)
    return 0;
 }
 
+static int _fastcall append_rule(char *rule, int index)
+{
+   char far *dst, far *old, far *sav;
+   int i, j;
+
+   old = sav = ruleptrs[index];
+   for (i = 0; *(old++); i++)
+      ;
+   j = strlen(rule) + 1;
+   if ((dst = farmemalloc((long)(i + j))) == NULL)
+      return -1;
+
+   old = sav;
+   ruleptrs[index] = dst;
+   while (i-- > 0) *(dst++) = *(old++);
+   while (j-- > 0) *(dst++) = *(rule++);
+   farmemfree(sav);
+   return 0;
+}
+
 static void free_lcmds(void)
 {
   struct lsys_cmd far **sc = rules2;
@@ -355,8 +399,6 @@ static void free_lcmds(void)
   while (*sc)
     farmemfree(*sc++);
 }
-
-
 
 #ifdef XFRACT
 #define lsysi_doslash_386 lsysi_doslash
@@ -516,8 +558,8 @@ static void lsysi_dosizedm(struct lsys_turtlestatei *cmd)
 
 static void lsysi_dosizegf(struct lsys_turtlestatei *cmd)
 {
-  cmd->xpos = cmd->xpos + (multiply(cmd->size, coss[cmd->angle], 29));
-  cmd->ypos = cmd->ypos + (multiply(cmd->size, sins[cmd->angle], 29));
+  cmd->xpos = cmd->xpos + (multiply(cmd->size, coss[(int)cmd->angle], 29));
+  cmd->ypos = cmd->ypos + (multiply(cmd->size, sins[(int)cmd->angle], 29));
 /* xpos+=size*coss[angle]; */
 /* ypos+=size*sins[angle]; */
   if (cmd->xpos>cmd->xmax) cmd->xmax=cmd->xpos;
@@ -564,8 +606,8 @@ static void lsysi_dodrawm(struct lsys_turtlestatei *cmd)
 
 static void lsysi_dodrawg(struct lsys_turtlestatei *cmd)
 {
-  cmd->xpos = cmd->xpos + (multiply(cmd->size, coss[cmd->angle], 29));
-  cmd->ypos = cmd->ypos + (multiply(cmd->size, sins[cmd->angle], 29));
+  cmd->xpos = cmd->xpos + (multiply(cmd->size, coss[(int)cmd->angle], 29));
+  cmd->ypos = cmd->ypos + (multiply(cmd->size, sins[(int)cmd->angle], 29));
 /* xpos+=size*coss[angle]; */
 /* ypos+=size*sins[angle]; */
 }
@@ -574,8 +616,8 @@ static void lsysi_dodrawf(struct lsys_turtlestatei *cmd)
 {
   int lastx = (int) (cmd->xpos >> 19);
   int lasty = (int) (cmd->ypos >> 19);
-  cmd->xpos = cmd->xpos + (multiply(cmd->size, coss[cmd->angle], 29));
-  cmd->ypos = cmd->ypos + (multiply(cmd->size, sins[cmd->angle], 29));
+  cmd->xpos = cmd->xpos + (multiply(cmd->size, coss[(int)cmd->angle], 29));
+  cmd->ypos = cmd->ypos + (multiply(cmd->size, sins[(int)cmd->angle], 29));
 /* xpos+=size*coss[angle]; */
 /* ypos+=size*sins[angle]; */
   draw_line(lastx,lasty,(int)(cmd->xpos >> 19),(int)(cmd->ypos >> 19),cmd->curcolor);
@@ -609,15 +651,13 @@ findsize(struct lsys_cmd far *command, struct lsys_turtlestatei *ts, struct lsys
 if (overflow)     /* integer math routines overflowed */
     return NULL;
 
-#ifndef __TURBOC__
    if (stackavail() < 400) { /* leave some margin for calling subrtns */
       ts->stackoflow = 1;
       return NULL;
-      }
-#endif
+   }
 
    while (command->ch && command->ch !=']') {
-      static FCODE thinking_msg[] = 
+      static FCODE thinking_msg[] =
          {"L-System thinking (higher orders take longer)"};
       if (! (ts->counter++)) {
          /* let user know we're not dead */
@@ -727,15 +767,14 @@ drawLSysI(struct lsys_cmd far *command,struct lsys_turtlestatei *ts, struct lsys
    struct lsys_cmd far **rulind;
    int tran;
 
-if (overflow)     /* integer math routines overflowed */
-    return NULL;
+   if (overflow)     /* integer math routines overflowed */
+      return NULL;
 
-#ifndef __TURBOC__
    if (stackavail() < 400) { /* leave some margin for calling subrtns */
       ts->stackoflow = 1;
       return NULL;
-      }
-#endif
+   }
+
 
    while (command->ch && command->ch !=']') {
       if (!(ts->counter++)) {

@@ -37,11 +37,13 @@
 
 /* routines in this module      */
 
+#ifndef XFRACT
 static int    vidcompare(VOIDCONSTPTR ,VOIDCONSTPTR );
-static void   format_vid_inf(int i,char *err,char *buf);
-static double vid_aspect(int tryxdots,int tryydots);
 static void   format_item(int,char *);
 static int    check_modekey(int,int);
+static void   format_vid_inf(int i,char *err,char *buf);
+#endif
+static double vid_aspect(int tryxdots,int tryydots);
 
 struct vidinf {
    int entnum;     /* videoentry subscript */
@@ -61,7 +63,7 @@ struct vidinf {
 #define VI_DISK2     2  /* disk video */
 #define VI_ASPECT    1  /* aspect ratio bad */
 
-
+#ifndef XFRACT
 static int vidcompare(VOIDCONSTPTR p1,VOIDCONSTPTR p2)
 {
    struct vidinf CONST *ptr1,*ptr2;
@@ -81,12 +83,13 @@ static void format_vid_inf(int i,char *err,char *buf)
    far_memcpy((char far *)&videoentry,(char far *)&vidtbl[i],
               sizeof(videoentry));
    vidmode_keyname(videoentry.keynum,kname);
-   sprintf(buf,"%-5s %-25s %-4s %4d %4d %3d %-25s",  /* 76 chars */
+   sprintf(buf,"%-5s %-25s %-4s %5d %5d %3d %-25s",  /* 78 chars */
            kname, videoentry.name, err,
            videoentry.xdots, videoentry.ydots,
            videoentry.colors, videoentry.comment);
    videoentry.xdots = 0; /* so tab_display knows to display nothing */
 }
+#endif
 
 static double vid_aspect(int tryxdots,int tryydots)
 {  /* calc resulting aspect ratio for specified dots in current mode */
@@ -95,12 +98,13 @@ static double vid_aspect(int tryxdots,int tryydots)
         * screenaspect;
    }
 
-
+#ifndef XFRACT
 static struct vidinf *vidptr;
+#endif
 
 int get_video_mode(struct fractal_info *info,struct ext_blk_3 *blk_3_info)
 {
-   static FCODE o_hdg2[]={"key...name......................err..xdot.ydot.clr.comment.................."};
+   static FCODE o_hdg2[]={"key...name......................err...xdot..ydot.clr.comment.................."};
    static FCODE o_warning[]={"\nWARNING: non-standard aspect ratio; loading will change your <v>iew settings"};
    static FCODE o_select_msg[]={"\
 Select a video mode.  Use the cursor keypad to move the pointer.\n\
@@ -115,9 +119,11 @@ Press F1 for help, "};
 
    int tmpxdots,tmpydots;
    float tmpreduce;
+#ifndef XFRACT
    char *nameptr;
    int  *attributes;
    int oldhelpmode;
+#endif
    VIDEOINFO *vident;
 
    /* save overlayed strings to extraseg memory */
@@ -134,6 +140,34 @@ Press F1 for help, "};
    initmode = -1;
    load_fractint_cfg(0); /* get fractint.cfg into *vidtbl (== extraseg) */
 
+   /* try to change any VESA entries to fit the loaded image size */
+   if (virtual && video_vram && initmode == -1) {
+      unsigned long vram = (unsigned long)video_vram << 16,
+                    need = (unsigned long)info->xdots * info->ydots;
+      if (need <= vram) {
+         char over[25]; /* overwrite comments with original resolutions */
+         int bppx;      /* bytesperpixel multiplier */
+         for (i = 0; i < vidtbllen; ++i) {
+            vident = &vidtbl[i];
+            if (vident->dotmode%100 == 28 && vident->colors >= 256
+               && (info->xdots > vident->xdots || info->ydots > vident->ydots)
+               && vram >= (unsigned long)
+                  (info->xdots < vident->xdots ? vident->xdots : info->xdots)
+                  * (info->ydots < vident->ydots ? vident->ydots : info->ydots)
+                  * ((bppx = vident->dotmode/1000) < 2 ? ++bppx : bppx)) {
+
+               sprintf(over,"<-VIRTUAL! at %4u x %4u",vident->xdots,vident->ydots);
+               far_strcpy((char far *)vident->comment,(char far *)over);
+
+               if (info->xdots > vident->xdots)
+                  vident->xdots = info->xdots;
+               if (info->ydots > vident->ydots)
+                  vident->ydots = info->ydots;
+             }  /* change entry to force VESA virtual scanline setup */
+         }
+      }
+   }
+
    /* try to find exact match for vid mode */
    for (i = 0; i < vidtbllen; ++i) {
       vident = &vidtbl[i];
@@ -148,6 +182,10 @@ Press F1 for help, "};
          break;
          }
       }
+
+   /* exit in makepar mode if no exact match of video mode in file */
+   if(*s_makepar == '\0' && initmode == -1)
+      return(0);
 
    if (initmode == -1) /* try to find very good match for vid mode */
       for (i = 0; i < vidtbllen; ++i) {
@@ -201,8 +239,9 @@ if (fastrestore  && !askvideo)
 
 #ifndef XFRACT
    gotrealmode = 0;
-   if (initmode < 0 || (askvideo && !initbatch)) {
-      /* no exact match or (askvideo=yes and batch=no), talk to user */
+   if ((initmode < 0 || (askvideo && !initbatch)) && *s_makepar != '\0') {
+      /* no exact match or (askvideo=yes and batch=no), and not
+        in makepar mode, talk to user */
 
       qsort(vid,vidtbllen,sizeof(vid[0]),vidcompare); /* sort modes */
 
@@ -260,7 +299,7 @@ if (fastrestore  && !askvideo)
       oldhelpmode = helpmode;
       helpmode = HELPLOADFILE;
       i = fullscreen_choice(0,(char *)dstack,hdg2,temp1,vidtbllen,NULL,attributes,
-                             1,13,76,0,format_item,NULL,NULL,check_modekey);
+                             1,13,78,0,format_item,NULL,NULL,check_modekey);
       helpmode = oldhelpmode;
       if (i == -1)
          return(-1);
@@ -383,16 +422,17 @@ if (fastrestore  && !askvideo)
       else
          viewreduction = tmpreduce; /* ok, this works */
       }
-   if (!fastrestore && (fabs(finalaspectratio - screenaspect) > .00001 || viewxdots != 0)) {
+   if (*s_makepar && !fastrestore && !initbatch &&
+        (fabs(finalaspectratio - screenaspect) > .00001 || viewxdots != 0)) {
       static FCODE msg[] = {"\
 Warning: <V>iew parameters are being set to non-standard values.\n\
 Remember to reset them when finished with this image!"};
       stopmsg(4,msg);
       }
-
    return(0);
 }
 
+#ifndef XFRACT
 static void format_item(int choice,char *buf)
 {
    char errbuf[10];
@@ -414,4 +454,4 @@ static int check_modekey(int curkey,int choice)
    i=choice; /* avoid warning */
    return (((i = check_vidmode_key(0,curkey)) >= 0) ? -100-i : 0);
 }
-
+#endif

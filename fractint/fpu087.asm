@@ -251,7 +251,7 @@ NotBothZero:
    fxch  st(2)                   ; x.y, x.x, z.x
    fxch                          ; x.x, x.y, z.x
    cmp   fpu, 387
-   jne   Restricted
+   jb    Restricted
 
    fpatan                        ; z.y, z.x
    jmp   StoreZX
@@ -391,7 +391,7 @@ LOCAL Status:word
    fld   QWORD PTR [bx]       ; x
 
    cmp   fpu, 387
-   jne   Use387FPUsincos
+   jb    Use387FPUsincos
 
    call  _Loaded387sincos     ; cos(x), sin(x)
    mov   bx, cosx
@@ -1429,7 +1429,7 @@ SinhCosh086    ENDP
 
 
 Log086   PROC     uses si di, LoNum:WORD, HiNum:WORD, Fudge:WORD
-LOCAL Exp:WORD, Accum:WORD, LoAns:WORD, HiAns:WORD
+LOCAL Exp:WORD   ; not used, Accum:WORD, LoAns:WORD, HiAns:WORD
 ;NOTE: CJLT's method does not need LoAns, HiAns, but he hasn't yet
 ;taken them out
       xor   bx, bx

@@ -12,6 +12,8 @@
 
 #ifndef XFRACT
 #include        <dos.h>
+#else
+#include  <unistd.h>
 #endif
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,12 +37,18 @@
 
 #ifdef __TURBOC__
 #define _matherr matherr
+#define _stackavail stackavail
+#define USE_BIGNUM_C_CODE
 #endif
 
 /* If endian.h is not present, it can be handled in the code below, */
 /* but if you have this file, it can make it more fool proof. */
 #if (defined(XFRACT) && !defined(__sun))
+#if defined(sgi)
+#include <sys/endian.h>
+#else
 #include <endian.h>
+#endif
 #endif
 #ifndef BIG_ENDIAN
 #define BIG_ENDIAN    4321  /* to show byte order (taken from gcc) */
@@ -179,7 +187,7 @@
 #else
 #ifdef unix                     /* Unix machine */
         typedef unsigned char  U8;
-        typedef char           S8;
+        typedef signed char    S8;
         typedef unsigned short U16;
         typedef short          S16;
         typedef unsigned long  U32;
@@ -281,8 +289,16 @@ typedef int sigfunc(int);
 #ifdef _HPUX_SOURCE
 #define DO_NOT_USE_LONG_DOUBLE
 #endif
+
+/* Solaris itself does not provide long double arithmetics like sinl.
+ * However, the "sunmath" library that comes bundled with Sun C does
+ * provide them. */
 #ifdef sun
+#ifdef USE_SUNMATH
+#include <sunmath.h>
+#else
 #define DO_NOT_USE_LONG_DOUBLE
+#endif
 #endif
 
 #ifndef DO_NOT_USE_LONG_DOUBLE
@@ -306,30 +322,39 @@ typedef int sigfunc(int);
 /* impliment LDBL as double */
         typedef double          LDBL;
 
-/* just in case */
-#undef LDBL_DIG
-#undef LDBL_EPSILON
-#undef LDBL_MANT_DIG
-#undef LDBL_MAX
-#undef LDBL_MAX_10_EXP
-#undef LDBL_MAX_EXP
-#undef LDBL_MIN
-#undef LDBL_MIN_10_EXP
-#undef LDBL_MIN_EXP
-#undef LDBL_RADIX
-#undef LDBL_ROUNDS
-
+#if !defined(LDBL_DIG)
 #define LDBL_DIG        DBL_DIG        /* # of decimal digits of precision */
+#endif
+#if !defined(LDBL_EPSILON)
 #define LDBL_EPSILON    DBL_EPSILON    /* smallest such that 1.0+LDBL_EPSILON != 1.0 */
+#endif
+#if !defined(LDBL_MANT_DIG)
 #define LDBL_MANT_DIG   DBL_MANT_DIG   /* # of bits in mantissa */
+#endif
+#if !defined(LDBL_MAX)
 #define LDBL_MAX        DBL_MAX        /* max value */
+#endif
+#if !defined(LDBL_MAX_10_EXP)
 #define LDBL_MAX_10_EXP DBL_MAX_10_EXP /* max decimal exponent */
+#endif
+#if !defined(LDBL_MAX_EXP)
 #define LDBL_MAX_EXP    DBL_MAX_EXP    /* max binary exponent */
+#endif
+#if !defined(LDBL_MIN)
 #define LDBL_MIN        DBL_MIN        /* min positive value */
+#endif
+#if !defined(LDBL_MIN_10_EXP)
 #define LDBL_MIN_10_EXP DBL_MIN_10_EXP /* min decimal exponent */
+#endif
+#if !defined(LDBL_MIN_EXP)
 #define LDBL_MIN_EXP    DBL_MIN_EXP    /* min binary exponent */
+#endif
+#if !defined(LDBL_RADIX)
 #define LDBL_RADIX      DBL_RADIX      /* exponent radix */
+#endif
+#if !defined(LDBL_ROUNDS)
 #define LDBL_ROUNDS     DBL_ROUNDS     /* addition rounding: near */
+#endif
 
 #define sqrtl           sqrt
 #define logl            log

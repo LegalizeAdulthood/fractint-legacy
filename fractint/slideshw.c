@@ -311,7 +311,7 @@ start:
       out = i;
    if(out == -12345)
    {
-      char msg[80];
+      char msg[MSGLEN];
       sprintf(msg,s_cantunderstand,buffer);
       slideshowerr(msg);
       out = 0;
@@ -319,6 +319,7 @@ start:
    return(last1 = out);
 }
 
+int
 startslideshow()
 {
    if((fpss=fopen(autoname,"r"))==NULL)

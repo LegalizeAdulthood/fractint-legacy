@@ -22,7 +22,7 @@ LINKFILE = fractint.lnk
 all : fractint.exe
 
 .asm.obj:
-	$(AS) $*; >> f_errs.txt
+	$(AS) /W3 $*; >> f_errs.txt
 # for Quick Assembler
 #       $(AS) $*.asm
 
@@ -79,7 +79,8 @@ parserfp.obj : parserfp.c fractint.h mpmath.h
 parsera.obj: parsera.asm
 # for MASM
 !ifndef DEBUG
-	$(AS) /e parsera;
+	$(AS) /W3 parsera; >> f_errs.txt
+#	$(AS) /e parsera;
 !else
 	$(AS) /e /Zi parsera;
 !endif
@@ -90,9 +91,13 @@ calcmand.obj : calcmand.asm
 
 calmanfp.obj : calmanfp.asm
 # for MASM
-	$(AS) /e calmanfp;
+	$(AS) /e /W3 calmanfp; >> f_errs.txt
+#	$(AS) /e calmanfp;
 # for QuickAssembler
 #   $(AS) /FPi calmanfp.asm
+
+calmanp5.obj : calmanp5.asm
+	$(AS) /W3 calmanp5; >> f_errs.txt
 
 cmdfiles.obj : cmdfiles.c fractint.h
 	$(Optsize)
@@ -165,7 +170,7 @@ yourvid.obj : yourvid.c
 fpu387.obj : fpu387.asm
 
 fpu087.obj : fpu087.asm
-	$(AS) /e fpu087;
+	$(AS) /e /W3 fpu087; >> f_errs.txt
 
 f16.obj : f16.c targa_lc.h
 
@@ -195,7 +200,7 @@ tplus.obj : tplus.c tplus.h
 tplus_a.obj : tplus_a.asm
 
 lyapunov.obj : lyapunov.asm
-	$(AS) /e lyapunov;
+	$(AS) /e /W3 lyapunov; >> f_errs.txt
 
 slideshw.obj : slideshw.c
 	$(Optsize)
@@ -211,7 +216,7 @@ bigflt.obj : bigflt.c big.h
 
 bignuma.obj : bignuma.asm big.inc
 # for MASM
-        $(AS) /e bignuma.asm; >> f_errs.txt
+        $(AS) /e /W3 bignuma.asm; >> f_errs.txt
 # for QuickAssembler
 #   $(AS) /FPi bignuma.asm >> f_errs.txt
 
@@ -229,9 +234,23 @@ lsysf.obj : lsysf.c fractint.h lsys.h
 
 lsysaf.obj: lsysaf.asm
 # for MASM
-	$(AS) /e lsysaf.asm;
+	$(AS) /e /W3 lsysaf.asm; >> f_errs.txt
 # for QuickAssembler
 #   $(AS) /FPi lsysaf.asm
+
+memory.obj : memory.c
+
+soi.obj : soi.c
+
+soi1.obj : soi1.c
+
+evolve.obj : evolve.c fractint.h
+        $(Optnoalias)
+
+sound.obj  : sound.c
+	$(Optnoalias)
+
+uclock.obj  : uclock.c uclock.h
 
 fractint.exe : fractint.obj help.obj loadfile.obj encoder.obj gifview.obj \
      general.obj calcmand.obj calmanfp.obj fractals.obj fractalp.obj calcfrac.obj \
@@ -246,13 +265,13 @@ fractint.exe : fractint.obj help.obj loadfile.obj encoder.obj gifview.obj \
      lyapunov.obj fractint.hlp hcmplx.obj \
      biginit.obj bignum.obj bigflt.obj bignuma.obj \
      fractalb.obj ant.obj frasetup.obj framain2.obj \
-     lsysf.obj lsysaf.obj \
+     lsysf.obj lsysaf.obj memory.obj evolve.obj soi.obj \
+     soi1.obj calmanp5.obj sound.obj uclock.obj\
      $(DEFFILE) $(LINKFILE)
 !ifndef DEBUG
-	$(LINKER) /ST:9000 /SE:210 /PACKC /F /NOE @$(LINKFILE) > foo
+	$(LINKER) /ST:8800 /SE:160 /PACKC /F /NOE @$(LINKFILE) > foo
 !else
-	$(LINKER) /CO /ST:6000 /SE:210 /PACKC /F /NOE @$(LINKFILE) > foo
-#	$(LINKER) /ST:6000 /SE:210 /PACKC /F /NOE @$(LINKFILE) > foo
+	$(LINKER) /CO /ST:7500 /SE:210 /PACKC /F /NOE @$(LINKFILE) > foo
 !endif
 !ifdef C7
         @echo (Any overlay_thunks (L4059) warnings from the linker are harmless) >> foo
@@ -263,4 +282,3 @@ fractint.exe : fractint.obj help.obj loadfile.obj encoder.obj gifview.obj \
 !ifndef DEBUG
 	hc /a
 !endif
-

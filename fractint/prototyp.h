@@ -1,4 +1,3 @@
-
 #ifndef PROTOTYP_H
 #define PROTOTYP_H
 
@@ -17,7 +16,17 @@ extern long cdecl calcmandasm(void);
 /*  calmanfp -- assembler file prototypes */
 
 extern void cdecl calcmandfpasmstart(void);
-extern long  cdecl calcmandfpasm(void);
+/* extern long  cdecl calcmandfpasm(void); */
+extern long  cdecl calcmandfpasm_287(void);
+extern long  cdecl calcmandfpasm_87(void);
+extern long (*calcmandfpasm)(void);
+
+/*  calmanp5 -- assembler file prototypes */
+#ifdef XFRACT
+extern long  cdecl calcmandfpasm_c(void);
+#endif
+extern long  cdecl calcmandfpasm_p5(void);
+extern void cdecl calcmandfpasmstart_p5(void);
 
 /*  fpu087 -- assembler file prototypes */
 
@@ -82,7 +91,8 @@ extern int near asmfpMANRbailout(void);
 extern  long   cdecl multiply(long, long, int);
 extern  long   cdecl divide(long, long, int);
 extern  int    cdecl getakey(void);
-extern  void   cdecl buzzer(int);
+/*extern  void   cdecl buzzer(int); */
+extern  void   cdecl buzzerpcspkr(int);
 extern  void   cdecl farmemfree(VOIDFARPTR );
 extern  int    cdecl far_strlen( char far *);
 extern  int    cdecl far_strnicmp(char far *, char far *,int);
@@ -103,6 +113,7 @@ extern  void   cdecl emmgetpage(unsigned int, unsigned int);
 extern  void   cdecl emmclearpage(unsigned int, unsigned int);
 extern  unsigned int *cdecl xmmquery(void);
 extern  unsigned int cdecl xmmlongest(void);
+extern  unsigned int cdecl xmmfree(void);
 extern  unsigned int cdecl xmmallocate(unsigned int);
 extern  void   cdecl xmmdeallocate(unsigned int);
 extern  unsigned int cdecl xmmreallocate(unsigned int, unsigned int);
@@ -123,17 +134,12 @@ extern  int    cdecl farread(int, VOIDFARPTR, unsigned);
 extern  int    cdecl farwrite(int, VOIDFARPTR, unsigned);
 extern  long   cdecl normalize(char far *);
 extern  void   cdecl erasesegment(int, int);
-extern  int    cdecl IITCoPro( void );
-extern  int    cdecl F4x4Check( void );
-extern  int    cdecl F4x4Lock( void );
-extern  void   cdecl F4x4Free( void );
 extern  int    cdecl getakeynohelp( void );
 extern  unsigned int cdecl cmpextra( unsigned int, char *, int );
 extern  unsigned int cdecl fromextra( unsigned int, char *, int );
 extern  unsigned int cdecl toextra( unsigned int, char *, int );
 extern  void   cdecl load_mat(double (*)[4]);
 extern  VOIDFARPTR cdecl farmemalloc(long);
-extern  void   mult_vec_iit(VECTOR);
 
 /*  mpmath_a -- assembler file prototypes */
 
@@ -172,8 +178,9 @@ extern unsigned long ReadTPlusBankedPixel(int, int);
 /*  video -- assembler file prototypes */
 
 extern void   cdecl adapter_detect(void);
-extern void   cdecl clearbox(void);
-extern void   cdecl dispbox(void);
+extern void   cdecl scroll_center(int, int);
+extern void   cdecl scroll_relative(int, int);
+extern void   cdecl scroll_state(int);
 extern void   cdecl setvideotext(void);
 extern void   cdecl setnullvideo(void);
 extern void   cdecl setfortext(void);
@@ -215,7 +222,7 @@ extern void trans(double ,double ,double ,MATRIX);
 extern int cross_product(VECTOR,VECTOR,VECTOR);
 extern int normalize_vector(VECTOR);
 extern int vmult(VECTOR,MATRIX,VECTOR);
-extern void mult_vec_c(VECTOR);
+extern void mult_vec(VECTOR);
 extern int perspective(VECTOR);
 extern int longvmultpersp(LVECTOR,LMATRIX,LVECTOR,LVECTOR,LVECTOR,int);
 extern int longpersp(LVECTOR,LVECTOR,int );
@@ -267,7 +274,6 @@ extern int calcfroth(void);
 extern int froth_per_pixel(void);
 extern int froth_per_orbit(void);
 extern int froth_setup(void);
-extern int demowalk(void);
 extern int logtable_in_extra_ok(void);
 extern int find_alternate_math(int, int);
 
@@ -337,6 +343,24 @@ extern void displayc(int, int, int, int, int);
 
 extern int savetodisk(char *);
 extern int encoder(void);
+extern int _fastcall new_to_old(int new_fractype);
+
+/*  evolve -- C file prototypes */
+
+extern  void initgene(void);
+extern  void param_history(int);
+extern  int get_variations(void);
+extern  int get_evolve_Parms(void);
+extern  void set_current_params(void);
+extern  void fiddleparms(GENEBASE gene[], int ecount);
+extern  void set_evolve_ranges(void);
+extern  void set_mutation_level(int);
+extern  void drawparmbox(int);
+extern  void spiralmap(int);
+extern  int unspiralmap(void);
+extern  int explore_check(void);
+extern  void SetupParamBox(void);
+extern  void ReleaseParamBox(void);
 
 /*  f16 -- C file prototypes */
 
@@ -347,7 +371,7 @@ extern int t16_getline(FILE *,int ,U16 *);
 
 extern void calcfracinit(void);
 extern void adjust_corner(void);
-#ifndef XFRACT
+#ifndef USE_VARARGS
 extern int put_resume(int ,... );
 extern int get_resume(int ,... );
 #else
@@ -358,10 +382,11 @@ extern int alloc_resume(int ,int );
 extern int start_resume(void);
 extern void end_resume(void);
 extern void sleepms(long );
+extern void reset_clock(void);
 extern void iplot_orbit(long ,long ,int );
 extern void plot_orbit(double ,double ,int );
 extern void scrub_orbit(void);
-extern int add_worklist(int ,int ,int ,int ,int ,int ,int );
+extern int add_worklist(int ,int, int ,int ,int ,int ,int ,int );
 extern void tidy_worklist(void);
 extern void get_julia_attractor(double ,double );
 extern int ssg_blocksize(void);
@@ -377,13 +402,18 @@ extern void _fastcall symplot4basin(int ,int ,int );
 extern void _fastcall noplot(int ,int ,int );
 extern void fractal_floattobf(void);
 extern void adjust_cornerbf(void);
-extern char *typehasparm(int,int);
+extern void set_grid_pointers(void);
 extern void fill_dx_array(void);
 extern void fill_lx_array(void);
 extern int snd_open(void);
 extern void w_snd(int);
 extern void snd_time_write(void);
 extern void close_snd(void);
+
+/*  fractalp -- C file prototypes */
+
+extern int typehasparm(int,int,char *);
+extern int paramnotused(int);
 
 /*  fractals -- C file prototypes */
 
@@ -425,6 +455,10 @@ extern int Richard8fpFractal(void);
 extern int Richard8Fractal(void);
 extern int PopcornFractal(void);
 extern int LPopcornFractal(void);
+extern int PopcornFractal_Old(void);
+extern int LPopcornFractal_Old(void);
+extern int PopcornFractalFn(void);
+extern int LPopcornFractalFn(void);
 extern int MarksCplxMand(void );
 extern int SpiderfpFractal(void );
 extern int SpiderFractal(void );
@@ -471,7 +505,6 @@ extern int TimsErrorfpFractal(void);
 extern int TimsErrorFractal(void);
 extern int CirclefpFractal(void);
 extern int VLfpFractal(void);
-extern int VLSetup(void);
 extern int EscherfpFractal(void);
 extern int long_julia_per_pixel(void);
 extern int long_richard8_per_pixel(void);
@@ -489,64 +522,29 @@ extern int otherrichard8fp_per_pixel(void);
 extern int othermandelfp_per_pixel(void);
 extern int otherjuliafp_per_pixel(void);
 extern int MarksCplxMandperp(void );
-extern int MandelSetup(void);
-extern int MandelfpSetup(void);
-extern int JuliaSetup(void);
-extern int NewtonSetup(void);
-extern int StandaloneSetup(void);
-extern int UnitySetup(void);
-extern int JuliafpSetup(void);
-extern int MandellongSetup(void);
-extern int JulialongSetup(void);
-extern int TrigPlusSqrlongSetup(void);
-extern int TrigPlusSqrfpSetup(void);
-extern int TrigPlusTriglongSetup(void);
-extern int TrigPlusTrigfpSetup(void);
-extern int FnPlusFnSym(void);
-extern int ZXTrigPlusZSetup(void);
-extern int LambdaTrigSetup(void);
-extern int JuliafnPlusZsqrdSetup(void);
-extern int SqrTrigSetup(void);
-extern int FnXFnSetup(void);
-extern int MandelTrigSetup(void);
-extern int MarksJuliaSetup(void);
-extern int MarksJuliafpSetup(void);
-extern int SierpinskiSetup(void);
-extern int SierpinskiFPSetup(void);
-extern int StandardSetup(void);
 extern int LambdaTrigOrTrigFractal(void);
 extern int LambdaTrigOrTrigfpFractal(void);
-extern int LambdaTrigOrTrigSetup(void);
 extern int JuliaTrigOrTrigFractal(void);
 extern int JuliaTrigOrTrigfpFractal(void);
-extern int JuliaTrigOrTrigSetup(void);
-extern int ManlamTrigOrTrigSetup(void);
-extern int MandelTrigOrTrigSetup(void);
-extern int HalleySetup(void);
 extern int HalleyFractal(void);
 extern int Halley_per_pixel(void);
 extern int MPCHalleyFractal(void);
 extern int MPCHalley_per_pixel(void);
 extern int dynamfloat(double *,double *,double*);
 extern int mandelcloudfloat(double *,double *,double*);
-extern int dynam2dfloatsetup(void);
 extern int dynam2dfloat(void);
 extern int QuaternionFPFractal(void);
 extern int quaternionfp_per_pixel(void);
 extern int quaternionjulfp_per_pixel(void);
 extern int LongPhoenixFractal(void);
 extern int PhoenixFractal(void);
-extern int PhoenixSetup(void);
 extern int long_phoenix_per_pixel(void);
 extern int phoenix_per_pixel(void);
-extern int MandPhoenixSetup(void);
 extern int long_mandphoenix_per_pixel(void);
 extern int mandphoenix_per_pixel(void);
 extern int HyperComplexFPFractal(void);
 extern int LongPhoenixFractalcplx(void);
 extern int PhoenixFractalcplx(void);
-extern int PhoenixCplxSetup(void);
-extern int MandPhoenixCplxSetup(void);
 extern int (near *floatbailout)(void);
 extern int (near *longbailout)(void);
 extern int (near *bignumbailout)(void);
@@ -589,10 +587,15 @@ extern int long_phoenix_per_pixel(void);
 extern int phoenix_per_pixel(void);
 extern int long_mandphoenix_per_pixel(void);
 extern int mandphoenix_per_pixel(void);
+extern void set_pixel_calc_functions(void);
 
 /*  fractint -- C file prototypes */
 
+#ifdef XFRACT
+extern int main(int argc,char **argv );
+#else
 extern void main(int argc,char **argv );
+#endif
 extern int elapsed_time(int);
 
 /*  framain2 -- C file prototypes */
@@ -606,11 +609,14 @@ extern int pot_line(BYTE *,int );
 extern int sound_line(BYTE *,int );
 extern int sound_line(unsigned char *pixels,int linelen);
 #ifndef XFRACT
-extern int timer(int,int (*subrtn)(),...);
 extern int _cdecl _matherr(struct exception *);
 #else
-extern int timer();
 extern int XZoomWaiting;
+#endif
+#ifndef USE_VARARGS
+extern int timer(int,int (*subrtn)(),...);
+#else
+extern int timer();
 #endif
 
 
@@ -619,6 +625,45 @@ extern void flip_image(int kbdchar);
 extern void reset_zoom_corners(void);
 extern void setup287code(void);
 extern void checkfreemem(int);
+
+/*  frasetup -- C file prototypes */
+
+extern int VLSetup(void);
+extern int MandelSetup(void);
+extern int MandelfpSetup(void);
+extern int JuliaSetup(void);
+extern int NewtonSetup(void);
+extern int StandaloneSetup(void);
+extern int UnitySetup(void);
+extern int JuliafpSetup(void);
+extern int MandellongSetup(void);
+extern int JulialongSetup(void);
+extern int TrigPlusSqrlongSetup(void);
+extern int TrigPlusSqrfpSetup(void);
+extern int TrigPlusTriglongSetup(void);
+extern int TrigPlusTrigfpSetup(void);
+extern int FnPlusFnSym(void);
+extern int ZXTrigPlusZSetup(void);
+extern int LambdaTrigSetup(void);
+extern int JuliafnPlusZsqrdSetup(void);
+extern int SqrTrigSetup(void);
+extern int FnXFnSetup(void);
+extern int MandelTrigSetup(void);
+extern int MarksJuliaSetup(void);
+extern int MarksJuliafpSetup(void);
+extern int SierpinskiSetup(void);
+extern int SierpinskiFPSetup(void);
+extern int StandardSetup(void);
+extern int LambdaTrigOrTrigSetup(void);
+extern int JuliaTrigOrTrigSetup(void);
+extern int ManlamTrigOrTrigSetup(void);
+extern int MandelTrigOrTrigSetup(void);
+extern int HalleySetup(void);
+extern int dynam2dfloatsetup(void);
+extern int PhoenixSetup(void);
+extern int MandPhoenixSetup(void);
+extern int PhoenixCplxSetup(void);
+extern int MandPhoenixCplxSetup(void);
 
 /*  gifview -- C file prototypes */
 
@@ -693,9 +738,11 @@ extern int get_video_mode(struct fractal_info *,struct ext_blk_3 *);
 
 extern int read_overlay(void);
 extern void set_if_old_bif(void);
+extern void set_function_parm_defaults(void);
 extern int fgetwindow(void);
 extern void backwards_v18(void);
 extern void backwards_v19(void);
+extern void backwards_v20(void);
 extern int check_back(void);
 
 /*  loadmap -- C file prototypes */
@@ -737,6 +784,7 @@ extern int ifs(void);
 extern int orbit3dfloat(void);
 extern int orbit3dlong(void);
 extern int iconfloatorbit(double *, double *, double *);  /* dmf */
+extern int latoofloatorbit(double *, double *, double *);  /* hb */
 extern int  setup_convert_to_screen(struct affine *);
 
 /*  lsys -- C file prototypes */
@@ -754,6 +802,7 @@ extern void froth_cleanup(void);
 
 extern void make_batch_file(void);
 extern void shell_to_dos(void);
+extern long fr_farfree(void);
 extern void showfreemem(void);
 extern int edit_text_colors(void);
 extern int select_video_mode(int );
@@ -788,7 +837,7 @@ extern int file_gets(char *,int ,FILE *);
 extern void roundfloatd(double *);
 extern void fix_inversion(double *);
 extern int ungetakey(int);
-extern void get_calculation_time(char *msgout);
+extern void get_calculation_time(char *, long);
 
 /*  mpmath_c -- C file prototypes */
 
@@ -861,6 +910,9 @@ extern void lStkConj(void );
 extern void dStkZero(void );
 extern void mStkZero(void );
 extern void lStkZero(void );
+extern void dStkOne(void );
+extern void mStkOne(void );
+extern void lStkOne(void );
 extern void dStkReal(void );
 extern void mStkReal(void );
 extern void lStkReal(void );
@@ -996,9 +1048,9 @@ extern void NotAFnct(void );
 extern void FnctNotFound(void );
 extern int whichfn(char *,int );
 extern int CvtStk(void);
+extern int fFormula(void );
 #ifndef XFRACT
 extern void (far *isfunct(char *,int ))(void );
-extern int fFormula(void );
 #else
 extern void (far *isfunct(char *,int ))();
 #endif
@@ -1006,7 +1058,8 @@ extern void RecSortPrec(void );
 extern int Formula(void );
 extern int BadFormula(void );
 extern int form_per_pixel(void );
-extern int RunForm(char *);
+extern int frm_get_param_stuff (char * );
+extern int RunForm(char *, int);
 extern int fpFormulaSetup(void );
 extern int intFormulaSetup(void );
 extern void init_misc(void);
@@ -1086,7 +1139,8 @@ extern int putstringcenter(int ,int ,int ,int ,char far *);
 extern void stackscreen(void);
 extern void unstackscreen(void);
 extern void discardscreen(void);
-extern int fullscreen_choice(int options, char far *hdg, char far *hdg2, char far *instr, int numchoices, char far *far *choices, int far *attributes, int boxwidth, int boxdepth, int colwidth, int current, void (*formatitem)(int, char *), char *speedstring, int (*speedprompt)(int, int, int, char *, int), int (*checkkey)(int, int));
+extern int fullscreen_choice(int options, char far *hdg, char far *hdg2, char far *instr, int numchoices, char far *far *choices, int far *attributes, int boxwidth, int boxdepth, int colwidth, int current
+, void (*formatitem)(int, char *), char *speedstring, int (*speedprompt)(int, int, int, char *, int), int (*checkkey)(int, int));
 #ifndef XFRACT /* Unix should have this in string.h */
 extern int strncasecmp(char far *,char far *,int );
 #endif
@@ -1111,7 +1165,7 @@ extern char *despace(char *str);
 
 extern void rotate(int );
 extern void save_palette(void);
-extern void load_palette(void );
+extern int load_palette(void );
 
 /*  slideshw -- C file prototypes */
 
@@ -1119,6 +1173,14 @@ extern int slideshw(void);
 extern int startslideshow(void);
 extern void stopslideshow(void);
 extern void recordshw(int );
+
+/* sound.c file prototypes */
+extern int get_sound_params(void);
+extern void buzzer(int);
+extern int soundon(int);
+extern void soundoff(void);
+extern int initfm(void);
+extern void mute(void);
 
 /*  stereo -- C file prototypes */
 
@@ -1194,6 +1256,8 @@ extern void aspectratio_crop(float ,float );
 extern int init_pan_or_recalc(int );
 extern void _fastcall drawlines(struct coords, struct coords, int, int);
 extern void _fastcall addbox(struct coords);
+extern void clearbox(void);
+extern void dispbox(void);
 
 /*  fractalb.c -- C file prototypes */
 
@@ -1221,6 +1285,65 @@ extern int JuliaZpowerbfFractal(void);
 extern _BFCMPLX *cmplxlog_bf(_BFCMPLX *t, _BFCMPLX *s);
 extern _BFCMPLX *cplxmul_bf( _BFCMPLX *t, _BFCMPLX *x, _BFCMPLX *y);
 extern _BFCMPLX *ComplexPower_bf(_BFCMPLX *t, _BFCMPLX *xx, _BFCMPLX *yy);
+
+/*  memory -- C file prototypes */
+
+extern void DisplayMemory (void);
+extern void DisplayHandle (U16 handle);
+extern int MemoryType (U16 handle);
+extern void InitMemory (void);
+extern void ExitCheck (void);
+extern U16 MemoryAlloc(U16 size, long count, int stored_at);
+extern void MemoryRelease(U16 handle);
+extern int MoveToMemory(BYTE far *buffer,U16 size,long count,long offset,U16 handle);
+extern int MoveFromMemory(BYTE far *buffer,U16 size,long count,long offset,U16 handle);
+extern int SetMemory(int value,U16 size,long count,long offset,U16 handle);
+
+/*  soi -- C file prototypes */
+
+extern void soi (void);
+extern void soi_ldbl (void);
+
+/*
+ *  uclock -- C file prototypes 
+ *  The  uclock_t typedef placed here because uclock.h
+ *  prototype is for DOS version only.
+ */
+typedef unsigned long uclock_t;
+
+extern uclock_t usec_clock(void);
+extern void restart_uclock(void);
+extern void wait_until(int index, uclock_t wait_time);
+
+#ifdef XFRACT
+/*
+ *   general.c -- C file prototypes
+ */
+extern int waitkeypressed(int);
+extern void fix_ranges(int *, int, int);
+extern void decode_evolver_info(struct evolution_info *, int);
+extern void decode_fractal_info(struct fractal_info *, int);
+
+/*
+ *   unix.c -- C file prototypes
+ */
+extern long clock_ticks(void);
+extern int stricmp(char *, char *);
+extern int strnicmp(char *, char *, int);
+extern int memicmp(char *, char *, int);
+extern unsigned short _rotl(unsigned short, short);
+extern int ltoa(long, char *, int);
+extern void ftimex(struct timebx *);
+extern long stackavail(void);
+extern int kbhit(void);
+
+/*
+ *   video.c -- C file prototypes
+ */
+extern void putprompt(void);
+extern void loaddac(void);
+
+#endif
 
 #ifndef DEBUG
 /*#define DEBUG */

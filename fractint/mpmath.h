@@ -49,7 +49,11 @@ extern double     *(*pMP2d)(struct MP )             ;
 
 
 /*** Formula Declarations ***/
+#ifndef XFRACT
 enum MATH_TYPE { D_MATH, M_MATH, L_MATH };
+#else
+enum MATH_TYPE { D_MATH};
+#endif
 extern enum MATH_TYPE MathType;
 
 #define fDiv(x, y, z) (void)((*(long*)&z) = RegDivFloat(*(long*)&x, *(long*)&y))

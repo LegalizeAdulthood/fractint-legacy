@@ -104,9 +104,6 @@
 /* Use startup parameter "debugflag=324" to show debug messages after  */
 /*    compiling with above #define uncommented.  */
 
-/* uncomment this to gen for compiler (IT WORKS!!!)  */
-/*#define COMPILER 1 */
-
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
@@ -118,7 +115,7 @@
 /* global data  */
 struct fls far *pfls = (struct fls far *)0;
 
-#ifndef XFRACT  /* --  */
+#ifndef XFRACT /* --  */
 
 /* not moved to PROTOTYPE.H because these only communicate within
    PARSER.C and other parser modules */
@@ -127,15 +124,12 @@ extern union Arg *Arg1, *Arg2;
 extern double _1_, _2_;
 extern union Arg s[20], far * far *Store, far * far *Load;
 extern int StoPtr, LodPtr, OpPtr;
-extern unsigned vsp, LastOp;
+extern unsigned int vsp, LastOp;
 extern struct ConstArg far *v;
 extern int InitLodPtr, InitStoPtr, InitOpPtr, LastInitOp;
 extern void (far * far *f)(void);
-extern char far compiled_fn_1[];
-extern char far compiled_fn_2[];
 extern JUMP_CONTROL_ST far *jump_control;
 extern int uses_jump, jump_index;
-int fFormula(void);
 
 typedef void OLD_FN(void);  /* old C functions  */
 
@@ -161,6 +155,7 @@ OLD_FN  dStkCeil;
 OLD_FN  dStkTrunc;
 OLD_FN  dStkRound;
 OLD_FN  StkJump, dStkJumpOnTrue, dStkJumpOnFalse;
+OLD_FN  dStkOne;
 
 typedef void (near NEW_FN)(void);  /* new 387-only ASM functions  */
 
@@ -220,6 +215,7 @@ NEW_FN  fStkATanh, fStkATan;
 NEW_FN  fStkCAbs;
 NEW_FN  fStkFloor, fStkCeil, fStkTrunc, fStkRound; /* rounding functions */
 NEW_FN  fStkJump, fStkJumpOnTrue, fStkJumpOnFalse, fStkJumpLabel; /* flow */
+NEW_FN  fStkOne;   /* to support new parser fn.  */
 
 /* check to see if a const is being loaded  */
 /* the really awful hack below gets the first char of the name  */
@@ -230,7 +226,9 @@ NEW_FN  fStkJump, fStkJumpOnTrue, fStkJumpOnFalse, fStkJumpLabel; /* flow */
       (!isalpha(**(((char * far *)x ) - 2 ) ) \
       || (x==&PARM1 && p1const ) \
       || (x==&PARM2 && p2const ) \
-      || (x==&PARM3 && p3const ) )
+      || (x==&PARM3 && p3const ) \
+      || (x==&PARM4 && p4const ) \
+      || (x==&PARM5 && p5const ) )
 
 /* is stack top a real?  */
 #define STACK_TOP_IS_REAL \
@@ -251,6 +249,8 @@ NEW_FN  fStkJump, fStkJumpOnTrue, fStkJumpOnFalse, fStkJumpLabel; /* flow */
 #define PARM1 v[1].a
 #define PARM2 v[2].a
 #define PARM3 v[8].a
+#define PARM4 v[17].a
+#define PARM5 v[18].a
 #define MAX_STACK 8   /* max # of stack register avail  */
 
 #ifdef TESTFP
@@ -261,10 +261,14 @@ int pstopmsg(int x,char far *msg)
       fp = fopen("fpdebug.txt","w");
    if(fp)
    {
+#ifndef XFRACT
       fprintf(fp,"%Fs\n",msg);
+#else
+      fprintf(fp,"%s\n",msg);
+#endif
       fflush(fp);
    }
-   return(x); /* just to quiet warnings */   
+   return(x); /* just to quiet warnings */
 }
 
 #define stopmsg pstopmsg
@@ -356,17 +360,18 @@ int pstopmsg(int x,char far *msg)
 #define FN_JUMP_ON_TRUE  52
 #define FN_JUMP_ON_FALSE 53
 #define FN_JUMP_LABEL    54
+#define FN_ONE           55
 
 
 /* number of "old" functions in the table.  */
 /* these are the ones that the parser outputs  */
 
-#define LAST_OLD_FN   FN_JUMP_LABEL
+#define LAST_OLD_FN   FN_ONE
 #define NUM_OLD_FNS   LAST_OLD_FN + 1
 
 /* total number of functions in the table.  */
 
-#define LAST_FN          FN_JUMP_LABEL
+#define LAST_FN          FN_ONE
 #define NUM_FNS          LAST_FN + 1
 
 static unsigned char
@@ -376,7 +381,9 @@ static unsigned char
    lastsqrreal,  /* was lastsqr stored explicitly in the formula?  */
    p1const,      /* is p1 a constant?  */
    p2const,      /* ...and p2?  */
-   p3const;      /* ...and p3?  */
+   p3const,      /* ...and p3?  */
+   p4const,      /* ...and p4?  */
+   p5const;      /* ...and p5?  */
 
 static unsigned int
    cvtptrx;      /* subscript of next free entry in pfls  */
@@ -461,128 +468,13 @@ struct fn_entry {
    {FNAME("Jump",        StkJump,         fStkJump,       0, 0, 0)},/* 51  */
    {FNAME("JumpOnTrue",  dStkJumpOnTrue,  fStkJumpOnTrue, 2, 0, 0)},/* 52  */
    {FNAME("JumpOnFalse", dStkJumpOnFalse, fStkJumpOnFalse,2, 0, 0)},/* 53  */
-   {FNAME("JumpLabel",   StkJumpLabel,    fStkJumpLabel,  0, 0, 0)} /* 54  */
+   {FNAME("JumpLabel",   StkJumpLabel,    fStkJumpLabel,  0, 0, 0)},/* 54  */
+   {FNAME("One",     dStkOne,     fStkOne,    2, 0,  0) }           /* 55  */
 };
-
-#ifdef COMPILER
-struct fn_header {
-   unsigned int fn_size;  /* size of function code in bytes  */
-   char near *pcode;      /* pointer to actual code  */
-   char near *incl_addr;  /* addr of included fn (offset from seg base)  */
-   char x_fixup;          /* offset of any x fixup (-1 if none)  */
-   char y_fixup;          /* "      "  "   y "      "  "   "     */
-   char incl_offset;      /* "      "  included fn. "  "   "     */
-};
-#endif  /* COMPILER  */
 
 #ifdef TESTFP
 static char cDbgMsg[255];
 #endif  /* TESTFP  */
-
-
-#ifdef COMPILER
-
-static int near fIncl_fn(char far *pcIncl, char far *pcTarget ){
-
-   int i, iIncl_len = *(int far *)pcIncl & 0x007f;  /* max 127  */
-
-   for (i=0, pcIncl+=2; i<iIncl_len; i++ ){
-      *pcTarget++ = *pcIncl++;
-   }
-
-   return iIncl_len;
-}
-
-static int near fNormal_fn(struct fn_header far *psIn, char far *pcTarget,
-      char near *npcOperand ){
-
-   int i;  /* temp loop variable (offset into src fn)  */
-   int iBytesCopied;  /* another temp  */
-   int iCount = 0;  /* count of bytes copied to target  */
-   long lSegment = (long)compiled_fn_1 & 0xFFFF0000L;
-   int iCodeSize = psIn->fn_size & 0x007f;  /* max 127 bytes  */
-   char far *pcCode;
-
-   pcCode = (char far *)((long)lSegment | (int)(psIn->pcode) );
-
-   for (i=0; i<iCodeSize; i++){
-      if (i == psIn->incl_offset ){
-         DBUGMSG(0, "Including a function" );
-         if (*pcCode == -1 ){  /* sanity check  */
-            iBytesCopied = fIncl_fn(
-                  (char far *)(lSegment | (unsigned int)(psIn->incl_addr )),
-                  pcTarget );
-            pcTarget += iBytesCopied;
-            pcCode++;  /* to skip 1-byte placeholder  */
-            iCount += iBytesCopied;
-         }
-         else {
-            DBUGMSG(0, "Unexpected error, incl_placeholder != -1" );
-         }
-      }
-      else if (i == psIn->x_fixup || i == psIn->y_fixup ){
-         if (i == psIn->x_fixup ){
-            DBUGMSG(0, "X fixup" );
-            *(char near * far *)pcTarget = npcOperand;
-         }
-         else {
-            DBUGMSG(0, "Y fixup" );
-            *(char near * far *)pcTarget = npcOperand + sizeof(double);
-         }
-         pcTarget+=2, pcCode+=2;  /* two bytes copied from src to target  */
-         i++;  /* two bytes were taken from source instead of one  */
-         iCount += 2;
-      }
-      else {
-         *pcTarget++ = *pcCode++;
-         iCount++;
-      }
-   }
-
-   return iCount;
-}
-
-static void near fCompile(void){
-
-   int i;
-   struct fn_header far *pfnh;
-   long lSegment = (long)compiled_fn_1 & 0xFFFF0000L;
-   char far *pcTarget;
-
-   for (i=0,pcTarget=compiled_fn_1; i<cvtptrx; i++ ){
-      pfnh = (struct fn_header far *)
-             (lSegment | (unsigned int)(pfls[i].function));
-      if (pfnh->fn_size & 0x8000 ){
-         /* Normal function  */
-         pcTarget += fNormal_fn(pfnh, pcTarget, (char near *)pfls[i].operand );
-      }
-      else {
-         pcTarget += fIncl_fn((char far *)pfnh, pcTarget );
-      }
-      if (pfls[i].function == fStkEndInit ){
-         *pcTarget++ = '\xC3';  /* opcode for near return  */
-         break;
-      }
-   }
-
-   for (i++,pcTarget=compiled_fn_2; i<cvtptrx; i++ ){
-      pfnh = (struct fn_header far *)
-             (lSegment | (unsigned int)(pfls[i].function));
-      if (pfnh->fn_size & 0x8000 ){
-         pcTarget +=
-               fNormal_fn(pfnh, pcTarget, (char near *)pfls[i].operand );
-      }
-      else {
-         pcTarget += fIncl_fn((char far *)pfnh, pcTarget );
-      }
-   }
-   *pcTarget++ = '\xC3';  /* near return at end of fn  */
-
-   return;
-}
-
-#endif /* COMPILER  */
-
 
 static int CvtFptr(void (near * ffptr)(void), int MinStk, int FreeStk,
       int Delta )
@@ -1315,7 +1207,7 @@ int fpfill_jump_struct(void)
   /* On entry, jump_index is the number of jump functions in the formula*/
    int i = 0;
    int checkforelse = 0;
-   NEW_FN near * JumpFunc;
+   NEW_FN near * JumpFunc = NULL;
    int find_new_func = 1;
    JUMP_PTRS_ST jump_data[MAX_JUMPS];
 
@@ -1377,6 +1269,7 @@ int CvtStk() {  /* convert the array of ptrs  */
 
    lastsqrreal = 1;  /* assume lastsqr is real (not stored explicitly)  */
    p1const = p2const = p3const = (unsigned char)1;  /* . . . p1, p2, p3 const  */
+   p4const = p5const = (unsigned char)1;  /* . . . p4, p5 const  */
    lastsqrused = 0;  /* ... and LastSqr is not used  */
 
    /* now see if the above assumptions are true */
@@ -1398,6 +1291,12 @@ int CvtStk() {  /* convert the array of ptrs  */
          else if (testoperand == &PARM3 ){
             p3const = 0;
          }
+         else if (testoperand == &PARM4 ){
+            p4const = 0;
+         }
+         else if (testoperand == &PARM5 ){
+            p5const = 0;
+         }
          else if (testoperand == &LASTSQR ){
             lastsqrreal = 0;
          }
@@ -1412,6 +1311,12 @@ int CvtStk() {  /* convert the array of ptrs  */
    }
    if (!p3const) {
       DBUGMSG(0, "p3 not constant" );
+   }
+   if (!p4const) {
+      DBUGMSG(0, "p4 not constant" );
+   }
+   if (!p5const) {
+      DBUGMSG(0, "p5 not constant" );
    }
    if (lastsqrused) {
       DBUGMSG(0, "LastSqr loaded" );
@@ -1446,11 +1351,19 @@ int CvtStk() {  /* convert the array of ptrs  */
                DBUGMSG(0, "IDENT was skipped" );
             }
             else {
+#ifndef XFRACT
                DBUGMSG4(0, "fn=%Fs, minstk=%1i, freestk=%1i, delta=%3i",
                      pfe->fname,
                      (int)(pfe->min_regs),
                      (int)(pfe->free_regs),
                      (int)(pfe->delta) );
+#else
+               DBUGMSG4(0, "fn=%s, minstk=%1i, freestk=%1i, delta=%3i",
+                     pfe->fname,
+                     (int)(pfe->min_regs),
+                     (int)(pfe->free_regs),
+                     (int)(pfe->delta) );
+#endif
                if (!CvtFptr(ntst,
                       pfe->min_regs,
                       pfe->free_regs,
@@ -1538,9 +1451,6 @@ skipfinalopt:  /* -------------- end of final optimizations ------------ */
       curfractalspecific->orbitcalc = BadFormula;
    }
 
-#ifdef COMPILER
-   fCompile();
-#endif
    Img_Setup();  /* call assembler setup code  */
    return 1;
 }

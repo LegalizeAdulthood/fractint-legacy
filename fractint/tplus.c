@@ -158,7 +158,7 @@ int TPlusLUT(BYTE far *LUTData, unsigned Index, unsigned Number,
 }
 
 int SetVGA_LUT(void) {
-   char PathName[80];
+   char PathName[FILE_MAX_PATH];
    FILE *Data = NULL;
    BYTE LUTData[256 * 3];
 
@@ -324,7 +324,7 @@ int CheckForTPlus(void) {
 
 int SetTPlusMode(int Mode, int NotIntFlag, int Depth, int Zoom) {
    unsigned n;
-   char PathName[80];
+   char PathName[FILE_MAX_PATH];
    FILE *Data = NULL;
    unsigned NewRegs[128];
 

@@ -6,12 +6,17 @@
 #include <ctype.h>
 #include <time.h>
 #include <malloc.h>
+
 #ifndef XFRACT
-#include <stdarg.h>
 #include <io.h>
+#endif
+
+#ifndef USE_VARARGS
+#include <stdarg.h>
 #else
 #include <varargs.h>
 #endif
+
 /*#ifdef __TURBOC__
 #include <dir.h>
 #endif  */
@@ -140,8 +145,8 @@ int putstringwrap(int *row,int col1,int col2,int color,char far *str,int maxrow)
     return(done);
 }
 
-#define rad_to_deg(x) ((x)*(180/PI)) /* most people "think" in degrees */
-#define deg_to_rad(x) ((x)*(PI/180))
+#define rad_to_deg(x) ((x)*(180.0/PI)) /* most people "think" in degrees */
+#define deg_to_rad(x) ((x)*(PI/180.0))
 /*
 convert corners to center/mag
 Rotation angles indicate how much the IMAGE has been rotated, not the
@@ -164,9 +169,9 @@ void cvtcentermag(double *Xctr, double *Yctr, LDBL *Magnification, double *Xmagf
    { /* no rotation or skewing, but stretching is allowed */
       Width  = xxmax - xxmin;
       Height = yymax - yymin;
-      *Xctr = (xxmin + xxmax)/2;
-      *Yctr = (yymin + yymax)/2;
-      *Magnification  = 2/Height;
+      *Xctr = (xxmin + xxmax)/2.0;
+      *Yctr = (yymin + yymax)/2.0;
+      *Magnification  = 2.0/Height;
       *Xmagfactor =  Height / (DEFAULTASPECT * Width);
       *Rotation = 0.0;
       *Skew = 0.0;
@@ -191,14 +196,14 @@ void cvtcentermag(double *Xctr, double *Yctr, LDBL *Magnification, double *Xmagf
       b = sqrt(b2);
    
       tmpa = acos((a2+b2-c2)/(2*a*b)); /* save tmpa for later use */
-      *Skew = 90 - rad_to_deg(tmpa);
+      *Skew = 90.0 - rad_to_deg(tmpa);
    
-      *Xctr = (xxmin + xxmax)/2;
-      *Yctr = (yymin + yymax)/2;
+      *Xctr = (xxmin + xxmax)*0.5;
+      *Yctr = (yymin + yymax)*0.5;
    
       Height = b * sin(tmpa);
    
-      *Magnification  = 2/Height; /* 1/(h/2) */
+      *Magnification  = 2.0/Height; /* 1/(h/2) */
       *Xmagfactor = Height / (DEFAULTASPECT * a);
    
       /* if vector_a cross vector_b is negative */
@@ -310,7 +315,7 @@ void cvtcentermagbf(bf_t Xctr, bf_t Yctr, LDBL *Magnification, double *Xmagfacto
    LDBL Width, Height;
    LDBL a, b; /* bottom, left, diagonal */
    LDBL a2, b2, c2; /* squares of above */
-   LDBL tmpx1, tmpx2, tmpy, tmpy1, tmpy2 ;
+   LDBL tmpx1, tmpx2, tmpy=0.0, tmpy1, tmpy2 ;
    double tmpa; /* temporary x, y, angle */
    bf_t bfWidth, bfHeight;
    bf_t bftmpx, bftmpy;
@@ -520,8 +525,6 @@ void updatesavename(char *filename) /* go to the next file name */
 
    splitpath(filename ,drive,dir,fname,ext);
 
-   suffix[0] = 0;
-
    hold = fname + strlen(fname) - 1; /* start at the end */
    while(hold >= fname && (*hold == ' ' || isdigit(*hold))) /* skip backwards */
       hold--;
@@ -546,7 +549,7 @@ void updatesavename(char *filename) /* go to the next file name */
 int check_writefile(char *name,char *ext)
 {
  /* after v16 release, change encoder.c to also use this routine */
-   char openfile[80];
+   char openfile[FILE_MAX_DIR];
    char opentype[20];
  /* int i; */
    char *period;
@@ -706,6 +709,7 @@ static FCODE sfloating_point[] =   {"Floating-point"};
 static FCODE ssolid_guessing[] =   {"Solid Guessing"};
 static FCODE sboundary_tracing[] = {"Boundary Tracing"};
 static FCODE stesseral[] =         {"Tesseral"};
+static FCODE sdiffusion[] =        {"Diffusion"};
 static FCODE scalculation_time[] = {"Calculation time:"};
 static FCODE siterations[] =       {" 1000's of points:"};
 static FCODE scornersxy[] =        {"Corners:                X                     Y"};
@@ -734,7 +738,11 @@ static FCODE sflag_is_activated[] = {" flag is activated"};
 static FCODE sinteger_math[]      = {"Integer math is in use"};
 static FCODE sin_use_required[] = {" in use (required)"};
 static FCODE sarbitrary_precision[] = {"Arbitrary precision "};
+#ifdef XFRACT
+static FCODE spressanykey[] = {"Press any key to continue, F6 for area, F7 for next page"};
+#else
 static FCODE spressanykey[] = {"Press any key to continue, F6 for area, CTRL-TAB for next page"};
+#endif
 static FCODE spressanykey1[] = {"Press Esc to continue, Backspace for first screen"};
 static FCODE sbatch[] = {" (Batch mode)"};
 static FCODE ssavename[] = {"Savename: "};
@@ -742,12 +750,12 @@ static FCODE sstopsecret[] = {"Top Secret Developer's Screen"};
 static FCODE sthreepass[] = {" (threepass)"};
 static FCODE sreallylongtime[] = {"A long time! (> 24.855 days)"};
 
-void get_calculation_time(char *msg)
+void get_calculation_time(char *msg, long ctime)
 {
-   if (calctime >= 0)
+   if (ctime >= 0)
    {
-      sprintf(msg,"%3ld:%02ld:%02ld.%02ld", calctime/360000L,
-             (calctime%360000L)/6000, (calctime%6000)/100, calctime%100);
+      sprintf(msg,"%3ld:%02ld:%02ld.%02ld", ctime/360000L,
+	     (ctime%360000L)/6000, (ctime%6000)/100, ctime%100);
    }
    else
       far_strcpy(msg,sreallylongtime);
@@ -775,7 +783,7 @@ int tab_display_2(char *msg)
    putstringcenter(s_row++,0,80,C_PROMPT_HI, sstopsecret);
    sprintf(msg,"Version %d patch %d",release, patchlevel);
    putstring(++s_row,2,C_GENERAL_HI,msg);
-   sprintf(msg,"%u bytes conventional stack free",stackavail());
+   sprintf(msg,"%lu bytes conventional stack free",stackavail());
    putstring(++s_row,2,C_GENERAL_HI,msg);
    sprintf(msg,"%ld of %ld bignum memory used",maxptr,maxstack);
    putstring(++s_row,2,C_GENERAL_HI,msg);
@@ -806,35 +814,57 @@ int tab_display_2(char *msg)
    putstring(s_row++,2,C_GENERAL_HI,msg);
    sprintf(msg,"calc_status %d pixel [%d,%d]",calc_status,col,row);
    putstring(s_row++,2,C_GENERAL_HI,msg);
+   if(fractype==FORMULA || fractype==FFORMULA)
+   {
    sprintf(msg,"total_formula_mem %ld Max_Ops (posp) %u Max_Args (vsp) %u Used_extra %u",
       total_formula_mem,posp,vsp,used_extra);
    putstring(s_row++,2,C_GENERAL_HI,msg);
    sprintf(msg,"   Store ptr %d Loadptr %d Max_Ops var %u Max_Args var %u LastInitOp %d",
       StoPtr,LodPtr,Max_Ops,Max_Args,LastInitOp);
    putstring(s_row++,2,C_GENERAL_HI,msg);
+   }
+   else if(rhombus_stack[0])
+   {
+   sprintf(msg,"SOI Recursion %d stack free %d %d %d %d %d %d %d %d %d %d",
+      max_rhombus_depth+1,
+      rhombus_stack[0],
+      rhombus_stack[1],
+      rhombus_stack[2],
+      rhombus_stack[3],
+      rhombus_stack[4],
+      rhombus_stack[5],
+      rhombus_stack[6],
+      rhombus_stack[7],
+      rhombus_stack[8],
+      rhombus_stack[9]);
+   putstring(s_row++,2,C_GENERAL_HI,msg);
+   }
+   
+/*
    sprintf(msg,"xdots %d ydots %d sxdots %d sydots %d",xdots,ydots,sxdots,sydots);
    putstring(s_row++,2,C_GENERAL_HI,msg);
-   sprintf(msg,"xxstart %d xxstop %d yystart %d yystop %d %s ",
+*/
+   sprintf(msg,"xxstart %d xxstop %d yystart %d yystop %d %s uses_ismand %d",
       xxstart,xxstop,yystart,yystop,
 #ifndef XFRACT
       curfractalspecific->orbitcalc == fFormula?"fast parser":
 #endif
       curfractalspecific->orbitcalc ==  Formula?"slow parser":
       curfractalspecific->orbitcalc ==  BadFormula?"bad formula":
-      "");
+      "",uses_ismand);
    putstring(s_row++,2,C_GENERAL_HI,msg);
 /*
    sprintf(msg,"ixstart %d ixstop %d iystart %d iystop %d bitshift %d",
       ixstart,ixstop,iystart,iystop,bitshift);
 */
    {
-      extern long max_nextentry;
-      sprintf(msg,"max_nextentry %ld",max_nextentry);
+      sprintf(msg,"minstackavail %d llimit2 %ld use_grid %d",
+         minstackavail,llimit2,use_grid);
    }
    putstring(s_row++,2,C_GENERAL_HI,msg);
    putstringcenter(24,0,80,C_GENERAL_LO,spressanykey1);
    *msg = 0;
-again: 
+again:
    putstring(s_row,2,C_GENERAL_HI,msg);
    key=getakeynohelp();
    if(key != ESC && key != BACKSPACE && key != TAB)
@@ -859,6 +889,10 @@ int tab_display()       /* display the status of the current image */
    int key;
    int saved=0;
    int dec;
+   int k;
+   U16 save_extra_handle = 0;
+   BYTE far *ptr_to_extraseg = NULL;
+   int hasformparam = 0;
 
    if (calc_status < 0) {       /* no active fractal image */
       return(0);                /* (no TAB on the credits screen) */
@@ -868,11 +902,23 @@ int tab_display()       /* display the status of the current image */
    stackscreen();
    if(bf_math)
    {
+   /* Save memory from the beginning of extraseg to ENDVID=22400 */
+   /* This is so the bf_math manipulations here don't corrupt */
+   /* the video modes or screen prompts. */
+      ptr_to_extraseg = MK_FP(extraseg,0);
+      save_extra_handle = MemoryAlloc((U16)22400, 1L, FARMEM);
+      MoveToMemory(ptr_to_extraseg,(U16)22400,1L,0L,save_extra_handle);
       saved = save_stack();
       bfXctr = alloc_stack(bflength+2);
       bfYctr = alloc_stack(bflength+2);
    }
+   if (fractype == FORMULA || fractype == FFORMULA)
+      for (i = 0; i < MAXPARAMS; i += 2)
+          if (!paramnotused(i))
+             hasformparam++;
 top:
+   k = 0; /* initialize here so parameter line displays correctly on return
+             from control-tab */
    helptitle();
    setattr(1,0,C_GENERAL_MED,24*80); /* init rest to background */
    s_row = 2;
@@ -1009,8 +1055,18 @@ top:
          case 4:
             putstring(s_row,2,C_GENERAL_HI,stesseral);
             break;
+         case 5:
+            putstring(s_row,2,C_GENERAL_HI,sdiffusion);
+            break;
          }
       ++s_row;
+      if (got_status == 5 ) {
+         sprintf(msg,"%2.2f%% done, counter at %lu of %lu (%u bits)",
+                 (100.0 * dif_counter)/dif_limit,
+                 dif_counter,dif_limit,bits);
+         putstring(s_row,2,C_GENERAL_MED,msg);
+         ++s_row;
+      } else
       if (got_status != 3) {
          sprintf(msg,"Working on block (y,x) [%d,%d]...[%d,%d], ",
                 yystart,xxstart,yystop,xxstop);
@@ -1041,8 +1097,13 @@ top:
          }
       }
    putstring(s_row,2,C_GENERAL_MED,scalculation_time);
-   get_calculation_time(msg);
+   get_calculation_time(msg,calctime);
    putstring(-1,-1,C_GENERAL_HI,msg);
+   if ((got_status == 5) && (calc_status == 1)) { /* estimate total time */
+      putstring(-1,-1,C_GENERAL_MED," estimated total time: ");
+      get_calculation_time( msg,(long)(calctime*((dif_limit*1.0)/dif_counter)) );
+   putstring(-1,-1,C_GENERAL_HI,msg);
+   }
 
    if ((curfractalspecific->flags&INFCALC) && (coloriter != 0)) {
       putstring(s_row,-1,C_GENERAL_MED,siterations);
@@ -1139,21 +1200,22 @@ top:
 
    }
    }
-   for (i = 0; i < MAXPARAMS; i++)
+
+   if(typehasparm(fractype,0,msg) || hasformparam)
+    for (i = 0; i < MAXPARAMS; i++)
    {
-      char *p;
       int col;
-      p = typehasparm(fractype,i);
-      if(i%4 == 0)
+      char p[50];
+      if(typehasparm(fractype,i,p))
       {
-         s_row++;
-         col = 9;
-      }
-      else
-         col = -1;
-      if(p)
-      {
-         if(i==0)
+         if(k%4 == 0)
+         {
+            s_row++;
+            col = 9;
+         }
+         else
+            col = -1;
+         if(k == 0) /* only true with first displayed parameter */
             putstring(++s_row,2,C_GENERAL_MED,sparams);
          sprintf(msg,"%3d: ",i+1);
          putstring(s_row,col,C_GENERAL_MED,msg);
@@ -1164,6 +1226,7 @@ top:
          else
             sprintf(msg,"%-12.9f",param[i]);
          putstring(-1,-1,C_GENERAL_HI,msg);
+         k++;
       }
    }
    putstring(s_row+=2,2,C_GENERAL_MED,siteration_maximum);
@@ -1208,14 +1271,19 @@ top:
 /*       goto waitforkey;*/
         goto top;
    }
-   else if(key==CTL_TAB) {
+   else if(key==CTL_TAB || key==BACK_TAB || key==F7) {
       if(tab_display_2(msg))
          goto top;
    }
    unstackscreen();
    timer_start = clock_ticks(); /* tab display was "time out" */
    if(bf_math)
+   {
       restore_stack(saved);
+      MoveFromMemory(ptr_to_extraseg,(U16)22400,1L,0L,save_extra_handle);
+      MemoryRelease(save_extra_handle);
+      save_extra_handle = 0;
+   }
    return(0);
 }
 
@@ -1390,27 +1458,30 @@ int find_file_item(char *filename,char *itemname,FILE **fileptr, int itemtype)
    char defaultextension[5];
 
 
-   if((infile=fopen(filename, "rb")) != NULL) {
-      if(scan_entries(infile, NULL, itemname) == -1) {
-         found = 1;
-      }
-      else {
-         fclose(infile);
-         infile = NULL;
-      }
-   }
-
    splitpath(filename,drive,dir,fname,ext);
    makepath(fullpath,"","",fname,ext);
-   if(!found && checkcurdir) {
-      if((infile=fopen(fullpath, "rb")) != NULL) {
+   if(stricmp(filename, CommandFile)) {
+      if((infile=fopen(filename, "rb")) != NULL) {
          if(scan_entries(infile, NULL, itemname) == -1) {
-            strcpy(filename, fullpath);
             found = 1;
          }
          else {
             fclose(infile);
             infile = NULL;
+         }
+      }
+
+      if(!found && checkcurdir) {
+         makepath(fullpath,"",DOTSLASH,fname,ext);
+         if((infile=fopen(fullpath, "rb")) != NULL) {
+            if(scan_entries(infile, NULL, itemname) == -1) {
+               strcpy(filename, fullpath);
+               found = 1;
+            }
+            else {
+               fclose(infile);
+               infile = NULL;
+            }
          }
       }
    }
@@ -1438,12 +1509,14 @@ int find_file_item(char *filename,char *itemname,FILE **fileptr, int itemtype)
          splitpath(searchfor.ifs,drive,dir,NULL,NULL);
          break;
       default:
+         strcpy(parsearchname, itemname);
+         parsearchname[ITEMNAMELEN + 5] = (char) 0; /*safety*/
          strcpy(defaultextension, ".par");
          splitpath(searchfor.par,drive,dir,NULL,NULL);
          break;
    }
 
-   if(!found && itemtype) {
+   if(!found) {
       if((infile=fopen(CommandFile, "rb")) != NULL) {
          if(scan_entries(infile, NULL, parsearchname) == -1) {
             strcpy(filename, CommandFile);
@@ -1469,7 +1542,6 @@ int find_file_item(char *filename,char *itemname,FILE **fileptr, int itemtype)
          }
       }
    }
-
 
    if(!found) {  /* search for file */
       int out;
@@ -1504,6 +1576,44 @@ int find_file_item(char *filename,char *itemname,FILE **fileptr, int itemtype)
       }
       cleartempmsg();
    }
+
+   if (!found && orgfrmsearch && itemtype == 1) {
+      splitpath(orgfrmdir,drive,dir,NULL,NULL);
+      fname[0] = '_';
+      fname[1] = (char) 0;
+      if (isalpha(itemname[0])) {
+         if (strnicmp(itemname, "carr", 4)) {
+            fname[1] = itemname[0];
+            fname[2] = (char) 0;
+         }
+         else if (isdigit(itemname[4])) {
+            strcat(fname, "rc");
+            fname[3] = itemname[4];
+            fname[4] = (char) 0;
+         }
+         else {
+            strcat(fname, "rc");
+         }
+      }
+      else if (isdigit(itemname[0])) {
+         strcat(fname, "num");
+      }
+      else {
+         strcat(fname, "chr");
+      }
+      makepath(fullpath,drive,dir,fname,defaultextension);
+      if((infile=fopen(fullpath, "rb")) != NULL) {
+         if(scan_entries(infile, NULL, itemname) == -1) {
+            strcpy(filename, fullpath);
+            found = 1;
+         }
+         else {
+            fclose(infile);
+            infile = NULL;
+         }
+      }
+   }
+
    if(!found) {
       sprintf(fullpath,"'%s' file entry item not found",itemname);
       stopmsg(0,fullpath);
@@ -1653,3 +1763,5 @@ double fixtan( double x )
 #define tan fixtan
 #endif
 #endif
+
+

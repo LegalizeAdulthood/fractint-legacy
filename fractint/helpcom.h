@@ -180,6 +180,7 @@ int process_document(PD_FUNC get_info, PD_FUNC output, VOIDPTR info);
  * This routine is needed because this program uses unaligned 2 byte
  * pointers all over the place.
  */
+int
 getint(ptr)
 char *ptr;
 {

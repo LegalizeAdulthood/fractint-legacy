@@ -136,6 +136,26 @@ unsigned short prefix[MAX_CODES + 1];   /* Prefix linked list */
 BYTE decoderline[2];            /* decoded line goes here */
 #endif
 
+/* avoid using fixed near arrays by enabling next */
+#if 0
+BYTE far dstack1[MAX_CODES + 1];     /* Stack for storing pixels */
+#define dstack dstack1
+#endif
+
+#if 0 /* remove this when suffix no longer used in diskvid.c */
+BYTE far suffix1[MAX_CODES + 1];     /* Suffix table */
+#define suffix suffix1
+#endif
+
+#if 0
+unsigned short far prefix1[MAX_CODES + 1];   /* Prefix linked list */
+#define prefix prefix1
+#endif
+
+/* for the time being, use a pointer to a buffer in the gifview stack */
+extern BYTE *decoderline1;
+#define decoderline decoderline1
+
 /* The reason we have these separated like this instead of using
  * a structure like the original Wilhite code did, is because this
  * stuff generally produces significantly faster code when compiled...
@@ -164,18 +184,16 @@ BYTE decoderline[2];            /* decoded line goes here */
  * Returns: 0 if successful, else negative.  (See ERRS.H)
  *
  */
-#ifndef XFRACT
+
 /* moved sizeofstring here for possible re-use elsewhere */
 short far sizeofstring[MAX_CODES + 1];  /* size of string list */
-#endif
 
 short decoder(short linewidth)
 {
 #ifdef XFRACT
    U16 prefix[MAX_CODES+1];     /* Prefix linked list */
-   short sizeofstring[MAX_CODES + 1];   /* size of string list */
 #endif
-   BYTE *sp;
+   BYTE far *sp;
    short code;
    short old_code;
    short ret;

@@ -24,10 +24,10 @@ int disk16bit = 0;         /* storing 16 bit values for continuous potential */
 
 static int timetodisplay;
 static FILE *fp = NULL;
-static int disktarga;
+int disktarga;
 
-#define BLOCKLEN 64     /* must be a power of 2, must match next */
-#define BLOCKSHIFT 6    /* must match above */
+#define BLOCKLEN 2048   /* must be a power of 2, must match next */
+#define BLOCKSHIFT 11   /* must match above */
 #define CACHEMIN 4      /* minimum cache size in Kbytes */
 #define CACHEMAX 64     /* maximum cache size in Kbytes */
 #define FREEMEM  33     /* try to leave this much far memory unallocated */
@@ -41,51 +41,30 @@ static struct cache {   /* structure of each cache entry */
    unsigned int lru : 1;           /* recently used? */
    } far *cache_end, far *cache_lru, far *cur_cache;
 
-static struct cache far *cache_start = NULL;
-static long high_offset;           /* highwater mark of writes */
-static long seek_offset;           /* what we'll get next if we don't seek */
-static long cur_offset;            /* offset of last block referenced */
-static int cur_row;
-static long cur_row_base;
-static unsigned int far *hash_ptr = NULL;
-static int pixelshift;
-static int headerlength;
-static unsigned int rowsize = 0;   /* doubles as a disk video not ok flag */
-static unsigned int colsize;       /* sydots, *2 when pot16bit */
+struct cache far *cache_start = NULL;
+long high_offset;           /* highwater mark of writes */
+long seek_offset;           /* what we'll get next if we don't seek */
+long cur_offset;            /* offset of last block referenced */
+int cur_row;
+long cur_row_base;
+unsigned int far *hash_ptr = NULL;
+int pixelshift;
+int headerlength;
+unsigned int rowsize = 0;   /* doubles as a disk video not ok flag */
+unsigned int colsize;       /* sydots, *2 when pot16bit */
 
-static BYTE far *charbuf = NULL;   /* currently used only with XMM */
-
-/* For expanded memory: */
-static BYTE far *expmemoryvideo;
-static int oldexppage,expoffset;
-static unsigned int emmhandle = 0;
-
-/* For extended memory: */
-static unsigned int xmmhandle = 0;
-static long extoffset;
-static BYTE far *extbufptr, far *endreadbuf, far *endwritebuf;
-#define XMMREADLEN 64   /* amount transferred from extended mem at once */
-#define XMMWRITELEN 256 /* max amount transferred to extended mem at once,
-                           must be a factor of 1024 and >= XMMREADLEN */
+BYTE far *membuf;
+U16 dv_handle = 0;
+long memoffset = 0;
+long oldmemoffset = 0;
+BYTE far *membufptr;
 
 static void _fastcall near findload_cache(long);
 static struct cache far * _fastcall near find_cache(long);
 static void near write_cache_lru(void);
-static void (_fastcall near *put_char)(BYTE);
-static void _fastcall near disk_putc(BYTE);
-static void _fastcall near exp_putc(BYTE);
-static void _fastcall near ext_putc(BYTE);
-static BYTE (near *get_char)(void);
-static BYTE near disk_getc(void);
-static BYTE near exp_getc(void);
-static BYTE near ext_getc(void);
-static void (_fastcall near *doseek)(long);
-static void _fastcall near disk_seek(long);
-static void _fastcall near exp_seek(long);
-static void _fastcall near ext_seek(long);
-
-int made_dsktemp = 0;
-char diskfilename[] = {"FRACTINT.$$$"};
+static void _fastcall near mem_putc(BYTE);
+static BYTE near mem_getc(void);
+static void _fastcall near mem_seek(long);
 
 int startdisk()
 {
@@ -123,43 +102,49 @@ int targa_startdisk(FILE *targafp,int overhead)
    headerlength = overhead;
    fp = targafp;
    disktarga = 1;
+   /*
    i = common_startdisk(sxdots*3,sydots,colors);
+   */
+   i = common_startdisk(xdots*3,ydots,colors);
    high_offset = 100000000L; /* targa not necessarily init'd to zeros */
    return (i);
 }
 
 int _fastcall common_startdisk(long newrowsize, long newcolsize, int colors)
 {
-   int i,success,freemem;
-   long memorysize;
+   int i,freemem;
+   long memorysize, offset;
    unsigned int far *fwd_link = NULL;
    struct cache far *ptr1 = NULL;
    long longtmp;
    unsigned int cache_size;
-   int exppages;
-   struct XMM_Move MoveStruct;
    BYTE far *tempfar = NULL;
-   success = 0;
    if (diskflag)
       enddisk();
    if (dotmode == 11) { /* otherwise, real screen also in use, don't hit it */
       char buf[20];
+      static FCODE fmsg1[] = {"'Disk-Video' mode"};
+      static FCODE fmsg2[] = {"Screen resolution: "};
+      static FCODE stat[] = {"Status:"};
       helptitle();
       setattr(1,0,C_DVID_BKGRD,24*80);  /* init rest to background */
       for (i = 0; i < BOXDEPTH; ++i)
          setattr(BOXROW+i,BOXCOL,C_DVID_LO,BOXWIDTH);  /* init box */
-      putstring(BOXROW+2,BOXCOL+4,C_DVID_HI,"'Disk-Video' mode");
-      putstring(BOXROW+4,BOXCOL+4,C_DVID_LO,"Screen resolution: ");
+      putstring(BOXROW+2,BOXCOL+4,C_DVID_HI,fmsg1);
+      putstring(BOXROW+4,BOXCOL+4,C_DVID_LO,fmsg2);
       sprintf(buf,"%d x %d",sxdots,sydots);
       putstring(-1,-1,C_DVID_LO,buf);
-      if (disktarga)
-         putstring(-1,-1,C_DVID_LO,"  24 bit Targa");
+      if (disktarga) {
+         static FCODE tarmsg[] = {"  24 bit Targa"};
+         putstring(-1,-1,C_DVID_LO,tarmsg);
+         }
       else {
-         putstring(-1,-1,C_DVID_LO,"  Colors: ");
+         static FCODE clrmsg[] = {"  Colors: "};
+         putstring(-1,-1,C_DVID_LO,clrmsg);
          sprintf(buf,"%d",colors);
          putstring(-1,-1,C_DVID_LO,buf);
          }
-      putstring(BOXROW+8,BOXCOL+4,C_DVID_LO,"Status:");
+      putstring(BOXROW+8,BOXCOL+4,C_DVID_LO,stat);
       {
       static FCODE o_msg[] = {"clearing the 'screen'"};
       char msg[sizeof(o_msg)];
@@ -179,17 +164,15 @@ int _fastcall common_startdisk(long newrowsize, long newcolsize, int colors)
          --pixelshift;
          }
       }
-   timetodisplay = 1000;  /* time-to-display-status counter */
+   if(bf_math)
+      timetodisplay = 10;  /* time-to-display-status counter */
+   else
+      timetodisplay = 1000;  /* time-to-display-status counter */
 
    /* allocate cache: try for the max; leave FREEMEMk free if we can get
       that much or more; if we can't get that much leave 1/2 of whatever
       there is free; demand a certain minimum or nogo at all */
-
-   /* allow for LogTable */
-   if((LogFlag || rangeslen) && !logtable_in_extra_ok() && !Log_Calc)
-      freemem = 33;
-   else
-      freemem = FREEMEM;
+   freemem = FREEMEM;
 
    for (cache_size = CACHEMAX; cache_size >= CACHEMIN; --cache_size) {
       longtmp = ((int)cache_size < freemem) ? (long)cache_size << 11
@@ -199,7 +182,6 @@ int _fastcall common_startdisk(long newrowsize, long newcolsize, int colors)
          break;
          }
       }
-   /* need memory left for LogTable */
    if(debugflag==4200) cache_size = CACHEMIN;
    longtmp = (long)cache_size << 10;
    cache_start = (struct cache far *)farmemalloc(longtmp);
@@ -207,7 +189,8 @@ int _fastcall common_startdisk(long newrowsize, long newcolsize, int colors)
       --longtmp; /* safety for next line */
    cache_end = (cache_lru = cache_start) + longtmp / sizeof(*cache_start);
    hash_ptr  = (unsigned int far *)farmemalloc((long)(HASHSIZE<<1));
-   if (cache_start == NULL || hash_ptr == NULL) {
+   membuf = (BYTE far *)farmemalloc((long)BLOCKLEN);
+   if (cache_start == NULL || hash_ptr == NULL || membuf == NULL) {
       static FCODE msg[]={"*** insufficient free memory for cache buffers ***"};
       stopmsg(0,msg);
       return(-1);
@@ -231,113 +214,75 @@ int _fastcall common_startdisk(long newrowsize, long newcolsize, int colors)
       *fwd_link = (char far *)ptr1 - (char far *)cache_start;
       }
 
-   memorysize = (long)(newcolsize) * newrowsize;
+   memorysize = (long)(newcolsize) * newrowsize + headerlength;
    if ((i = (short)memorysize & (BLOCKLEN-1)) != 0)
       memorysize += BLOCKLEN - i;
    memorysize >>= pixelshift;
+   memorysize >>= BLOCKSHIFT;
    diskflag = 1;
    rowsize = (unsigned int) newrowsize;
    colsize = (unsigned int) newcolsize;
 
-   if (debugflag != 420 && debugflag != 422 /* 422=xmm test, 420=disk test */
-     && disktarga == 0) {
-      /* Try Expanded Memory */
-      exppages = (int)((memorysize + 16383) >> 14);
-      if ((expmemoryvideo = emmquery()) != NULL
-        && (emmhandle = emmallocate(exppages)) != 0) {
-         if (dotmode == 11)
-            putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,"Using your Expanded Memory");
-         for (oldexppage = 0; oldexppage < exppages; oldexppage++)
-            emmclearpage(oldexppage, emmhandle); /* clear the "video" */
-         put_char = exp_putc;
-         get_char = (BYTE (near *)(void))exp_getc;
-         doseek  = exp_seek;
-         goto common_okend;
-         }
-      }
-
-   if (debugflag != 420 && disktarga == 0) {
-      /* Try Extended Memory */
-      if ((charbuf = farmemalloc((long)XMMWRITELEN)) != NULL
-        && xmmquery() != 0
-        && (xmmhandle = xmmallocate((unsigned int)(longtmp = (memorysize+1023) >> 10))) != 0) {
-         if (dotmode == 11)
-            putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,"Using your Extended Memory");
-         for (i = 0; i < XMMWRITELEN; i++)
-            charbuf[i] = 0;
-         MoveStruct.SourceHandle = 0;    /* Source is in conventional memory */
-         MoveStruct.SourceOffset = (unsigned long)charbuf;
-         MoveStruct.DestHandle   = xmmhandle;
-         MoveStruct.Length       = XMMWRITELEN;
-         MoveStruct.DestOffset   = 0;
-         longtmp *= (1024/XMMWRITELEN);
-         while (--longtmp >= 0) {
-            if ((success = xmmmoveextended(&MoveStruct)) == 0) break;
-            MoveStruct.DestOffset += XMMWRITELEN;
-            }
-         if (success) {
-            put_char = ext_putc;
-            get_char = (BYTE (near *)(void))ext_getc;
-            doseek  = ext_seek;
-            extbufptr = endreadbuf = charbuf;
-            endwritebuf = charbuf + XMMWRITELEN;
-            goto common_okend;
-            }
-         xmmdeallocate(xmmhandle);       /* Clear the memory */
-         xmmhandle = 0;                  /* Signal same */
-         }
-      }
+   if (disktarga) {
+   /* Retrieve the header information first */
+        BYTE far *tmpptr;
+      tmpptr = membuf;
+      fseek(fp, 0L,SEEK_SET);
+      for (i = 0; i < headerlength; i++)
+         *tmpptr++ = (BYTE)fgetc(fp);
+      fclose(fp);
+      dv_handle = MemoryAlloc((U16)BLOCKLEN, memorysize, DISK);
+   }
+   else
+      dv_handle = MemoryAlloc((U16)BLOCKLEN, memorysize, EXPANDED);
+   if (dv_handle == 0) {
+      static FCODE msg[]={"*** insufficient free memory/disk space ***"};
+      stopmsg(0,msg);
+      goodmode = 0;
+      rowsize = 0;
+      return(-1);
+   }
 
    if (dotmode == 11)
-      putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,"Using your Disk Drive");
-   if (disktarga == 0) {
-      if ((fp = dir_fopen(tempdir,diskfilename,"w+b")) != NULL) {
-         made_dsktemp = 1;
-#if 1                                   /* added by Michael Snyder */
-         memset(boxy, 0, 1024);
-         while (memorysize > 0)
-         {
-            static FCODE cancel[] =
-                "Disk Video initialization interrupted:\n";
+     switch (MemoryType(dv_handle)) {
+         static FCODE fmsg1[] = {"Using no Memory, it's broke"};
+         static FCODE fmsg2[] = {"Using your Expanded Memory"};
+         static FCODE fmsg3[] = {"Using your Extended Memory"};
+         static FCODE fmsg4[] = {"Using your Disk Drive"};
+       case NOWHERE:
+       default:
+         putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,fmsg1);
+         break;
+       case EXPANDED:
+         putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,fmsg2);
+         break;
+       case EXTENDED:
+         putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,fmsg3);
+         break;
+       case DISK:
+         putstring(BOXROW+2,BOXCOL+23,C_DVID_LO,fmsg4);
+         break;
+     }
 
-            fwrite(boxy, (memorysize > 1024) ? 1024 : (int)memorysize, 1, fp);
-            memorysize -= 1024;
-            if (keypressed())           /* user interrupt */
-               if (stopmsg(2, cancel))  /* esc to cancel, else continue */
-               {
-                  enddisk();
-                  return -2;            /* -1 == failed, -2 == cancel   */
-               }
-         }
-#else
-         while (--memorysize >= 0) /* "clear the screen" (write to the disk) */
-            putc(0,fp);
-#endif
-         if (ferror(fp)) {
-            static FCODE msg[]={"*** insufficient free disk space ***"};
-            stopmsg(0,msg);
-            fclose(fp);
-            fp = NULL;
-            rowsize = 0;
-            return(-1);
+   membufptr = membuf;
+
+   if (!disktarga)
+      for (offset = 0; offset < memorysize; offset++) {
+           static FCODE cancel[] = {"Disk Video initialization interrupted:\n"};
+         SetMemory(0, (U16)BLOCKLEN, 1L, offset, dv_handle);
+         if (keypressed())           /* user interrupt */
+            if (stopmsg(2, cancel))  /* esc to cancel, else continue */
+            {
+               enddisk();
+               goodmode = 0;
+               return -2;            /* -1 == failed, -2 == cancel   */
             }
-         fclose(fp); /* so clusters aren't lost if we crash while running */
-         fp = dir_fopen(tempdir,diskfilename,"r+b"); /* reopen */
-         }
-      if (fp == NULL) {
-         char msg[80];
-         static FCODE s1[]={"*** Couldn't create "};
-         sprintf(msg,"%Fs%s",(char far *)s1,diskfilename);
-         stopmsg(0,msg);
-         rowsize = 0;
-         return(-1);
-         }
       }
-   put_char = disk_putc;
-   get_char = (BYTE (near *)(void))disk_getc;
-   doseek  = disk_seek;
 
-common_okend:
+   if (disktarga) { /* Put header information in the file */
+      MoveToMemory(membuf, (U16)headerlength, 1L, 0, dv_handle);
+   }
+
    if (dotmode == 11)
       dvid_status(0,"");
    return(0);
@@ -352,20 +297,20 @@ void enddisk()
                write_cache_lru();
       fclose(fp);
       }
-   if (charbuf != NULL)
-      farmemfree((void far *)charbuf);
+
+   if (dv_handle != 0) {
+      MemoryRelease(dv_handle);
+      dv_handle = 0;
+   }
    if (hash_ptr != NULL)
       farmemfree((void far *)hash_ptr);
    if (cache_start != NULL)
       farmemfree((void far *)cache_start);
-   if (emmhandle != 0)   /* Expanded memory video? */
-      emmdeallocate(emmhandle);
-   if (xmmhandle != 0)   /* Extended memory video? */
-      xmmdeallocate(xmmhandle);
-   diskflag = rowsize = emmhandle = xmmhandle = disk16bit = 0;
+   if (membuf != NULL)
+      farmemfree((void far *)membuf);
+   diskflag = rowsize = disk16bit = 0;
    hash_ptr    = NULL;
    cache_start = NULL;
-   charbuf     = NULL;
    fp          = NULL;
 }
 
@@ -380,7 +325,10 @@ int readdisk(unsigned int col, unsigned int row)
                 (row >= (unsigned int)sydots) ? row-sydots : row); /* adjust when potfile */
          dvid_status(0,buf);
          }
-      timetodisplay = 1000;
+      if(bf_math)
+         timetodisplay = 10;  /* time-to-display-status counter */
+      else
+         timetodisplay = 1000;  /* time-to-display-status counter */
       }
    if (row != (unsigned int)cur_row) { /* try to avoid ghastly code generated for multiply */
       if (row >= colsize) /* while we're at it avoid this test if not needed  */
@@ -522,30 +470,30 @@ static void _fastcall near findload_cache(long offset) /* used by read/write */
       }
    else {
       if (offset != seek_offset)
-         (*doseek)(offset >> pixelshift);
+         mem_seek(offset >> pixelshift);
       seek_offset = offset + BLOCKLEN;
       switch (pixelshift) {
          case 0:
             for (i = 0; i < BLOCKLEN; ++i)
-               *(pixelptr++) = (*get_char)();
+               *(pixelptr++) = mem_getc();
             break;
          case 1:
             for (i = 0; i < BLOCKLEN/2; ++i) {
-               tmpchar = (*get_char)();
+               tmpchar = mem_getc();
                *(pixelptr++) = (BYTE)(tmpchar >> 4);
                *(pixelptr++) = (BYTE)(tmpchar & 15);
                }
             break;
          case 2:
             for (i = 0; i < BLOCKLEN/4; ++i) {
-               tmpchar = (*get_char)();
+               tmpchar = mem_getc();
                for (j = 6; j >= 0; j -= 2)
                   *(pixelptr++) = (BYTE)((tmpchar >> j) & 3);
                }
             break;
          case 3:
             for (i = 0; i < BLOCKLEN/8; ++i) {
-               tmpchar = (*get_char)();
+               tmpchar = mem_getc();
                for (j = 7; j >= 0; --j)
                   *(pixelptr++) = (BYTE)((tmpchar >> j) & 1);
                }
@@ -598,31 +546,31 @@ static void near write_cache_lru()
    /* write all consecutive dirty blocks (often whole cache in 1pass modes) */
    /* keep going past small gaps */
 write_seek:
-   (*doseek)(ptr1->offset >> pixelshift);
+   mem_seek(ptr1->offset >> pixelshift);
 write_stuff:
    pixelptr = &ptr1->pixel[0];
    switch (pixelshift) {
       case 0:
          for (i = 0; i < BLOCKLEN; ++i)
-            (*put_char)(*(pixelptr++));
+            mem_putc(*(pixelptr++));
          break;
       case 1:
          for (i = 0; i < BLOCKLEN/2; ++i) {
             tmpchar = (BYTE)(*(pixelptr++) << 4);
             tmpchar = (BYTE)(tmpchar + *(pixelptr++));
-            (*put_char)(tmpchar);
+            mem_putc(tmpchar);
             }
          break;
       case 2:
          for (i = 0; i < BLOCKLEN/4; ++i) {
             for (j = 6; j >= 0; j -= 2)
                tmpchar = (BYTE)((tmpchar << 2) + *(pixelptr++));
-            (*put_char)(tmpchar);
+            mem_putc(tmpchar);
             }
          break;
       case 3:
          for (i = 0; i < BLOCKLEN/8; ++i) {
-            (*put_char)((BYTE)
+            mem_putc((BYTE)
                         ((((((((((((((*pixelptr
                         << 1)
                         | *(pixelptr+1) )
@@ -654,100 +602,48 @@ write_stuff:
    seek_offset = -1; /* force a seek before next read */
 }
 
-/* Seek, get_char, put_char routines follow for expanded, extended, disk.
-   Note that the calling logic always separates get_char and put_char
-   sequences with a seek between them.  A get_char is never followed by
-   a put_char nor v.v. without a seek between them.
+/* Seek, mem_getc, mem_putc routines follow.
+   Note that the calling logic always separates mem_getc and mem_putc
+   sequences with a seek between them.  A mem_getc is never followed by
+   a mem_putc nor v.v. without a seek between them.
    */
 
-static void _fastcall near disk_seek(long offset)       /* real disk seek */
+static void _fastcall near mem_seek(long offset)        /* mem seek */
 {
-   fseek(fp,offset+headerlength,SEEK_SET);
-   }
-
-static BYTE near disk_getc()                    /* real disk get_char */
-{
-   return((BYTE)getc(fp));
-   }
-
-static void _fastcall near disk_putc(BYTE c)    /* real disk put_char */
-{
-   putc(c,fp);
-   }
-
-static void _fastcall near exp_seek(long offset)        /* expanded mem seek */
-{
-   int page;
-   expoffset = (short)offset & 0x3fff;
-   page = (int)(offset >> 14);
-   if (page != oldexppage) { /* time to get a new page? */
-      oldexppage = page;
-      emmgetpage(page,emmhandle);
+   offset += headerlength;
+   memoffset = offset >> BLOCKSHIFT;
+   if (memoffset != oldmemoffset) {
+      MoveToMemory(membuf, (U16)BLOCKLEN, 1L, oldmemoffset, dv_handle);
+      MoveFromMemory(membuf, (U16)BLOCKLEN, 1L, memoffset, dv_handle);
       }
+   oldmemoffset = memoffset;
+   membufptr = membuf + (offset & (BLOCKLEN - 1));
    }
 
-static BYTE near exp_getc()                     /* expanded get_char */
+static BYTE near mem_getc()                     /* memory get_char */
 {
-   if (expoffset > 0x3fff) /* wrapped into a new page? */
-      exp_seek((long)(oldexppage+1) << 14);
-   return(expmemoryvideo[expoffset++]);
-   }
-
-static void _fastcall near exp_putc(BYTE c)     /* expanded put_char */
-{
-   if (expoffset > 0x3fff) /* wrapped into a new page? */
-      exp_seek((long)(oldexppage+1) << 14);
-   expmemoryvideo[expoffset++] = c;
-   }
-
-static void near ext_writebuf(void) /* subrtn for extended mem seek/put_char */
-{
-#ifndef XFRACT
-   struct XMM_Move MoveStruct;
-   MoveStruct.Length = extbufptr - charbuf;
-   MoveStruct.SourceHandle = 0; /* Source is conventional memory */
-   MoveStruct.SourceOffset = (unsigned long)charbuf;
-   MoveStruct.DestHandle = xmmhandle;
-   MoveStruct.DestOffset = extoffset;
-   xmmmoveextended(&MoveStruct);
-#endif
-   }
-
-static void _fastcall near ext_seek(long offset)        /* extended mem seek */
-{
-   if (extbufptr > endreadbuf) /* only true if there was a put_char sequence */
-      ext_writebuf();
-   extoffset = offset;
-   extbufptr = endreadbuf = charbuf;
-   }
-
-static BYTE near ext_getc()                     /* extended get_char */
-{
-#ifndef XFRACT
-   struct XMM_Move MoveStruct;
-   if (extbufptr >= endreadbuf) { /* drained the last read buffer we fetched? */
-      MoveStruct.Length = XMMREADLEN;
-      MoveStruct.SourceHandle = xmmhandle; /* Source is extended memory */
-      MoveStruct.SourceOffset = extoffset;
-      MoveStruct.DestHandle = 0;
-      MoveStruct.DestOffset = (unsigned long)charbuf;
-      xmmmoveextended(&MoveStruct);
-      extoffset += XMMREADLEN;
-      endreadbuf = XMMREADLEN + (extbufptr = charbuf);
+   if (membufptr - membuf >= BLOCKLEN) {
+      MoveToMemory(membuf, (U16)BLOCKLEN, 1L, memoffset, dv_handle);
+      memoffset++;
+      MoveFromMemory(membuf, (U16)BLOCKLEN, 1L, memoffset, dv_handle);
+      membufptr = membuf;
+      oldmemoffset = memoffset;
       }
-   return (*(extbufptr++));
-#endif
+   return (*(membufptr++));
    }
 
-static void _fastcall near ext_putc(BYTE c)     /* extended get_char */
+static void _fastcall near mem_putc(BYTE c)     /* memory get_char */
 {
-   if (extbufptr >= endwritebuf) { /* filled the local write buffer? */
-      ext_writebuf();
-      extoffset += XMMWRITELEN;
-      extbufptr = charbuf;
+   if (membufptr - membuf >= BLOCKLEN) {
+      MoveToMemory(membuf, (U16)BLOCKLEN, 1L, memoffset, dv_handle);
+      memoffset++;
+      MoveFromMemory(membuf, (U16)BLOCKLEN, 1L, memoffset, dv_handle);
+      membufptr = membuf;
+      oldmemoffset = memoffset;
       }
-   *(extbufptr++) = c;
+   *(membufptr++) = c;
    }
+
 
 void dvid_status(int line,char far *msg)
 {

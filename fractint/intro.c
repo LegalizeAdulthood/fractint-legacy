@@ -23,7 +23,11 @@ extern int slowdisplay;
 void intro(void)
    {
    /* following overlayed data safe if "putstrings" are resident */
+#ifdef XFRACT
+   static FCODE PRESS_ENTER[] = {"Press ENTER for main menu, Shift-1 for help."};
+#else
    static FCODE PRESS_ENTER[] = {"Press ENTER for main menu, F1 for help."};
+#endif
    int       toprow, botrow, i, j, delaymax;
    char      oldchar;
    int       authors[100];              /* this should be enough for awhile */
@@ -53,7 +57,7 @@ void intro(void)
    authors[j+1] = i;
 
    helptitle();
-#define END_MAIN_AUTHOR 8
+#define END_MAIN_AUTHOR 7
    toprow = END_MAIN_AUTHOR+1;
 #ifndef XFRACT
    botrow = 21;
@@ -67,14 +71,14 @@ void intro(void)
    setattr(2,0,C_AUTHDIV1,80);
    setattr(END_MAIN_AUTHOR,0,C_AUTHDIV1,80);
    setattr(22,0,C_AUTHDIV2,80);
-   setattr(3,0,C_PRIMARY,400);
+   setattr(3,0,C_PRIMARY,80*(END_MAIN_AUTHOR-3));
    setattr(23,0,C_TITLE_LOW,160);
    for (i = 3; i < END_MAIN_AUTHOR; ++i)
       setattr(i,18,C_CONTRIB,61);
-   setattr(toprow,0,C_CONTRIB,13*80);
+   setattr(toprow,0,C_CONTRIB,(21-END_MAIN_AUTHOR)*80);
    i = botrow - toprow;
    srand((unsigned int)clock_ticks());
-   j = rand15()%(j-(botrow-toprow)); /* first to use */
+   j = rand()%(j-(botrow-toprow)); /* first to use */
    i = j+botrow-toprow; /* last to use */
    oldchar = credits[authors[i+1]];
    credits[authors[i+1]] = 0;

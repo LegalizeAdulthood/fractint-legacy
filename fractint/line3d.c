@@ -123,17 +123,16 @@ static long num_tris; /* number of triangles output to ray trace file */
 struct f_point far *f_lastrow;
 void (_fastcall * standardplot) (int, int, int);
 MATRIX m; /* transformation matrix */
-void (*mult_vec) (VECTOR) = mult_vec_c;
 int Ambient;
 int RANDOMIZE;
 int haze;
 int Real_V = 0; /* mrr Actual value of V for fillytpe>4 monochrome images */
-char light_name[80] = "fract001";
+char light_name[FILE_MAX_PATH] = "fract001";
 int Targa_Overlay, error;
 char targa_temp[14] = "fractemp.tga";
 int P = 250; /* Perspective dist used when viewing light vector */
 BYTE back_color[3];
-char ray_name[80] = "fract001";
+char ray_name[FILE_MAX_PATH] = "fract001";
 char preview = 0;
 char showbox = 0;
 int previewfactor = 20;
@@ -208,13 +207,14 @@ int line3d(BYTE * pixels, unsigned linelen)
       int err;
       if ((err = first_time(linelen, v)) != 0)
          return (err);
+      if(xdots > OLDMAXPIXELS)
+         return(-1);
       tout = 0;
       crossavg[0] = 0;
       crossavg[1] = 0;
       crossavg[2] = 0;
       xcenter0 = (int) (xcenter = xdots / 2 + xshift);
       ycenter0 = (int) (ycenter = ydots / 2 - yshift);
-
    }
    /* make sure these pixel coordinates are out of range */
    old = bad;
@@ -1076,7 +1076,7 @@ static void _fastcall putatriangle(struct point pt1, struct point pt2, struct po
    int x, y, xlim;
 
    /* Too many points off the screen? */
-   if (offscreen(pt1) + offscreen(pt2) + offscreen(pt3) > MAXOFFSCREEN)
+   if ((offscreen(pt1) + offscreen(pt2) + offscreen(pt3)) > MAXOFFSCREEN)
       return;
 
    p1 = pt1;                    /* needed by interpcolor */
@@ -1232,7 +1232,7 @@ static void _fastcall interpcolor(int x, int y, int color)
          if (!(glassestype == 1 || glassestype == 2))
             D = targa_color(x, y, color);
 
-      if (FILLTYPE >= 5)
+      if (FILLTYPE >= 5) {
          if (Real_V && Targa_Out)
             color = D;
          else
@@ -1241,6 +1241,7 @@ static void _fastcall interpcolor(int x, int y, int color)
             if (color == 0)
                color = 1;
          }
+      }
       standardplot(x, y, color);
    }
 }
@@ -1259,12 +1260,27 @@ int _fastcall targa_color(int x, int y, int color)
    unsigned long H, S, V;
    BYTE RGB[3];
 
-   if (FILLTYPE == 2 || glassestype == 1 || glassestype == 2)
+   if (FILLTYPE == 2 || glassestype == 1 || glassestype == 2 || truecolor)
       Real_Color = (BYTE)color;       /* So Targa gets interpolated color */
 
-   RGB[0] = (BYTE)(dacbox[Real_Color][0] << 2); /* Move color space to */
-   RGB[1] = (BYTE)(dacbox[Real_Color][1] << 2); /* 256 color primaries */
-   RGB[2] = (BYTE)(dacbox[Real_Color][2] << 2); /* from 64 colors */
+   switch (truemode)
+   {
+      case 0:
+      default:
+      {
+         RGB[0] = (BYTE)(dacbox[Real_Color][0] << 2); /* Move color space to */
+         RGB[1] = (BYTE)(dacbox[Real_Color][1] << 2); /* 256 color primaries */
+         RGB[2] = (BYTE)(dacbox[Real_Color][2] << 2); /* from 64 colors */
+         break;
+      }
+      case 1:
+      {
+         RGB[0] = (BYTE)((realcoloriter >> 16) & 0xff);  /* red   */
+         RGB[1] = (BYTE)((realcoloriter >> 8 ) & 0xff);  /* green */
+         RGB[2] = (BYTE)((realcoloriter      ) & 0xff);  /* blue  */
+         break;
+      }
+   }
 
    /* Now lets convert it to HSV */
    R_H(RGB[0], RGB[1], RGB[2], &H, &S, &V);
@@ -1397,7 +1413,6 @@ static void File_Error(char *File_Name1, int ERROR)
 /*                                                                      */
 /* **********************************************************************/
 
-extern int truecolor;
 int startdisk1(char *File_Name2, FILE * Source, int overlay)
 {
    int i, j, k, inc;
@@ -1421,7 +1436,6 @@ int startdisk1(char *File_Name2, FILE * Source, int overlay)
       /* ID field size = 0, No color map, Targa type 2 file */
       for (i = 0; i < 12; i++)
       {
-         extern int truecolor;
          if (i == 0 && truecolor != 0)
          {
             set_upr_lwr();
@@ -1466,7 +1480,7 @@ int startdisk1(char *File_Name2, FILE * Source, int overlay)
          fclose(fps);
          if(overlay)
             fclose(Source);
-         dir_remove(tempdir,File_Name2);
+         dir_remove(workdir,File_Name2);
          File_Error(File_Name2, 2);
          return (-2);
       }
@@ -1477,7 +1491,7 @@ int startdisk1(char *File_Name2, FILE * Source, int overlay)
    if (targa_startdisk(fps, T_header_24) != 0)
    {
       enddisk();
-      dir_remove(tempdir,File_Name2);
+      dir_remove(workdir,File_Name2);
       return (-4);
    }
    return (0);
@@ -1492,7 +1506,7 @@ int targa_validate(char *File_Name)
 #endif
 
    /* Attempt to open source file for reading */
-   if ((fp = fopen(File_Name, "rb")) == NULL)
+   if ((fp = dir_fopen(workdir,File_Name, "rb")) == NULL)
    {
       File_Error(File_Name, 1);
       return (-1);              /* Oops, file does not exist */
@@ -1603,22 +1617,24 @@ static int R_H(BYTE R, BYTE G, BYTE B, unsigned long *H, unsigned long *S, unsig
    R1 = (((*V - R) * 60) << 6) / DENOM; /* distance of color from red   */
    G1 = (((*V - G) * 60) << 6) / DENOM; /* distance of color from green */
    B1 = (((*V - B) * 60) << 6) / DENOM; /* distance of color from blue  */
-   if (*V == R)
+   if (*V == R) {
       if (MIN == G)
          *H = (300 << 6) + B1;
       else
          *H = (60 << 6) - G1;
-   if (*V == G)
+   }
+   if (*V == G) {
       if (MIN == B)
          *H = (60 << 6) + R1;
       else
          *H = (180 << 6) - B1;
-   if (*V == B)
+   }
+   if (*V == B) {
       if (MIN == R)
          *H = (180 << 6) + G1;
       else
          *H = (300 << 6) - R1;
-
+    }
    *V = *V << 8;
    return (0);
 }
@@ -2211,13 +2227,13 @@ static void line3d_cleanup(void)
    {                            /* Finish up targa files */
       T_header_24 = 18;         /* Reset Targa header size */
       enddisk();
-      if (!debugflag && T_Safe && !error && Targa_Overlay)
+      if (!debugflag && (!T_Safe || error) && Targa_Overlay)
       {
-         remove(light_name);
+         dir_remove(workdir, light_name);
          rename(targa_temp, light_name);
       }
       if (!debugflag && Targa_Overlay)
-         remove(targa_temp);
+         dir_remove(workdir, targa_temp);
    }
    usr_floatflag &= 1;          /* strip second bit */
    error = T_Safe = 0;
@@ -2608,13 +2624,6 @@ static int first_time(int linelen, VECTOR v)
       f_lastrow[i] = f_bad;
    }
    got_status = 3;
-   if (iit > 0)
-   {
-      load_mat(m);              /* load matrix into iit registers */
-      mult_vec = mult_vec_iit;
-   }
-   else
-      mult_vec = mult_vec_c;
    return (0);
 } /* end of once-per-image intializations */
 
@@ -2686,7 +2695,7 @@ static int line3dmem(void)
          /* not using extra segment so decrement check_extra */
          check_extra -= sizeof(struct minmax) * ydots;
          if (got_mem == NULL)
-            got_mem = (struct minmax far *) (farmemalloc(MAXPIXELS *
+            got_mem = (struct minmax far *) (farmemalloc(OLDMAXPIXELS *
                                                     sizeof(struct minmax)));
          if (got_mem)
             minmax_x = got_mem;
@@ -2720,4 +2729,3 @@ static int line3dmem(void)
 #pragma optimize( "g", on )
 #endif
 #endif
-

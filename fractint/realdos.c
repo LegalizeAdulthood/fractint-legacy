@@ -6,6 +6,8 @@
 #ifndef XFRACT
 #include <io.h>
 #include <process.h>
+#else
+#include <curses.h>
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -21,14 +23,11 @@
 static int menu_checkkey(int curkey,int choice);
 
 /* uncomment following for production version */
-
-/* #define PRODUCTION */
-
-int release=1960;  /* this has 2 implied decimals; increment it every synch */
-int patchlevel=0; /* patchlevel for DOS version */
-#ifdef XFRACT
-int xrelease=304;
-#endif
+/*
+#define PRODUCTION
+*/
+int release=2003;  /* this has 2 implied decimals; increment it every synch */
+int patchlevel=1; /* patchlevel for DOS version */
 
 /* fullscreen_choice options */
 #define CHOICERETURNKEY 1
@@ -58,8 +57,8 @@ static char far s_errorstart[] = {"*** Error during startup:"};
 static char far s_escape_cancel[] = {"Escape to cancel, any other key to continue..."};
 static char far s_anykey[] = {"Any key to continue..."};
 #if !defined(PRODUCTION) && !defined(XFRACT)
-static char far s_custom[] = {"Customized Version"}; 
-static char far s_notpublic[] = {"Not for Public Release"};
+static char far s_custom[] = {"Customized Version"};
+static char far s_incremental[] = {"Incremental release"};
 #endif
 int stopmsg (int flags, char far *msg)
 {
@@ -73,7 +72,7 @@ int stopmsg (int flags, char far *msg)
       else
          fp=dir_fopen(workdir,"stopmsg.txt","a");
       if(fp != NULL)
-#ifndef XRACT
+#ifndef XFRACT
       fprintf(fp,"%Fs\n",msg);
 #else
       fprintf(fp,"%s\n",msg);
@@ -138,7 +137,7 @@ int stopmsg (int flags, char far *msg)
 }
 
 
-static char far *temptextsave = NULL;
+static U16 temptextsave = 0;
 static int  textxdots,textydots;
 
 /* texttempmsg(msg) displays a text message of up to 40 characters, waits
@@ -161,9 +160,9 @@ int texttempmsg(char far *msgparm)
 
 void freetempmsg()
 {
-   if(temptextsave != NULL)
-      farmemfree(temptextsave);
-   temptextsave = NULL;
+   if(temptextsave != 0)
+      MemoryRelease(temptextsave);
+   temptextsave = 0;
 }
 
 int showtempmsg(char far *msgparm)
@@ -171,7 +170,6 @@ int showtempmsg(char far *msgparm)
    static long size = 0;
    char msg[41];
    BYTE buffer[640];
-   char far *fartmp;
    BYTE far *fontptr;
    BYTE *bufptr;
    int i,j,k,fontchar,charnum;
@@ -204,22 +202,25 @@ int showtempmsg(char far *msgparm)
       textydots = yrepeat * 8;
       }
    /* worst case needs 10k */
-   if(temptextsave != NULL)
+   if(temptextsave != 0)
       if(size != (long)textxdots * (long)textydots)
          freetempmsg();
    size = (long)textxdots * (long)textydots;
    save_sxoffs = sxoffs;
    save_syoffs = syoffs;
-   sxoffs = syoffs = 0;
-   if(temptextsave == NULL) /* only save screen first time called */
+   if (video_scroll) {
+      sxoffs = video_startx;
+      syoffs = video_starty;
+   }
+   else
+      sxoffs = syoffs = 0;
+   if(temptextsave == 0) /* only save screen first time called */
    {
-      if ((temptextsave = farmemalloc(size)) == NULL)
+      if ((temptextsave = MemoryAlloc((U16)textxdots,(long)textydots,FARMEM)) == 0)
          return(-1); /* sorry, message not displayed */
-      fartmp = temptextsave;
       for (i = 0; i < textydots; ++i) {
          get_line(i,0,textxdots-1,buffer);
-         for (j = 0; j < textxdots; ++j) /* copy it out to far memory */
-                 *(fartmp++) = buffer[j];
+         MoveToMemory(buffer,(U16)textxdots,1L,(long)i,temptextsave);
          }
       }
    if (fontptr == NULL) { /* bios must do it for us */
@@ -255,25 +256,27 @@ int showtempmsg(char far *msgparm)
 void cleartempmsg()
 {
    BYTE buffer[640];
-   char far *fartmp;
-   int i,j;
+   int i;
    int save_sxoffs,save_syoffs;
    if (dotmode == 11) /* disk video, easy */
       dvid_status(0,"");
-   else if (temptextsave != NULL) {
+   else if (temptextsave != 0) {
       save_sxoffs = sxoffs;
       save_syoffs = syoffs;
-      sxoffs = syoffs = 0;
-      fartmp = temptextsave;
+      if (video_scroll) {
+         sxoffs = video_startx;
+         syoffs = video_starty;
+      }
+      else
+         sxoffs = syoffs = 0;
       for (i = 0; i < textydots; ++i) {
-         for (j = 0; j < textxdots; ++j) /* copy back from far memory */
-            buffer[j] = *(fartmp++);
+         MoveFromMemory(buffer,(U16)textxdots,1L,(long)i,temptextsave);
          put_line(i,0,textxdots-1,buffer);
          }
      if(using_jiim == 0)  /* jiim frees memory with freetempmsg() */
      {
-         farmemfree(temptextsave);
-         temptextsave = NULL;
+         MemoryRelease(temptextsave);
+         temptextsave = 0;
       }
       sxoffs = save_sxoffs;
       syoffs = save_syoffs;
@@ -296,39 +299,38 @@ void blankrows(int row,int rows,int attr)
 
 void helptitle()
 {
-   char msg[80],buf[80];
+   char msg[MSGLEN],buf[MSGLEN];
    setclear(); /* clear the screen */
 #ifdef XFRACT
-   sprintf(msg,"XFRACTINT  Version %d.%02d (FRACTINT Version %d.%02d)",
-           xrelease/100,xrelease%100, release/100,release%100);
-   putstringcenter(0,0,80,C_TITLE,msg);
+   strcpy(msg,"X");
 #else
-   sprintf(msg,"FRACTINT Version %d.%01d",release/100,(release%100)/10);
+   *msg=0;
+#endif   
+   sprintf(buf,"FRACTINT Version %d.%01d",release/100,(release%100)/10);
+   strcat(msg,buf);
    if (release%10) {
       sprintf(buf,"%01d",release%10);
       strcat(msg,buf);
       }
-#ifndef XFRACT
    if (patchlevel) {
-      sprintf(buf," Patch %d",patchlevel);
+      sprintf(buf,".%d",patchlevel);
       strcat(msg,buf);
       }
-#endif
    putstringcenter(0,0,80,C_TITLE,msg);
-#endif
+   
 /* uncomment next for production executable: */
 #if defined(PRODUCTION) || defined(XFRACT)
     return;
    /*NOTREACHED*/
 #else
    if (debugflag == 3002) return;
-/* #define DEVELOPMENT */
+#define DEVELOPMENT
 #ifdef DEVELOPMENT
    putstring(0,2,C_TITLE_DEV,"Development Version");
 #else
    putstring(0,3,C_TITLE_DEV, s_custom);
 #endif
-   putstring(0,55,C_TITLE_DEV,s_notpublic);
+   putstring(0,55,C_TITLE_DEV,s_incremental);
 #endif
 }
 
@@ -339,7 +341,7 @@ void footer_msg(int *i, int options, char *speedstring)
    static FCODE choiceinstr1b[]="Use the cursor keys or type a value to make a selection";
    static FCODE choiceinstr2a[]="Press ENTER for highlighted choice, or ESCAPE to back out";
    static FCODE choiceinstr2b[]="Press ENTER for highlighted choice, ESCAPE to back out, or F1 for help";
-   static FCODE choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for help";
+   static FCODE choiceinstr2c[]="Press ENTER for highlighted choice, or "FK_F1" for help";
    putstringcenter((*i)++,0,80,C_PROMPT_BKGRD,
       (speedstring) ? choiceinstr1b : choiceinstr1a);
    putstringcenter(*(i++),0,80,C_PROMPT_BKGRD,
@@ -357,10 +359,11 @@ int putstringcenter(int row, int col, int width, int attr, char far *msg)
    int i,j,k;
    i = 0;
 #ifdef XFRACT
-   if (width==80) width=79; /* Some systems choke in column 80 */
+   if (width>=80) width=79; /* Some systems choke in column 80 */
 #endif
    while (msg[i]) ++i; /* strlen for a far */
    if (i == 0) return(-1);
+   if (i >= width) i = width - 1; /* sanity check */
    j = (width - i) / 2;
    j -= (width + 10 - i) / 20; /* when wide a bit left of center looks better */
    memset(buf,' ',width);
@@ -372,17 +375,36 @@ int putstringcenter(int row, int col, int width, int attr, char far *msg)
    return j;
 }
 
+/*
+ * The stackscreen()/unstackscreen() functions were originally
+ * ported to Xfractint. However, since Xfractint uses a separate
+ * text and graphics window, I don't see what these functions
+ * are good for, so I have commented them out.
+ *
+ * To restore the Xfractint versions of these functions,
+ * uncomment next.
+ * These functions are useful for switching between different text screens.
+ * For example, looking at a parameter entry using F2.
+ */
+
+#define USE_XFRACT_STACK_FUNCTIONS
 
 #ifndef XFRACT
 static int screenctr = -1;
 #else
 static int screenctr = 0;
+extern void savecurses(WINDOW **);
+extern void restorecurses(WINDOW **);
 #endif
+
 #define MAXSCREENS 3
+
+#ifndef XFRACT
+static U16 savescreen[MAXSCREENS];
+#else
 static BYTE far *savescreen[MAXSCREENS];
+#endif
 static int saverc[MAXSCREENS+1];
-static FILE *savescf = NULL;
-static char scsvfile[]="fractscr.tmp";
 
 void stackscreen()
 {
@@ -390,11 +412,12 @@ void stackscreen()
    BYTE far *vidmem;
    int savebytes;
    int i;
-   BYTE far *ptr;
-   char buf[256];
+   if (video_scroll) {
+      scroll_state(0); /* save position */
+      scroll_center(0,0);
+   }
    if(*s_makepar == 0)
       return;
-   memcpy(buf,suffix,256);
    saverc[screenctr+1] = textrow*80 + textcol;
    if (++screenctr) { /* already have some stacked */
          static char far msg[]={"stackscreen overflow"};
@@ -404,31 +427,23 @@ void stackscreen()
          }
       vidmem = MK_FP(textaddr,0);
       savebytes = (text_type == 0) ? 4000 : 16384;
-      if ((ptr = savescreen[i] = farmemalloc((long)savebytes)) != NULL)
-         far_memcpy(ptr,vidmem,savebytes);
+      savescreen[i] = MemoryAlloc((U16)savebytes,1L,FARMEM);
+      if (savescreen[i] != 0)
+         MoveToMemory(vidmem,(U16)savebytes,1L,0L,savescreen[i]);
       else {
-         if (savescf == NULL) { /* create file just once */
-            if ((savescf = dir_fopen(tempdir,scsvfile,"wb")) == NULL)
-               goto fileproblem;
-            if (fwrite(buf,MAXSCREENS,16384,savescf) != 16384)
-               goto fileproblem;
-            fclose(savescf);
-            if ((savescf = dir_fopen(tempdir,scsvfile,"r+b")) == NULL) {
             static char far msg[]={"insufficient memory, aborting"};
-fileproblem:   stopmsg(1,msg);
+               stopmsg(1,msg);
                exit(1);
-               }
             }
-         fseek(savescf,(long)(savebytes*i),SEEK_SET);
-         while (--savebytes >= 0)
-            putc(*(vidmem++),savescf);
-         }
       setclear();
       }
    else
       setfortext();
-   memcpy(suffix,buf,256);
-#else
+   if (video_scroll) {
+      if (boxcount)
+         moveboxf(0.0,0.0);
+   }
+#elif defined (USE_XFRACT_STACK_FUNCTIONS)
    int i;
    BYTE far *ptr;
    saverc[screenctr+1] = textrow*80 + textcol;
@@ -438,8 +453,8 @@ fileproblem:   stopmsg(1,msg);
          stopmsg(1,msg);
          exit(1);
          }
-      if (ptr = savescreen[i] = farmemalloc(sizeof(int *)))
-         savecurses(ptr);
+      if ((ptr = (savescreen[i] = farmemalloc(sizeof(int *)))))
+         savecurses((WINDOW **)ptr);
       else {
          stopmsg(1,msg);
          exit(1);
@@ -454,39 +469,36 @@ fileproblem:   stopmsg(1,msg);
 void unstackscreen()
 {
 #ifndef XFRACT
-   char far *vidmem;
+   BYTE far *vidmem;
    int savebytes;
-   BYTE far *ptr;
-   char buf[256];
    if(*s_makepar == 0)
       return;
-   memcpy(buf,suffix,256);
    textrow = saverc[screenctr] / 80;
    textcol = saverc[screenctr] % 80;
    if (--screenctr >= 0) { /* unstack */
       vidmem = MK_FP(textaddr,0);
       savebytes = (text_type == 0) ? 4000 : 16384;
-      if ((ptr = savescreen[screenctr]) != NULL) {
-         far_memcpy(vidmem,ptr,savebytes);
-         farmemfree(ptr);
-         }
-      else {
-         fseek(savescf,(long)(savebytes*screenctr),SEEK_SET);
-         while (--savebytes >= 0)
-            *(vidmem++) = (BYTE)getc(savescf);
+      if (savescreen[screenctr] != 0) {
+         MoveFromMemory(vidmem,(U16)savebytes,1L,0L,savescreen[screenctr]);
+         MemoryRelease(savescreen[screenctr]);
+         savescreen[screenctr] = 0;
          }
       }
    else
       setforgraphics();
    movecursor(-1,-1);
-   memcpy(suffix,buf,256);
-#else
+   if (video_scroll) {
+      if (boxcount)
+         moveboxf(0.0,0.0);
+      scroll_state(1); /* restore position */
+   }
+#elif defined (USE_XFRACT_STACK_FUNCTIONS)
    BYTE far *ptr;
    textrow = saverc[screenctr] / 80;
    textcol = saverc[screenctr] % 80;
    if (--screenctr >= 0) { /* unstack */
       ptr = savescreen[screenctr];
-      restorecurses(ptr);
+      restorecurses((WINDOW **)ptr);
       farmemfree(ptr);
       }
    else
@@ -498,9 +510,15 @@ void unstackscreen()
 void discardscreen()
 {
    if (--screenctr >= 0) { /* unstack */
-      if (savescreen[screenctr])
+      if (savescreen[screenctr]) {
+#ifndef XFRACT
+         MemoryRelease(savescreen[screenctr]);
+         savescreen[screenctr] = 0;
+#elif defined(USE_XFRACT_STACK_FUNCTIONS)
          farmemfree(savescreen[screenctr]);
+#endif
       }
+   }
    else
       discardgraphics();
 }
@@ -555,36 +573,54 @@ void show_speedstring(int speedrow,
       movecursor(25,80);
 }
 
-void process_speedstring(char    *speedstring, 
+void process_speedstring(char    *speedstring,
                         char far*far*choices,         /* array of choice strings                */
-                        int       curkey, 
+                        int       curkey,
                         int      *pcurrent,
                         int       numchoices,
-                        int       speed_match)
+                        int       is_unsorted)
 {
-   int i;
-   
+   int i, comp_result;
+
    i = strlen(speedstring);
    if (curkey == 8 && i > 0) /* backspace */
       speedstring[--i] = 0;
-   if (33 <= curkey && curkey <= 126 && i < 30) 
+   if (33 <= curkey && curkey <= 126 && i < 30)
    {
+#ifndef XFRACT
       curkey = tolower(curkey);
+#endif
       speedstring[i] = (char)curkey;
       speedstring[++i] = 0;
    }
-   if (i > 0) 
-   {              /* locate matching type */
+   if (i > 0)  {    /* locate matching type */
       *pcurrent = 0;
       while (*pcurrent < numchoices
-        && (speed_match = strncasecmp(speedstring,choices[*pcurrent],i)) > 0)
-         ++*pcurrent;
-      if (speed_match < 0 && *pcurrent > 0)  /* oops - overshot */
-         --*pcurrent;
+        && (comp_result = strncasecmp(speedstring,choices[*pcurrent],i))!=0) {
+         if (comp_result < 0 && !is_unsorted) {
+            *pcurrent -= *pcurrent ? 1 : 0;
+            break;
+         }
+         else
+           ++*pcurrent;
+      }
       if (*pcurrent >= numchoices) /* bumped end of list */
          *pcurrent = numchoices - 1;
+            /*if the list is unsorted, and the entry found is not the exact
+              entry, then go looking for the exact entry.
+            */
+      else if (is_unsorted && choices[*pcurrent][i]) {
+         int temp = *pcurrent;
+         while(++temp < numchoices) {
+            if (!choices[temp][i] && !strncasecmp(speedstring, choices[temp], i)) {
+               *pcurrent = temp;
+               break;
+            }
+         }
+      }
    }
 }
+
 
 #if (_MSC_VER >= 700)
 #pragma code_seg ()         /* back to normal segment */
@@ -629,7 +665,6 @@ int fullscreen_choice(
    int i,j,k = 0;
    char far *charptr;
    char buf[81];
-   int speed_match = 0;
    char curitem[81];
    char far *itemptr;
    int ret,savelookatmouse;
@@ -728,8 +763,19 @@ int fullscreen_choice(
             }
          }
       }
+#if 0
    if ((i = 77 / boxwidth - colwidth) > 3) /* spaces to add @ left each choice */
       i = 3;
+   if (i == 0)
+      i = 1;
+#else
+   if ((i = (80 / boxwidth - colwidth) / 2 - 1) == 0) /* to allow wider prompts */
+      i = 1;
+   if (i < 0)
+      i = 0;
+   if (i > 3)
+      i = 3;
+#endif
    j = boxwidth * (colwidth += i) + i;     /* overall width of box */
    if (j < titlewidth+2)
       j = titlewidth + 2;
@@ -1011,7 +1057,7 @@ int fullscreen_choice(
             ret = -1;
             if (speedstring) {
                process_speedstring(speedstring,choices,curkey,&current,
-                        numchoices,speed_match);
+                        numchoices,options&CHOICESNOTSORTED);
                }
             break;
       }
@@ -1110,38 +1156,41 @@ top:
    nextright = -1;
 
    if (fullmenu) {
-      LOADPROMPTSCHOICES(nextleft+=2,"      CURRENT IMAGE");
+      LOADPROMPTSCHOICES(nextleft+=2,"      CURRENT IMAGE         ");
       attributes[nextleft] = 256+MENU_HDG;
       choicekey[nextleft+=2] = 13; /* enter */
       attributes[nextleft] = MENU_ITEM;
       if (calc_status == 2)
       {
-         LOADPROMPTSCHOICES(nextleft,"continue calculation");
+         LOADPROMPTSCHOICES(nextleft,"continue calculation        ");
       }
       else
       {
-         LOADPROMPTSCHOICES(nextleft,"return to image");
+         LOADPROMPTSCHOICES(nextleft,"return to image             ");
       }
       choicekey[nextleft+=2] = 9; /* tab */
       attributes[nextleft] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextleft,"info about image      <tab>");
-      choicekey[nextleft+=2] = -10;
-      attributes[nextleft] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextleft,"zoom box functions...");
+      LOADPROMPTSCHOICES(nextleft,"info about image      <tab> ");
       choicekey[nextleft+=2] = 'o';
       attributes[nextleft] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextleft,"orbits window          <o>");
+      LOADPROMPTSCHOICES(nextleft,"orbits window          <o>  ");
       if(!(fractype==JULIA || fractype==JULIAFP || fractype==INVERSEJULIA))
           nextleft+=2;
       }
-   LOADPROMPTSCHOICES(nextleft+=2,"      NEW IMAGE");
+   LOADPROMPTSCHOICES(nextleft+=2,"      NEW IMAGE             ");
    attributes[nextleft] = 256+MENU_HDG;
+#ifdef XFRACT
    choicekey[nextleft+=2] = DELETE;
    attributes[nextleft] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextleft,"select video mode...  <del>");
+   LOADPROMPTSCHOICES(nextleft,"draw fractal           <D>  ");
+#else
+   choicekey[nextleft+=2] = DELETE;
+   attributes[nextleft] = MENU_ITEM;
+   LOADPROMPTSCHOICES(nextleft,"select video mode...  <del> ");
+#endif
    choicekey[nextleft+=2] = 't';
    attributes[nextleft] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextleft,"select fractal type    <t>");
+   LOADPROMPTSCHOICES(nextleft,"select fractal type    <t>  ");
    if (fullmenu) {
       if ((curfractalspecific->tojulia != NOFRACTAL
           && param[0] == 0.0 && param[1] == 0.0)
@@ -1154,110 +1203,132 @@ top:
       if(fractype==JULIA || fractype==JULIAFP || fractype==INVERSEJULIA) {
              choicekey[nextleft+=2] = 'j';
              attributes[nextleft] = MENU_ITEM;
-             LOADPROMPTSCHOICES(nextleft,"toggle to/from inverse <j>");
+             LOADPROMPTSCHOICES(nextleft,"toggle to/from inverse <j>  ");
              showjuliatoggle = 1;
           }
       choicekey[nextleft+=2] = 'h';
       attributes[nextleft] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextleft,"return to prior image  <h>");
+      LOADPROMPTSCHOICES(nextleft,"return to prior image  <h>   ");
 
       choicekey[nextleft+=2] = 8;
       attributes[nextleft] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextleft,"reverse thru history <ctl-h>");
+      LOADPROMPTSCHOICES(nextleft,"reverse thru history <ctl-h> ");
    }
    else
       nextleft += 2;
-   LOADPROMPTSCHOICES(nextleft+=2,"      OPTIONS");
+   LOADPROMPTSCHOICES(nextleft+=2,"      OPTIONS                ");
    attributes[nextleft] = 256+MENU_HDG;
    choicekey[nextleft+=2] = 'x';
    attributes[nextleft] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextleft,"basic options...       <x>");
+   LOADPROMPTSCHOICES(nextleft,"basic options...       <x>  ");
    choicekey[nextleft+=2] = 'y';
    attributes[nextleft] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextleft,"extended options...    <y>");
+   LOADPROMPTSCHOICES(nextleft,"extended options...    <y>  ");
    choicekey[nextleft+=2] = 'z';
    attributes[nextleft] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextleft,"type-specific parms... <z>");
+   LOADPROMPTSCHOICES(nextleft,"type-specific parms... <z>  ");
    choicekey[nextleft+=2] = 'v';
    attributes[nextleft] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextleft,"view window options... <v>");
+   LOADPROMPTSCHOICES(nextleft,"view window options... <v>  ");
    if(showjuliatoggle == 0)
    {
       choicekey[nextleft+=2] = 'i';
       attributes[nextleft] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextleft,"fractal 3D parms...    <i>");
+      LOADPROMPTSCHOICES(nextleft,"fractal 3D parms...    <i>  ");
    }
    choicekey[nextleft+=2] = 2;
    attributes[nextleft] = MENU_ITEM;
    LOADPROMPTSCHOICES(nextleft,"browse parms...      <ctl-b>");
 
-   LOADPROMPTSCHOICES(nextright+=2,"        FILE");
+   if (fullmenu) {
+      choicekey[nextleft+=2] = 5;
+      attributes[nextleft] = MENU_ITEM;
+      LOADPROMPTSCHOICES(nextleft,"evolver parms...     <ctl-e>");
+   }
+#ifndef XFRACT
+   if (fullmenu) {
+      choicekey[nextleft+=2] = 6;
+      attributes[nextleft] = MENU_ITEM;
+      LOADPROMPTSCHOICES(nextleft,"sound parms...       <ctl-f>");
+   }
+#endif
+   LOADPROMPTSCHOICES(nextright+=2,"        FILE                  ");
    attributes[nextright] = 256+MENU_HDG;
    choicekey[nextright+=2] = '@';
    attributes[nextright] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextright,"run saved command set... <@>");
+   LOADPROMPTSCHOICES(nextright,"run saved command set... <@>  ");
    if (fullmenu) {
       choicekey[nextright+=2] = 's';
       attributes[nextright] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextright,"save image to file       <s>");
+      LOADPROMPTSCHOICES(nextright,"save image to file       <s>  ");
       }
    choicekey[nextright+=2] = 'r';
    attributes[nextright] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextright,"load image from file...  <r>");
+   LOADPROMPTSCHOICES(nextright,"load image from file...  <r>  ");
    choicekey[nextright+=2] = '3';
    attributes[nextright] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextright,"3d transform from file...<3>");
+   LOADPROMPTSCHOICES(nextright,"3d transform from file...<3>  ");
    if (fullmenu) {
       choicekey[nextright+=2] = '#';
       attributes[nextright] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextright,"3d overlay from file.....<#>");
+      LOADPROMPTSCHOICES(nextright,"3d overlay from file.....<#>  ");
       choicekey[nextright+=2] = 'b';
       attributes[nextright] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextright,"save current parameters..<b>");
+      LOADPROMPTSCHOICES(nextright,"save current parameters..<b>  ");
       choicekey[nextright+=2] = 'p';
       attributes[nextright] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextright,"print image              <p>");
+      LOADPROMPTSCHOICES(nextright,"print image              <p>  ");
       }
+#ifdef XFRACT
    choicekey[nextright+=2] = 'd';
    attributes[nextright] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextright,"shell to dos             <d>");
+   LOADPROMPTSCHOICES(nextright,"shell to Linux/Unix      <d>  ");
+#else
+   choicekey[nextright+=2] = 'd';
+   attributes[nextright] = MENU_ITEM;
+   LOADPROMPTSCHOICES(nextright,"shell to dos             <d>  ");
+#endif
    choicekey[nextright+=2] = 'g';
    attributes[nextright] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextright,"give command string      <g>");
+   LOADPROMPTSCHOICES(nextright,"give command string      <g>  ");
    choicekey[nextright+=2] = ESC;
    attributes[nextright] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextright,"quit Fractint           <esc>");
+   LOADPROMPTSCHOICES(nextright,"quit "FRACTINT"           <esc> ");
    choicekey[nextright+=2] = INSERT;
    attributes[nextright] = MENU_ITEM;
-   LOADPROMPTSCHOICES(nextright,"restart Fractint        <ins>");
+   LOADPROMPTSCHOICES(nextright,"restart "FRACTINT"        <ins> ");
+#ifdef XFRACT
+   if (fullmenu && (gotrealdac || fake_lut) && colors >= 16) {
+#else
    if (fullmenu && gotrealdac && colors >= 16) {
+#endif
       /* nextright += 2; */
-      LOADPROMPTSCHOICES(nextright+=2,"       COLORS");
+      LOADPROMPTSCHOICES(nextright+=2,"       COLORS                 ");
       attributes[nextright] = 256+MENU_HDG;
       choicekey[nextright+=2] = 'c';
       attributes[nextright] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextright,"color cycling mode       <c>");
+      LOADPROMPTSCHOICES(nextright,"color cycling mode       <c>  ");
       choicekey[nextright+=2] = '+';
       attributes[nextright] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextright,"rotate palette      <+>, <->");
+      LOADPROMPTSCHOICES(nextright,"rotate palette      <+>, <->  ");
       if (colors > 16) {
          if (!reallyega) {
             choicekey[nextright+=2] = 'e';
             attributes[nextright] = MENU_ITEM;
-            LOADPROMPTSCHOICES(nextright,"palette editing mode     <e>");
-            }
+            LOADPROMPTSCHOICES(nextright,"palette editing mode     <e>  ");
+         }
          choicekey[nextright+=2] = 'a';
          attributes[nextright] = MENU_ITEM;
-         LOADPROMPTSCHOICES(nextright,"make starfield           <a>");
-         }
-      choicekey[nextright+=2] = 1;
-      attributes[nextright] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextright,   "ant automaton          <ctl-a>");
-
-      choicekey[nextright+=2] = 19;
-      attributes[nextright] = MENU_ITEM;
-      LOADPROMPTSCHOICES(nextright,   "stereogram             <ctl-s>");
+         LOADPROMPTSCHOICES(nextright,"make starfield           <a>  ");
       }
+   }
+   choicekey[nextright+=2] = 1;
+   attributes[nextright] = MENU_ITEM;
+   LOADPROMPTSCHOICES(nextright,   "ant automaton          <ctl-a>");
+
+   choicekey[nextright+=2] = 19;
+   attributes[nextright] = MENU_ITEM;
+   LOADPROMPTSCHOICES(nextright,   "stereogram             <ctl-s>");
 
    i = (keypressed()) ? getakey() : 0;
    if (menu_checkkey(i,0) == 0) {
@@ -1284,7 +1355,11 @@ top:
          }
       }
    if (i == ESC) {             /* escape from menu exits Fractint */
+#ifdef XFRACT
+      static char far s[] = "Exit from Xfractint (y/n)? y";
+#else
       static char far s[] = "Exit from Fractint (y/n)? y";
+#endif
       helptitle();
       setattr(1,0,C_GENERAL_MED,24*80);
       for (i = 9; i <= 11; ++i)
@@ -1322,11 +1397,11 @@ static int menu_checkkey(int curkey,int choice)
 #endif
    if(testkey == '2')
       testkey = '@';
-   if (strchr("#@txyzgvir3dj",testkey) || testkey == INSERT
-     || testkey == ESC || testkey == DELETE)
+   if (strchr("#@2txyzgvir3dj",testkey) || testkey == INSERT
+     || testkey == ESC || testkey == DELETE || testkey ==6) /*RB 6== ctrl-F for sound menu */
       return(0-testkey);
    if (menutype) {
-      if (strchr("\\sobpkrh",testkey) || testkey == TAB)
+      if (strchr("\\sobpkrh",testkey) || testkey == TAB)
          return(0-testkey);
       if (testkey == ' ')
          if ((curfractalspecific->tojulia != NOFRACTAL
@@ -1508,6 +1583,7 @@ int field_prompt(
    int promptcol;
    int i,j;
    char buf[81];
+   static char far DEFLT_INST[] = {"Press ENTER when finished (or ESCAPE to back out)"};
    helptitle();                           /* clear screen, display title */
    setattr(1,0,C_PROMPT_BKGRD,24*80);     /* init rest to background */
    charptr = hdg;                         /* count title lines, find widest */
@@ -1552,8 +1628,7 @@ int field_prompt(
       putstringcenter(i,0,80,C_PROMPT_BKGRD,buf);
       }
    else                                   /* default instructions */
-      putstringcenter(i,0,80,C_PROMPT_BKGRD,
-              "Press ENTER when finished (or ESCAPE to back out)");
+      putstringcenter(i,0,80,C_PROMPT_BKGRD,DEFLT_INST);
    return(input_field(options,C_PROMPT_INPUT,fld,len,
                       titlerow+titlelines+1,promptcol,checkkey));
 }
@@ -1570,7 +1645,7 @@ int field_prompt(
 int thinking(int options,char far *msg)
 {
    static int thinkstate = -1;
-   static char *wheel[] = {"-","\\","|","/"};
+   char *wheel[] = {"-","\\","|","/"};
    static int thinkcol;
    static int count = 0;
    char buf[81];
@@ -1610,16 +1685,16 @@ void clear_screen(void)  /* a stub for a windows only subroutine */
 
 /* savegraphics/restoregraphics: video.asm subroutines */
 
-static BYTE far *swapsavebuf;
-static unsigned int memhandle;
 unsigned long swaptotlen;
 unsigned long swapoffset;
 BYTE far *swapvidbuf;
 int swaplength;
-static int swaptype = -1;
-static int swapblklen; /* must be a power of 2 */
+
+#define SWAPBLKLEN 4096 /* must be a power of 2 */
+U16 memhandle = 0;
+
 #ifdef XFRACT
-BYTE suffix[4096];
+BYTE suffix[10000];
 #endif
 
 #ifndef XFRACT
@@ -1627,131 +1702,67 @@ BYTE suffix[4096];
 int savegraphics()
 {
    int i;
-   struct XMM_Move   xmmparms;
+   long count;
+   unsigned long swaptmpoff;
 
-   discardgraphics(); /* if any emm/xmm in use from prior call, release it */
    swaptotlen = (long)(vxdots > sxdots ? vxdots : sxdots) * (long)sydots;
    i = colors;
    while (i <= 16) {
       swaptotlen >>= 1;
       i = i * i;
       }
+   count = (long)((swaptotlen / SWAPBLKLEN) + 1);
    swapoffset = 0;
-   if (debugflag != 420 && debugflag != 422 /* 422=xmm test, 420=disk test */
-     && (swapsavebuf = emmquery()) != NULL
-     && (memhandle = emmallocate((unsigned int)((swaptotlen + 16383) >> 14)))
-         != 0) {
-      swaptype = 0; /* use expanded memory */
-      swapblklen = 16384;
-      }
-   else if (debugflag != 420
-     && xmmquery() != 0
-     && (memhandle = xmmallocate((unsigned int)((swaptotlen + 1023) >> 10)))
-         != 0) {
-      swaptype = 1; /* use extended memory */
-      swapblklen = 16384;
-      }
-   else {
-      swaptype = 2; /* use disk */
-      swapblklen = 4096;
+   if (memhandle != 0)
+      discardgraphics(); /* if any emm/xmm in use from prior call, release it */
+   memhandle = MemoryAlloc((U16)SWAPBLKLEN, count, EXPANDED);
 
-   /* MCP 7-7-91, If 'memhandle' is an 'unsigned int', how is it ever going
-      to be equal to -1?
-
-      if ((memhandle = dir_open(tempdir,diskfilename,O_CREAT|O_WRONLY|O_BINARY,S_IWRITE))
-         == -1) {
-   */
-      if ((memhandle = dir_open(tempdir,diskfilename,O_CREAT|O_WRONLY|O_BINARY,S_IWRITE))
-         == 0xffff) {
-
-
-dskfile_error:
-         setvideotext(); /* text mode */
-         setclear();
-         {
-            static char far s1[] = {"error in temp file "};
-            static char far s2[] = { " (disk full?) - aborted\n\n"};
-            printf("%Fs%s%Fs",s1,diskfilename,s2);
-         }
-         exit(1);
-         }
-      made_dsktemp = 1;
-      }
    while (swapoffset < swaptotlen) {
-      swaplength = swapblklen;
-      if ((swapoffset & (swapblklen-1)) != 0)
-         swaplength = (int)(swapblklen - (swapoffset & (swapblklen-1)));
+      swaplength = SWAPBLKLEN;
+      if ((swapoffset & (SWAPBLKLEN-1)) != 0)
+         swaplength = (int)(SWAPBLKLEN - (swapoffset & (SWAPBLKLEN-1)));
       if ((unsigned long)swaplength > (swaptotlen - swapoffset))
          swaplength = (int)(swaptotlen - swapoffset);
+      if (swapoffset == 0)
+         swaptmpoff = 0;
+      else
+         swaptmpoff = swapoffset/swaplength;
       (*swapsetup)(); /* swapoffset,swaplength -> sets swapvidbuf,swaplength */
-      switch(swaptype) {
-         case 0:
-            emmgetpage((unsigned int)(swapoffset>>14),memhandle);
-            movewords(swaplength>>1,swapvidbuf,
-                      swapsavebuf+(swapoffset&(swapblklen-1)));
-            break;
-         case 1:
-            xmmparms.Length = swaplength;
-            xmmparms.SourceHandle = 0; /* Source is conventional memory */
-            xmmparms.SourceOffset = (unsigned long)swapvidbuf;
-            xmmparms.DestHandle = memhandle;
-            xmmparms.DestOffset = swapoffset;
-            xmmmoveextended(&xmmparms);
-            break;
-         default:
-            movewords(swaplength>>1,swapvidbuf,(BYTE far *)suffix);
-            if (write(memhandle,suffix,swaplength) == -1)
-               goto dskfile_error;
-         }
+
+      MoveToMemory(swapvidbuf,(U16)swaplength,1L,swaptmpoff,memhandle);
+
       swapoffset += swaplength;
       }
-   if (swaptype == 2)
-      close(memhandle);
    return 0;
 }
 
 int restoregraphics()
 {
-   struct XMM_Move   xmmparms;
+   unsigned long swaptmpoff;
 
-   if(swaptype == -1)
-      return(-1);
    swapoffset = 0;
-   if (swaptype == 2)
-      memhandle = dir_open(tempdir,diskfilename,O_RDONLY|O_BINARY,S_IREAD);
    swapvidbuf = MK_FP(extraseg+0x1000,0); /* for swapnormwrite case */
+
    while (swapoffset < swaptotlen) {
-      swaplength = swapblklen;
-      if ((swapoffset & (swapblklen-1)) != 0)
-         swaplength = (int)(swapblklen - (swapoffset & (swapblklen-1)));
+      swaplength = SWAPBLKLEN;
+      if ((swapoffset & (SWAPBLKLEN-1)) != 0)
+         swaplength = (int)(SWAPBLKLEN - (swapoffset & (SWAPBLKLEN-1)));
       if ((unsigned long)swaplength > (swaptotlen - swapoffset))
          swaplength = (int)(swaptotlen - swapoffset);
+      if (swapoffset == 0)
+         swaptmpoff = 0;
+      else
+         swaptmpoff = swapoffset/swaplength;
       if (swapsetup != swapnormread)
          (*swapsetup)(); /* swapoffset,swaplength -> sets swapvidbuf,swaplength */
-      switch(swaptype) {
-         case 0:
-            emmgetpage((unsigned int)(swapoffset>>14),memhandle);
-            movewords(swaplength>>1,swapsavebuf+(swapoffset&(swapblklen-1)),
-                      swapvidbuf);
-            break;
-         case 1:
-            xmmparms.Length = swaplength;
-            xmmparms.SourceHandle = memhandle;
-            xmmparms.SourceOffset = swapoffset;
-            xmmparms.DestHandle = 0; /* conventional memory */
-            xmmparms.DestOffset = (unsigned long)swapvidbuf;
-            xmmmoveextended(&xmmparms);
-            break;
-         default:
-            read(memhandle,suffix,swaplength);
-            movewords(swaplength>>1,(BYTE far *)suffix,swapvidbuf);
-         }
+
+      MoveFromMemory(swapvidbuf,(U16)swaplength,1L,swaptmpoff,memhandle);
+
       if (swapsetup == swapnormread)
          swapnormwrite();
       swapoffset += swaplength;
       }
-   if (swaptype == 2)
-      close(memhandle);
+
    discardgraphics();
    return(0);
 }
@@ -1764,14 +1775,8 @@ int restoregraphics() {return 0;}
 void discardgraphics() /* release expanded/extended memory if any in use */
 {
 #ifndef XFRACT
-   switch(swaptype) {
-      case 0:
-         emmdeallocate(memhandle);
-         break;
-      case 1:
-         xmmdeallocate(memhandle);
-      }
-   swaptype = -1;
+   MemoryRelease(memhandle);
+   memhandle = 0;
 #endif
 }
 
@@ -1804,7 +1809,8 @@ int load_fractint_cfg(int options)
    VIDEOINFO *vident;
    int far *cfglinenums;
    int linenum;
-   int i, j, keynum, ax, bx, cx, dx, dotmode, xdots, ydots, colors;
+   long xdots, ydots;
+   int i, j, keynum, ax, bx, cx, dx, dotmode, colors;
    int commas[10];
    int textsafe2;
    char tempstring[150];
@@ -1830,6 +1836,9 @@ int load_fractint_cfg(int options)
    vident = vidtbl;
    while (vidtbllen < MAXVIDEOMODES
      && fgets(tempstring, 120, cfgfile)) {
+      if(strchr(tempstring,'\n') == NULL)
+         /* finish reading the line */
+         while(fgetc(cfgfile) != '\n' && !feof(cfgfile));
       ++linenum;
       if (tempstring[0] == ';') continue;   /* comment line */
       tempstring[120] = 0;
@@ -1852,13 +1861,18 @@ int load_fractint_cfg(int options)
       sscanf(&tempstring[commas[3]],"%x",&cx);
       sscanf(&tempstring[commas[4]],"%x",&dx);
       dotmode     = atoi(&tempstring[commas[5]]);
-      xdots       = atoi(&tempstring[commas[6]]);
-      ydots       = atoi(&tempstring[commas[7]]);
+      xdots       = atol(&tempstring[commas[6]]);
+      ydots       = atol(&tempstring[commas[7]]);
       colors      = atoi(&tempstring[commas[8]]);
-      if(colors == 16 && strchr(strlwr(&tempstring[commas[8]]),'m'))
+      if(colors == 4 && strchr(strlwr(&tempstring[commas[8]]),'g'))
       {
          colors = 256;
-         truecolorbits = 3; /* 48 bits */
+         truecolorbits = 4; /* 32 bits */
+      }
+      else if(colors == 16 && strchr(&tempstring[commas[8]],'m'))
+      {
+         colors = 256;
+         truecolorbits = 3; /* 24 bits */
       }
       else if(colors == 64 && strchr(&tempstring[commas[8]],'k'))
       {
@@ -1875,7 +1889,7 @@ int load_fractint_cfg(int options)
 
       textsafe2   = dotmode / 100;
       dotmode    %= 100;
-      if (j != 9 ||
+      if (j < 9 ||
             keynum < 0 ||
             dotmode < 0 || dotmode > 30 ||
             textsafe2 < 0 || textsafe2 > 4 ||
@@ -1895,8 +1909,8 @@ int load_fractint_cfg(int options)
       vident->videomodecx = cx;
       vident->videomodedx = dx;
       vident->dotmode     = truecolorbits * 1000 + textsafe2 * 100 + dotmode;
-      vident->xdots       = xdots;
-      vident->ydots       = ydots;
+      vident->xdots       = (short)xdots;
+      vident->ydots       = (short)ydots;
       vident->colors      = colors;
       ++vident;
       ++vidtbllen;
@@ -1959,7 +1973,7 @@ int check_vidmode_key(int option,int k)
    /* function key currently assigned to a video mode, -1 otherwise */
    if (k == 1400)              /* special value from select_vid_mode  */
       return(MAXVIDEOTABLE-1); /* for last entry with no key assigned */
-   if (k != 0)
+   if (k != 0) {
       if (option == 0) { /* check resident video mode table */
          for (i = 0; i < MAXVIDEOTABLE; ++i) {
             if (videotable[i].keynum == k)
@@ -1972,6 +1986,7 @@ int check_vidmode_key(int option,int k)
                return(i);
             }
          }
+   }
    return(-1);
 }
 
@@ -2037,4 +2052,3 @@ void vidmode_keyname(int k,char *buf)
 #if (_MSC_VER >= 700)
 #pragma code_seg ()      /* back to normal segment */
 #endif
-
