@@ -1,5 +1,5 @@
 
-;	FRACT386 (assembler portion)	Version 2.1	By Bert Tyler
+;	FRACT386 (assembler portion)	Version 3.0	By Bert Tyler
 
 ;	NOTE: this routine REQUIRES a 386.  It does NOT require (or use)
 ;	a floating point co-processor.
@@ -44,6 +44,8 @@ FUDGEFACTOR	equ	29
 
 ; ************************ External variables *****************************
 
+	extrn	julia:word		; == 0 if Mandelbrot set, else Julia
+	extrn	creal:dword, cimag:dword ; Julia Set Constant
 	extrn	lx0:dword, ly0:dword	; arrays of (dword) increment values
 	extrn	dotmode: word		; video mode:   1 = use the BIOS (yuck)
 ;							2 = use EGA/VGA style
@@ -118,15 +120,15 @@ videomode:
 	mov	y,0			; initialize outer loop
 
 yloop:					; for (y = 0; y < ydots; y++)
-	mov	bx,y			; pull lq value out of the array
+	mov	x,0			; initialize inner loop
+
+xloop:					; for (x = 0; x < xdots; x++)
+	mov	bx,y			; pull ly0 value out of the array
 	shl	bx,2			; convert to double-word pointer
 	mov	eax,ly0[bx]		;  here it is!
 	mov	ly,eax			; save it for later
 
-	mov	x,0			; initialize inner loop
-
-xloop:					; for (x = 0; x < xdots; x++)
-	mov	bx,x			; pull lp value out of the array
+	mov	bx,x			; pull lx0 value out of the array
 	shl	bx,2			; convert to double-word pointer
 	mov	eax,lx0[bx]		;  here it is!
 	mov	lx,eax			; save it for later
@@ -135,6 +137,26 @@ xloop:					; for (x = 0; x < xdots; x++)
 	mov	edi,esi			; (edi == ly0) ly0 = 0
 	mov	ebx,esi			; (ebx == ...<calculated on the fly>)
 					;      (lx0*lx0 - ly0*ly0) / fudge = 0
+
+	cmp	julia,0			; julia or mandelbrot set?
+	je	doeither		; Mandelbrot set:  initialization done.
+
+dojulia:				; Julia Set initialization
+					; "fudge" Mandelbrot start-up values
+	mov	ebx,lx			; get a running start on real part
+	sub	ebx,creal		;  sub, later add Creal .. and get x0!
+
+	mov	edi,ly			; get a running start on imag'ry part
+	sub	edi,cimag		;  (subtract, later add Cimag)
+	mov	esi,1			;  (multiply, later div by [2/fudge])
+	shl	esi,FUDGEFACTOR-1	;   ... and we'll get y0!!!
+
+	mov	edx,creal		; reset real, imaginary parts of const
+	mov	lx,edx			;  Creal
+	mov	edx,cimag		;  ...
+	mov	ly,edx			;  Cimaginary
+
+doeither:				; common Mandelbrot, Julia set code
 	mov	ax,maxit			; setup k = maxit
 	mov	k,ax			;  (decrementing to 0 is faster)
 
@@ -160,8 +182,8 @@ maxittest:				; timing check: avoid the main
 
 kloop:					; for (k = 0; k <= maxit; k++)
 
-	mov	eax,esi			; compute (lx * ly)
-	imul	edi			;  ...
+	mov	eax,edi			; compute (ly * lx)
+	imul	esi			;  ...
 	shrd	eax,edx,FUDGEFACTOR-1	;  ( * 2 / fudge)
 	add	eax,ly			;  (above) + ly0
 	mov	edi,eax			;  save this as ly
@@ -518,7 +540,7 @@ drawbox	endp
 ;	No returned values, as there is no particular standard to
 ;	adhere to in this case.
 
-setvideomode	proc	argax:word, argbx:word
+setvideomode	proc	argax:word, argbx:word, argcx:word, argdx:word
 	push	ax			; save registers
 	push	bx			;  ...
 	push	cx			;  ...
@@ -526,6 +548,8 @@ setvideomode	proc	argax:word, argbx:word
 	push	bp			;  ...
 	mov	ax,argax		; load up for the interrupt call
 	mov	bx,argbx		;  ...
+	mov	cx,argcx		;  ...
+	mov	dx,argdx		;  ...
 	int	10h			; do it.
 	pop	bp			; restore registers
 	pop	dx			;  ...
