@@ -1,8 +1,8 @@
 .asm.obj:
- tasm /zi $*,$*.obj
+ tasm /zi /ml $*,$*.obj
 
 .c.obj:
- tcc -v -mm -c -w-aus -w-par -wstv -K -C -Z -d -j5 -g25 $*
+ tcc -mm -c -w-aus -w-par -w-voi -w-rch -w-rvl -w-eff -w-def -K -C -Z -d -j5 -g25 $*
 
 fract.exe : 3D.OBJ \
 	CALCFRAC.OBJ \
@@ -19,7 +19,6 @@ fract.exe : 3D.OBJ \
 	TESTPT.OBJ \
 	CALCMAND.OBJ \
 	FARMSG.OBJ \
-	FARVIDEO.OBJ \
 	GENERAL.OBJ \
 	VIDEO.OBJ \
 	NEWTON.OBJ \
@@ -28,9 +27,10 @@ fract.exe : 3D.OBJ \
 	YOURVID.OBJ \
 	CMDFILES.OBJ \
 	PRINTER.OBJ \
-	LOG.OBJ \
-	FMATH.OBJ \
-	FMATH086.OBJ \
+	MPMATH_C.OBJ \
+	MPMATH_A.OBJ \
+	FPU387.OBJ \
+	FPU087.OBJ \
 	TGAVIEW.OBJ \
 	F16.OBJ \
 	targa.obj loadmap.obj tgasubs.obj 

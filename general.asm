@@ -54,7 +54,7 @@
 
 
 ;			 required for compatibility if Turbo ASM
-IFDEF ??Version
+IFDEF ??version
 	MASM51
 	QUIRKS
 ENDIF
@@ -85,6 +85,8 @@ public		lookatmouse		; used by 'calcfrac'
 public		_dataseg		; used by TARGA, other Turbo Code
 
 public		extraseg		; extra 64K segment, if any
+
+public		overflow		; Mul, Div overflow flag: 0 means none
 
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
@@ -127,6 +129,8 @@ teststring	db	100  dup(0)	; 100 byte Encoder array
 cpu		dw	0		; cpu type: 86, 186, 286, or 386
 fpu		dw	0		; fpu type: 0, 87, 287, 387
 _dataseg	dw	0		; our "near" data segment
+
+overflow	dw	0		; overflow flag
 
 kbd_type	db	0		; type of keyboard
 keybuffer	dw	0		; real small keyboard buffer
@@ -221,10 +225,11 @@ cmpend:
 	ret				; we done.
 cmpextra	endp
 
+
 ; =======================================================
 ;
-;	quick-and-dirty (no error/overflow checks performed)
 ;	32-bit integer multiply routine with an 'n'-bit shift.
+;	Overflow condition returns 0x7fffh with overflow = 1;
 ;
 ;	long x, y, z, multiply();
 ;	int n;
@@ -240,7 +245,7 @@ cmpextra	endp
 
 .DATA
 
-temp	dw	4 dup(0)		; temporary 64-bit result goes here
+temp	dw	5 dup(0)		; temporary 64-bit result goes here
 sign	db	0			; sign flag goes here
 
 .CODE
@@ -260,7 +265,15 @@ multiply	proc	uses di si es, x:dword, y:dword, n:word
 	mov	eax,edx			;  >= 32 bits:  manual shift
 	mov	edx,0			;  ...
 	sub	cx,32			;  ...
-fastm1:	shrd	eax,edx,cl		; shift down 'n' bits
+fastm1:	push	cx			; save to counter
+	shrd	eax,edx,cl		; shift down 'n' bits
+	pop	cx			; restore the counter
+	sar	edx,cl			; shift down the top bits
+	cmp	eax,0			; verify the resulting sign
+	jge	fastm3			;  positive
+	inc	edx			; negative - increment edx
+fastm3:	cmp	edx,0			; if EDX isn't zero
+	jne	overm1			;  we overflowed
 	push	eax			; save the 64-bit result
 	pop	ax			; low-order  16 bits
 	pop	dx			; high-order 16 bits
@@ -273,6 +286,7 @@ slowmultiply:				; (sigh)  time to do it the hard way...
 	mov	ax,0
 	mov	temp+4,ax		; first, zero out the (temporary)
 	mov	temp+6,ax		;  result
+	mov	temp+8,ax
 
 	les	bx,x			; move X to SI:BX
 	mov	si,es			;  ...
@@ -330,34 +344,45 @@ mults4:
 	sub	cx,24			; quick-shift 24 bits
 	mov	ax,temp+3		; load up the registers
 	mov	dx,temp+5		;  ...
-	mov	bx,temp+7		;  ...
+	mov	si,temp+7		;  ...
+	mov	bx,0			;  ...
 	jmp	short multc4		; branch to common code
 multc1:	cmp	cx,16			; shifting by two bytes or more?
 	jl	multc2			;  nope.  check for something else
 	sub	cx,16			; quick-shift 16 bits
 	mov	ax,temp+2		; load up the registers
 	mov	dx,temp+4		;  ...
-	mov	bx,temp+6		;  ...
+	mov	si,temp+6		;  ...
+	mov	bx,0			;  ...
 	jmp	short multc4		; branch to common code
 multc2:	cmp	cx,8			; shifting by one byte or more?
 	jl	multc3			;  nope.  check for something else
 	sub	cx,8			; quick-shift 8 bits
 	mov	ax,temp+1		; load up the registers
 	mov	dx,temp+3		;  ...
-	mov	bx,temp+5		;  ...
+	mov	si,temp+5		;  ...
+	mov	bx,temp+7		;  ...
 	jmp	short multc4		; branch to common code
 multc3:	mov	ax,temp			; load up the regs
 	mov	dx,temp+2		;  ...
-	mov	bx,temp+4		;  ...
+	mov	si,temp+4		;  ...
+	mov	bx,temp+6		;  ...
 multc4:	cmp	cx,0			; done shifting?
 	je	multc5			;  yup.  bail out
 
 multloop:
 	shr	bx,1			; shift down 1 bit, cascading
+	rcr	si,1			;  ...
 	rcr	dx,1			;  ...
 	rcr	ax,1			;  ...
 	loop	multloop		; try the next bit, if any
 multc5:
+	cmp	si,0			; overflow time?
+	jne	overm1			; yup.  Bail out.
+	cmp	bx,0			; overflow time?
+	jne	overm1			; yup.  Bail out.
+	cmp	dx,0			; overflow time?
+	jl	overm1			; yup.  Bail out.
 
 	cmp	sign,0			; should we negate the result?
 	je	mults5			;  nope.
@@ -368,6 +393,12 @@ multc5:
 	adc	ax,bx			;   ...
 	adc	dx,bx			;   ...
 mults5:
+	jmp	multiplyreturn
+
+overm1:
+	mov	ax,0ffffh		; overflow value
+	mov	dx,07fffh		; overflow value
+	mov	overflow,1		; flag overflow
 
 multiplyreturn:				; that's all, folks!
 	ret
@@ -376,8 +407,8 @@ multiply	endp
 
 ; =======================================================
 ;
-;	quick-and-dirty (no error/overflow checks performed)
 ;	32-bit integer divide routine with an 'n'-bit shift.
+;	Overflow condition returns 0x7fffh with overflow = 1;
 ;
 ;	long x, y, z, divide();
 ;	int n;
@@ -422,12 +453,10 @@ fastd1:	cmp	cx,0			; done shifting?
 	loop	fastd1			; and try again
 fastd2:
 	cmp	edx,ebx			; umm, will the divide blow out?
-	jae	short overd1		;  yup.  better skip it.
+	jae	overd1			;  yup.  better skip it.
 	div	ebx			; do the divide
-	jmp	short	nooverd1	; skip past the overflow
-overd1:
-	mov	eax,7fffffffh		; overflow value
-nooverd1:
+	cmp	eax,0			; did the sign flip?
+	jl	overd1			;  then we overflowed
 	cmp	sign,0			; is the sign reversed?
 	je	short divides3		;  nope
 	neg	eax			; flip the sign
@@ -518,6 +547,8 @@ dividel1:
 	cmp	ax,di			;  maybe
 	jb	dividel3		;  nope
 dividel2:
+	cmp	byte ptr temp+4,32	; overflow city?
+	jge	overd1			;  yup.
 	sub	ax,di			; subtract Y
 	sbb	dx,si			;  ...
 	inc	temp			; add 1 to the result
@@ -532,7 +563,6 @@ dividel3:
 
 	mov	ax,temp			; copy the result to DX:AX
 	mov	dx,word ptr temp+2	;  ...
-
 	cmp	sign,0			; should we negate the result?
 	je	divides6		;  nope.
 	not	ax			;  yup.  flip signs.
@@ -542,6 +572,12 @@ dividel3:
 	adc	ax,0			;   ...
 	adc	dx,0			;   ...
 divides6:
+	jmp	short dividereturn
+
+overd1:
+	mov	ax,0ffffh		; overflow value
+	mov	dx,07fffh		; overflow value
+	mov	overflow,1		; flag overflow
 
 dividereturn:				; that's all, folks!
 	ret
@@ -785,6 +821,8 @@ initasmvars	proc	uses es si di
 initasmvarsgo:
 	mov	ax,ds			; save the data segment
 	mov	_dataseg,ax		;  for the C code
+
+	mov	overflow,0		; indicate no overflows so far
 
 	mov	dx,1			; ask for 96K of far space
 	mov	ax,8000h		;  ...

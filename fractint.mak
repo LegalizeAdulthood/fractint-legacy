@@ -2,7 +2,7 @@
 	cl /AM /W1 /FPi /Gs /c /Oait $*.c
 
 .asm.obj:
-	masm /MX $*;
+	masm /ML $*;
 
 
 3d.obj : 3d.c fractint.h
@@ -25,8 +25,6 @@ encoder.obj : encoder.c fractint.h
 
 farmsg.obj : farmsg.asm
 
-farvideo.obj : farvideo.asm
-
 fr8514a.obj : fr8514a.asm
 
 hgcfra.obj : hgcfra.asm
@@ -46,13 +44,11 @@ help.obj : help.c fractint.h
 line3d.obj : line3d.c fractint.h
 
 newton.obj : newton.asm
-	masm /e newton;
+	masm /e /ML newton;
 
 printer.obj : printer.c fractint.h
 
 rotate.obj : rotate.c fractint.h
-
-log.obj : log.c
 
 testpt.obj: testpt.c fractint.h
 
@@ -64,17 +60,22 @@ tgasubs.obj : tgasubs.c targa.h
 
 yourvid.obj : yourvid.c
 
-fmath.obj : fmath.c fmath.h
+fpu387.obj : fpu387.asm
 
-fmath086.obj : fmath086.asm
+fpu087.obj : fpu087.asm
+	masm /e /ML fpu087;
 
 f16.obj : f16.c targa_lc.h
+
+mpmath_c.obj : mpmath_c.c mpmath.h
+
+mpmath_a.obj : mpmath_a.asm
 
 fractint.exe : fractint.obj help.obj config.obj encoder.obj gifview.obj \
      general.obj calcmand.obj fractals.obj calcfrac.obj testpt.obj \
      decoder.obj rotate.obj yourvid.obj \
      diskvid.obj line3d.obj 3d.obj newton.obj farmsg.obj cmdfiles.obj \
-     targa.obj loadmap.obj tgasubs.obj printer.obj fmath.obj fmath086.obj \
-     log.obj video.obj tgaview.obj f16.obj farvideo.obj fr8514a.obj \
-     hgcfra.obj
+     targa.obj loadmap.obj tgasubs.obj printer.obj \
+     video.obj tgaview.obj f16.obj fr8514a.obj \
+     hgcfra.obj fpu087.obj fpu387.obj mpmath_c.obj  mpmath_a.obj 
 	link /ST:4096 /NOE @fractint.lnk

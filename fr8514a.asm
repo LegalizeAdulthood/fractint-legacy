@@ -1,6 +1,6 @@
 
 
-IFDEF ??Version
+IFDEF ??version
 	MASM51
 	QUIRKS
 ENDIF

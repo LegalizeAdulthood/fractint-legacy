@@ -29,16 +29,7 @@ of work.
 Quick-C:
 ========
 
-Mark Peterson uses both Microsoft's 5.1 C compiler and their Quick-C 
-compiler, and prefers the interactive Quick-C environment.  With versions
-7.45 and above, Mark was able to use the interactive Quick-C
-environment with most (but not all - some of the modules are just too big)
-of the FRACTINT source code.  We have included two sample .MAK files
-provided by Mark as examples of his particular method.  QCFRACT.MAK
-uses 5.1 to compile all but TESTPT.C, and QCTESTPT.MAK is used to load
-and test TESTPT.C in the interactive Quick-C environment.
-
-Uhh, we've gotten word that as of version 9.0, FRACTINT is now too big for
+We've gotten word that as of version 9.0, FRACTINT is now too big for
 the interactive Quick-C environment.  You apparantly have to use the
 command-line variant of Quick-C these days.
 
@@ -46,17 +37,17 @@ Turbo-C and TASM
 ================
 
 FRACTINT is SUPPOSED to be compatible with both of these products, although
-this one is a constant struggle.  At various points in the development
-cycle the FRACTINT source is processed by several developers like Joe McLain
-that only have the Turbo compiler/assemblers.  Also, when Bert remembers to
-do it (usually right after Joe points out a problem to him), he runs
-FRACTINT through his copy of Turbo C/TASM.  Still, there is always the
-possibility that we managed to sneak a last-minute update by everybody
+this one is a constant struggle.  Bert runs FRACTINT through his copy of
+Turbo C/TASM just before public releases and *attempts* to test all of
+the doodads we've added since the previous release.  Still, there is always
+the possibility that we managed to sneak a last-minute update by everybody
 ("but, we hardly changed anything at all!") that destroys this compatibility.
-We have included two sample files from Joe (TC.MAK, TC.LNK) that compile
-and link FRACTINT using the Turbo products (Note: with version 10.x, we've
-changed those routines to use Bert's non-standard Turbo directory names
-rather than Joe's non-standard Turbo directory names).  
+We have included two sample files (TC.MAK, TC.LNK) that compile and link
+FRACTINT using the Turbo products on Bert's machine using the command
+"make -ftc" (Note: for no good reason, Bert keeps his Turbo products in
+a non-standard directory name ("C:\TURBO") - you will most likely have to
+edit TC.MAK and TC.LNK to refer to the directories where you keep your
+Turbo products).
 
 Note that FRACTINT is simply too large for the interactive Turbo-C
 environment.  Sorry, but you're gonna have to use the command line option.
@@ -79,6 +70,10 @@ CALCFRAC.C	  how a fractal is calculated, look in here.  Specific
 CALCMAND.ASM	- Mandelbrot/Julia set calculations.
 NEWTON.ASM	- Newton calculations
 TESTPT.C	- "Roll-your-own" fractal routine
+MPMATH_C.C,	- Mark Peterson's "fast-math" support routines.
+MPMATH_A.ASM,	  (this stuff puts some of the routines supplied by your
+FPU387.ASM,       favorite "C" compiler to shame!)
+FPU087.ASM	  ...
 
 VIDEO.ASM	- Assembler code containing all of the video routines
 		  (setting up the video, reading/writing pixels, zoom-box
@@ -101,8 +96,7 @@ GENERAL.ASM	- General assembler code having nothing to do with fractals.
 			Keyboard routines
 			Mouse routines
 			Expanded memory routines
-			32-bit scaled integer multiply routine
-FARVIDEO.ASM	- Contains the ever-growing internal video table.
+			32-bit scaled integer multiply and divide routines
 
 ENCODER.C	- GIF Encoder routine.
 GIFVIEW.C,	- GIF Decoder routines.

@@ -10,28 +10,17 @@ extern char far helpmessagetitle[];
 extern char far helpmessageauthors[];
 extern char far helpmessagecredits[];
 extern char far helpmessagemenu[];
-extern char far helpmessagemain1[];
-extern char far helpmessagemain2[];
-extern char far helpmessagemain3[];
-extern char far helpmessagecycling1[];
-extern char far helpmessagecycling2[];
-extern char far helpmessagemouse[];
-extern char far helpmessagecmdline1[];
-extern char far helpmessagecmdline2[];
-extern char far helpmessagecmdline3[];
-extern char far helpmessagecmdline4[];
-extern char far helpmessagefractals1[];
-extern char far helpmessagefractals2[];
-extern char far helpmessagefractals3[];
-extern char far helpmessagefractals4[];
-extern char far helpmessagefractals5[];
+extern char far *helpmessagemain[];
+extern char far *helpmessagecycling[];
+extern char far *helpmessagemouse[];
+extern char far *helpmessagecmdline[];
+extern char far *helpmessagefractals[];
 extern char far helpmessageformoreinfo[];
 extern char far helpmessagemoretext[];
 extern char far helpmessageendtext[];
 extern char far helpmessagevideo[];
 
 extern	void	helpmessage(unsigned char far *);
-int helppage (char far *, char far *, char far *, char far *, char far * );
 
 extern int adapter;
 
@@ -141,39 +130,25 @@ while (mode != HELPEXIT) {
 
 	switch (mode) {
 		case HELPMAIN:
-			key = helppage(helpmessagemain1,
-				helpmessagemain2,
-				helpmessagemain3,
-				NULL, NULL);
+			key = helppage(helpmessagemain);
 			break;
 		case HELPCYCLING:
-			key = helppage(helpmessagecycling1,
-				helpmessagecycling2, NULL, NULL, NULL);
+			key = helppage(helpmessagecycling);
 			break;
 		case HELPMOUSE:
-			key = helppage(helpmessagemouse,
-				NULL, NULL, NULL, NULL);
+			key = helppage(helpmessagemouse);
 			break;
 		case HELPCMDLINE:
-			key = helppage(helpmessagecmdline1,
-				helpmessagecmdline2,
-				helpmessagecmdline3,
-				helpmessagecmdline4,
-				NULL);
+			key = helppage(helpmessagecmdline);
 			break;
 		case HELPFRACTALS:
-			key = helppage(helpmessagefractals1,
-				helpmessagefractals2, 
-				helpmessagefractals3,
-				helpmessagefractals4,
-				helpmessagefractals5);
+			key = helppage(helpmessagefractals);
 			break;
 		case HELPVIDEO:
 			key = helpvideo();
 			break;
 		case HELPMOREINFO:
-			key = helppage(helpmessageformoreinfo,
-				NULL, NULL, NULL, NULL);
+			key = helppage(helpmessageformoreinfo);
 			break;
 		default:
 			key = 27;
@@ -197,14 +172,13 @@ lookatmouse = oldlookatmouse;		/* restore the mouse-checking */
 return(0);
 }
 
-helppage(char far * message1, char far * message2,
-	char far * message3, char far * message4, char far * message5)
+helppage(char far * helppages[])
 {
 int key, page;
 
-if (message2 == NULL) {
+if (helppages[1] == NULL) {
 	helptitle();
-	helpmessage(message1);
+	helpmessage(helppages[0]);
 	movecursor(22,0);
 	helpmessage(helpmessageendtext);
 	return(getakey());
@@ -215,19 +189,11 @@ page = 1;
 
 while (key == 13) {
 	helptitle();
-	if (page == 1)	helpmessage(message1);
-	if (page == 2)	helpmessage(message2);
-	if (page == 3)	helpmessage(message3);
-	if (page == 4)	helpmessage(message4);
-	if (page == 5)	helpmessage(message5);
+	helpmessage(helppages[page-1]);
 	movecursor(21,0);
 	helpmessage(helpmessagemoretext);
 	helpmessage(helpmessageendtext);
-        page++;
-	if (page == 6) page = 1;
-	if (page == 3 && message3 == NULL) page = 1;
-	if (page == 4 && message4 == NULL) page = 1;
-	if (page == 5 && message5 == NULL) page = 1;
+	if (helppages[++page-1] == NULL) page = 1;
 	key = getakey();
 	}
 return(key);

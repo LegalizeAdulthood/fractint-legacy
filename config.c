@@ -14,8 +14,8 @@
 int file_type = -1;     /* 0=GIF, 1=Tim's pot (may become Targa) TW 7/20/89 */
 
 /* looks for fractal_info within MAX_LOOK bytes of end of file */
+#define MAX_LOOK 612            /* equals max bytes garbage at end of file */
 
-#define MAX_LOOK 512    /* equals max bytes garbage at end of file */
 int filetype;
 find_fractal_info(gif_file,info)
 char *gif_file;
@@ -95,16 +95,19 @@ struct fractal_info *info;
       break;
    }
 
+
+
    fseek(fp,-1L*(long)sizeof(FRACTAL_INFO),SEEK_END);
    do  /* keep trying to find word INFO_ID */
    {
-      /* should work on the first try, but you never know */
-      fread(info,sizeof(FRACTAL_INFO),1,fp);
+       /* should work on the first try, but you never know */
+       fread(info,1,sizeof(FRACTAL_INFO),fp);
 
-      /* creep up from the bottom */
-      fseek(fp,-1L*(long)(sizeof(FRACTAL_INFO)+ct),SEEK_END);
+       /* creep up from the bottom  - the '-101' is for old .FRA files */
+       fseek(fp,-1L*(long)(sizeof(FRACTAL_INFO)-101+ct),SEEK_END);
    }
    while(ct++ < MAX_LOOK && strcmp(INFO_ID,info->info_id));
+
    if(ct < MAX_LOOK)
    {
       /* zero means we won */

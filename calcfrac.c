@@ -22,12 +22,15 @@ restructurings.
 #include "fmath.h"
 #include "targa_lc.h"
 
-/* defines should match fractalspecific array indices */
-
+extern int bailout;
 extern char far plasmamessage[];
-long lmagnitud, llimit, llimit2, lclosenuff;
+long lmagnitud, llimit, llimit2, lclosenuff,l16triglim;
 struct complex init,tmp,old,new,saved;
-extern long inity;
+extern double tempsqrx,tempsqry;
+extern long ltempsqrx,ltempsqry;
+extern int biomorph;
+extern struct lcomplex linit;
+extern int basin;
 
 int color, oldcolor, oldmax, oldmax10, row, col, passes;
 int iterations, invert;
@@ -78,11 +81,9 @@ static	  int i;
 double xxmin,xxmax,yymin,yymax; /* corners */
 struct complex lambda;
 double deltaX, deltaY;
-double magnitude, rqlim;
+double magnitude, rqlim, rqlim2;
 int XXdots, YYdots; /* local dots */
-double parm1,parm2;
-double *floatparmx,*floatparmy;
-long *longparmx,*longparmy;
+extern struct complex parm;
 int (*calctype)();
 double closenuff;
 int pixelpi; /* value of pi in pixels */
@@ -106,9 +107,7 @@ static	int	integerfractal;		/* TRUE if fractal uses integer math */
 /*		These variables are external for speed's sake only	*/
 /* -------------------------------------------------------------------- */
 
-long newx, newy;
-long lambdax, lambday;
-long savedx, savedy;
+extern struct lcomplex lnew,llambda;
 int periodicitycheck;
 
 extern double floatmin, floatmax;
@@ -118,6 +117,7 @@ int StandardFractal();
 
 calcfract()
 {
+   orbit_color = 15;
    top     = 1;
    if(fp_pot)
    {
@@ -130,12 +130,13 @@ calcfract()
       floatmin = FLT_MIN;
       floatmax = FLT_MAX;
    }
-
    ixstart = 0;				/* default values to disable ..	*/
    iystart = 0;				/*   solid guessing		*/
    ixstop = xdots-1;
    iystop = ydots-1;
    guessing = 0;
+
+   basin = 0;
    
    xxmin  = (double)lx0[      0] / fudge;  
    xxmax  = (double)lx0[xdots-1] / fudge;
@@ -144,8 +145,8 @@ calcfract()
    deltaX = (double)lx0[      1] / fudge - xxmin;
    deltaY = yymax - (double)ly0[      1] / fudge;
 
-   parm1  = param[0];
-   parm2  = param[1];
+   parm.x  = param[0];
+   parm.y  = param[1];
 
    if(extraseg)
    {
@@ -179,7 +180,11 @@ calcfract()
       rqlim = potparam[2];
    else if (decomp[0] > 0 && decomp[1] > 0) 
       rqlim = (double)decomp[1];
-   else 
+   else if(bailout)    /* user input bailout */
+      rqlim = bailout;
+   else if(biomorph != -1)   /* biomorph benefits from larger bailout */
+      rqlim = 100;   
+   else    
       rqlim = fractalspecific[fractype].orbit_bailout;
 
    /* ORBIT stuff */
@@ -236,15 +241,16 @@ calcfract()
    
    closenuff = ((delx < dely ? delx : dely) >> 1); /* for periodicity checking */
    closenuff /= fudge;
-
+   rqlim2 = sqrt(rqlim);
    if (integerfractal) 		/* for integer routines (lambda) */
    {
-      lambdax = parm1 * fudge;		/* real portion of Lambda */
-      lambday = parm2 * fudge;		/* imaginary portion of Lambda */
+      llambda.x = parm.x * fudge;		/* real portion of Lambda */
+      llambda.y = parm.y * fudge;		/* imaginary portion of Lambda */
       llimit = rqlim * fudge;		/* stop if magnitude exceeds this */
       if (llimit <= 0) llimit = 0x7fffffff; /* klooge for integer math */
-      llimit2 = sqrt(rqlim) * fudge;	/* stop if magnitude exceeds this */
+      llimit2 = rqlim2 * fudge;	/* stop if magnitude exceeds this */
       lclosenuff = closenuff * fudge;   /* "close enough" value */
+      l16triglim = 8L<<16;   /* domain limit of fast trig functions */
    }
 
    calctype = fractalspecific[fractype].calctype;		/* assume a standard fractal type */
@@ -285,7 +291,7 @@ test()
             testend();
             return(-1);
          }
-         color = testpt(init.x,init.y,parm1,parm2,maxit,inside);
+         color = testpt(init.x,init.y,parm.x,parm.y,maxit,inside);
          (*plot)(col,row,color);
          if(numpasses && (passes == 0))
              (*plot)(col,row+1,color);
@@ -299,8 +305,9 @@ StandardFractal()
 {
    int caught_a_cycle;
    int savedand, savedincr;		/* for periodicity checking */
+   int quad;
+   struct lcomplex lsaved;
 
-        
    /* note: numpasses must == 1 in solidguessing mode */
    /* This is set in solidguess() */   
    for (passes=0; passes <= numpasses ; passes++)
@@ -324,7 +331,7 @@ StandardFractal()
          if (! integerfractal) 
             init.y = dy0[row];
          else 
-            inity = ly0[row];
+            linit.y = ly0[row];
 
          /* if numpasses == 1, on first pass skip cols */
          for (col = ixstart; col <= ixstop; col = col + 1 + numpasses - passes)
@@ -342,8 +349,8 @@ StandardFractal()
             }
             else 
             {
-               savedx = 0;
-               savedy = 0;
+               lsaved.x = 0;
+               lsaved.y = 0;
             }
             orbit_ptr = 0;        
             color = 0;
@@ -361,9 +368,9 @@ StandardFractal()
                if(show_orbit) 
                {
                   if (! integerfractal)
-                     plot_orbit(new.x,new.y);
+                     plot_orbit(new.x,new.y,-1);
                   else
-                     iplot_orbit(newx,newy);
+                     iplot_orbit(lnew.x,lnew.y,-1);
                }
 
                if (oldcolor >= oldmax10)
@@ -374,10 +381,7 @@ StandardFractal()
                         if (! integerfractal)
                            saved = new;		/* floating pt fractals */
                         else 
-                        {
-                           savedx = newx;		/* integer fractals */
-                           savedy = newy;		/*  ... */
-                        }
+                           lsaved = lnew;		/* integer fractals */
                         if (--savedincr == 0) /* time to lengthen the periodicity? */
                         { 
                            savedand = (savedand << 1) + 1; /* longer periodicity */
@@ -397,7 +401,7 @@ StandardFractal()
                         }
                         else  /* integer periodicity check */
                         {
-                           if(labs(savedx-newx)+labs(savedy-newy) 
+                           if(labs(lsaved.x-lnew.x)+labs(lsaved.y-lnew.y) 
                                  < lclosenuff) 
                            {
                               caught_a_cycle = 7;
@@ -426,41 +430,222 @@ StandardFractal()
             {
                if(integerfractal) 		/* adjust integer fractals */
                { 
-                  new.x = newx; new.x *= fudge;
-                  new.y = newy; new.y *= fudge;
+                  new.x = lnew.x; new.x /= fudge;
+                  new.y = lnew.y; new.y /= fudge;
                }
                magnitude = sqr(new.x)+sqr(new.y);
+
+               /* printf("rqlim %e magnit %e new.x %e new.y %e\n",rqlim,magnitude,new.x,new.y); */
+
                /* MUST call potential every pixel!! */
                color = potential(magnitude,color); 
                if(color < 0 || color >= colors) continue; 
             }
-			else if (decomp[0] > 0) 
+            else if (decomp[0] > 0)
+            {
+               int temp = 0;
+               struct lcomplex lalt;
+               struct complex alt;
+               color = 0;
+   
+               if (integerfractal) /* the only case */
+               {
+                  if (lnew.y < 0)
+                  {
+                     temp = 2;
+                     lnew.y = -lnew.y;
+                  }
+   
+                  if (lnew.x < 0)
+                  {
+                     ++temp;
+                     lnew.x = -lnew.x;
+                  }
+   
+                  if (decomp[0] >= 8)
+                  {
+                     temp <<= 1;
+                     if (lnew.x < lnew.y)
+                     {
+                        ++temp;
+                        lalt.x = lnew.x; /* just */
+                        lnew.x = lnew.y; /* swap */
+                        lnew.y = lalt.x; /* them */
+                     }
+   
+                     if (decomp[0] >= 16)
+                     {
+                        temp <<= 1;
+                        if (lnew.x * 0.414213562373 < lnew.y) /* tan(22.5) */
+                        {
+                           ++temp;
+                           lalt = lnew;
+                           lnew.x = lalt.x * 0.707106781187   /* cos(45) */
+                                  + lalt.y * 0.707106781187; /* sin(45) */
+                           lnew.y = lalt.x * 0.707106781187   /* sin(45) */
+                                  - lalt.y * 0.707106781187; /* cos(45) */
+                        }
+   
+                        if (decomp[0] >= 32)
+                        {
+                           temp <<= 1;
+                           if (lnew.x * 0.19891236738 < lnew.y) /* tan(11.25) */
+                           {
+                              ++temp;
+                              lalt = lnew;
+                              lnew.x = lalt.x * 0.923879532511   /* cos(22.5) */
+                                     + lalt.y * 0.382683432365;  /* sin(22.5) */
+                              lnew.y = lalt.x * 0.382683432365   /* sin(22.5) */
+                                     - lalt.y * 0.923879532511;  /* cos(22.5) */
+                           }
+   
+                           if (decomp[0] >= 64)
+                           {
+                              temp <<= 1;
+                              if (lnew.x * 0.0984914033572 < lnew.y)
+                              {
+                                 ++temp;
+                                 lalt = lnew;
+                                 lnew.x = lalt.x * 0.980785280403
+                                        + lalt.y * 0.195090322016;
+                                 lnew.y = lalt.x * 0.195090322016
+                                        - lalt.y * 0.980785280403;
+                              }
+   
+                              if (decomp[0] >= 128)
+                              {
+                                 temp <<= 1;
+                                 if (lnew.x * 0.0491268497695 < lnew.y)
+                                 {
+                                    ++temp;
+                                    lalt = lnew;
+                                    lnew.x = lalt.x * 0.998795456205
+                                           + lalt.y * 0.0490676743274;
+                                    lnew.y = lalt.x * 0.0490676743274
+                                           - lalt.y * 0.998795456205;
+                                 }
+   
+                                 if (decomp[0] == 256)
+                                 {
+                                    temp <<= 1;
+                                    if ((lnew.x * 0.0245486221089 < lnew.y))
+                                        ++temp;
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               }
+               else /* double case */
+               {
+                  if (new.y < 0)
+                  {
+                     temp = 2;
+                     new.y = -new.y;
+                  }
+   
+                  if (new.x < 0)
+                  {
+                     ++temp;
+                     new.x = -new.x;
+                  }
+   
+                  if (decomp[0] >= 8)
+                  {
+                     temp <<= 1;
+                     if (new.x < new.y)
+                     {
+                        ++temp;
+                        alt.x = new.x; /* just */
+                        new.x = new.y; /* swap */
+                        new.y = alt.x; /* them */
+                     }
+   
+                     if (decomp[0] >= 16)
+                     {
+                        temp <<= 1;
+                        if (new.x * 0.414213562373 < new.y) /* tan(22.5) */
+                        {
+                           ++temp;
+                           alt = new;
+                           new.x = alt.x * 0.707106781187   /* cos(45) */
+                                 + alt.y * 0.707106781187;  /* sin(45) */
+                           new.y = alt.x * 0.707106781187   /* sin(45) */
+                                 - alt.y * 0.707106781187;  /* cos(45) */
+                        }
+   
+                        if (decomp[0] >= 32)
+                        {
+                           temp <<= 1;
+                           if (new.x * 0.19891236738 < new.y) /* tan(11.25) */
+                           {
+                              ++temp;
+                              alt = new;
+                              new.x = alt.x * 0.923879532511   /* cos(22.5) */
+                                    + alt.y * 0.382683432365;  /* sin(22.5) */
+                              new.y = alt.x * 0.382683432365   /* sin(22.5) */
+                                    - alt.y * 0.923879532511;  /* cos(22.5) */
+                           }
+   
+                           if (decomp[0] >= 64)
+                           {
+                              temp <<= 1;
+                              if (new.x * 0.0984914033572 < new.y)
+                              {
+                                 ++temp;
+                                 alt = new;
+                                 new.x = alt.x * 0.980785280403
+                                       + alt.y * 0.195090322016;
+                                 new.y = alt.x * 0.195090322016
+                                       - alt.y * 0.980785280403;
+                              }
+   
+                              if (decomp[0] >= 128)
+                              {
+                                 temp <<= 1;
+                                 if (new.x * 0.0491268497695 < new.y)
+                                 {
+                                    ++temp;
+                                    alt = new;
+                                    new.x = alt.x * 0.998795456205
+                                          + alt.y * 0.0490676743274;
+                                    new.y = alt.x * 0.0490676743274
+                                          - alt.y * 0.998795456205;
+                                 }
+   
+                                 if (decomp[0] == 256)
+                                 {
+                                    temp <<= 1;
+                                    if ((new.x * 0.0245486221089 < new.y))
+                                        ++temp;
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               }
+               for (i = 1; temp > 0; ++i)
+               {
+                  if (temp & 1)
+                     color = (1 << i) - 1 - color;
+                  temp >>= 1;
+               }
+               if (decomp[0] == 2)        color &= 1;
+               if (colors > decomp[0])    color++;
+            }
+			else if(biomorph != -1)
 			{
-				int quad;
-
-				if (integerfractal) 
-				{
-					if (newx > 0) 
-					{
-						if (newy > 0) quad = 0; else quad = 1;
-					} 
-					else 
-					{
-						if (newy > 0) quad = 3; else quad = 2;
-					}
-				} else {
-					if (new.x > 0) {
-						if (new.y > 0) quad = 0; else quad = 1;
-					} else {
-						if (new.y > 0) quad = 3; else quad = 2;
-					}
-				}
-				if (decomp[0] == 2) color = quad & 1; else color = quad;
-				if (colors > decomp[0]) color++;
-			}
-
-/* LDC */
-
+			   if(integerfractal)
+			   {
+                  if(labs(lnew.x) < llimit2 || labs(lnew.y) < llimit2)
+			         color = biomorph;
+               }
+               else if(fabs(new.x) < rqlim2 || fabs(new.y) < rqlim2)
+			      color = biomorph;
+            }
+            
             if(oldcolor >= maxit && inside >= 0) /* really color, not oldcolor */
                color = inside;
             if(LogFlag)
@@ -556,7 +741,43 @@ int x, y, color ;
   putcolor( xdots - x - 1, ydots - y - 1, color) ;
 }
 
-static int iparm1;				/* iparm1 = parm1 * 16 */
+/* Symmetry plot for X Axis Symmetry - Newtbasin version */
+void symplot2basin( x, y, color)
+int x, y, color ;
+{
+  extern int degree;
+  putcolor( x, y, color) ;
+  putcolor( x, (ydots - y - 1),( degree+1-color)%degree+1)  ;
+}
+
+/* Symmetry plot for Both Axis Symmetry  - Newtbasin version */
+void symplot4basin( x, y, color)
+int x, y, color ;
+{
+  extern int degree;
+  int color1;
+  if(color == 0) /* assumed to be "inside" color */
+  {
+     symplot4( x, y, color);
+     return;
+  }
+  color1 = degree/2+degree+2 - color;
+  if(color < degree/2+2)
+     color1 = degree/2+2 - color;
+  else
+	 color1 = degree/2+degree+2 - color;
+  putcolor( x            , y            , color) ;
+  putcolor( x            , ydots - y - 1,  (degree+1 - color)%degree+1) ;
+  putcolor( xdots - x - 1, y            ,  color1) ;
+  putcolor( xdots - x - 1, ydots - y - 1, (degree+1 - color1)%degree+1) ;
+}
+
+/* Do nothing plot!!! */
+void noplot(int x,int y,int color)
+{
+}
+
+static int iparmx;				    /* iparmx = parm.x * 16 */
 static int shiftvalue;				/* shift based on #colors */
 
 typedef struct palett
@@ -578,7 +799,7 @@ void adjust(int xa,int ya,int x,int y,int xb,int yb)
    if(getcolor(x,y) != 0)
       return;
 
-   pseudorandom = ((long)iparm1)*((rand()-16383));
+   pseudorandom = ((long)iparmx)*((rand()-16383));
    pseudorandom = pseudorandom*(abs(xa-xb)+abs(ya-yb));
    pseudorandom = pseudorandom >> shiftvalue;
    pseudorandom = ((getcolor(xa,ya)+getcolor(xb,yb)+1)>>1)+pseudorandom;
@@ -626,10 +847,9 @@ plasma()
 	helpmessage(plasmamessage);
 	return(-1);
 	}
-   parm1  = param[0];
-   iparm1 = (parm1 * 8) ;
-   if (parm1 <= 0.0) iparm1 = 16;
-   if (parm1 >= 100) iparm1 = 800;
+   iparmx = param[0] * 8;
+   if (parm.x <= 0.0) iparmx = 16;
+   if (parm.x >= 100) iparmx = 800;
 
    if (!rflag) rseed = (int)time(NULL);
       srand(rseed);
@@ -704,8 +924,9 @@ int key;
    return(0);
 }
 
-iplot_orbit(ix, iy)
+iplot_orbit(ix, iy, color)
 long ix, iy;
+int color;
 {
 int i, j;
   if (ix < lx0[0] || ix > lx0[xdots-1] || iy < ly0[ydots-1] || iy > ly0[0]
@@ -717,14 +938,20 @@ int i, j;
   /* save orbit value */
   if( 0 <= i && i < xdots && 0 <= j && j < ydots && orbit_ptr < 1000)
   {
-     *(save_orbit + orbit_ptr++) = i; 
-     *(save_orbit + orbit_ptr++) = j; 
-     putcolor(i,j,getcolor(i,j)^orbit_color);
+     if(color == -1)
+     {
+        *(save_orbit + orbit_ptr++) = i; 
+        *(save_orbit + orbit_ptr++) = j; 
+        putcolor(i,j,getcolor(i,j)^orbit_color);
+     }
+     else
+        putcolor(i,j,color);
   }
 }
 
-plot_orbit(real,imag)
+plot_orbit(real,imag,color)
 double real,imag;
+int color;
 {
   long ix,iy;
   if((real < xxmin) || (real > xxmax) || (imag < yymin) || (imag > yymax))
@@ -732,7 +959,7 @@ double real,imag;
   /* convert to longs */
   ix = real * fudge;
   iy = imag * fudge;
-  iplot_orbit(ix,iy);
+  iplot_orbit(ix,iy,color);
 }  
 scrub_orbit()
 {
@@ -901,11 +1128,6 @@ checkblock()
    return(0); /* yup, all colors the same! Guess its a solid block! */
 }      
 
-/*
-   "intpotential" is called by the MANDEL/JULIA routines with scaled long
-   integer magnitudes.  The routine just calls "potential".  Bert
-*/
-
 /******************************************************************/
 /* Continuous potential calculation for Mandelbrot and Julia      */
 /* Reference: Science of Fractal Images p. 190.                   */
@@ -921,15 +1143,21 @@ checkblock()
 /* "iterations". The potparms[] are user-entered paramters        */
 /* controlling the level and slope of the continuous potential    */
 /* surface. Returns color.  - Tim Wegner 6/25/89                  */
+/*                                                                */
+/*                     -- Change history --                       */
+/*                                                                */
+/* 09/12/89   - added floatflag support and fixed float underflow */
+/*                                                                */
 /******************************************************************/
 
-int potential(double mag,int iterations)
+int potential(double mag, int iterations)
 {
    extern char potfile[];     /* name of pot save file */
    extern struct fractal_info save_info;	/*  for saving data */
 
    static int x,y;            /* keep track of position in image */
    float f_mag,f_tmp,pot;
+   double d_tmp;
    int i_pot;
    unsigned int intbuf;
    FILE *t16_create();
@@ -938,7 +1166,8 @@ int potential(double mag,int iterations)
    extern double potparam[];     /* continuous potential parameters */
    extern char potfile[];     /* pot savename */
    extern unsigned int decoderline[];
-   
+   extern char floatflag;
+
    if(top) 
    {
       top = 0;
@@ -950,21 +1179,29 @@ int potential(double mag,int iterations)
       if(potfile[0])   
          fp_pot = t16_create(potfile, xdots, ydots, 
              sizeof(struct fractal_info), &save_info);
-   }   
+   }
    if(iterations < maxit)
    {
-      pot = iterations+2;
-      if(pot <= 0.0 || mag < 1.0)
+      i_pot = pot = iterations+2;
+      if(i_pot <= 0 || mag <= 1.0)
          pot = 0.0;
       else /* pot = log(mag) / pow(2.0, (double)pot); */ 
       {
-         f_mag = mag;
          i_pot = pot;
-         fLog14(f_mag,f_tmp);
-         if(i_pot < 120) /* empirically determined limit of fShift */
+         if(i_pot < 120 && !floatflag) /* empirically determined limit of fShift */
+         {
+            f_mag = mag;
+            fLog14(f_mag,f_tmp); /* this SHOULD be non-negative */
             fShift(f_tmp,-i_pot,pot);
+         }   
          else
-            pot = f_tmp/pow(2.0,(double)pot);
+         {
+            d_tmp = log(mag)/(double)pow(2.0,(double)pot);
+            if(d_tmp > FLT_MIN) /* prevent float type underflow */
+               pot = d_tmp;
+            else
+               pot = 0.0;
+         }
       }
       /* following transformation strictly for aesthetic reasons */
       /* meaning of parameters: 
@@ -974,7 +1211,13 @@ int potential(double mag,int iterations)
 
       if(pot > 0.0)
       {
-         fSqrt14(pot,pot);
+         if(floatflag)
+            pot = (float)sqrt((double)pot);
+         else
+         {    
+            fSqrt14(pot,f_tmp);
+            pot = f_tmp; 
+         }   
          pot = potparam[0] - pot*potparam[1] - 1.0;
       }
       else
@@ -984,6 +1227,7 @@ int potential(double mag,int iterations)
       pot = inside; /* negative inside turns off inside replacement */
    else
       pot = potparam[0];
+
    if(pot > colors)
       pot = colors -1;
    if(pot < 1.0)
@@ -1022,52 +1266,80 @@ int intpotential(unsigned long longmagnitude, int iterations)
    magnitude = 256*magnitude;
    return(potential(magnitude, iterations));
 }
-
 setsymmetry(int sym)    /* set up proper symmetrical plot functions */
 {
-   plot = putcolor;		/* assume no symmetry */
+   extern int forcesymmetry;
+   plot = putcolor;     /* assume no symmetry */
    XXdots = xdots;
-   YYdots = ydots; 
+   YYdots = ydots;
+   iystop = YYdots -1;
+   ixstop = XXdots -1;
    symmetry = 1;
-   
+   if(sym == NOPLOT && forcesymmetry == 999)
+   {
+      plot = noplot;
+      return;
+   }   
    /* NOTE: either diskvideo or 16-bit potential disables symmetry */
    /* also ant decomp= option and any inversion not about the origin */
    if ((!potfile[0]) && (!diskvideo) && (!invert || inversion[2] == 0.0)
    && decomp[0] == 0) 
    {
-      if(sym != XAXIS && sym != XAXIS_NOPARM && inversion[1] != 0.0)
+      if(sym != XAXIS && sym != XAXIS_NOPARM && inversion[1] != 0.0 && forcesymmetry == 999)
          return;
+      else if(forcesymmetry != 999)
+         sym = forcesymmetry;
       switch(sym) 	/* symmetry switch */
       {
       case XAXIS_NOPARM:			/* X-axis Symmetry  (no params)*/
-         if (parm1 != 0.0 || parm2 != 0.0)
+         if (parm.x != 0.0 || parm.y != 0.0)
             break;
       case XAXIS:			/* X-axis Symmetry */
-         if (fabs(yymax + yymin) >= fabs(yymax - yymin)*.01)
-            break;
+         if (fabs(yymax + yymin) >= fabs(yymax - yymin)*.01 )
+            if(forcesymmetry==999)
+               break;
          symmetry = 0;
-         plot = symplot2;
+         if(basin)
+            plot = symplot2basin;
+         else   
+            plot = symplot2;
          YYdots /= 2;	
          iystop = YYdots -1;
          break;
       case YAXIS_NOPARM:			/* Y-axis Symmetry (No Parms)*/
-         if (parm1 != 0.0 || parm2 != 0.0)
+         if (parm.x != 0.0 || parm.y != 0.0)
             break;
       case YAXIS:			/* Y-axis Symmetry */
          if (fabs(xxmax + xxmin) >= fabs(xxmax - xxmin)*.01)
-            break;
+            if(forcesymmetry==999)
+               break;
          plot = symplot2Y;
          XXdots /= 2;
          ixstop = XXdots -1;
          break;
       case XYAXIS_NOPARM:			/* X-axis AND Y-axis Symmetry (no parms)*/
-         if(parm1 != 0.0 || parm2 != 0.0)
+         if(parm.x != 0.0 || parm.y != 0.0)
             break;
       case XYAXIS:			/* X-axis AND Y-axis Symmetry */
-         if (fabs(yymax + yymin) < fabs(yymax - yymin)*.01 &&
-             fabs(xxmax + xxmin) < fabs(xxmax - xxmin)*.01)
+         if(forcesymmetry!=999)
          {
-            plot = symplot4 ;
+            if(basin)
+               plot = symplot4basin;
+            else   
+               plot = symplot4 ;
+            XXdots /= 2 ;
+            YYdots /= 2 ;
+            iystop = YYdots -1;
+            ixstop = XXdots -1;
+            break;
+         }
+         if ((fabs(yymax + yymin) < fabs(yymax - yymin)*.01 &&
+             fabs(xxmax + xxmin) < fabs(xxmax - xxmin)*.01))
+         {
+            if(basin)
+               plot = symplot4basin;
+            else   
+               plot = symplot4 ;
             XXdots /= 2 ;
             YYdots /= 2 ;
             iystop = YYdots -1;
@@ -1075,28 +1347,33 @@ setsymmetry(int sym)    /* set up proper symmetrical plot functions */
          }
          else if (fabs(yymax + yymin) < fabs(yymax - yymin)*.01)
          {
-            plot = symplot2 ;
+            if(basin)
+               plot = symplot2basin;
+            else   
+               plot = symplot2 ;
             YYdots /= 2 ;
             iystop = YYdots -1;
          }
          break;
       case ORIGIN_NOPARM:			/* Origin Symmetry (no parms)*/
-         if (parm1 != 0.0 || parm2 != 0.0)
+         if (parm.x != 0.0 || parm.y != 0.0)
             break;
       case ORIGIN:			/* Origin Symmetry */
          if (fabs(yymax + yymin) >= fabs(yymax - yymin)*.01 ||
              fabs(xxmax + xxmin) >= fabs(xxmax - xxmin)*.01)
-            break;
+            if(forcesymmetry==999)
+               break;
          symmetry = 0;
          plot = symplot2J;
          YYdots /= 2 ;
          iystop = YYdots -1;
          break;
       case PI_SYM_NOPARM:
-         if (parm1 != 0.0 || parm2 != 0.0)
+         if (parm.x != 0.0 || parm.y != 0.0)
             break;
       case PI_SYM:			/* PI symmetry */
-         if(invert) {
+         if(invert && forcesymmetry == 999) 
+         {
             if (fabs(yymax + yymin) >= fabs(yymax - yymin)*.01 ||
                 fabs(xxmax + xxmin) >= fabs(xxmax - xxmin)*.01)
                break;
@@ -1105,17 +1382,18 @@ setsymmetry(int sym)    /* set up proper symmetrical plot functions */
             YYdots /= 2 ;
             iystop = YYdots -1;
             break;
-            }
+         }
          pixelpi = (PI/fabs(xxmax-xxmin))*xdots; /* PI in pixels */
          if(pixelpi < xdots)
          {
             XXdots = pixelpi;
             ixstop = XXdots-1;
-         }   
+         }
+   
          if (fabs(yymax + yymin) < fabs(yymax - yymin)*.01 &&
              fabs(xxmax + xxmin) < fabs(xxmax - xxmin)*.01)
          {
-            if(parm2 == 0.0)
+            if(parm.y == 0.0)
             {
                plot = symPIplot4J ;
                YYdots /= 2 ;
@@ -1128,7 +1406,7 @@ setsymmetry(int sym)    /* set up proper symmetrical plot functions */
                iystop = YYdots -1;
             }
          }				
-         else if(!invert)
+         else if(!invert || forcesymmetry != 999)
             plot = symPIplot ;
          break;
       default:			/* no symmetry */

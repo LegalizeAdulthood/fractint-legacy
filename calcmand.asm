@@ -38,7 +38,7 @@
 
 
 ;			 required for compatibility if Turbo ASM
-IFDEF ??Version
+IFDEF ??version
 MASM51
 QUIRKS
 ENDIF
@@ -928,6 +928,8 @@ checkorbit	proc near
 	cmp	show_orbit,0		; was orbiting on?
 	je	nonorbit1		;  nope.
 	push	es			; save ES
+	mov	ax,-1			; push -1 onto the stack
+	push	ax			;  ...
 	mov	ax,word ptr y		; save y
 	mov	dx,word ptr y+2		;  ...
 	push	dx			;  ...
@@ -941,6 +943,7 @@ checkorbit	proc near
 	pop	ax			;  ...
 	pop	ax			; clear out the parameters
 	pop	ax			;  ...
+	pop	ax			; clear out the parameters
 	pop	es			; restore ES
 nonorbit1:
 	ret

@@ -1,7 +1,7 @@
 	TITLE	Hercules Graphics Routines for FRACTINT
 
 ;			 required for compatibility if Turbo ASM
-IFDEF ??Version
+IFDEF ??version
 	MASM51
 	QUIRKS
 ENDIF

@@ -12,6 +12,8 @@
 ;	clscr()
 ;	scrollup()
 ;	putblock()
+;	putstr()
+;	scroll()
 ;	storedac()		TARGA - NEW - 3 June 89 j mclain
 ;	loaddac()
 ;	spindac()
@@ -26,7 +28,7 @@
 ;
 
 ;			 required for compatibility if Turbo ASM
-IFDEF ??Version
+IFDEF ??version
 	MASM51
 	QUIRKS
 ENDIF
@@ -78,6 +80,7 @@ ENDIF
 ; ************************ External variables *****************************
 
 	extrn	oktoprint: word		; flag: == 1 if printf() will work
+	extrn	videoentry:byte		; video table entry flag
 	extrn	dotmode: word		; video mode:
 ;						1 = use the BIOS (yuck)
 ;						2 = use EGA/VGA style
@@ -289,6 +292,315 @@ tweaks		dw	offset x704y528		; tweak table
 tweaktype	dw	0			; 8 or 9 (320x400 or 360x480)
 
 .CODE
+
+;			Video Table Entries
+;
+;	The Video Table has been moved to a FARDATA segment to relieve
+;	some of the pressure on the poor little	overloaded 64K DATA segment.
+
+;	This code has three entry points:
+;
+;	sizeoftable = initvideotable();		returns the # of table entries
+;
+;	fromvideotable(i);			copies table entry #i into
+;						the videoentry structure
+;
+;	tovideotable(i);			moves the videoentry structure
+;						into the table at entry #i
+
+
+.code
+
+videotable	db	0	; video table actually starts on the NEXT byte
+
+;	Feel free to add your favorite video adapter to the following table.
+;	Just remember that only the first 100 or so entries get displayed and
+;	assigned Function keys.
+
+;	Currently available Video Modes are (use the BIOS as a last resort)
+
+;		1) use the BIOS (INT 10H, AH=12/13, AL=color) ((SLOW))
+;		2) pretend it's a (perhaps super-res) EGA/VGA
+;		3) pretend it's an MCGA
+;		4) SuperVGA 256-Color mode using the Tseng Labs Chipset
+;		5) SuperVGA 256-Color mode using the Paradise Chipset
+;		6) SuperVGA 256-Color mode using the Video-7 Chipset
+;		7) Non-Standard IBM VGA 360 x 480 x 256-Color mode
+;		8) SuperVGA 1024x768x16 mode for the Everex Chipset
+;		9) TARGA video modes
+;		10) HERCULES video mode
+;		11) Non-Video [disk or RAM] "video"
+;		12) 8514/A video modes
+;		13) CGA 320x200x4-color and 640x200x2-color modes
+;		14) Reserved for Tandy 1000 video modes
+;		15) SuperVGA 256-Color mode using the Trident Chipset
+;		16) SuperVGA 256-Color mode using the Chips & Tech Chipset
+;		17) SuperVGA 256-Color mode using the ATI VGA Wonder Chipset
+;		18) SuperVGA 256-Color mode using the Everex Chipset
+;		19) Roll-Your-Own video, as defined in YOURVID.C
+;		20) SuperVGA 1024x768x16 mode for the ATI VGA Wonder Chipset
+;		21) SuperVGA 1024x768x16 mode for the Tseng Labs Chipset
+;		22) SuperVGA 1024x768x16 mode for the Trident Chipset
+;		23) SuperVGA 1024x768x16 mode for the Video 7 Chipset
+;		24) SuperVGA 1024x768x16 mode for the Paradise Chipset
+;		25) SuperVGA 1024x768x16 mode for the Chips & Tech Chipset
+
+;               |--Adapter/Mode-Name------|-------Comments-----------|
+
+;		|------INT 10H------|Dot-|--Resolution---|
+;		|--AX---BX---CX---DX|Mode|--X-|--Y-|Color|
+ 
+	db	"IBM Low-Rez EGA           Quick but chunky          "
+	dw	  0dh,   0,   0,   0,   2, 320, 200,  16
+	db	"IBM 16-Color EGA          Slower but lots nicer     "
+	dw	  10h,   0,   0,   0,   2, 640, 350,  16
+	db	"IBM 256-Color MCGA        Quick and LOTS of colors  "
+	dw	  13h,   0,   0,   0,   3, 320, 200, 256
+	db	"IBM 16-Color VGA          Nice high resolution      "
+	dw	  12h,   0,   0,   0,   2, 640, 480,  16
+	db	"IBM 4-Color CGA           (Ugh - Yuck - Bleah)      "
+	dw	   4h,   0,   0,   0,  13, 320, 200,   4
+	db	"IBM Hi-Rez B&W CGA        ('Hi-Rez' Ugh - Yuck)     "
+	dw	   6h,   0,   0,   0,  13, 640, 200,   2
+	db	"IBM B&W EGA               (Monochrome EGA)          "
+	dw	  0fh,   0,   0,   0,   2, 640, 350,   2
+	db	"IBM B&W VGA               (Monochrome VGA)          "
+	dw	  11h,   0,   0,   0,   2, 640, 480,   2
+	db	"IBM Med-Rez EGA           (Silly but it's there!)   "
+	dw	  0eh,   0,   0,   0,   2, 640, 200,  16
+	db	"IBM VGA (non-std/no text) Register Compatibles ONLY "
+	dw	   0h,   0,   0,   9,   7, 320, 400, 256
+	db	"IBM VGA (non-std/no text) Register Compatibles ONLY "
+	dw	   0h,   0,   0,   8,   7, 360, 480, 256
+	db	"8514/A Low  Res           Requires IBM's HDIDLOAD   "
+	dw	   3h,   0,   0,   1,  12, 640, 480, 256
+	db	"8514/A High Res           Requires IBM's HDIDLOAD   "
+	dw	   3h,   0,   0,   1,  12,1024, 768, 256
+	db	"8514/A Low  W/Border      Requires IBM's HDIDLOAD   "
+	dw	   3h,   0,   0,   1,  12, 632, 474, 256
+	db	"8514/A High W/Border      Requires IBM's HDIDLOAD   "
+	dw	   3h,   0,   0,   1,  12,1016, 762, 256
+	db	"VESA Standard interface   UNTESTED: may not work    "
+	dw	  6ah,   0,   0,   0,   2, 800, 600,  16
+	db	"COMPAQ Portable 386       OK: Michael Kaufman       "
+	dw	  40h,   0,   0,   0,   1, 640, 400,   2
+	db	"Video-7 Vram VGA          OK: Ira Emus              "
+	dw	6f05h, 60h,   0,   0,   2, 752, 410,  16
+	db	"Video-7 Vram VGA          OK: Ira Emus              "
+	dw	6f05h, 61h,   0,   0,   2, 720, 540,  16
+	db	"Video-7 Vram VGA          OK: Ira Emus              "
+	dw	6f05h, 62h,   0,   0,   2, 800, 600,  16
+	db	"Video-7 Vram VGA          OK: Ira Emus              "
+	dw	6f05h, 63h,   0,   0,   1,1024, 768,   2
+	db	"Video-7 Vram VGA          OK: Ira Emus              "
+	dw	6f05h, 64h,   0,   0,   1,1024, 768,   4
+	db	"Video-7 Vram VGA w/512K   OK: Sandy & Frank Lozier  "
+	dw	6f05h, 65h,   0,   0,  23,1024, 768,  16
+	db	"Video-7 Vram VGA          OK: Michael Kaufman       "
+	dw	6f05h, 66h,   0,   0,   6, 640, 400, 256
+	db	"Video-7  w/512K           OK: Greg Reznick          "
+	dw	6f05h, 67h,   0,   0,   6, 640, 480, 256
+	db	"Video-7  w/512K           OK: Greg Reznick          "
+	dw	6f05h, 68h,   0,   0,   6, 720, 540, 256
+	db	"Video-7  w/512K           OK: Greg Reznick          "
+	dw	6f05h, 69h,   0,   0,   6, 800, 600, 256
+	db	"Tseng SuperVGA tweaked    (adds missing Tseng mode) "
+	dw	   0h,   0,   0,  10,   4, 640, 400, 256
+	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
+	dw	  2eh,   0,   0,   0,   4, 640, 480, 256
+	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
+	dw	  29h,   0,   0,   0,   2, 800, 600,  16
+	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
+	dw	  30h,   0,   0,   0,   4, 800, 600, 256
+	db	"Orchid/STB/GENOA/SIGMA    OK: Timothy Wegner        "
+	dw	  37h,   0,   0,   0,  21,1024, 768,  16
+	db	"GENOA/STB                 OK: Timothy Wegner        "
+	dw	  2dh,   0,   0,   0,   4, 640, 350, 256
+	db	"GENOA                     OK: Timothy Wegner        "
+	dw	  27h,   0,   0,   0,   2, 720, 512,  16
+	db	"GENOA                     OK: Timothy Wegner        "
+	dw	  2fh,   0,   0,   0,   4, 720, 512, 256
+	db	"GENOA                     OK: Timothy Wegner        "
+	dw	  7ch,   0,   0,   0,   2, 512, 512,  16
+	db	"GENOA                     OK: Timothy Wegner        "
+	dw	  7dh,   0,   0,   0,   4, 512, 512, 256
+	db	"STB                       UNTESTED: may not work    "
+	dw	  36h,   0,   0,   0,   1, 960, 720,  16
+	db	"Everex EVGA               OK: Travis Harrison       "
+	dw	  70h,   0,   0,   0,   2, 640, 480,  16
+	db	"Everex EVGA               OK: Travis Harrison       "
+	dw	  70h,  1h,   0,   0,   2, 752, 410,  16
+	db	"Everex EVGA               OK: Travis Harrison       "
+	dw	  70h,  2h,   0,   0,   2, 800, 600,  16
+	db	"Everex EVGA               OK: Travis Harrison       "
+	dw	  70h, 11h,   0,   0,   1,1280, 350,   4
+	db	"Everex EVGA               OK: Travis Harrison       "
+	dw	  70h, 12h,   0,   0,   1,1280, 600,   4
+	db	"Everex EVGA               UNTESTED: may not work    "
+	dw	  70h, 13h,   0,   0,  18, 640, 350, 256
+	db	"Everex EVGA               UNTESTED: may not work    "
+	dw	  70h, 14h,   0,   0,  18, 640, 400, 256
+	db	"Everex EVGA               UNTESTED: may not work    "
+	dw	  70h, 15h,   0,   0,  18, 512, 480, 256
+	db	"ATI EGA Wonder            OK: Garrett Wollman       "
+	dw	  51h,   0,   0,   0,   1, 640, 480,  16
+	db	"ATI EGA Wonder            OK: Garrett Wollman       "
+	dw	  52h,   0,   0,   0,   1, 800, 560,  16
+	db	"ATI VGA Wonder            OK: Henry So              "
+	dw	  54h,   0,   0,   0,   2, 800, 600,  16
+	db	"ATI VGA Wonder            OK: Mark Peterson         "
+	dw	  61h,   0,   0,   0,  17, 640, 400, 256
+	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
+	dw	  62h,   0,   0,   0,  17, 640, 480, 256
+	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
+	dw	  63h,   0,   0,   0,  17, 800, 600, 256
+	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
+	dw	  65h,   0,   0,   0,  20,1024, 768,  16
+	db	"Paradise EGA-480          UNTESTED: may not work    "
+	dw	  50h,   0,   0,   0,   1, 640, 480,  16
+	db	"Pdise/AST/COMPAQ VGA      OK: Tom Devlin            "
+	dw	  5eh,   0,   0,   0,   5, 640, 400, 256
+	db	"Pdise/AST/COMPAQ VGA      OK: Phil Wilson           "
+	dw	  5fh,   0,   0,   0,   5, 640, 480, 256
+	db	"Pdise/AST/COMPAQ VGA      OK: by Chris Green        "
+	dw	  58h,   0,   0,   0,   2, 800, 600,  16
+	db	"Pdise/AST/COMPAQ VGA      OK: Phil Wilson           "
+	dw	  59h,   0,   0,   0,   1, 800, 600,   2
+	db	"Tandy 1000 16 Clr LoRez   OK: Tom Price             "
+	dw	   8h,   0,   0,   0,   1, 160, 200,  16
+	db	"Tandy 1000 16 Color CGA   OK: Tom Price             "
+	dw	   9h,   0,   0,   0,   1, 320, 200,  16
+	db	"Tandy 1000 4 Color hi-rez OK: Tom Price             "
+	dw	  0ah,   0,   0,   0,   1, 640, 200,   4
+	db	"AT&T 6300                 UNTESTED: may not work    "
+	dw	  41h,   0,   0,   0,   1, 640, 200,  16
+	db	"AT&T 6300                 OK: Michael Kaufman       "
+	dw	  40h,   0,   0,   0,   1, 640, 400,   2
+	db	"AT&T 6300                 OK: Colby Norton          "
+	dw	  42h,   0,   0,   0,   1, 640, 400,  16
+	db	"TARGA 256 Color video     OK: Bruce Goren           "
+	dw	   0h,   0,   0,   0,   9, 512, 482, 256
+	db	"TARGA 256 Color 35mm      OK: Bruce Goren           "
+	dw	   0h,   0,   0,   0,   9, 512, 342, 256
+	db	"TARGA 256 Color 4 x 5     OK: Bruce Goren           "
+	dw	   0h,   0,   0,   0,   9, 512, 384, 256
+	db	"TRIDENT Chipset           OK: Warren Gold           "
+	dw	  5bh,   0,   0,   0,   2, 800, 600,  16
+	db	"TRIDENT Chipset           OK: Warren Gold           "
+	dw	  5ch,   0,   0,   0,  15, 640, 400, 256
+	db	"TRIDENT Chipset           OK: Warren Gold           "
+	dw	  5dh,   0,   0,   0,  15, 640, 480, 256
+	db	"TRIDENT Chipset           OK: Warren Gold           "
+	dw	  5eh,   0,   0,   0,  15, 800, 600, 256
+	db	"TRIDENT Chipset           UNTESTED: May not work    "
+	dw	  5fh,   0,   0,   0,  22,1024, 768,  16
+	db	"Chips & Tech Chipset      OK: Andy Fu               "
+	dw	  78h,   0,   0,   0,  16, 640, 400, 256
+	db	"Chips & Tech Chipset      OK: Andy Fu               "
+	dw	  79h,   0,   0,   0,  16, 640, 480, 256
+	db	"Chips & Tech Chipset      OK: Andy Fu               "
+	dw	  7bh,   0,   0,   0,  16, 800, 600, 256
+	db	"Chips & Tech Chipset      OK: Andy Fu               "
+	dw	  70h,   0,   0,   0,   2, 800, 600,  16
+	db	"Chips & Tech Chipset      UNTESTED: May not work    "
+	dw	  72h,   0,   0,   0,  25,1024, 768,  16
+	db	"Hercules Graphics         OK: Timothy Wegner        "
+	dw	   8h,   0,   0,   0,  10, 720, 348,   2
+	db	"Disk/RAM 'Video'          Full-Page Epson @  60DPI  "
+	dw	   3h,   0,   0,   0,  11, 768, 480,   2
+	db	"Disk/RAM 'Video'          Full-Page Epson @ 120DPI  "
+	dw	   3h,   0,   0,   0,  11, 768, 960,   2
+	db	"Disk/RAM 'Video'          Full-Page Epson @ 240DPI  "
+	dw	   3h,   0,   0,   0,  11, 768,1920,   2
+	db	"Disk/RAM 'Video'          Full-Page L-Jet @  75DPI  "
+	dw	   3h,   0,   0,   0,  11, 800, 600,   2
+	db	"Disk/RAM 'Video'          Full-Page L-Jet @ 150DPI  "
+	dw	   3h,   0,   0,   0,  11,1600,1200,   2
+	db	"Disk/RAM 'Video'          For Background Fractals   "
+	dw	   3h,   0,   0,   0,  11, 320, 200, 256
+	db	"Disk/RAM 'Video'          For Background Fractals   "
+	dw	   3h,   0,   0,   0,  11, 360, 480, 256
+	db	"Disk/RAM 'Video'          For Background Fractals   "
+	dw	   3h,   0,   0,   0,  11, 640, 350, 256
+	db	"Disk/RAM 'Video'          For Background Fractals   "
+	dw	   3h,   0,   0,   0,  11, 640, 400, 256
+	db	"Disk/RAM 'Video'          For Background Fractals   "
+	dw	   3h,   0,   0,   0,  11, 640, 480, 256
+	db	"Disk/RAM 'Video'          For Background Fractals   "
+	dw	   3h,   0,   0,   0,  11, 800, 600, 256
+	db	"Disk/RAM 'Video'          For Background Fractals   "
+	dw	   3h,   0,   0,   0,  11,1024, 768, 256
+	db	"Disk/RAM 'Video'          For Background Fractals   "
+	dw	   3h,   0,   0,   0,  11,2048,2048, 256
+	db	"IBM VGA (+tweaked+)       Register Compatibles ONLY "
+	dw	   0h,   0,   0,   1,   2, 704, 528,  16
+	db	"IBM VGA (+tweaked+)       Register Compatibles ONLY "
+	dw	   0h,   0,   0,   2,   2, 720, 540,  16
+	db	"IBM VGA (+tweaked+)       Register Compatibles ONLY "
+	dw	   0h,   0,   0,   3,   2, 736, 552,  16
+	db	"IBM VGA (+tweaked+)       Register Compatibles ONLY "
+	dw	   0h,   0,   0,   4,   2, 752, 564,  16
+	db	"IBM VGA (+tweaked+)       Register Compatibles ONLY "
+	dw	   0h,   0,   0,   5,   2, 768, 576,  16
+	db	"IBM VGA (+tweaked+)       Register Compatibles ONLY "
+	dw	   0h,   0,   0,   6,   2, 784, 588,  16
+	db	"IBM VGA (+tweaked+)       Register Compatibles ONLY "
+	dw	   0h,   0,   0,   7,   2, 800, 600,  16
+	db	"END                       Must be the END of list   "
+	dw	   0h,   0,   0,   0,   0,   0,   0,  0
+
+	db	680 dup(0)		; room for 10 more video modes
+
+.code
+
+initvideotable proc uses ds es di
+	mov	di, offset videotable+1	; get the start of the video table
+	mov	ax,0			; initially, no entries found
+initvideotableloop:
+	cmp	word ptr cs:66[di],0	; does the next entry have any colors?
+	je	initvideotablereturn	;  nope.  we done.
+	inc	ax			; indicate we found an entry
+	add	di,68			; locate the next entry
+	jmp	initvideotableloop	;  and try again.
+initvideotablereturn:
+	ret
+initvideotable endp
+
+fromvideotable proc uses es si di, tablenumber:word
+	push	cs			; get the video table segment into ES
+	pop	es			;  ...
+	mov	cx,68			; retrieve the table entry length
+	mov	ax,tablenumber		; compute the video table offset
+	mul	cl			;  == that entry # x the entry length
+	add	ax,offset videotable+1	;  + the start of the table
+	mov	si,ax			; store it here
+	mov	di,offset videoentry	; get the offset of the entry ptr
+	push	ds			; swap DS and ES temporarily
+	push	es			;  ...
+	pop	ds			;  ...
+	pop	es			;  ...
+	rep	movsb			; move it
+	push	es			; restore DS again
+	pop	ds			;  ...	
+	mov	di,offset videoentry	; get the offset of the entry ptr
+	mov	al,0			; stuff a few zeroes in where appr.
+	mov	25[di],al		;  ...
+	mov	51[di],al		;  ...
+	ret
+fromvideotable endp
+
+tovideotable proc uses es si di, tablenumber:word
+	push	cs			; get the video table segment into ES
+	pop	es			;  ...
+	mov	cx,68			; retrieve the table entry length
+	mov	ax,tablenumber		; compute the video table offset
+	mul	cl			;  == that entry # x the entry length
+	add	ax,offset videotable+1	;  + the start of the table
+	mov	di,ax			; store it here
+	mov	si,offset videoentry	; get the offset of the entry ptr
+	rep	movsb			; move it
+	ret
+tovideotable endp
 
 ;	Routines called by this code
 
@@ -784,6 +1096,12 @@ notri:	cmp	[video7],0
 	push	ax		;Video 7
 	push	dx
 	push	cx
+; Video-7 1024x768x16 mode patch (thanks to Frank Lozier 11/8/89).
+        cmp     colors,16
+        jne     video7xx
+        shl     ax,1
+        shl     ax,1
+video7xx:
 	and	ax,15
 	mov	ch,al
 	mov	dx,3c4h
@@ -1731,7 +2049,7 @@ targaMode:				; TARGA MODIFIED 2 June 89 - j mclain
 	mov	cx,offset normaline 	; set up the normal linewrite routine
 	mov	tgaflag,1		; 
 	jmp	videomode		; return to common code
-f8514Mode:                     ; 8514 modes
+f8514mode:                     ; 8514 modes
        cmp     videodx, 1      ; requiring dx=1 for turn on allows
        jne     not8514on       ; setvideomode(3,0,0,0) to display text
        call    open8514        ; start the 8514a
@@ -2294,6 +2612,90 @@ out_lineret:
         xor	ax,ax			; return 0
 	ret
 out_line	endp
+
+
+; PUTSTR.asm puts a string directly to video display memory. Called from C by:
+;    putstring(row, col, attr, string, divider) where
+;         row, col = row and column to start printing.
+;         attr = color attribute.
+;         string = pointer to the null terminated string to print.
+;         divider = flag to add red column divider at end of string.
+;    Written for the A86 assembler (which has much less 'red tape' than MASM)
+;    by Bob Montgomery, Orlando, Fla.             7-11-88
+;    Adapted for MASM 5.1 by Tim Wegner          12-11-89  
+     
+.model medium,c
+
+;-----------------------------------------------------------------
+.data
+
+extrn     video_seg:word     ;Segment for video memory defined in C code.
+extrn     crtcols:word       ;Columns/row
+extrn     crtrows:word
+;-----------------------------------------------------------------
+
+.code
+
+putstring	proc uses es di si, row:word, col:word, attr:word, string:word, divider:word
+
+     mov  ax,row              ;Get starting row
+     mov  cx,crtcols         ;Multiply by 2 x bytes/row (char & attr bytes)
+     shl  cx,1
+     imul cx
+     add  ax,col              ;Add starting column
+     add  ax,col              ;twice since 2 bytes/char
+     mov  di,ax               ; di now points to start location in Video segment
+     mov  ax,video_seg       ;Get Video segment to es
+     mov  es,ax
+     mov  si,string           ; ds:si points to string to print
+     mov  ax,attr             ;Get color attribute in ah
+     xchg ah,al
+; Now print the string
+B1:  lodsb                    ;Get a char in al
+     cmp  al,0                ;End of string?
+     je   B2                  ;Yes
+     stosw                    ;No, store char & attribute
+     jmp  B1                  ;Do next char
+
+B2:  cmp  divider,0           ;Divider requested?
+     je   B3                  ;No
+     mov  ax,04B3h            ;Yes, red vertical line
+          stosw
+B3:  ret
+putstring endp
+
+
+scroll	proc uses ds es di si, rows:word, startrow:word
+
+; Get start offset and number of bytes to move.
+     mov  ax,crtcols         ;Get chars/row
+     mov  bx,crtrows         ;Get rows/screen
+     sub  bx,rows             ;Get rows not moved
+     push bx                 ;Save rows/screen & cols/row
+     push ax
+     push ax
+     mul  startrow            ;Get chars to start
+     shl  ax,1                ;Since char & attr in each pos
+     mov  si,ax               ;in si
+     mov  di,0                ;Move to start of screen
+     pop  ax                  ;Get chars to move
+     mul  rows
+     mov  cx,ax               ;to cx
+; Move the rows.
+     mov  ax,video_seg       ;Get Video segment to es
+     mov  es,ax
+     mov  ds,ax               ;and ds
+     rep  movsw               ;Move the data (scroll screen)
+; Clear the rest of the screen.
+     pop  ax                  ;Get chars/row & rows to clear
+     pop  bx
+     mul  bx                  ;Get chars to do
+     mov  cx,ax
+     mov  ax,0620h            ;Clear them
+     rep  stosw
+; Return to C.
+     ret                      ;and return to C
+scroll     endp
 
 
 ; ****************  EGA Palette <==> VGA DAC Conversion Routines **********

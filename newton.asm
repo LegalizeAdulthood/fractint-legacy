@@ -20,7 +20,7 @@
 
 ; Required for compatibility if Turbo ASM (BT 5/20/89)
 
-IFDEF ??Version
+IFDEF ??version
 MASM51
 QUIRKS
 EMUL
@@ -40,7 +40,7 @@ public	invertz2
 	extrn	old:qword, new:qword, d1overd:qword, roverd:qword
 	extrn	threshold:qword, floatmin:qword, floatmax:qword
 	extrn	f_radius:qword, f_xcenter:qword, f_ycenter:qword
-	extrn	roots:qword, tempsqrx:qword
+	extrn	roots:word, tempsqrx:qword
 
 statw	dw	?
 
@@ -147,7 +147,7 @@ loopexit:
 	cmp	ax, 0
 	je	notbasin
 
-	mov	bx, offset roots
+	mov	bx, roots
 	mov	dx, -1			; tempcolor = -1
 	sub	cx, cx
 dloop:
@@ -164,15 +164,17 @@ dloop:
 	sahf				; if (distance(roots[i],old) < threshold)...
 	jnc	nl2
 
-	mov	ax, color
-	and	ax, 1
-	shl	ax, 1
-	shl	ax, 1
-	shl	ax, 1
+; TW commented out next few lines and add dx,ax to eliminate newtbasin
+; color shades per Phil Wilson's request 12/03/89
+;	mov	ax, color
+;	and	ax, 1
+;	shl	ax, 1
+;	shl	ax, 1
+;	shl	ax, 1
 
 	mov	dx, cx
-	and	dx, 7
-	add	dx, ax
+;	and	dx, 7
+;	add	dx, ax
 	inc	dx			; tempcolor = 1+(i&7)+((color&1)<<3)
 	jmp	short nfb		; break
 nl2:
@@ -323,5 +325,4 @@ icom:
 	ret
 invertz2 endp
 
-	end
-
+END

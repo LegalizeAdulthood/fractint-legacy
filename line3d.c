@@ -1,3 +1,4 @@
+
 /* This file contains a 3D replacement for the out_line function called
    by the decoder. The purpose is to apply various 3D transformations before 
    displaying points. Called once line of the original GIF file. 
@@ -12,7 +13,6 @@
 #include <limits.h>
 #include <dos.h>
 #include "fractint.h"
-#include "fmath.h"
 
 int clipcolor(int,int,int);   
 int interpcolor(int,int,int);
@@ -89,7 +89,6 @@ line3d(unsigned char pixels[], unsigned linelen)
    static float cosphi,sinphi;              /* precalculated sin/cos of longitude */
    static float oldcosphi1,oldsinphi1;
    static float oldcosphi2,oldsinphi2;
-   float tmpx,tmpy,tmpz;      
    double r;                          /* sphere radius */
    double xval,yval,zval;             /* rotation values */
    float costheta,sintheta;          /* precalculated sin/cos of latitude */
@@ -598,7 +597,7 @@ line3d(unsigned char pixels[], unsigned linelen)
          (*plot)(cur.x,cur.y,cur.color);
          break;
       case 1:             /* connect-a-dot */
-         if (old.x < xdots) 
+         if ((old.x < xdots) && (col))
             draw_line(old.x,old.y,cur.x,cur.y,cur.color); 
          old.x = cur.x;
          old.y = cur.y;
@@ -1371,14 +1370,6 @@ showfpoint(struct f_point pt)
    printf("%f %f %f\n",pt.x,pt.y,pt.color);
 }
 
-matherr(x)
-struct exception *x;
-{
-   printf("%e %e %e\n",cross[0], cross[1], cross[2]);
-   exit(0);
-   return(0);
-}
-
 /* cross product  - useful because cross is perpendicular to v and w */
 int chk_cross_product (int col, int row,VECTOR v, VECTOR w, VECTOR cross, VECTOR crossavg)
 {
@@ -1395,14 +1386,3 @@ int chk_cross_product (int col, int row,VECTOR v, VECTOR w, VECTOR cross, VECTOR
         row,col,v[0],v[1],v[2],w[0],w[1],w[2],cross[0],cross[1],cross[2],crossavg[0],crossavg[1],crossavg[2]);
    return(0);
 }
-#ifdef DEBUG
-/* requires /NOE in link statement */
-/* called if a math function error */
-matherr(x)
-struct exception *x;
-{
-   printf("%e %e %e\n",cross[0], cross[1], cross[2]);
-   exit(0);
-   return(0);
-}
-#endif

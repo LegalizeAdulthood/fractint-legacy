@@ -5,7 +5,7 @@
 
 
 ;			 required for compatibility if Turbo ASM
-IFDEF ??Version
+IFDEF ??version
 MASM51
 QUIRKS
 ENDIF
@@ -13,22 +13,69 @@ ENDIF
 
 .model medium, c
 
-; .fardata
+.data
+
+helpmessagemain		dw	offset  helpmessagemain1
+			dw	seg     helpmessagemain1
+			dw	offset  helpmessagemain2
+			dw	seg     helpmessagemain2
+			dw	offset  helpmessagemain3
+			dw	seg     helpmessagemain3
+			dw	0,0
+
+helpmessagecycling	dw	offset  helpmessagecycling1
+			dw	seg     helpmessagecycling1
+			dw	offset  helpmessagecycling2
+			dw	seg     helpmessagecycling2
+			dw	0,0
+
+helpmessagemouse	dw	offset  helpmessagemouse1
+			dw	seg     helpmessagemouse1
+			dw	0,0
+
+helpmessagecmdline	dw	offset  helpmessagecmdline1
+			dw	seg     helpmessagecmdline1
+			dw	offset  helpmessagecmdline2
+			dw	seg     helpmessagecmdline2
+			dw	offset  helpmessagecmdline3
+			dw	seg     helpmessagecmdline3
+			dw	offset  helpmessagecmdline4
+			dw	seg     helpmessagecmdline4
+			dw	0,0
+
+helpmessagefractals	dw	offset  helpmessagefractals1
+			dw	seg     helpmessagefractals1
+			dw	offset  helpmessagefractals2
+			dw	seg     helpmessagefractals2
+			dw	offset  helpmessagefractals3
+			dw	seg     helpmessagefractals3
+			dw	offset  helpmessagefractals4
+			dw	seg     helpmessagefractals4
+			dw	offset  helpmessagefractals5
+			dw	seg     helpmessagefractals5
+			dw	offset  helpmessagefractals6
+			dw	seg     helpmessagefractals6
+			dw	offset  helpmessagefractals7
+			dw	seg     helpmessagefractals7
+			dw	offset  helpmessagefractals8
+			dw	seg     helpmessagefractals8
+			dw	0,0
+
+helpmessageformoreinfo	dw	offset  helpmessageformoreinfo1
+			dw	seg     helpmessageformoreinfo1
+			dw	0,0
+
 .code
 
 	public	helpmessagetitle
 	public	helpmessageauthors
 	public	helpmessagecredits
 	public	helpmessagemenu
-	public	helpmessagemain1, helpmessagemain2
-	public	helpmessagemain3
-	public	helpmessagecycling1, helpmessagecycling2
+	public	helpmessagemain
+	public	helpmessagecycling
 	public	helpmessagemouse
-	public	helpmessagecmdline1, helpmessagecmdline2
-	public	helpmessagecmdline3, helpmessagecmdline4
-	public	helpmessagefractals1, helpmessagefractals2
-	public	helpmessagefractals3, helpmessagefractals4
-	public	helpmessagefractals5
+	public	helpmessagecmdline
+	public	helpmessagefractals
 	public	helpmessageformoreinfo
 	public	helpmessageendtext
 	public	helpmessagemoretext
@@ -43,22 +90,22 @@ ENDIF
 
 	public	initifs, initifs3d
 
-helpmessagetitle	db	"FRACTINT    Version 10.0"
+helpmessagetitle	db	"FRACTINT    Version 11.0"
  db 13,10,0
 
 helpmessageauthors	db	13,10
  db "------------------  Primary Authors (this changes over time)  -----------------",13,10
- db "Bert Tyler      - original author, coordinator, integer Mandelbrot/Julia",13,10
- db "                  routines, zoom and pan, video mode table, save-to-disk...",13,10
- db "                  Compuserve ID: [73477,433]   BIX ID: btyler",13,10
- db "Timothy Wegner  - superVGA support, restore-from-disk, color-cycling,",13,10
- db "                  new fractal types, configuration files, 3-D images ...",13,10
- db "                  Compuserve ID: [71320,675]",13,10
+ db "Bert Tyler      - Programmer-Type obsessed with mind-numbing speed...",13,10
+ db "                  Compuserve (CIS) ID: [73477,433]   BIX ID: btyler",13,10
+ db "Timothy Wegner  - Mathematician-Type obsessed with fractals and options...",13,10
+ db "                  CIS ID: [71320,675]   Internet: twegner@mwunix.mitre.org",13,10
+ db "Mark Peterson   - Mathematician-Type obsessed with fractal types AND speed...",13,10
+ db "                  CIS ID: [70441,3353]",13,10
  db "---------  Contributing Authors (SPACEBAR toggles scrolling off/on)  ----------",13,10
  db 13,10
+ db 13,10		; room for fourteen authors here
  db 13,10
  db 13,10
- db 13,10		; room for twelve authors here
  db 13,10
  db 13,10
  db 13,10
@@ -76,13 +123,15 @@ helpmessagecredits	db	32
  db  "                 ...",13,10
  db "Michael Abrash  - 360x480x256, 320x400x256 VGA video modes",13,10
  db "Steve Bennett   - restore-from-disk logic",13,10
- db "Rob Beyer       - Barnsley IFS fractals",13,10
+ db "Rob Beyer       - [71021,2074] Barnsley IFS, Lorenz fractals",13,10
  db "John Bridges    - [73307,606] superVGA support, 360x480x256 mode",13,10
- db "Lee Crocker     - [73407,2030] Fast Newton algorithm, other features",13,10
+ db "Lee Crocker     - [73407,2030] Fast Newton, Inversion, Decomposition..",13,10
+ db "Monte Davis     - [71450,3542] Documentation",13,10
+ db "Richard Finegold- [76701,153] 8/16/../256-Way Decomposition option",13,10
  db "Mike Kaufman    - mouse support, other features",13,10
  db "Joe McLain      - [75066,1257] TARGA Support, color-map files",13,10
+ db "Bob Montgomery  - [73357,3140] (Author of VPIC) Fast text I/O routines",13,10
  db "Bret Mulvey     - plasma clouds",13,10
- db "Mark Peterson   - [70441,3353] periodicity logic, LOTS of fractal types",13,10
  db "Marc Reinig     - [72410,77] 3D 'Preview' option",13,10
  db "Kyle Powell     - [76704,12] 8514/A Support",13,10
  db "Matt Saucier    - [72371,3101] Printer Support",13,10
@@ -162,14 +211,14 @@ helpmessagemain3	db	13,10
  db "                    with an '*' are also available at the credits screen) are:",13,10
  db 13,10
  db "  i or I            apply inversion to the current fractal image",13,10
+ db "* f or F            toggle the floating-point option ON or OFF.  The",13,10
+ db "                    TAB key display will indicate so if it's ON.",13,10
  db "                    See FRACTINT.DOC for details.",13,10
- db "  q or Q            apply Quaternary (or binary) Decomposition to the current",13,10
+ db "  q or Q            apply Decomposition (2, 4, or 8-way) to the current",13,10
  db "                    fractal image.  See FRACTINT.DOC for details.",13,10
  db "* Insert            Restart the program (at the credits screen)",13,10
  db "* d or D            Shell to DOS (type 'exit' at the DOS prompt to return)",13,10
  db "* Delete or Esc     Stop the program and return to MSDOS",13,10
- db 13,10
- db 13,10
  db 13,10
  db 13,10
  db 13,10
@@ -215,7 +264,7 @@ helpmessagecycling2	db	13,10
  db "  (any other key)  Exit Color-Cycling and return to main command level",13,10
  db 0
 
-helpmessagemouse	db	13,10
+helpmessagemouse1	db	13,10
  db "Using FRACTINT with a Mouse",13,10,13,10
  db "Left Button:   Brings up and sizes the Zoom Box.   While holding down the",13,10
  db "               left button, push the mouse forward to shrink the Zoom Box,",13,10
@@ -310,6 +359,14 @@ helpmessagecmdline4	db	13,10
  db "                           value is listed as part of the <TAB> display",13,10
  db "decomp=nn[/nnnnn]          'Binary Decomposition' toggle.  First value 2 or 4,",13,10
  db "                           2nd is bailout limit.  See FRACTINT.DOC for details",13,10
+ db "biomorph=nnn               Turns on Biomorph Coloring (use with the mansinzexpd",13,10
+ db "                           and Julsinzexpd fractal types)",13,10
+ db "bailout=nnnn               Use this as the iteration bailout value (rather than",13,10
+ db "                           the default value of [for most fractal types] 4.0)",13,10
+ db "symmetry=xxxx              Force symmetry to None, Xaxis, Yaxis, XYaxis,",13,10
+ db "                           Origin, or Pi symmetry.  Useful for debugging.",13,10
+ db "askvideo=no                Disable 'Is This Mode OK?' prompt if you have a ",13,10
+ db "                           FRACTINT.CFG file restricted to legal video modes.",13,10
  db "    ;                      indicates the rest of the line is a comment",13,10
  db "                           (IE, 'fractint type=plasma ; use plasma clouds')",13,10
  db 0
@@ -323,9 +380,6 @@ helpmessagefractals1	db	13,10
  db "julia      = 'Classic' Julia set fractals using 32-bit integer math for speed.",13,10
  db "             z(0) = Xcoord + i * Ycoord; z(n+1) = z(n)**2 + C.",13,10
  db "             Two params required: real and imaginary parts of C.",13,10
- db "mandelfp,  = 'Classic' Mandelbrot and Julia set fractals using traditional",13,10
- db "juliafp      floating point math.  Params identical to above.  Included",13,10
- db "             mostly for historical purposes.",13,10
  db "newton,    = Newton Domains-of-attraction (only the coloring schemes are",13,10
  db "newtbasin    different).  First param:  the power (from 3 to 10) of the eqn.",13,10
  db "             If param=4, the eqn is z(n+1) = (3*z(n)**4+1)/(4*z(n)**3).",13,10
@@ -333,14 +387,14 @@ helpmessagefractals1	db	13,10
  db "             the Radius and X/Y location of the Inversion point",13,10
  db "plasma     = plasma clouds - random, cloud-like formations.  Requires four or",13,10
  db "             more colors.  One param: 'graininess' (.5 to 50, default = 2)",13,10
+ db "mandelsine = 'Mandelbrot-Equivalent' for the lambda-sine fractal.  Use the ",13,10
+ db "             Space-bar to select LambdaSine fractals a/la Mandel/Julia. ",13,10
+ db "             z(0) = Xcoord + i * Ycoord;  z(n+1) = z(0)*sine(z(n)). No Parms.",13,10
  db 0
 
 helpmessagefractals2	db	13,10
  db "Fractal types supported include (see FRACTINT.DOC for full descriptions):",13,10
  db 13,10
- db "mandelsine = 'Mandelbrot-Equivalent' for the lambda-sine fractal.  Use the ",13,10
- db "             Space-bar to select LambdaSine fractals a/la Mandel/Julia. ",13,10
- db "             z(0) = Xcoord + i * Ycoord;  z(n+1) = z(0)*sine(z(n)). No Parms.",13,10
  db "lambdasine = lambda-sine fractal.  z(0) = Xcoord + i * Ycoord;  z(n+1) = ",13,10
  db "             lambda * sine(z(n)).  Two params: real, imag portions of lambda.",13,10
  db "mandelcos  = 'Mandelbrot-Equivalent' for the lambda-cosine fractal.  Use the ",13,10
@@ -353,14 +407,14 @@ helpmessagefractals2	db	13,10
  db "             z(0) = Xcoord + i * Ycoord;  z(n+1) = z(0)*exp(z(n)). No Parms.",13,10
  db "lambdaexp  = lambda-exponent fractal.  z(0) = Xcoord + i * Ycoord;  z(n+1) = ",13,10
  db "             lambda * exp(z(n)).  Two params: real, imag portions of lambda.",13,10
+ db "barnsleym1 = Michael Barnsley's alternative 'Mandelbrot'. z(0) = 0; z(n+1) =",13,10
+ db "             (z-1)*C if Real(z) >= 0, else = (z+1)*modulus(C)/C, where C =",13,10
+ db "             Xcoord + i * Ycoord.",13,10
  db 0
 
 helpmessagefractals3	db	13,10
  db "Fractal types supported include (see FRACTINT.DOC for full descriptions):",13,10
  db 13,10
- db "barnsleym1 = Michael Barnsley's alternative 'Mandelbrot'. z(0) = 0; z(n+1) =",13,10
- db "             (z-1)*C if Real(z) >= 0, else = (z+1)*modulus(C)/C, where C =",13,10
- db "             Xcoord + i * Ycoord.",13,10
  db "barnsleyj1 = 'Julia' corresponding to barnsleym1. z(0) = Xcoord + i * Ycoord;",13,10
  db "             z(n+1) = (z-1)*C if Real(z) >= 0, else = (z+1)*modulus(C)/C.",13,10
  db "             Two params required: real and imaginary parts of C.",13,10       
@@ -374,14 +428,14 @@ helpmessagefractals3	db	13,10
  db "barnsleym3 = Another alternative 'Mandelbrot' from Barnsley",13,10
  db "             This one has a formula that's just too long for this puny",13,10
  db "             little help file - see FRACTINT.DOC for details",13,10
+ db "barnsleyj3 = 'Julia' corresponding to barnsleym3.",13,10
+ db "             This one has a formula that's just too long for this puny",13,10
+ db "             little help file - see FRACTINT.DOC for details",13,10
  db 0
 
 helpmessagefractals4	db	13,10
  db "Fractal types supported include (see FRACTINT.DOC for full descriptions):",13,10
  db 13,10
- db "barnsleyj3 = 'Julia' corresponding to barnsleym3.",13,10
- db "             This one has a formula that's just too long for this puny",13,10
- db "             little help file - see FRACTINT.DOC for details",13,10
  db "sierpinski = Sierpinski gasket - a Julia set that produces a 'Swiss cheese",13,10
  db "             triangle'. z(n+1) = (2*x,2*y -1) if y > .5; else (2*x-1,2*y)",13,10
  db "             if (x > .5); else (2*x,2*y). No parameters.",13,10
@@ -395,15 +449,15 @@ helpmessagefractals4	db	13,10
  db "             z(n+1) = ((Xcoord+i*Ycoord)**exp)*z(n) + (Xcoord+i*Ycoord).",13,10
  db "marksjulia = Mark Peterson's variant of the julia-lambda fractal. ",13,10
  db "             z(0) = Xcoord + i * Ycoord;  z(n+1) = (z(0)**exp)*z(n) + z(0).",13,10
+ db "unity      = Mark Peterson's 'Unity' fractal type.  Truly Wierd - ",13,10
+ db "             See FRACTINT.DOC for the description of this one!",13,10
+ db "ifs        = Barnsley IFS Fractal (a fern unless an alternate IFS map has ",13,10
+ db "             been defined using the 'ifs=' command-line option).",13,10
  db 0
 
 helpmessagefractals5	db	13,10
  db "Fractal types supported include (see FRACTINT.DOC for full descriptions):",13,10
  db 13,10
- db "unity      = Mark Peterson's 'Unity' fractal type.  Truly Wierd - ",13,10
- db "             See FRACTINT.DOC for the description of this one!",13,10
- db "ifs        = Barnsley IFS Fractal (a fern unless an alternate IFS map has ",13,10
- db "             been defined using the 'ifs=' command-line option).",13,10
  db "ifs3d      = Barnsley 3D IFS Fractal (a fern unless an alternate IFS map has ",13,10
  db "             been defined using the 'ifs3d=' command-line option).",13,10
  db "mandel4    = Fourth-power 'Mandelbrot' fractals using 32-bit integer math.",13,10
@@ -416,14 +470,79 @@ helpmessagefractals5	db	13,10
  db "             Currently, the 'Distance Estimator' M'brot/Julia Set algorithm.",13,10
  db "             two optional parameters - if none given, uses the M'brot Set",13,10
  db "             If given, they are the the same as the Julia Set parameters.",13,10
+ db "mandelsinh = 'Mandelbrot-Equivalent' for the lambda-sinh fractal.  Use the ",13,10
+ db "             Space-bar to select LambdaSine fractals a/la Mandel/Julia. ",13,10
+ db "             z(0) = Xcoord + i * Ycoord;  z(n+1) = z(0)*sinh(z(n)). No Parms.",13,10
+ db "lambdasinh = lambda-sinh fractal.  z(0) = Xcoord + i * Ycoord;  z(n+1) = ",13,10
+ db "             lambda * sinh(z(n)).  Two params: real, imag portions of lambda.",13,10
  db 13,10
  db 0
 
+helpmessagefractals6	db	13,10
+ db "Fractal types supported include (see FRACTINT.DOC for full descriptions):",13,10
+ db 13,10
+ db "mandelcosh = 'Mandelbrot-Equivalent' for the lambda-cosh fractal.  Use the ",13,10
+ db "             Space-bar to select LambdaCosh fractals a/la Mandel/Julia. ",13,10
+ db "             z(0) = Xcoord + i * Ycoord;  z(n+1) = z(0)*cosh(z(n)). No Parms.",13,10
+ db "lambdacosh = lambda-cosh  fractal.  z(0) = Xcoord + i * Ycoord;  z(n+1) = ",13,10
+ db "             lambda * cosh(z(n)).  Two params: real, imag portions of lambda.",13,10
+ db "mansinzsqrd= 'Mandelbrot-Equivalent' for the Julsinzsqrd fractal. Use the ",13,10
+ db "             Space-bar to select Julsinzexp a/la Mandel/Julia.  z(0) = 0;",13,10
+ db "             z(n+1) =z(n)**2 + sin(z(n)) + (Xcoord + i * Ycoord). No Parms.",13,10
+ db "julsinzsqrd= Julia Biomorph fractal.  z(0) = Xcoord + i * Ycoord;  z(n+1) = ",13,10
+ db "             z(n)**2 + sin(z(n)) + C.  Two params: real, imag portions of C.",13,10
+ db "manzpower  = 'Mandelbrot-Equivalent' for the julzpower fractal.  Use the ",13,10
+ db "             Space-bar to select julzpower fractals a/la Mandel/Julia. ",13,10
+ db "             z(n+1) = z(n)^m + C. Parameters are real pertubation, ",13,10
+ db "             imaginary pertubation, exponent m.",13,10
+ db "julzpower  = Juliazpower fractal.  z(0) = Xcoord + i * Ycoord;  z(n+1) = ",13,10
+ db "             z(n)^m + C.  Two params: real, imag portions of C.",13,10
+ db 0
 
-helpmessageformoreinfo	db	13,10
+helpmessagefractals7	db	13,10
+ db "manzzpwr  = 'Mandelbrot-Equivalent' for the julzzpwr fractal.  Use the ",13,10
+ db "             Space-bar to select julzzpwr fractals a/la Mandel/Julia. ",13,10
+ db "             z(n+1) = z(n)^z(n) + z(n)^m + C. Parameters are real pertubation,",13,10
+ db "             imaginary pertubation, and exponent m.",13,10
+ db "julzzpwr  =  julia*zpower fractal.  z(0) = Xcoord + i * Ycoord;  z(n+1) = ",13,10
+ db "             z(n)^z(n) + z(n)^m + C.  Three params: real, imag portions ",13,10
+ db "             C, and the exponent m.",13,10
+ db "mansinexp = 'Mandelbrot-Equivalent' for the julsinexp fractal.  Use the ",13,10
+ db "             Space-bar to select julsinexp fractals a/la Mandel/Julia. ",13,10
+ db "             z(n+1) = sin(z(n)) + e^z(n) + C. Parameters are real pertubation, ",13,10
+ db "             and imaginary pertubation of z(0).",13,10
+ db "julsinexp =  julia sinexp fractal.  z(0) = Xcoord + i * Ycoord;  z(n+1) = ",13,10
+ db "             sin(z(n)) + e^z(n) + C.  Two params: real, imag portions C.",13,10
+ db "popcorn   =  orbits of x(n+1) = x(n) - h*sin(y(n) + tan(3*y(n)) and",13,10
+ db "             y(n+1) = y(n) - h*sin(x(n) + tan(3*x(n)) plotted for EACH ",13,10
+ db "             screen pixel and superimposed. If symmetry=none, plots Julia",13,10
+ db "             set of same equation.",13,10
+ db 0
+
+helpmessagefractals8	db	13,10
+ db "demm,     =  Mandelbrot and Julia fractal images generated using the",13,10
+ db "demj         'Distance Estimator' method.  Same fractal types, same ",13,10
+ db "             input parameters, different coloring schemes!",13,10
+ db "Bifurcation = 'Bifurcation' fractal. Pictoral representation of a",13,10
+ db "             population growth model.  The model is: Newpopulation =",13,10
+ db "             growthrate * oldpopulation * (1 - oldpopulation)",13,10
+ db "complexnewton, = Newton's fractal type extended to complex numbers. ",13,10
+ db "complexbasin     Newton's fractal uses (z**n + 1) - these types use",13,10
+ db "             (z**a + b), where both 'a' and 'b' are complex numbers.",13,10
+ db "lorenz    =  Lorenz attractor fractal - orbits of differential equation",13,10 
+ db "             x = x + (-a * x * dt) + (a * y * dt)",13,10
+ db "             y = y + (b * x * dt) - (y * dt) - (z * x * dt)",13,10
+ db "             z = z + (-c * z * dt) + (x * y * dt)",13,10
+ db "             Parameters are dt, a, b, and c.",13,10
+ db "lorenz3d  =  3D Lorenz attractor with 3D perspective.  Run this while",13,10
+ db "             using the transformation option of the E(dit) command",13,10
+ db "             to change your perspective.",13,10
+ db 0
+
+helpmessageformoreinfo1	db	13,10
  db 13,10
  db "Virtually all of the FRACTINT authors can be found on the Compuserve",13,10
- db "network in the PICS S 16 forum (called the 'Artists Studio' section).",13,10
+ db "network in the COMART ('COMputer ART') forum in S 15 ('Fractals').",13,10
  db "Several of us can also be found on BIX in the GRAPHIC.DISP/FRACTALS area.",13,10
  db 13,10
  db "In addition, several of the authors have agreed to the listing of their",13,10
@@ -434,10 +553,10 @@ helpmessageformoreinfo	db	13,10
  db "from those points.  The latest version of the program can usually be found",13,10
  db "in the following locations:",13,10
  db 13,10
- db "FRAINT.EXE - (Executable/Docs)  Compuserve: PICS DL 16 and IBMNEW DL 5",13,10
+ db "FRAINT.EXE - (Executable/Docs)  Compuserve: COMART DL 15 and IBMNEW DL 5",13,10
  db "              BIX: GRAPHIC.DISP/LISTINGS and IBM.PC/LISTINGS",13,10
  db 13,10
- db "FRASRC.EXE - (Complete Source)  Compuserve: PICS DL 16 and IBMPRO DL 3",13,10
+ db "FRASRC.EXE - (Complete Source)  Compuserve: COMART DL 15 and IBMPRO DL 3",13,10
  db "              BIX: GRAPHIC.DISP/LISTINGS and IBM.PC/LISTINGS",13,10
  db 13,10
  db "(What's the latest version?  Well, THIS one was, way back when we uploaded it!)",13,10

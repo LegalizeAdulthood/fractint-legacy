@@ -1,5 +1,5 @@
 fractint+encoder+config+gifview+decoder+rotate+general+
 calcmand+calcfrac+fractals+testpt+diskvid+line3d+3d+
 newton+cmdfiles+fr8514a+hgcfra+help+farmsg+
-targa+loadmap+tgasubs+log+video+farvideo+yourvid+
-fmath+fmath086+printer+tgaview+f16 ;
+targa+loadmap+tgasubs+video+yourvid+
+printer+tgaview+f16+fpu087+fpu387+mpmath_c+mpmath_a;

@@ -66,14 +66,15 @@ elsewhere.  The actual declarations are in the assembler code.
 				/* maximum number of strings available */
 #define MAXENTRY  5003		/* (a prime number is best for hashing) */
 
-extern int strlocn[MAXENTRY];
+extern unsigned int strlocn[MAXENTRY];
 extern unsigned char teststring[MAXTEST];
 
 static int numsaves = 0;	/* For adjusting 'save-to-disk' filenames */
 
 static FILE *out;
 
-static int lentest, lastentry, numentries, numrealentries, nextentry;
+static int lentest, lastentry, numentries, numrealentries;
+static unsigned int nextentry;
 static int clearcode, endcode;
 static unsigned int hashcode;
 
@@ -125,7 +126,7 @@ if (++numsaves > 1) {
 	}
 
 strcat(openfile,openfiletype);
-if (warn && (out=fopen(openfile,"r"))) {
+if (warn && (out=fopen(openfile,"r")) != NULL) {
 	fclose(out);
 	goto restart;
 	}

@@ -16,8 +16,10 @@ char    readname[80];     	/* name of fractal input file */
 char	potfile[80];		/* save potential using this name  */
 char	savename[80];		/* save files using this name */
 char	ifs3dfilename[80];          /* IFS 3D code file */
+int	askvideo;		/* flag for video prompting */
 char	floatflag = 0;         /* flag for float calcs */
-int     showfile;        	/* has file been displayed yet? */
+int	biomorph  = -1;         /* flag for biomorph */
+int     forcesymmetry = 999;   /* force symmetry */
 int     showfile;        	/* has file been displayed yet? */
 int rflag, rseed;	/* Random number seeding flag and value */
 int decomp[2];		/* Decomposition coloring */
@@ -39,14 +41,18 @@ int	initsolidguessing;	/* initial solid-guessing md*/
 int	initfractype;		/* initial type set flag    */
 int	initcyclelimit;		/* initial cycle limit      */
 int	initcorners;		/* initial flag: corners set*/
+int bailout = 0;			/* user input bailout value */
 double   inversion[3];      /* radius, xcenter, ycenter */
 double	initxmin,initxmax;	/* initial corner values    */
 double	initymin,initymax;	/* initial corner values    */
 double	initparam[4];		/* initial parameters       */
-double	initpot[4];		/* potential parameters  */
+extern double  potparam[];  /* potential parameters  */
 extern int Printer_Resolution, LPTNumber, Printer_Type;   /* for printer functions */
 int	transparent[2];		/* transparency min/max values */
 int	LogFlag;			/* Logarithmic palette flag: 0 = no */
+
+extern unsigned char olddacbox[256][3];    /* Video-DAC saved values */
+extern unsigned char dacbox[256][3];       /* Video-DAC values */
 
 extern	char *fkeys[];		/* Function Key names for display table */
 
@@ -71,6 +77,9 @@ char tempstring[101];				/* temporary strings	    */
 FILE *initfile;					/* for .INI, '@' files      */
 
 rflag = 0;					/* Use time() for srand() */
+floatflag = 0;					/* turn off the float flag */
+biomorph = -1;					/* turn off biomorph flag */
+askvideo = 1;					/* turn on video-prompt flag */
 
 warn = 0;					/* no warnings on savename */
 sound = 1;					/* sound is on            */
@@ -84,7 +93,7 @@ initsolidguessing = 1;				/* initial solid-guessing */
 initfractype = 0;				/* initial type Set flag  */
 initcorners = 0;				/* initial flag: no corners */
 for (i = 0; i < 4; i++) initparam[i] = 0;	/* initial parameter values */
-for (i = 0; i < 4; i++) initpot[i] = 0;/* initial parameter values */
+for (i = 0; i < 3; i++) potparam[i]  = 0.0; /* initial potential values */
 for (i = 0; i < 3; i++) inversion[i] = 0.0;  /* initial invert values */
 
 initxmin = -2.5; initxmax = 1.5;		/* initial corner values  */
@@ -319,7 +328,7 @@ cmdarg(char *param)				/* process a single argument */
 		slash = strchr(param,'=');
 		while ( k < 4) {
         	if(k < 3)  
-				initpot[k++] = atof(++slash);
+				potparam[k++] = atoi(++slash);
 		   	else {
             	k++;
                 strcpy(potfile,++slash);
@@ -503,13 +512,39 @@ cmdarg(char *param)				/* process a single argument */
 			if ((slash = strchr(slash,'/')) == NULL) k = 99;
 			}
 		}
-	else if (strcmp(variable,"float") == 0 ) 	/* float=?	*/
+	else if (strcmp(variable,"askvideo") == 0 ) { 	/* askvideo=?	*/
+		if (charval == 'y')
+			askvideo = 1;
+		else if (charval == 'n')
+		        askvideo = 0;
+	        else
+        	    argerror(param);
+        	}    
+	else if (strcmp(variable,"float") == 0 ) { 	/* float=?	*/
 		if (charval == 'y')
 			floatflag = 1;
 		else if (charval == 'n')
-            floatflag = 0;
-        else
-            argerror(param);    
+		            floatflag = 0;
+	        else
+        	    argerror(param);
+        	}    
+	else if (strcmp(variable,"biomorph") == 0 ) { 	/* biomorph=?	*/
+		biomorph = numval;
+          	}   
+	else if (strcmp(variable,"bailout") == 0 ) { 	/* bailout=?	*/
+		if (numval < 4 || numval > 32000) argerror(param);
+		bailout = numval;
+		}
+	else if (strcmp(variable,"symmetry") == 0 ) { 	/* symmetry=?	*/
+	    if     (strcmp(value,"xaxis" )==0) forcesymmetry = XAXIS;
+	    else if(strcmp(value,"yaxis" )==0) forcesymmetry = YAXIS;
+	    else if(strcmp(value,"xyaxis")==0) forcesymmetry = XYAXIS;
+	    else if(strcmp(value,"origin")==0) forcesymmetry = ORIGIN;
+	    else if(strcmp(value,"pi"    )==0) forcesymmetry = PI_SYM;
+        else if(strcmp(value,"none"  )==0) forcesymmetry = NOSYM;
+        else argerror(param);
+		}
+
 	else if (strcmp(variable,"printer") == 0 ) {	/* printer=?	*/
 		if (charval=='h') Printer_Type=1; /* HP LaserJet           */
         if (charval=='i') Printer_Type=2; /* IBM Graphics          */
@@ -629,7 +664,9 @@ FILE *tempfile;
 
 setfortext();			/* switch to text mode */
 
-setvideomode(3,0,0,0);		/* clear the ecreen entirely */
+memcpy(olddacbox,dacbox,256*3);        /* save the DAC */
+setvideomode(3,0,0,0);                 /* clear the screen entirely */
+memcpy(dacbox,olddacbox,256*3);        /* restore the DAC */
 
 
 ifsgetfile();			/* read in any "IFS=" file */
@@ -648,8 +685,15 @@ else if (fractype == IFS3D)
    ifstype = '3';
 else
 {
-   printf("Edit normal or 3D IFS parameters? (2 or 3 - if not %c) --> ",ifstype);
-   while((ifstype=getch())!='2' && ifstype!='3' && ifstype!=13);
+   printf("Edit 2D IFS, 3D IFS, or generic 3D Transform parameters?\n\n");
+   printf("     (2, 3, or t - if not %c) --> ",ifstype);
+   while((i=getch())!='2' && i!='3' && i!='t' && i!='T' && i!=13);
+   if (i == 't' || i == 'T') {
+       printf("\n\n");
+       getifs3dstuff();
+       return;
+       }
+   if (i == '2' || i == '3') ifstype = i;
 }
 if (ifstype == '3') {
    filename = ifs3dfilename;
@@ -663,7 +707,9 @@ for ( ;; ) {
     for (numlines = 0; numlines < totrows; numlines++)    /* find the first zero entry */
         if (initarray[(numlines * totcols) + totcols - 1] <= 0.0001) break;
 
-    setvideomode(3,0,0,0);
+    memcpy(olddacbox,dacbox,256*3);        /* save the DAC */
+    setvideomode(3,0,0,0);                 /* clear the screen entirely */
+    memcpy(dacbox,olddacbox,256*3);        /* restore the DAC */
 
     printf(" Your current IFS Parameters are: \n\n");
     printf("#   a     b     c     d     e     f");

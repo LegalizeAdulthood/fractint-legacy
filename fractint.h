@@ -51,7 +51,8 @@ struct videoinfo {		/* All we need to know about a Video Adapter */
 #define INFO_ID         "Fractal"
 #define FRACTAL_INFO   struct fractal_info
 
-struct fractal_info {			/*  for saving data in GIF file     */
+struct fractal_info 			/*  for saving data in GIF file     */
+{
 	char info_id[8];		/* Unique identifier for info block */
 	int iterations;
 	int fractal_type;           /* 0=Mandelbrot 1=Julia 2= ... */
@@ -68,9 +69,21 @@ struct fractal_info {			/*  for saving data in GIF file     */
 	int	dotmode;
 	int	xdots;
 	int	ydots;
-	int	colors;
-	int	future[10];	/* for stuff we haven't thought of yet */
-	};
+	int colors;
+	int version;        /* used to be 'future[0]' */
+    float parm3;           
+    float parm4;           
+    float potential[3];      
+    int rseed;             
+    int rflag;
+    int biomorph;
+    int inside;            
+    int logmap;
+    float invert[3];
+    int decomp[2];
+    int symmetry;
+	int future[35];     /* for stuff we haven't thought of yet */
+};
 
 #define MAXVIDEOMODES 100	/* maximum size of the video table */
 
@@ -156,6 +169,7 @@ extern int maxvideomode;
 #define  ORIGIN         4
 #define  PI_SYM_NOPARM -5
 #define  PI_SYM         5
+#define  NOPLOT        99
 
 extern float   far initifs[NUMIFS][IFSPARM];          /* IFS code values */
 extern float   far initifs3d[NUMIFS][IFS3DPARM];      /* IFS 3D code values */
@@ -171,6 +185,7 @@ struct fractalspecificstuff
    int   isinteger;			/* 1 if integerfractal, 0 otherwise */
    int   tojulia;			/* mandel-to-julia switch */
    int   tomandel;                      /* julia-to-mandel switch */
+   int   tofloat;			/* integer-to-floating switch */
    int	 symmetry;			/* applicable symmetry logic
 					   0 = no symmetry
 					  -1 = y-axis symmetry (If No Params)
@@ -319,7 +334,7 @@ extern  int    getcolor(int, int);
 extern  int    has_8087(void );
 extern	void	helpmessage(unsigned char far *);
 extern  void   identity(MATRIX);
-extern  int    iplot_orbit(long, long);
+extern  int    iplot_orbit(long, long, int);
 extern  int    Juliafp(void);
 extern  int    longvmultpersp(LVECTOR, LMATRIX, LVECTOR, LVECTOR, LVECTOR, int);
 extern  int    longpersp(LVECTOR, LVECTOR,int);
@@ -334,7 +349,7 @@ extern	long   divide(long, long, int);
 extern  int    Newton(void);
 extern  int    perspective(double *v);
 extern  int    plasma(void);
-extern  int    plot_orbit(double, double);
+extern  int    plot_orbit(double, double, int);
 extern	void	cdecl	Print_Screen(void);	/* MDS 7/1/89 */
 extern  void   putcolor(int, int, int);
 extern  void   scale(double, double, double, MATRIX);
@@ -352,6 +367,7 @@ extern  void   symplot2(int, int, int);
 extern  void   symplot2J(int, int, int);
 extern  void   symplot2Y(int, int, int);
 extern  void   symplot4(int, int, int);
+extern  void   noplot(int, int, int);
 extern  int    test(void);
 extern  void   trans(double, double, double, MATRIX);
 extern  int    vmult(VECTOR,MATRIX,VECTOR);

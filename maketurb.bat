@@ -1,0 +1,1 @@
+make -ftc.mak
