@@ -1,27 +1,52 @@
 
-               *********   FRACTINT (Version 9.3)  **********
+               *********   FRACTINT (Version 10.0)  **********
 
     An experiment in "Stone Soup" development.  Got anything for the pot?
 
-*****************************************************************************
-*  AARRGGHH!  The video table got so darned big that we ran clean out of    *
-* Alt-Keys on old (non-enhanced) keyboards!  If you have one of those old   *
-* keyboards, and want to use a video mode at the end of the table (from the *
-* F11 entry on), read the "Config File" section of the documentation and    *
-* then run "fractint batch=config", edit the FRACTINT.CFG file that is left *
-* behind to remove the video modes you don't care about, and leave the      *
-* resulting file somewhere on your DOS PATH.  FRACTINT will use that file   *
-* rather than its full internal video table from that point on.             *
-*  (We will try to come up with a more elegant solution for Version 10.x)   *
-*****************************************************************************
+      +++++ Quick Documentation Format -- Features new to 10.0 +++++
+
+      - New Fractal Types!  Boy, have we got New Fractal Types!
+      -    Barnsley IFS Fractals (courtesy of Rob Beyer)
+      -    Barnsley IFS3D fractal type
+      -    MandelSine/MandelCos/MandelExp fractal types
+      -    MandelLambda/MarksLambda/Unity fractal types
+      -    BarnsleyM1/J1/M2/J2/M3/J3 fractal types
+      -    Mandel4/Julia4 fractal types
+      -    Sierpinski Gasket fractal type
+      -    Demm and Demj and Bifurcation fractal types (by Phil Wilson)
+      -    (the 'test' fractal is now a simple Mandelbrot again)
+      - Added 'I(nversion)' command for most fractal types
+      - Added 'decomp=' command-line argument and 'Q(uaternary decomposition)'
+           command toggle for most fractal types
+      - Added an editor (the 'E' command) for Barnsley IFS parameters
+      - Added LOTS of new command-line options for selectively setting
+        3D parameters (sphere=, radius=, waterline=, ... - see the
+        command-line section for details).
+      - Sped up the spherical 3D calculations by a factor of 5!
+      - 3D now clips properly to screen edges and works at extreme perspective
+      - Added an 'rseed=' command-line option for reproducible Plasma Clouds
+      - Sped up Plasma Clouds (by 40 percent on a 386)
+      - Added sensitivity to "continuous potential" algorithm to all
+        fractal types (except Plasma and IFS types)
+      - added Palette map Save and Restore by-name commands 
+        ('S' and [sorry, 'R' was taken] 'M') to the color-cycling menu
+      - Added Logarithmic (as opposed to Continuous) Palette-mapping
+        command-line options and hot-keys ('l' for logs, 'n' for normal)
+        (increased maxiter maximum to 32000 to support log palette maps)
+      - .MAP and .IFS files can now reside anywhere along the DOS PATH
+      - Added new Direct-Video support for Hercules adapters (courtesy
+        of Dean Souleles) 
+      - added Tandy 1000 160x200x16 mode (thanks to Tom Price)
+      - added 320x400x256 register-compatible-VGA "tweaked" mode.
+      - added ATI VGA Wonder 1024x768x16 direct-video mode (by Mark Peterson)
+      - added 1024x768x16 direct-video mode for all supported chipsets
+      - added Tseng 640x400x256 mode
+      - added new "Roll-Your-Own" video mode 19 (add your very own video
+        mode by modifying the code in YOURVID.C)
+      - added new video-table "hot-keys", so you no longer need an enhanced
+        keyboard to access some of the video modes at the end of the table
 
       +++++ Quick Documentation Format -- Features new to 9.3 +++++
-
-      - (9.3 is just version 9.1 with a bug-fix that works around an
-        apparant 8088-incompatibility in the NEC V20 processor <IMUL
-        doesn't set the sign flag, which is an (undocumented) 80xxx "feature">
-        ... and a second bug-fix for the new Trident, Chips & Technologies,
-        and ATI VGA Wonder video modes.
 
       - New 'P(rint) command and 'printer=' options from Matt Saucier
       - New 8514/A video modes (from Kyle Powell)
@@ -39,6 +64,7 @@
       - New TRIDENT chip-set Super-VGA video modes (thanks to Lew Ramsey)
       - New Direct-Access Video modes for TRIDENT, Chips & Technologies,
         and ATI VGA WONDER adapters (thanks to John Bridges)
+        (and, unlike version 9.1, they WORK in version 9.3!)
       - New 'Zoom-out' (Control-Enter) option for zooming out instead of in
       - New 'D(os)' command lets you shell-to-DOS from inside FRACTINT.
       - New 2/4/16-color Disk/RAM video mode capability and 2-color
@@ -116,22 +142,27 @@
       +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-This program generates Mandelbrot and Julia set fractal images using 16-bit
-or 32-bit integer arithmetic rather than the "traditional" floating point
-("large" images use 16-bit logic; "zoomed-in" images switch over to 32-bit
-logic when necessary).   When run on a 386-based PC, it will use the 32-bit
+This program generates over thirty different types of fractal images.
+The title of the program ("fractint") was chosen because it generates
+many of its fractal images using 32-bit integer math (rather than the 
+"traditional" floating point math commonly used by similar programs).
+While generating its Mandelbrot and Julia set fractal images (the mainstay
+of all fractal programs) the program even uses 16-bit arithmetic for its
+initial images ("zoomed-in" images switch over to 32-bit logic as
+necessary) so as to run as fast as possible.   When run on a 386-based PC
+and generating fractal types using integer math, it will use the 32-bit
 math specific to that processor - otherwise, it will emulate it using the
 generic 16-bit math available on the entire INTEL family (at about 15% of the
-speed of the 386-specific math).  The program also generates other types of
-fractal images (described below), although it generates some of those other
-fractals using "traditional" floating point math.
+speed of the 386-specific math).
 
 The program will work with CGA, EGA, MCGA, VGA, "tweaked" VGA, and
 many popular super-rez adapters, and can switch display modes on-the-fly for
 those adapters capable of multiple emulation. For instance, I can run this
 program in any of the IBM CGA/EGA/MCGA/VGA modes on my PS/2 model 80.
-The program does not perform any floating point arithmetic during its
-Mandelbrot/Julia set image generation routines, and does not require an FPU.
+The program does not perform any floating point arithmetic during many
+of its routines (including its Mandelbrot/Julia set image generation
+routines), and does not require an FPU even when it IS using a floating
+point algorithm.
 
 To start the program, simply type its name (FRACTINT) without any parameters.
 When the program fires up, it displays an initial credits screen with a
@@ -178,7 +209,7 @@ also available at the initial credits screen):
   Spacebar       Toggles between Mandelbrot images and their corresponding
                  Julia set images (read the Julia set notes below before
                  trying this option if you want to see anything interesting)
-* < or >         Lower or Raise the maximum iteration count (hit the Tab key
+  < or >         Lower or Raise the maximum iteration count (hit the Tab key
                  to display the current value).  The default value is 150, the
                  range is 10 - 1000, and the default adjustment value is 50).
                  ((Note:  the unshifted equivalents (comma, period) also work))
@@ -191,6 +222,11 @@ also available at the initial credits screen):
                  only for blocks that aren't "surrounded" by a single color.
                  Solid guessing can guess wrong - but it sure guesses (right
                  or wrong) quickly!
+* l, L, n, or N  Select Normal (the default) or Logarithmic palette mapping.
+                 Normal color palette maps select a final color based on the
+                 formula  'color = maxiter mod maxcolors',
+                 Logarithmic palette maps select a final color based on the
+                 formula  'color = maxcolors * log(iter) / log(maxiter);
   + or -         (For EGA/VGA adapters only) Begin rotating the palette and
                  switch to the Color-cycling command mode, described below.
                  Note: on EGA adapters, only the 640x350x16 mode cycles.
@@ -234,6 +270,17 @@ also available at the initial credits screen):
 * t or T         Select a fractal type (the program lists the available types,
                  then lets you select one and prompts you for any parameters
                  it may require)
+* e or E         Enters the Barnsley IFS fractal parameters editor, for
+                 interactive restoring, editing, and saving of those values.
+                 Read the "Barnsley IFS fractals" section for a description
+                 of these parameters.
+  i or I         Applies the Inversion process and redraws the current
+                 fractal image.  This option does not apply to all of the
+                 fractal types (IE, Plasma Clouds, IFS types, or 'test').
+  q or Q         Applies the Quaternary (or Binary) Decomposition process
+                 and redraws the current fractal image.  This option does
+                 not apply to all of the fractal types (IE, Plasma Clouds,
+                 IFS types, or 'test').
   o or O         (the letter, not the number), if pressed while a fractal
                  image is being generated, toggles the display of intermediate
                  results on and off (the "o" stands for "show orbits")
@@ -306,6 +353,10 @@ The command keys appropriate to color-cycling mode are:
                There are sample DEFAULT.MAP (the VGA start-up values) and
                ALTERN.MAP (the famous "Peterson-Vigneau Pseudo-Grey Scale")
                files for you to examine and modify.
+  m or M       Forces a pause, prompts for a filename, and loads the color
+               palette from the named file (default filetype is .MAP)
+  s or S       Forces a pause, prompts for a filename, and saves the color
+               palette to the named file (default filetype is .MAP)
   Any Other    terminates the color-cycling process (you can always return
                to it with another c or +/- key) and returns to the main
                command mode. 
@@ -366,10 +417,13 @@ STARTUP.FRA), and then fire up subsequent FRACTINT sessions with a command
 like 'fractint startup'.   This can be handled automatically with the
 'batch=yes' command-line option (the example below creates a startup
 file for register-compatible VGA adapters using 360x480x256 color mode):
-           fractint batch=yes video=f10 type=mandel savename=startup
-One hasn't been added to the distribution files only because of the 
-space it would take (the files are getting big enough as it is!) and because
-we don't know what your favorite (or possible) video modes are.
+ 
+    fractint batch=yes video=f10 type=mandel savename=startup
+
+This is a VERY handy trick if you tend to start up one of the "Mandel..."
+type fractals (like MandelSine) simply to have a handy starting
+point for generating a nifty Julia-style fractal (LambdaSine) using the
+space-bar option.
 
 The time it takes to generate a fractal image is directly proportional to the
 resolution of the selected video mode (more dots = more calculations).   You
@@ -451,30 +505,73 @@ type=fractaltype   Selects the type of fractal image to display.  The default
                    is type 'mandel' for the Mandelbrot set.  The current list
                    of available fractal types is described later.  (Example:
                    type=julia generates Julia sets).
-params=param1/param2   Set optional (required, for some fractal types) values
-                   used in generating fractals.  These two numbers typically
-                   represent the real and imaginary portions of some startup
-                   value.  These parameters are described in detail later on
-                   (Julia Set example:  type=julia params=-0.48/0.626)
+params=param1/param2/param3/param4  Set optional (required, for some fractal 
+                   types) values used in generating fractals.  These numbers 
+                   typically represent the real and imaginary portions of some
+                   startup value.  These parameters are described in detail 
+                   later on in the fractal type discussion. 
+                   (Julia Set example: type=julia params=-0.48/0.626)
 corners=xmin/xmax/ymin/ymax   Begin with these screen corner Coordinates 
                    rather than the default values of -2.0/2.0/-1.5/1.5
                    (Example: corners=-0.739/-0.736/0.288/0.291).
 potential=maxcolor[/slope[/modulus[/potfile]]]  Establishes the "continuous 
-                   potential" mode of the MANDEL and MANDELFP fractal types.  
+                   potential" mode for all fractal types except Plasma Clouds
+                   and IFS/IFS3D.
                    The four arguments define the maximum color value, the
                    slope of the potential curve, and the modulus "bailout"
                    value, and the savefile name.  Example:  
                    'potential=240/2000/40/potfile'.  Read the section on the 
                    "continuous potential" algorithm for details.
-                   Note that the current implementation of the MANDEL fractal
-                   type ignores the modulus bailout value and uses its own
-                   hardwired value of 4.0 instead. 
+                   Note that the current implementation of the MANDEL & JULIA
+                   fractal types ignore the modulus bailout value and use 
+                   their own hardwired value of 4.0 instead. 
+rseed=nnnn         Forces the initial random-number seed for Plasma Clouds
+                   to be 'nnnnn' rather than based on the internal clock-timer.
+                   This value is now displayed when you press the <TAB>
+                   key, and with it your plasma clouds are now reproducible.
+decomp=n[/nnnn]    Invokes the Binary Decomposition option for palette-map
+                   selection (see the documentation on Binary Decomposition
+                   for details).
+logmap=yes         Switches the default color palette-map selection from 
+                   normal (continuous) to logarithmic.
+ifs=filename       Use the IFS coded values in 'filename' to generate
+                   Barnsley IFS fractals.  'filename' has a default extension
+                   of '.ifs'.  See the 'IFS' fractals section for specifics.
+ifs3d=filename     Use the IFS coded values in 'filename' to generate
+                   Barnsley IFS3D fractals.  'filename' has a default extension
+                   of '.ifs'.  See the 'IFS3D' fractals section for specifics.
 3d=[nn[/nn[/nn]]]...   Replaces the default answers to the '3(D)' command
                    prompts.  If 'filename' is given (above), also forces
                    the restore to be performed in 3D mode.  Very handy when
                    used with the 'batch=yes' option for batch-mode 3D images.
                    Read the "3D IMAGES" section for a full description of
                    the prompts related to 3D.
+                   --- the options below replace selected '3D=' defaults ---
+sphere=yes         Turns on 3D sphere mode 
+longitude=nn/nn    Longitude minimum and maximum
+latitude=nn/nn     Latitude minimum and maximum
+radius=nn          Radius scale factor
+rotation=nn[/nn[/nn]]  Rotation about x,y, and z axes
+scalexyz=nn/nn/nn  X,y,and z scale factors
+roughness=nn       Same as z scale factor
+waterline=nn       Colors this number and below will be "inside" color
+filltype=nn        3D filltype
+perspective=nn     Perspective viewer distance (100 is at edge of object)
+xyshift=nn/nn      Shift image in x and y directions (alters viewpoint) 
+lightsource=nn/nn/nn The coordinates of the light source vector        
+smoothing=nn       Smooths rough images in light source mode
+                   ----------------------------------------------------------
+invert=nn/nn/nn    Turns on inversion - turns images "inside out". The 
+                   parameters are radius of inversion, xvalue of center,
+                   and yvalue of center. If either center value is not given,
+                   the midpoint of the screen is used. If a radius of -1
+                   is entered, the radius is 1/6 the smaller screen dimension.
+                   The value calculated is displayed with the "tab" command.
+float=yes          For some functions (currently, only the IFS3D fractal
+                   type and the 3D perspective calculation), changes from 
+                   integer math to floating point.
+transparent=min/max defines a range of colors which should be treated as
+                   "transparent".
 printer=type[/resolution[/port#]]  Defines your printer setup for FRACTINT.
                    Currently legal printer types (and only the first two
                    characters count) are HP-Laserjet, Epson-Compatible, and
@@ -604,8 +701,6 @@ dust.
 (3) It turns out, however, that the coordinates of the most interesting
 portions of the Mandelbrot image, where the colors are changing rapidly,
 are the VERY SAME values that generate the most interesting Julia sets.
-(There is a very sound mathematical reason for this.   I haven't the 
-vaguest idea what it is, though.)
 
 
 What FRACTINT does is begin with the full Mandelbrot set, give you the 
@@ -618,12 +713,17 @@ toggle again to get your Mandelbrot set back).   You can think of it this way:
 all those fantastic Mandelbrot images you have been generating are just
 a way to select an initial value for Julia sets you can play with!
 
+Note that this "Mandelbrot/Julia set" mapping is characteristic of a LOT
+of fractal types, and FRACTINT uses its spacebar-mapping logic for many
+of them (MandelSine/LambdaSine, Barnsley M1/Barnsley J1, etc).  See the 
+documentation on each fractal type for specific pairings.
+
 NOTE:  Beginning with version 7.0, "Warped" Mandelbrot sets ( sets with
 a starting value of Z(0) other than 0) can be generated by FRACTINT by
 firing it up with a 'params=' option.  The two optional parameters are
 taken as the real and imaginary portion of Z(0).  When the Mandelbrot set
 has been warped in this fashion, the relationship between it and Julia sets
-described above no longer applies.
+described above (and the spacebar toggle) no longer applies.
 
            *******  "Go-Fast" additions to the logic *******
 
@@ -648,7 +748,7 @@ one for a pretty dramatic proof of the value of periodicity checking (hint:
 on a 16MHZ 286 or 386 in MCGA mode, FRACTINT takes ten seconds)!
 
 You can get a visual display of the periodicity effects in the Mandelbrot
-Lake if you press the 'o' (letter o, not zero) while a Mandelbrot image is
+Lake if you press the 'o' (letter o, not zero) while a fractal image is
 being generated.  The 'o' ("show orbits") key toggles on and off the display
 of the intermediate iterations during the image generation process.  If
 you use this toggle, it's best to disable solid-guessing first using the '1'
@@ -677,25 +777,27 @@ Visually, solid-guessing looks just like Dual-Pass mode ('passes=2' or the
   *******  Fractal Set types other than Mandelbrot and Julia Sets  ********
 
 Beginning with version 7.0, FRACTINT supports fractal images other than the 
-"classic" Mandelbrot and Julia sets.  Note that these extra image types are
-typically calculated using generic "C" code (in CALCFRAC.C) and use
-"traditional" floating-point math rather than the 32-bit integer math which
+"classic" Mandelbrot and Julia sets.  Note that most of these extra image
+types are calculated using generic "C" code (in CALCFRAC.C) and some of them
+use "traditional" floating-point math rather than the 32-bit integer math which
 was FRACTINT's original claim to fame.  As a result, although they take full
 advantage of FRACTINT's other features, they are no faster than routines
-found in other, similar packages.  A quick way to obtain the current list of
-fractal types is by  using the 'T' command.  Current fractal types supported
-by FRACTINT include:
- 
+found in other, similar packages (that is, if you can FIND them in other,
+similar packages).  A quick way to obtain the current list of fractal
+types is by  using the 'T' command.  Current fractal types supported by
+FRACTINT include:
+
+
        *** Newton Domains-of-Attraction (type=newtbasin) ***
  
 The Newton formula is well known to struggling students of calculus as an
 algorithm for calculating the roots of polynomials. The polynomial 'z**4 - 1'
 has 4 roots in the complex plane: 1, -1, i, and -i, where i is the square
 root of -1.  The Newton formula for that polynomial is the rational function
-(4*(z**3) + 1)/(3*(z**4)).  If you pick a value of z NEAR one of the roots
+(3*(z**4) + 1)/(4*(z**3)).  If you pick a value of z NEAR one of the roots
 and plug it in to Newton's formula, the result is CLOSER. Do this several
 times, and you have an accurate root. That is, define a sequence z[0], z[1],
-z[2] ... by z[0] = guess, z[k+1] = (4*(z[k]**3)+1)/(3*(z[k]**4)).
+z[2] ... by z[0] = guess, z[k+1] = (3*(z[k]**4)+1)/(4*(z[k]**3)).
 But what happens if the first guess is BETWEEN the roots?  Which root does
 the formula converge to? Glad you asked! The answer is -- CHAOS!!!
 
@@ -704,49 +806,18 @@ To see the answer, try type=newtbasin. Pixels are colored according to the
 language, is a graph of "the basins of attraction for the Newton formula
 of the polynomial z**4-1"
 
-
 The first parameter to the Newton fractal type is the "order" of the
 equation - the value of "n" calculates the Newton formula for the equation
 'x**n - 1'.  This determines how many "spokes" are present in the image.
 The overall Newton image is radially symmetrical about the origin.
 
-The other parameters are used to invert the Newton plot through a
-circle, and they represent the radius, x value of center, and y value
-of the center of that circle.  "Inversion" is a process in which each
-point inside a circle is mapped onto a point outside, and each point
-outside is mapped to the corresponding point inside.  Thus, the plane
-is turned "inside-out" with respect to the circle.
-
-For example, if a point on the inside of a circle is 1/3 the way
-along a line drawn from the center to the edge, its inverse point is
-the point outside the circle along the same line at a distance of 3
-times the radius.  If you move the inner point inward to 1/4 the
-distance from center to edge, its inverse moves out to 4 times the
-radius of the circle.
-
-Because the newton plot has spokes radiating out toward infinity,
-inverting each point through a circle centered on the origin makes
-these spokes all radiate in toward the center, and the portion that
-was inside the circle "explodes" out onto the whole plane.
-
-The best way to visualize this is to create two Newton plots of the
-same order, one inverted.  For example:
-
-    type=newton params=5
-    type=newton params=5/1
-
-The second plot will be inverted through a circle of radius 1.0
-centered on the origin.
-
-If 3rd and 4th parameters are specified, they are used as the center
-of the inversion circle.  Inverting through a circle not centered on
-the origin produces bizarre effects that are hard to describe. 
-Remember that when you place the inversion circle, everything that
-was outside the circle will now be inside, and vice versa.
+(Note: Starting with version 10.0, the second and third parameters are
+no longer used for inversion, since we now have an "I(nvert)" command
+and an "invert=" command-line option.)
 
 Thanks to Lee Crocker for developing a new, faster, assembler-based algorithm 
-for Newton fractals and adding the inversion option.
-
+for Newton fractals.
+ 
 
                 *** Newton Formula (type=newton) ***
  
@@ -808,34 +879,401 @@ Finally, Plasma Clouds make GREAT fractal landscapes when viewed in 3D!
          **** "Lambda*Sine" Sets (type=lambdasine) *****
          **** "Lambda*Cosine" Sets (type=lambdacos) ****
          *** "Lambda*Exponent" Sets (type=lambdaexp) ***
- 
-Thess types calculate the Julia set of the formulas lambda*sine(z), 
+
+These types calculate the Julia set of the formulas lambda*sine(z), 
 lambda*cosine(z), or lambda*exp(z), where lambda and z are both complex.
-The LambdaSine algorithm is given in "The Science of Fractal Images", by
+The algorithms are given in "The Science of Fractal Images", by
 Barnsley, Devaney, Mandelbrot, Peitgen, Saupe, and Voss, published by
-Springer-Verlag in 1988, p. 158.
+Springer-Verlag in 1988, pp. 157 - 163.
 
 Two values should be given in the "params=" option.  These values will
-become the real and imaginary parts of lambda. For LambdaSines, make the
-real part = 1, and try values for the imaginary part ranging from .1 to .4.
-In these ranges the Julia set "explodes".  An FPU is a NECESSITY - each
-LambdaSine/Cosine iteration calculates a hyperbolic sine, hyperbolic cosine,
-a sine, and a cosine (the LambdaExponent iteration "omly" requires an
+become the real and imaginary parts of lambda. For LambdaSines and 
+LambdaCosines, make the real part = 1, and try values for the imaginary
+part ranging from 0.1 to 0.4 (hint: values near 0.4 have the best patterns).
+In these ranges the Julia set "explodes".  For LambdaExponents, the book
+has examples with an imaginary part of Lambda of zero and a real part of
+Lambda of 1/e (~0.379) and 1/e+0.1 (~0.479).  An FPU is a NECESSITY -
+each LambdaSine/Cosine iteration calculates a hyperbolic sine, hyperbolic
+cosine, a sine, and a cosine (the LambdaExponent iteration "only" requires an
 exponent, sine, and cosine operation)!  However, if you DON'T have an FPU,
 and you are going on a LONG vacation ....  well, that's what batch mode
 is for! 
+
+
+    **** "Mandel*Sine", "Mandel*Cosine" and "Mandel*Exponent" Sets ***
+    **** (type=mandelsine, type=mandelcos, type=mandelexp) *****
+
+With version 10.x, we've added the "Mandelbrot" mapping sets for these
+LambdaSine, LambdaCosine, and LambdaExp Julia functions.  These "Mandelbrot"
+sets map to their corresponding Julia sets in exactly the same fashion as
+the original Mandelbrot/Julia set (via the space-bar key).  In general, they
+are interesting mainly because of that property (the MandelExp set in
+particular is rather boring).  Generate the appropriate "Mandel..." set
+(hint: you might want to save it afterwards using the "s" key - they can
+take a significant amount of time to generate), bring up the zoom-box and
+move to a likely spot (where the colors are changing rapidly), and hit
+the space-bar key to select the matching Julia set at that particular spot.
+
+(Oh, yes, and if you're are concerned about our using Mandelbrot's name on
+these fractal types, try "fractint type=mandelcos corners=4.68/4.76/-.03/.03".
+Mark Peterson discovered this little image just a few hours before we
+released version 10.0.)
+
+                *** Type Barnsleym1/m2/j1/j2/m3/j3 ***
+
+Michael Barnsley has written a fascinating college-level mathematics text 
+called "Fractals Everywhere". In it, he generalizes the notion of "Mandelbrot" 
+set and "Julia" sets. Suppose we have a function f(z,lambda) of two complex 
+variables. Suppose lambda is fixed. The fixed value of lambda can be 
+associated with a Julia set of f(z,lambda) by generating the sequence of 
+complex values z(n+1) = f(z(n),lambda) and coloring each pixel 
+corresponding to the initial z(0) according to the "escape time" -- the 
+iteration when the modulus of z(n) exceeded some value. The "Mandelbrot" 
+set is obtained by performing the exact same calculation, but allowing 
+lambda to vary and associating it with screen pixels.
+
+We have incorporated three of Barnsley's examples in FRACTINT. Each example 
+has both a "mandelbrot" and a "julia" type.  You can toggle between them in 
+exactly the same you toggle between types "mandel" and "julia" using the 
+space bar.
+
+The first pair consists of types barnsleym1 and barnsleyj1. The formula for 
+these types is found in the Barnsley text on page 330. The formula is as 
+follows:
+
+   f(z,lambda) = (z-1)/lambda                if real part of z >= 0
+               = (z+1)/conjugate of lambda   otherwise
+
+The conjugate of lambda is the number with the same real part as lambda but 
+with an imaginary part of the opposite sign.
+
+When plotting barnsleym1, we did not like the fact that the analog of 
+"Mandelbrot lake" (the area where maximum iterations is hit) is OUTSIDE, 
+and the area of fewest iterations on the INSIDE, so we inverted the 
+fractal, reversing the inside and outside. The formula is inverted by a 
+change of variable c = 1/lambda. The inverted formula is:
+
+   f(z,c) = (z-1)*c                    if real part of z >= 0
+          = (z+1)*(modulus of c)/c     otherwise
+
+The modulus(c) is the sum of squares of the real and imaginary parts of c.
+A secondary feature of this inversion is that we were able to implement the
+above fractal types using our integer math routines, so they run fairly
+quickly even without an FPU.
+
+The second pair consists of types barnsleym2 and barnsleyj2.  The formula for 
+these two types is similar: 
+
+   f(z,c) = (z-1)*c                if imag(c)*real(z) + real(c)*imag(z) >= 0
+          = (z+1)*c                otherwise
+
+The type barnsleym2 is quite different below the x axis than above. We have 
+left this "problem" as is because interesting Julia sets can be found using 
+the lower half of the M2 graph.
+
+The third pair consists of types barnsleym3 and barnsleyj3.  The formula is 
+based on example 4.1 on page 292. , example 4.1, as follows:
+
+f(z,lambda) = (x^2 - y^2 -1)             + i*(2*x*y)              when x > 0
+            = (x^2 - y^2 -1 + lambdax*x) + i*(2*x*y + lambday*x)  otherwise,
+
+where z = (x + i*y) and lambda = (lambdax,i*lambday). We added the lambday*x
+term in order to make the Mandelbrot set more interesting. When the imaginary
+part of lambda is zero, the formula reduces to Barnsley's. Barnsley recommends 
+the Julia sets obtained with lambda =  (1,0) and (-1,0).
+
+Be sure to try the Orbit" feature (hit "o" key) during the generation of 
+these types.
+
+The parameters for these types have the same meaning as they do for the 
+"regular" Mandelbrot and Julia. For types M1, M2, and M3, they are used to 
+"warp" the image by setting the initial value of z.  For the types J1 thru 
+J3, they are the values of c is the formulas.
+
+             *** Barnsley IFS Fractals (type=ifs and ifs3d) ***
+
+Thanks to Rob Beyer for the IFS code. The reference for Iterated Function 
+Systems (IFS) is Michael Barnsley, "Fractals Everywhere", pages 86 to 92.
+
+Invoking FRACTINT with type=IFS defaults to an IFS "fern".  Other 
+IFS images are created via user-defined text files containing IFS codes
+similar to the examples, which have a default filename extension ".IFS".
+Use the command-line option 'ifs=filename' or the main-menu-level "I"
+command to use or manipulate one of these files.
+
+Here is a BRIEF discussion of what IFS (iterated function systems) are all
+about. The idea is to start with a set of numbers from two-dimensional space.
+Given several functions that map a given region of the plane to itself, these
+functions are repeatedly applied, resulting in a characteristic shape quite
+independent of the starting set. In our case we generate the initial values
+randomly, creating a "random" rather than "deterministic" IFS-generated set.
+
+FRACTINT uses iterated functions known as affine maps. These are 
+functions that consist of multiplying a two-dimensional vector by a 2x2
+matrix and then adding a vector. These functions are the two-dimensional
+analogs of the one dimensional function ax+b. They have the advantage that
+they can be specified with a few numbers. Our notation is as follows:
+
+                                                                   |x1|
+Let w be the function from 2-space to 2-space, operating on vector |  |
+                                                                   |x2|
+defined by:
+                 
+ |x1|   |a  b||x1|   |e|
+w|  | = |    ||  | + | |
+ |x2|   |c  d||x2|   |f|
+
+Each line in an IFS code file contains the parameters for one of the
+above functions, as in the fern example:
+  a    b     c    d    e    f    p
+___________________________________
+  0    0     0  .16    0    0   .01
+.85   .04 -.04  .85    0  1.6   .85
+.2   -.26  .23  .22    0  1.6   .07
+-.15  .28  .26  .24    0  .44   .07
+
+The "p" values are the probabilities assigned to each function (how often
+it is used). These values add up to one.  FRACTINT supports up to 32 
+functions - usually three or four is enough.
+
+Note that some Barnsley IFS values generate images quite a bit smaller
+than the initial (default) screen.  No problem - just bring up the Zoom-Box, 
+center it about the image being generated, and hit the ENTER key to force
+a full-screen image.
+
+The ifs3d type is EXACTLY the same except that 3-dimensional vectors are used, 
+and the affine maps are defined using 3 x 3 matrices instead of 2 x 2. Hence
+there are 13 parameters; 9 for the rotation/scaling matrix, 3 for the 
+translation vector, and one for the probability. 
+                                                                   |x1|
+Let w be the function from 3-space to 3-space, operating on vector |x2|
+                                                                   |x3|
+defined by:
+                 
+ |x1|   |a b c||x1|   |k|
+w|x2| = |d e f||x2| + |l|
+ |x3|   |h i j||x3|   |m|
+
+Barnsley's book contains exactly ONE 3D example, a 3D fern in example 
+10.12 on page 104. We have corrected an error in one of the parameters 
+(the "b" value in the 3rd function). The fern is created by:
+
+   a    b    c    d    e    f    g     h    i    j    k    l    p
+ 0.00  0.00 0.00 0.00 0.18 0.00 0.00  0.00 0.00 0.00 0.00 0.00 0.01
+ 0.85  0.00 0.00 0.00 0.85 0.10 0.00 -0.10 0.85 0.00 1.60 0.00 0.85
+ 0.20 -0.20 0.00 0.20 0.20 0.00 0.00  0.00 0.30 0.00 0.80 0.00 0.07
+-0.20  0.20 0.00 0.20 0.20 0.00 0.00  0.00 0.30 0.00 0.80 0.00 0.07
+
+IFS codes can be edited using the "i" (for IFS) command. Specify whether
+2D or 3D if you have not already chosen an IFS type. You will then be asked
+to pick which function to edit. Hitting <ENTER> leaves values unchanged.
+
+In order to fully appreciate the 3D fern, since your monitor is (presumably)
+2D, we have added rotation, translation, and perspective capabilities. These
+share values with the same variables used in FRACTINT's other 3D facilities;
+for the exact meaning see the 3D section of these docs. You can enter these
+values from the command line using:
+
+          rotation=xrot/yrot/zrot       (try 30/30/30)
+          shift=xshift/yshift           (shifts BEFORE applying perspective!)
+          perspective=viewerposition    (try 200)
+
+Alternatively, from the IFS 3D codes-editing screen, entering a "t" (for 
+"transformations") will allow you to edit these values. The defaults are the 
+same as for regular 3D, and are not always optimum for the 3D fern. Try 
+rotation=30/30/30. Note that applying shift when using perspective changes 
+the picture - the perspective position is moved! This feature dedicated to 
+Bruce Goren, who hopefully will send us a knockout stereo slide of a 3D fern!
+(hint, hint)
+
+
+                   *** Type Sierpinski ***
+
+Also from the Barnsley book is another Julia set that generates Sierpinski 
+gaskets.  A Sierpinski gasket is a triangle successively (and infinitely) 
+divided into four other triangles, resulting a sort of triangle swiss 
+cheese. The formula for f(x + i*y) used in the escape-time algorithm on 
+page 252 of Barnsley is:
+
+    if(y > .5) then real(f) = 2*x and imag(f) = 2*y -1
+    else if (x > .5) then real(f) = 2*x -1 and imag(f) = 2*y
+    else real(f) = 2*x and imag(f) = 2*y
+
+There are no parameters for this type.  We were able to implement the
+Sierpinski Gasket using our integer math routines, so it runs fairly
+quickly even without an FPU.
+
+
+           **** The Quadratic Mandelbrot and Julia Sets  ****
+                   **** (types mandel4 and julia4) ****
+
+These fractal types are the moral equivalent of the original Mandelbrot
+and Julia sets, except that they use the formula Z(n+1) = Z(n)**4 + C.
+The "Mandel4" set maps to the "Julia4" set via the space-bar toggle.
+The Mandelbrot set is kind of boring at first (the area between the
+"inside" and the "outside" of the set is pretty thin, and it tends to take
+a few zooms to get to any interesting sections), but it looks nice
+once you get there.  The Julia sets look nice right from the start.
+
+Other powers, like Z(n)**3 or Z(n)**7, work in exactly the same fashion -
+we used this one only because we're lazy, and Z(n)**4 = (Z(n)**2)**2.
+
 
    *** "Traditional" Floating-Point Mandelbrot and Julia Functions ***
                   *** (type=mandelfp and type=juliafp) ***
 
 These fractal types are identical to their 'type=mandel' and 'type=julia'
-counterparts.  These fractal types are included more for historical purposes
-than anything else.  That and the source code (in CALCFRAC.C) is a TAD easier
+counterparts.  Originally included more for historical purposes than anything
+else, these types have a new lease on life because they work better with
+continuous potential than the faster integer versions do. They are also easier 
 to follow than the assembler version (in CALCMAND.ASM).
 
 If you do not have an FPU, steer clear of these routines unless you feel
 the need to reminisce about the good old days when men were men and fractals
 took forever to generate.
+
+
+        *** Distance Estimator Fractals (type=demm and demj) ***
+
+The 'demm' and 'demj' fractal types are an implementation of the
+"Distance Estimator" method for the Mandelbrot and Julia sets by Phil Wilson.
+It is due to work by J. Milnor, and described in "The Science of Fractal 
+Images", p. 198.  Unlike Version 9.x (where they were implemented as a 
+single "test" fractal type and generated a monochrome images), these 
+algorithms take full advantage of your color palette.   Nevertheless, one 
+of the best uses of the 'demm' and 'demj' types is for preparing monochrome
+images for a printer.  Using the 1600x1200x2 disk-video mode and an HP Laser
+Jet we have produced pictures of quality equivalent to the black and white
+illustrations of the Mandelbrot set in "The Beauty of Fractals."
+Unfortunately, these images can take many hours to calculate even on a fast
+machine with a coprocessor.  One way of dealing with this is to use the 
+superfast type=mandel and type=julia modes to find interesting areas.  Frame
+these nicely, then hit 'b' to save the coordinates to FRABATCH.BAT.  Later,
+edit the FRABATCH.BAT lines, changing type to demm or demj, choosing a 
+high-resolution monochrome 'disk-video' mode, and upping maxiter to 1000 or 
+so.  Run the batch file when you won't be needing your machine (over the
+weekend?) and print the resulting .FRA's at your convenience.
+
+
+           ****  Bifurcation Fractal (type=bifurcation)  ****
+
+Consider the problem of modeling the growth of a population in a biological
+system.  Normally, growth is expressed in terms of periodic growth rate, the 
+increase in population relative to its total size over a given time period.
+A model with constant rate of growth results in exponential population growth.
+This is possible for short periods, but normally populations are limited by 
+the availability of food, etc., and so grow more slowly when total population
+is high than when total population is low.  So a more sophisticated model
+might have the rate of growth be partly a function of the size of the current
+population.  Such a model was proposed by P.F. Verhulst in the Nineteenth 
+Century, and by many others since.  A simple version is given as:
+
+     New Population =  Growth Rate * Old Population * (1 - Old Population)
+
+where population is normalized to be between 0 and 1.  At growth rates less
+than 200 percent, this model is stable.  No matter what the starting 
+population, after several generations the population settles to a stable 
+value and stays there.  Growth rates over 200 percent produce different
+behavior:  First populations jump between two discrete 'high' and 'low'
+values, then four, then eight, then finally become chaotic!  Yet within 
+the chaotic region, narrow bands of stable populations crop up.  While this
+model isn't actually a good model of most kinds of biological populations,
+its dynamics have resurfaced in several other disciplines (see Gleick's 
+"Chaos" for a discussion).
+
+Type=bifurcation graphically illustrates the behavior of this model with 
+growth rates increasing on the horizontal axis from 190 percent (far left) to
+400 percent, and population values on the vertical axis between 0 and 4/3.
+Notice that inside the chaotic region on the right side of the display there
+are vertical bands where population isn't chaotic but rather a fixed odd 
+number of stable values.  Zoom in on these to confirm the fractal nature
+of the model!  Ratios in the spacing of the phase changes are profoundly 
+related to other fractal objects including the Mandelbrot set, but I (Phil)
+don't pretend to understand why.
+
+The default display has been 'filtered' by allowing the population to settle
+from its initial value for 5000 cycles before plotting maxiter population 
+values.  To override this filter value, specify a new (smaller) one as the
+first 'params=' value.  Try 'params=1' for an unfiltered map.
+
+
+            ****** type=marksmandel and type=marksjulia *****
+            *************** type=mandellambda ***************
+
+These fractal types are contributions of Mark Peterson, and is an excellent
+example of what happens when a twisted mind gets hold of a fractal program.
+Mothers, you have been warned - keep your children away from source code!
+(What's worse is he's still coming up with new ones, which will undoubtedly
+end up in later versions of FRACTINT - all our minds are equally twisted.)
+
+'MarksMandel' and 'MarksJulia' are two families of fractal types that are 
+linked in the same manner as the classic Mandelbrot/Julia sets - each 
+MarksMandel set can be considered as a mapping into the MarksJulia sets 
+(and are linked as such with the space-bar toggle key).  The basic equation 
+for these sets is:
+
+      Z(n+1) = ((Lambda**exponent) * Z(n)**2) + Lambda
+
+where Z(0) = 0.0  and Lambda is (x + iy) for MarksMandel
+and   Z(0) = (x + iy) and Lambda is a constant (taken from the MarksMandel
+space-bar toggle, if that method is used) in MarksJulia. The exponent is a 
+positive integer.  We call these "families" because each value of exponent 
+yields a different MarksMandel set, which turns out to be shaped like a 
+polygon with exponent+1 sides. The exponent value is the third parameter, 
+after the "initialization warping" values. Typically one would use null 
+warping values, and specify the exponent with something like "params=0/0/4", 
+which creates a pentagonal un-warped MarksMandel set.
+
+'MandelLambda' maps the Lambda function in the same manner that the
+Mandelbrot fractal maps Julia sets, and is linked to the Lambda function
+in the usual manner with the space-bar toggle.
+
+
+                      **** type=unity ****
+    (a Mark Peterson invention, with a description in his words)
+
+Once upon a time while waiting for the Newton fractal type to do its thing
+I started thinking (this was when I had a an FPU-less 286, so I had a *long* 
+time to think!) about the approximation process and wondering whether
+other types of approximations would also produce fractal images.  To test
+out the idea I decided to try something simple by approximating the number 1.
+
+One candidate was 'One = x * 1/x', but this provides no 'y' component which 
+would graph out nicely and also gives the correct answer on the first try!  
+Next I looked at the iterations of:
+
+   One = x*x + y*y;
+   x = (2 - One) * x;
+   y = (2 - One) * y;
+
+This didn't turn out to well either and so I started playing around with the
+algorithm trying different things.  Eventually I ended up swapping the 'x' 
+and 'y':
+
+   One = x*x + y*y;
+   y = (2 - One) * x;
+   x = (2 - One) * y;
+
+Which produced the unique fractal you see called Unity.
+
+One of the interesting features of Unity is what I think of as ghost lines.  
+The bailout criteria for the iteration loop is when the iteration produces 
+the number 1 to within the resolution of a screen pixel.  This means that 
+when a zoom is performed on a section of the image the bailout criteria is 
+also adjusted causing some lines to become smaller and others to become 
+larger.
+
+For example the only line in the fractal that forms a perfect circle is at a
+radius of 1 from the origin.  This line is actually infinitely thin.  A zoom 
+onto this line only produces a smaller line up to the limits of accuracy for
+the math algorithm.  The same thing happens with other lines in the fractal
+such as those around |x| = |y| = (1/2)**(1/2) = .7071
+
+Try some other torturous approximations and see what fractals you can come up
+with!
+
+                                 -Mark
+
 
                  *** Roll your own (type=test) ***
 
@@ -845,19 +1283,9 @@ mode, zoom-and-pan, and support for a zillion video modes), but use whatever
 code happens to be in routine 'testpt()' (located in the small source file
 'testpt.c') to determine the color of a particular pixel.
 
-The "test" fractal type in this version of FRACTINT is an implementation
-of the "Distance Estimator" method for the Mandelbrot and Julia sets
-sent to us by Phil Wilson.  It is described in "The Science of Fractal
-Images", p. 198.  The algorithm takes two parameters.  If they are both zero,
-which is what they will be if you don't specify anything, the algorithm
-will use the Mandelbrot set.  If either parameter IS given, the algorithm
-will generate a Julia Set image (and the parameters mean the same thing
-as they do fir the Julia set fractal).  This algorithm generates two-color
-(monochrome) images.
-
 If you have a favorite fractal type that you believe would fit nicely into
 FRACTINT, just rewrite the C function in testpt.c (or use the prototype
-function in 'testsamp.c', which is a simple Mandelbrot Set implementation)
+function in 'testpt.c', which is a simple Mandelbrot Set implementation)
 with some algorithm that computes a color based on a point in the
 complex plane. After you get it working, send your 'testpt()' code to one of
 the authors and we might just add it to the next "official" release of
@@ -868,6 +1296,9 @@ those other guys.)  Be sure to include an explanation of the algorithm, and
 the "params=" options supported, formatted in a way similar to this
 documentation.
 
+
+=============================================================================
+                            >> Fun Options <<
 =============================================================================
 
                                 3D IMAGES
@@ -903,10 +1334,19 @@ the color of each pixel determining its "height" and pointing toward you.
 All the twisting and pulling starts from this "image".)
 
 After prompting you for a filename and video mode, the 3D command asks you
-if you want a sphere projection. Answering "y" wraps your fractal around
-the surface of a sphere.  Answering "n" gives a "regular" 3D view of your
-fractal. Some of the prompts are different in the two modes, so let's
-suppose you answered "n" and want "regular", also called the
+if you want a "preview" of your image.  If you say "yes", the routines will
+generate a first-cut (fast, but crude) approximation of your image after
+you have answered all of the other questions.  Given that your responses
+to those questions become the default answers the next time you generate
+a 3D image, this gives you a quick-and-dirty way to putter around with 3D
+(which CAN take awhile in non-preview mode) before generating your
+absolutely perfect image.
+
+After the above questions, the 3D command asks you if you want a sphere
+projection. Answering "y" wraps your fractal around the surface of a sphere.
+Answering "n" gives a "regular" 3D view of your fractal. Some of the prompts
+are different in the two modes, so let's suppose you answered "n" and
+want "regular", also called the
 
                    RECTANGULAR COORDINATE TRANSFORMATION
 
@@ -966,12 +1406,12 @@ modifications (you are far away), and smaller ones create extreme
 modifications. Values smaller than 100% put you inside the image itself.
 Try larger values first, and work your way in.
 
-Finally you are prompted for two values that let you move the image up or
-down, in case the image is improperly centered.
+Aand after THAT, you are prompted for two values that let you move the image
+up or down, in case the image is improperly centered.
 
 If you selected fill type 5 or 6, you are not done! These two modes color
 each pixel according to the ANGLE the surface makes with an imaginary light
-source. You are asked to enter the three coordinates of of the vector
+source. You are asked to enter the three coordinates of the vector
 pointing toward the light. Finally, you are asked for a "smoothing" factor.
 Unless you used continuous potential when generating the fractal (see
 below), the illumination fills 5 and 6 will be "sparkly", just like a sandy
@@ -999,7 +1439,13 @@ points, since chances are the palette is not continuous; type 3 fills those
 same points in with the colors of adjacent pixels. However, for most fractal
 images, fill type 2 is better than 3. 
 
-                           SPHERICAL PROJECTIONS
+And absolutely the last question:  Now you are prompted for a range of 
+"transparent" colors, if any.  This option is most useful when using the
+'O(verlay)' command.  Enter the color range (minimum and maximum value)
+for which you do not want to over-write whatever may already be on the
+screen.  The default is no transparancy (display everything).
+
+                       SPHERICAL PROJECTIONS
 
 Now suppose you answered the first question "y" - you WANT a sphere
 projection. Picture a globe lying on its side - north pole to the right. We
@@ -1045,7 +1491,7 @@ around a Mobius Strip and pour it through a Klein Bottle.
 
 =============================================================================
 
-                           CONTINUOUS POTENTIAL
+                       CONTINUOUS POTENTIAL
 
 Conventional fractals are calculated by the level set method. The image has
 solid bands of color corresponding to regions where the fractal calculation
@@ -1070,12 +1516,16 @@ right? Fortunately, you don't REALLY have to understand all the details.
 However, there ARE a few points to understand. First, generally the
 criteria for halting a fractal calculation, the "modulus bailout value", is
 generally set to 4 in FRACTINT.  Continuous potential is inaccurate at such
-a low value.  The BAD news is that the superfast types Mandel and Julia
-have a value of 4 hard wired, a requirement of the integer math that makes
-those types so fast. You can STILL make interesting images in those modes,
-though, so don't avoid them. You will see ridges in the hillsides - some
-folks LIKE the effect. The GOOD news is that the slower Mandelfp and
-Juliafp types have no such limitation.
+a low value.  The BAD news is that the integer fractal types (which include
+the Mandelbrot and Julia sets) have a maximum value of 127 hard wired, a
+requirement of the integer math that makes those types so fast. You can
+STILL make interesting images in those modes, though, so don't avoid them.
+You will see ridges in the hillsides - some folks LIKE the effect. The
+GOOD news is that the other fractal types, including the slower Mandelfp
+and Juliafp types, have no such limitation.  The even BETTER news is that,
+with version 10.x, the continuous potential algorithm is available for
+almost all of the fractal types (the exceptions are plasma, the Barnsley
+IFS/IFS3d fractals, and type "test").
 
 The parameters for potential are as follows:
     potential=maxcolor[/slope[/modulus[/potfile]]]
@@ -1095,10 +1545,9 @@ should be.
 
 "Modulus" is the bailout value used to determine when an orbit has 
 "escaped". Larger values give more accurate and smoother potential.
-A value of 500 gives excellent results. Note that this value is ignored
-for Mandel and Julia fractal types, which have this value hard-wired at
-4. If you wish to use a higher value, you must use Mandelfp and Juliafp
-types.
+A value of 500 gives excellent results. Note that this value must be 
+<= 127 for the integer fractal types (if you select a higher number,
+they will use the value 127).
 
 "Potfile" is a filename to store the potential image with 16 bits per
 pixel. If you save the image in the normal way, and then use the "3"
@@ -1106,8 +1555,8 @@ command to view in 3D, the illumination modes 5 and 6 will work fine, but
 the colors will look a bit granular. This is because even with 256 colors,
 the continuous potential is being truncated to integers. If the "potfile"
 parameter is given, much smoother pictures can be obtained. But beware -
-unlike GIF files, these files are not compressed, and they take up 2 bytes
-per pixel, so the files can get quit large.
+although these files are compressed (in TARGA format), they still use up to
+2 bytes per pixel, so the files can get quite large.
 
 The following commands can be used to recreate the image that Mark Peterson
 first prototyped for us, and named "MtMand":
@@ -1116,12 +1565,96 @@ first prototyped for us, and named "MtMand":
                 corners=-0.19920/-0.11/1.0/1.06707
                 inside=255
                 maxiter=255
-                potential=255/2000/1000/potfile.tiw
+                potential=255/2000/1000/potfile.tga
                 passes=1
 
 This assumes a 256 color video mode.
 
 =============================================================================
+
+                  QUATERNARY AND BINARY DECOMPOSITION	
+
+
+The 'decomp=' command-line option and the 'Q(uaternary)' command (sorry -
+the 'd' command was already spoken for) are used to create quaternary and
+binary decomposition renderings of most fractal types.
+ 
+Most fractal types including Mandelbrot, Julia, and Newton fractals are
+calculated by repeating a simple function of a complex number producing
+another complex number.  This is repeated until the number either escapes
+some predefined "bailout" value, or the iteration limit is reached.  The
+pixel corresponding to the starting point is then colored based on the
+result of that calculation.
+ 
+The traditional method is to color each point based on how many iterations
+it took to escape the bailout value.  The decomposition method instead
+colors the points based on which quadrant of the complex plane the final
+value ended up in.  The first parameter to 'decomp=' and the 'Q(uaternary)'
+command is the number of colors to use, and must be either 2 or 4.  If
+it is 4, points ending up in each quadrant are given a color; if 2, points
+in alternating quadrants are given 2 alternating colors.
+ 
+The effect of this is that areas of the plane are divided in a kind of
+warped checkerboard pattern.  Even areas that would be a solid color in the
+traditional coloring will be checkered with decomposition.
+ 
+The second parameter is the bailout value.  The smaller it is, the faster
+the fractal will run (though not much faster); the larger it is, the more
+accurate it will be.  A value of about 50 is a good compromise for
+Mandelbrot and Julia sets.
+ 
+Try "fractint type=juliafp decomp=4/50" to get an idea of what it is like.
+ 
+
+
+=============================================================================
+
+                          INVERSION
+
+
+Starting with version 10.0, the inversion idea that was available with
+Newton types has been extended to most of the types. Inversion may
+be specified via the command line option "invert=radius/xcenter/ycenter" 
+or by using the "i" command. "Inversion" is a process in which each
+point inside a circle is mapped onto a point outside, and each point
+outside is mapped to the corresponding point inside.  Thus, the plane
+is turned "inside-out" with respect to the circle.
+
+For example, if a point on the inside of a circle is 1/3 the way
+along a line drawn from the center to the edge, its inverse point is
+the point outside the circle along the same line at a distance of 3
+times the radius.  If you move the inner point inward to 1/4 the
+distance from center to edge, its inverse moves out to 4 times the
+radius of the circle.
+
+Using newton as an example, because the newton plot has spokes radiating 
+out toward infinity, inverting each point through a circle centered on the 
+origin makes these spokes all radiate in toward the center, and the portion 
+that was inside the circle "explodes" out onto the whole plane.
+
+The best way to visualize this is to create two Newton plots of the
+same order, one inverted.  For example:
+
+    type=newton params=5
+    type=newton params=5 invert=1
+    (or use the 'I(nvert)' command on the first plot)
+
+The second plot will be inverted through a circle of radius 1.0
+centered on the origin.
+
+If 2nd and 3rd invert parameters are specified, they are used as the center
+of the inversion circle.  Inverting through a circle not centered on
+the origin produces bizarre effects that are hard to describe. 
+Remember that when you place the inversion circle, everything that
+was outside the circle will now be inside, and vice versa.
+
+A radius of -1 causes the radius to be auto-calculated, with a radius of 
+1/6 the minimum screen dimension. Similarly, hitting "enter" in response to 
+the interactive "i" command prompts for xcenter and ycenter autocalculates 
+the center of the current screen.
+
+=============================================================================
+
 
  *** Support for "Tweaked" VGA modes and Third-Party Hi-Rez Video Adapters ***
 
@@ -1133,10 +1666,13 @@ Shift/Alt variants, and many Alt-x keypad combos) when the program is running.
 The table entries, and the function keys they are tied to, are displayed
 as part of the Video-Mode Help Screen(s).   With version 7.0, this table is
 also customizable using an external configuration file (FRACTINT.CFG),
-described in a few more paragraphs.   This table makes adding support for
+described in a few more paragraphs.  This table makes adding support for
 various third-party video cards and their high-rez modes much easier, at
 least for the ones that pretend to be a standard adapter with more dots
-and/or colors.   
+and/or colors.   With version 10.0, there is even a special "Roll-You-Own"
+video mode (mode 19) enabling those of you with "C" compilers and a copy
+of the FRACTINT source to generate video modes supporting whatever adapter
+you may have.
 
 The table as currently distributed begins with nine standard and several
 non-standard IBM video modes that have been exercised successfully
@@ -1145,17 +1681,17 @@ in the table definition and the knowledge you have about throwing your adapter
 into its unique modes, should be all you need to see to be able to add your
 own entries.
 
-SPECIAL NOTE ON THE NON-STANDARD 360 x 480 x 256 VGA MODE:   The IBM VGA
-adapter is a highly programmable device, and can be set up to display many
-video-mode combinations beyond those "officially" supported by the IBM BIOS.
-This video mode is perfectly legal, but it temporarily reprograms the
-(IBM or any truly Register-Compatible) VGA adapter in a non-standard
-manner that the BIOS does not recognize.  Because of this, the program
-cannot send any text to the screen while it is in this mode (the BIOS
-would garbage it).  An internal flag inhibits all text output while the
-screen is in this video mode.  Note, however that the HELP and TAB keys
-still work, because they temporarily switch the screen to an alternate
-video mode.
+SPECIAL NOTE ON THE NON-STANDARD 320 X 400 X 256 and 360 x 480 x 256
+VGA MODES:   The IBM VGA adapter is a highly programmable device, and can
+be set up to display many video-mode combinations beyond those "officially"
+supported by the IBM BIOS.  These video modes are perfectly legal, but
+temporarily reprogram the (IBM or any truly Register-Compatible) VGA adapter
+in a non-standard manner that the BIOS does not recognize.  Because of this,
+the program cannot send any text to the screen while it is in one of these
+modes (the BIOS would garbage it).  An internal flag inhibits all text
+output while the screen is in one of these video modes.  Note, however
+that the HELP and TAB keys still work, because they temporarily switch
+the screen to an alternate video mode.
 
 SPECIAL NOTE ON 8514/A MODES:  The IBM 8514/A modes use IBM's software
 interface, and require the pre-loading of IBM's HDIDLOAD TSR utility.
@@ -1269,9 +1805,9 @@ fields separated by commas.  The ten fields are defined as:
               5) SuperVGA 256-Color mode using the Paradise Chipset
               6) SuperVGA 256-Color mode using the Video-7 Chipset
               7) Non-Standard IBM VGA 360 x 480 x 256-Color mode
-              8) Reserved for future use (Super-VGA)
+              8) SuperVGA 1024x768x16 mode for the Everex Chipset
               9) TARGA video modes
-             10) Reserved for Future use (HERCULES)
+             10) HERCULES video mode
              11) Non-Video [disk or RAM] "video"
              12) 8514/A video modes
              13) CGA 320x200x4-color and 640x200x2-color modes
@@ -1279,6 +1815,14 @@ fields separated by commas.  The ten fields are defined as:
              15) SuperVGA 256-Color mode using the Trident Chipset
              16) SuperVGA 256-Color mode using the Chips & Tech Chipset
              17) SuperVGA 256-Color mode using the ATI VGA Wonder Chipset
+             18) SuperVGA 256-Color mode using the EVEREX Chipset
+             19) Roll-your-own video mode (as you've defined it in YOURVID.C)
+             20) SuperVGA 1024x768x16 mode for the ATI VGA Wonder Chipset
+             21) SuperVGA 1024x768x16 mode for the Tseng Labs Chipset
+             22) SuperVGA 1024x768x16 mode for the Trident Chipset
+             23) SuperVGA 1024x768x16 mode for the Video 7 Chipset
+             24) SuperVGA 1024x768x16 mode for the Paradise Chipset
+             25) SuperVGA 1024x768x16 mode for the Chips & Tech Chipset
 
   The number of pixels across the screen (X - 160 to 2048)
   The number of pixels down   the screen (Y - 160 to 2048)
@@ -1307,15 +1851,17 @@ please get that information to us also.   Thanks.
 
                   ***** Limitations and Uglies *****
 
-This program uses 16-bit and/or 32-bit integer math to generate Mandelbrot and
-Julia Set fractals quickly ("traditional" fractal packages take hours to draw
+This program uses 16-bit and/or 32-bit integer math to generate its integer
+fractal types quickly ("traditional" fractal packages take hours to draw
 on a PC without an FPU).  The advantage of integer math is speed:  quite
 simply, this is by far the fastest Mandelbrot/Julia Set fractal package that
 I have ever seen on any PC - and when running on a 386-class machine in 32-bit
 mode, or with a "large" Mandelbrot image in 16-bit mode, the speed is simply
 awesome.  The disadvantage of integer math is accuracy.  To keep as much
 accuracy as possible, the program represents numbers like 1.00 as 32-bit
-integers of the form [1.00 * (2**29)] (approximately 500,000,000).   This
+integers of the form [1.00 * (2**29)] (approximately 500,000,000) for the
+Mandelbrot and Julia sets (other integer fractal types use a "bitshift"
+of 24 rather than 29, so 1.0 is stored internally as [1.00* (2**24)]).  This
 yields over 8 significant digits of accuracy, and works just great -- until
 the initial values of the fractal calculations on consecutive pixels differ
 only in the ninth decimal place.  At that point, the program does the best
@@ -1427,13 +1973,14 @@ Incorporated, an H&R Block Company.
 
 =============================================================================
 
-FRACTINT is distributed as a public domain package, and the bulk of the
-code in FRACTINT is public domain software (portions of the code are from
-copyrighted sources, and in such cases are clearly marked as such).
-There is no warranty or acceptance of liability either expressed or implied
-with it.   Use it, modify it, distribute it as you wish.   Your uploading it
-to other bulletin boards and the like is specifically encouraged.
-
+The FRACTINT executable is distributed as a public domain program. The bulk of 
+the source code in FRACTINT is also public domain software. However, modules 
+explicitly marked with a copyright notice are NOT public domain and are 
+subject to the conditions listed by the authors in the notices. There is no 
+warranty or acceptance of liability either expressed or implied with it. Use 
+it, modify it, distribute it as you wish.   Your uploading it to other 
+bulletin boards and the like is specifically encouraged. 
+ 
 Contribution policy:    Don't want money.   Got money.   Want admiration.
 
 
@@ -1442,41 +1989,6 @@ Contribution policy:    Don't want money.   Got money.   Want admiration.
                     *** Credits and Contact Points ***
 
 =============================================================================
-
-FRACTINT is the result of a combined effort of MANY developers and literally
-thousands of man-hours of time, all for a tiny bit of fame and glory.  Well,
-maybe there's a few "bragging rights" included as well.  At any rate, it
-has become simply impossible to include the names of all of the contributors
-on that pathetic little "credits screen" (a multi-screen "Credits screen"
-will have its own set of problems - who makes it to the first page?), and one
-of the not-so-welcome tasks of the final co-ordinator is deciding just who
-makes it to that screen.
-
-In particular, code and concepts for various sections of FRACTINT have been
-"lifted" (quite legally, but still "lifted") from the following unheralded
-sources:
-
-PC Tech Journal    -  The CPU and FPU detectors.  Sorry to see that fine
-                      magazine bite the dust.
-
-PC Magazine        -  The speaker routines.  "borrowed" from an article in the
-                      (as I remember) April, 1977 issue.
-
-Byte Magazine      -  (and the BIX BBS).  The "tweaked" VGA modes, taken from
-                      an article (and associated programs) by Richard Wilton
-                      in the October, 1988 issue.
-
-MS-Kermit          -  Keyboard routines, including the Expanded Keyboard stuff
-
-Dave Warker        -  The concept of using Integer math for fractal
-                      calculations.  No, he didn't invent it, but he DID
-                      come up with the idea independently.
-
-Compuserve (and    -  A special thanks here for putting up with all the
-the PICS forum        rabble-rousing in PICS Section 16 and elsewhere.
-SYSOPs)
-
-                                -----------------
 
 The following list of authors agreed to the distribution of their mailing
 addresses.  Note that Usenet/Internet/Bitnet/Whatevernet users can access
@@ -1498,6 +2010,11 @@ to Bert - spread it around a little!
             Houston, Texas  77098
             (713) 522-7933
 
+            Rob Beyer
+            23 Brairwood Lane
+            Laguna Hills, CA, 92656
+            (714) 831-7665   7pm to midnight PST (and weekends).
+
             Lee Daniel Crocker             [73407,2030] on Compuserve
             1380 Jewett Avenue             lcrocker on BIX
             Pittsburg, CA  94565           ames!pacbell!sactoh0!siva!lee
@@ -1518,4 +2035,13 @@ to Bert - spread it around a little!
             128 Hamden Ave., F
             Waterbury, CT 06704
             (203) 754-1162
+ 
+            Dean Souleles                  [75115,1671] on Compuserve
+            8840 Collett Ave.
+            Sepulveda, CA  91343
+            (818) 893-7558
 
+            Phil Wilson                    [76247,3145] on Compuserve
+            410 State St #55
+            Brooklyn NY 11217
+            (718) 624-5272

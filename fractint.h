@@ -1,51 +1,6 @@
 
 /* FRACTINT.H - common structures and values for the FRACTINT routines */
 
-/* defines should match typelist indexes */
-#define MANDEL      0
-#define JULIA       1
-#define NEWTBASIN   2
-#define LAMBDA      3
-#define MANDELFP    4
-#define NEWTON      5
-#define JULIAFP     6
-#define PLASMA      7
-#define LAMBDASINE  8
-#define LAMBDACOS   9
-#define LAMBDAEXP   10
-#define TEST        11
-
-
-#if defined(PUTTHEMHERE)	/* this MUST be defined ONLY in FRACTINT.C */
-
-char *typelist[] = 
-    {"mandel","julia","newtbasin","lambda","mandelfp","newton",
-     "juliafp","plasma","lambdasine","lambdacos","lambdaexp","test",NULL};
-
-char *paramlist[][4] = {
-   "Real Portion of Z(0)", "Imaginary Portion of Z(0)","","",
-   "Real Portion of C", "Imaginary Portion of C","","",
-   "Power Value (3 to 10)","Radius of Inversion (0 = no inversion)",
-      "Inversion X-Center","Inversion Y-Center",
-   "Real Portion of Lambda", "Imaginary Portion of Lambda","","",
-   "Real Portion of Z(0)", "Imaginary Portion of Z(0)","","",
-   "Power Value (3 to 10)","Radius of Inversion (0 = no inversion)",
-      "Inversion X-Center","Inversion Y-Center",
-   "Real Portion of C", "Imaginary Portion of C","","",
-   "Graininess Factor (.1 to 50, default is 2)","","","",
-   "Real Portion of Lambda", "Imaginary Portion of Lambda","","",
-   "Real Portion of Lambda", "Imaginary Portion of Lambda","","",
-   "Real Portion of Lambda", "Imaginary Portion of Lambda","","",
-   "(testpt Param #1)","(testpt param #2)","(testpt param #3)",
-      "(testpt param #4)",
-   };
-
-#else
-
-extern char *typelist[];
-
-#endif
-
 #define MAXPIXELS 2049		/* Maximum pixel count across/down the screen */
 
 struct videoinfo {		/* All we need to know about a Video Adapter */
@@ -117,7 +72,7 @@ struct fractal_info {			/*  for saving data in GIF file     */
 	int	future[10];	/* for stuff we haven't thought of yet */
 	};
 
-#define MAXVIDEOMODES 98	/* maximum size of the video table */
+#define MAXVIDEOMODES 100	/* maximum size of the video table */
 
 #if defined(PUTTHEMHERE)	/* this MUST be defined ONLY in FRACTINT.C */
 
@@ -138,6 +93,9 @@ char *fkeys[] = {		/* Function Key names for display table */
 	"Alt-H","Alt-J","Alt-K","Alt-L",
 	"Alt-Z","Alt-X","Alt-C","Alt-V","Alt-B","Alt-N","Alt-M",
 	"Alt--","Alt-=",
+	"Ctl-A","Ctl-B","Ctl-C","Ctl-D","Ctl-E","Ctl-F","Ctl-G",
+	"Ctl-K","Ctl-L","Ctl-N","Ctl-O","Ctl-P","Ctl-Q","Ctl-R",
+	"Ctl-S","Ctl-T","Ctl-U","Ctl-V","Ctl-W","Ctl-X","Ctl-Y","Ctl-Z",
 	"F11","F12","SF11","SF12","CF11","CF12","AF11","AF12",
 	"Alt-,","Alt-.","Alt-/","Alt-;","Alt-'","Alt-[","Alt-]","Alt-\\",
 	"Alt-`","A-Tab","A-Bks","A-Esc",
@@ -153,6 +111,9 @@ int kbdkeys[] = {		/* Function Keystrokes for above names */
 	1030, 1031, 1032, 1033, 1034, 1035, 1036, 1037, 1038,
 	1044, 1045, 1046, 1047, 1048, 1049, 1050,
 	1130, 1131,
+	   1,    2,    3,    4,    5,    6,    7,
+	  11,   12,   14,   15,   16,   17,   18,
+	  19,   20,   21,   22,   23,   24,   25,   26,
 	1133, 1134, 1135, 1136, 1137, 1138, 1139, 1140,
 	1051, 1052, 1053, 1039, 1040, 1026, 1027, 1043,
 	1041, 1165, 1014, 1001,
@@ -164,6 +125,74 @@ extern struct videoinfo videoentry;
 extern int maxvideomode;
 
 #endif
+
+/* defines of some of the early fractal types
+        (hardcoded in various routines)
+   remainder defined in calcfract.c/fractals.c (used only there) */
+
+#define NOFRACTAL    -1
+#define MANDEL       0 
+#define JULIA        1 
+#define NEWTBASIN    2 
+#define LAMBDA       3 
+#define MANDELFP     4 
+#define NEWTON       5 
+#define JULIAFP      6 
+#define PLASMA       7 
+
+#define NUMIFS    32     /* number of ifs functions in ifs array */
+#define IFSPARM    7     /* number of ifs parameters */
+#define IFS3DPARM 13     /* number of ifs 3D parameters */
+
+/* defines for symmetry */
+#define  NOSYM          0
+#define  XAXIS_NOPARM  -1
+#define  XAXIS          1
+#define  YAXIS_NOPARM  -2
+#define  YAXIS          2
+#define  XYAXIS_NOPARM -3
+#define  XYAXIS         3
+#define  ORIGIN_NOPARM -4
+#define  ORIGIN         4
+#define  PI_SYM_NOPARM -5
+#define  PI_SYM         5
+
+extern float   far initifs[NUMIFS][IFSPARM];          /* IFS code values */
+extern float   far initifs3d[NUMIFS][IFS3DPARM];      /* IFS 3D code values */
+
+struct fractalspecificstuff 
+{
+   char  *name;				/* name of the fractal */
+   char  *param[4];			/* name of the parameters */
+   float xmin;				/* default XMIN corner */
+   float xmax;				/* default XMAX corner */
+   float ymin;				/* default YMIN corner */
+   float ymax;				/* default YMAX corner */
+   int   isinteger;			/* 1 if integerfractal, 0 otherwise */
+   int   tojulia;			/* mandel-to-julia switch */
+   int   tomandel;                      /* julia-to-mandel switch */
+   int	 symmetry;			/* applicable symmetry logic
+					   0 = no symmetry
+					  -1 = y-axis symmetry (If No Params)
+					   1 = y-axis symmetry
+					  -2 = x-axis symmetry (No Parms)
+					   2 = x-axis symmetry
+					  -3 = y-axis AND x-axis (No Parms)
+					   3 = y-axis AND x-axis symmetry
+					  -4 = polar symmetry (No Parms)
+					   4 = polar symmetry
+					   5 = PI (sin/cos) symmetry
+					   6 = NEWTON (power) symmetry
+   								*/
+   int (*orbitcalc)();		/* function that calculates one orbit */
+   void (*per_pixel)();		/* once-per-pixel init */
+   int (*per_image)();		/* once-per-image setup */
+   int (*calctype)();		/* name of main fractal function */
+   int orbit_bailout;		/* usual bailout value for orbit calc */
+};
+
+extern struct fractalspecificstuff fractalspecific[];
+
 
 /*	help screens */
 
@@ -196,32 +225,40 @@ extern int helpmode;
 #endif
 
 /* 3D stuff - formerly in 3d.h */
-#ifndef dot_product /* TW 7-09-89 */
+#ifndef dot_product
 #define dot_product(v1,v2)  ((v1)[0]*(v2)[0]+(v1)[1]*(v2)[1]+(v1)[2]*(v2)[2])  /* TW 7-09-89 */ 
-#endif              /* TW 7-09-89 */
+#endif
 
-#define    CMAX    4    /* maximum column (4 x 4 matrix) */
-#define    RMAX    4    /* maximum row    (4 x 4 matrix) */
-#define    DIM     3    /* number of dimensions */
+#define    CMAX    4   /* maximum column (4 x 4 matrix) */
+#define    RMAX    4   /* maximum row    (4 x 4 matrix) */
+#define    DIM     3   /* number of dimensions */
 
-typedef double MATRIX [RMAX] [CMAX];
+typedef double MATRIX [RMAX] [CMAX];  /* matrix of doubles */
+typedef int   IMATRIX [RMAX] [CMAX];  /* matrix of ints    */
+typedef long  LMATRIX [RMAX] [CMAX];  /* matrix of longs   */
 
 /* A MATRIX is used to describe a transformation from one coordinate
 system to another.  Multiple transformations may be concatenated by
 multiplying their transformation matrices. */
 
-typedef double VECTOR [DIM];
-typedef int   IVECTOR [DIM];  /* vector of ints  */
-typedef long  LVECTOR [DIM];  /* vector of longs TW 7-09-89 */
+typedef double VECTOR [DIM];  /* vector of doubles */
+typedef int   IVECTOR [DIM];  /* vector of ints    */
+typedef long  LVECTOR [DIM];  /* vector of longs   */
 
 /* A VECTOR is an array of three coordinates [x,y,z] representing magnitude
 and direction. A fourth dimension is assumed to always have the value 1, but
 is not in the data structure */
 
+struct lcomplex
+{
+   long x;
+   long y;
+};
+
 #define PI 3.14159265358979323846
 
 #define SPHERE    init3d[0]		/* sphere? 1 = yes, 0 = no  */
-#define ILLUMINE  (FILLTYPE>3)  /* illumination model       */
+#define ILLUMINE  (FILLTYPE>4)  /* illumination model       */
   
 /* regular 3D */
 #define XROT      init3d[1]     /* rotate x-axis 60 degrees */
@@ -260,7 +297,7 @@ is not in the data structure */
 #include <math.h>
 
 extern  void   adjust(int, int, int, int, int, int);
-extern	void	buzzer(int);
+extern	void   buzzer(int);
 extern  int    calcfract(void);
 extern  int    calcmand(void);
 extern  int    check_key(void);
@@ -268,7 +305,6 @@ extern	int    complex_mult(struct complex, struct complex, struct complex *);
 extern	int    complex_div(struct complex, struct complex, struct complex *);
 extern	int    complex_power(struct complex, int, struct complex *);
 extern  int    cross_product(double [], double [], double []);
-/* TW 7-09-89 removed dot_prod which was here */ 
 extern  void   drawbox(int);
 extern	unsigned int emmallocate(unsigned int);
 extern	void   emmclearpage(unsigned int, unsigned int);
@@ -282,25 +318,30 @@ extern  int    getakey(void);
 extern  int    getcolor(int, int);
 extern  int    has_8087(void );
 extern	void	helpmessage(unsigned char far *);
-extern  void   identity(double [4][4]);
+extern  void   identity(MATRIX);
 extern  int    iplot_orbit(long, long);
 extern  int    Juliafp(void);
+extern  int    longvmultpersp(LVECTOR, LMATRIX, LVECTOR, LVECTOR, LVECTOR, int);
+extern  int    longpersp(LVECTOR, LVECTOR,int);
 extern  int    Lambda(void);
 extern  int    Lambdasine(void);
 extern  int    MainNewton(void);
-extern  void   mat_mul(double [4][4], double [4][4], double [4][4]);
+extern  void   mat_mul(MATRIX, MATRIX, MATRIX);
 extern  void   main(int, char *[]);
 extern  int    Mandelfp(void);
 extern	long   multiply(long, long, int);
+extern	long   divide(long, long, int);
 extern  int    Newton(void);
+extern  int    perspective(double *v);
 extern  int    plasma(void);
 extern  int    plot_orbit(double, double);
 extern	void	cdecl	Print_Screen(void);	/* MDS 7/1/89 */
 extern  void   putcolor(int, int, int);
-extern  void   scale(double, double, double, double [4][4]);
+extern  void   scale(double, double, double, MATRIX);
 extern  int    scrub_orbit(void);
 extern  int    set_Plasma_palette(void);
 extern  void   setvideomode(int, int, int, int);
+extern	int    Sierpinski(void);
 extern  int    solidguess(void);
 extern  void   spindac(int, int);
 extern  void   subDivide(int, int, int, int);
@@ -309,10 +350,12 @@ extern  void   symPIplot2J(int, int, int);
 extern  void   symPIplot4J(int, int, int);
 extern  void   symplot2(int, int, int);
 extern  void   symplot2J(int, int, int);
+extern  void   symplot2Y(int, int, int);
 extern  void   symplot4(int, int, int);
 extern  int    test(void);
-extern  void   trans(double, double, double, double [4][4]);
-extern  int    vmult(double [4], double [4][4], double [4]);
-extern  void   xrot(double, double [4][4]);
-extern  void   yrot(double, double [4][4]);
-extern  void   zrot(double, double [4][4]);
+extern  void   trans(double, double, double, MATRIX);
+extern  int    vmult(VECTOR,MATRIX,VECTOR);
+extern  void   xrot(double, MATRIX);
+extern  void   yrot(double, MATRIX);
+extern  void   zrot(double, MATRIX);
+

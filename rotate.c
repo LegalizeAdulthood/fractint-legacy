@@ -8,6 +8,8 @@
 
 #include "fractint.h"
 
+extern char temp1[];
+
 extern	int	colors;				/* maximum colors available */
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
@@ -201,7 +203,8 @@ while (more) {
 			break;
 		case 'd':		/* load colors from "default.map" */
 		case 'D':
-			dacfile = fopen("default.map","r");
+			findpath("default.map",temp1);
+			dacfile = fopen(temp1,"r");
 			if (dacfile == NULL) {
 				buzzer(2);
 				break;
@@ -213,12 +216,58 @@ while (more) {
 			break;
 		case 'a':		/* load colors from "altern.map" */
 		case 'A':
-			dacfile = fopen("altern.map","r");
+			findpath("altern.map",temp1);
+			dacfile = fopen(temp1,"r");
 			if (dacfile == NULL) {
 				buzzer(2);
 				break;
 				}
 			ValidateLuts(dacfile);	/* read the palette file */
+			fclose(dacfile);
+			fkey = 0;	/* disable random generation */
+			pauserotate();	/* update palette and pause */
+			break;
+		case 'm':		/* load colors from a specified map */
+		case 'M':
+			{
+			char temp2[80];
+			setfortext();
+			printf("\n\n Please enter your .MAP file name ==> ");
+			gets(temp2);
+			if (strchr(temp2,'.') == NULL)
+				strcat(temp2,".map");
+			findpath(temp2,temp1);
+			setforgraphics();
+			}
+			dacfile = fopen(temp1,"r");
+			if (dacfile == NULL) {
+				buzzer(2);
+				break;
+				}
+			ValidateLuts(dacfile);	/* read the palette file */
+			fclose(dacfile);
+			fkey = 0;	/* disable random generation */
+			pauserotate();	/* update palette and pause */
+			break;
+		case 's':		/* save the palette */
+		case 'S':
+			setfortext();
+			printf("\n\n Please enter your .MAP file name ==> ");
+			gets(temp1);
+			if (strchr(temp1,'.') == NULL)
+				strcat(temp1,".map");
+			setforgraphics();
+			dacfile = fopen(temp1,"w");
+			if (dacfile == NULL) {
+				buzzer(2);
+				break;
+				}
+			fprintf(dacfile,"  0   0   0\n");
+			for (i = 1; i < 256; i++) 
+				fprintf(dacfile, "%3d %3d %3d\n",
+				dacbox[i][0] << 2,
+				dacbox[i][1] << 2,
+				dacbox[i][2] << 2);
 			fclose(dacfile);
 			fkey = 0;	/* disable random generation */
 			pauserotate();	/* update palette and pause */

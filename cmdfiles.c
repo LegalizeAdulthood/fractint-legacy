@@ -7,20 +7,22 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef __TURBOC__
-#include <dir.h>
-#endif
-
 #include "fractint.h"
 
 /* variables defined by the command line/files processor */
-
-char    readname[81];     	/* name of fractal input file */
+char	temp1[256];		/* temporary strings        */
+char	ifsfilename[80];          /* IFS code file */
+char    readname[80];     	/* name of fractal input file */
+char	potfile[80];		/* save potential using this name  */
+char	savename[80];		/* save files using this name */
+char	ifs3dfilename[80];          /* IFS 3D code file */
+char	floatflag = 0;         /* flag for float calcs */
 int     showfile;        	/* has file been displayed yet? */
+int     showfile;        	/* has file been displayed yet? */
+int rflag, rseed;	/* Random number seeding flag and value */
+int decomp[2];		/* Decomposition coloring */
 int	warn;			/* 0 if savename warnings off, 1 if on */
 int	sound;			/* 0 if sound is off, 1 if on */
-char	savename[80];		/* save files using this name */
-char	potfile[80];		/* save potential using this name TW 7/20/89 */
 int	debugflag;		/* internal use only - you didn't see this */
 int	timerflag;		/* you didn't see this, either */
 int	cyclelimit;		/* color-rotator upper limit */
@@ -37,11 +39,14 @@ int	initsolidguessing;	/* initial solid-guessing md*/
 int	initfractype;		/* initial type set flag    */
 int	initcyclelimit;		/* initial cycle limit      */
 int	initcorners;		/* initial flag: corners set*/
+double   inversion[3];      /* radius, xcenter, ycenter */
 double	initxmin,initxmax;	/* initial corner values    */
 double	initymin,initymax;	/* initial corner values    */
 double	initparam[4];		/* initial parameters       */
-double	initpot[4];		/* potential parameters -TW 6/25/89  */
+double	initpot[4];		/* potential parameters  */
 extern int Printer_Resolution, LPTNumber, Printer_Type;   /* for printer functions */
+int	transparent[2];		/* transparency min/max values */
+int	LogFlag;			/* Logarithmic palette flag: 0 = no */
 
 extern	char *fkeys[];		/* Function Key names for display table */
 
@@ -65,6 +70,8 @@ char	param[81];				/* temporary strings        */
 char tempstring[101];				/* temporary strings	    */
 FILE *initfile;					/* for .INI, '@' files      */
 
+rflag = 0;					/* Use time() for srand() */
+
 warn = 0;					/* no warnings on savename */
 sound = 1;					/* sound is on            */
 initbatch = 0;					/* not in batch mode      */
@@ -77,18 +84,25 @@ initsolidguessing = 1;				/* initial solid-guessing */
 initfractype = 0;				/* initial type Set flag  */
 initcorners = 0;				/* initial flag: no corners */
 for (i = 0; i < 4; i++) initparam[i] = 0;	/* initial parameter values */
-for (i = 0; i < 4; i++) initpot[i] = 0;/* TW 6/25/89 initial parameter values */
+for (i = 0; i < 4; i++) initpot[i] = 0;/* initial parameter values */
+for (i = 0; i < 3; i++) inversion[i] = 0.0;  /* initial invert values */
+
 initxmin = -2.5; initxmax = 1.5;		/* initial corner values  */
 initymin = -1.5; initymax = 1.5;		/* initial corner values  */
 strcpy(savename,"fract001");			/* initial save filename  */
-potfile[0] = NULL;               /* initial potfile value */
+potfile[0] = NULL;                              /* initial potfile value */
 initcyclelimit=55;				/* spin-DAC default speed limit */
+transparent[0] = transparent[1] = 0;		/* no min/max transparency */
+LogFlag = 0;					/* no logarithmic palette */
+ifsfilename[0] = NULL;          /* initial ifs file name */
+ifs3dfilename[0] = NULL;        /* initial ifs3d file value */
 
 debugflag = 0;					/* debugging flag(s) are off */
 timerflag = 0;					/* timer flags are off      */
 
 display3d = 0;					/* 3D display is off        */
 overlay3d = 0;					/* 3D overlay is off	    */
+
 /* 3D defaults */
 SPHERE    = FALSE;    
 XROT      = 60;
@@ -102,12 +116,10 @@ FILLTYPE  = 0;
 ZVIEWER   = 0;
 XSHIFT    = 0;
 YSHIFT    = 0;
-/*  vvvvv TW 7/9/89 vvvvv  */
 XLIGHT    = 0;
 YLIGHT    = 0;
 ZLIGHT    = 1;
 LIGHTAVG  = 1;
-/*  ^^^^^ TW 7/9/89 ^^^^^  */
 
 *readname= NULL;                                  /* initial input filename */
 
@@ -120,18 +132,10 @@ LPTNumber = 1 ;					/* assume LPT1 */
 
 toolsfile = 1;					/* enable TOOLS processing */
 
-#ifdef __TURBOC__				/* look for SSTOOLS.INI */
-strcpy(tempstring,searchpath("sstools.ini"));
-#else
-_searchenv("sstools.ini","PATH",tempstring);
-#endif
-if (tempstring[0] != 0) {			/* found it! */
-	if (strcmp(&tempstring[2],"\\\\sstools.ini") == 0)	/* stupid klooge! */
-		strcpy(&tempstring[2],"\\sstools.ini");
-	if ((initfile = fopen(tempstring,"r")) != NULL) {
+findpath("sstools.ini", tempstring);		/* look for SSTOOLS.INI */
+if (tempstring[0] != 0) 			/* found it! */
+	if ((initfile = fopen(tempstring,"r")) != NULL) 
 		cmdfile(initfile);		/* process it */
-		}
-	}
 
 toolsfile = 0;					/* disable TOOLS processing */
 
@@ -259,17 +263,25 @@ cmdarg(char *param)				/* process a single argument */
 			warn = 1;
 		}
 	else if (strcmp(variable,"type") == 0 ) {	/* type=?	*/
-		for (k = 0; typelist[k] != NULL; k++)
-			if (strcmp(value,typelist[k]) == 0)
+		if (value[strlen(value)-1] == '*')
+			value[strlen(value)-1] = 0;
+		for (k = 0; fractalspecific[k].name != NULL; k++)
+			if (strcmp(value,fractalspecific[k].name) == 0)
 				break;
-		if (typelist[k] == NULL) argerror(param);
+		if (fractalspecific[k].name == NULL) argerror(param);
 		initfractype = k;
+		if (initcorners == 0) {
+			initxmin = fractalspecific[initfractype].xmin;
+			initxmax = fractalspecific[initfractype].xmax;
+			initymin = fractalspecific[initfractype].ymin;
+			initymax = fractalspecific[initfractype].ymax;
+			}
 		}
 	else if (strcmp(variable,"inside") == 0 ) {	/* inside=?	*/
 		inside = numval;
 		}
 	else if (strcmp(variable,"maxiter") == 0) {	/* maxiter=?	*/
-		if (numval < 10 || numval > 1000) argerror(param);
+		if (numval < 10 || numval > 32000) argerror(param);
 		inititer = numval;
 		}
 	else if (strcmp(variable,"iterincr") == 0) {	/* iterincr=?	*/
@@ -305,24 +317,17 @@ cmdarg(char *param)				/* process a single argument */
 	else if (strcmp(variable,"potential") == 0) {	/* potential=?	*/
 		k = 0;
 		slash = strchr(param,'=');
-		while ( k < 4) 
-		{
-		        if(k < 3)  
-			   initpot[k++] = atof(++slash);
-			else 
-			{
-                           k++;
-                           strcpy(potfile,++slash);
-			}   
+		while ( k < 4) {
+        	if(k < 3)  
+				initpot[k++] = atof(++slash);
+		   	else {
+            	k++;
+                strcpy(potfile,++slash);
+				}   
 			if ((slash = strchr(slash,'/')) == NULL) k = 99;
-		}
-        }
-
-	else if (strcmp(variable,"params") == 0) {	/* params=?,?	*/
-		if (initcorners == 0) {
-			initxmin = -2.0; initxmax = 2.0;
-			initymin = -1.5; initymax = 1.5;
 			}
+        }
+	else if (strcmp(variable,"params") == 0) {	/* params=?,?	*/
 		k = 0;
 		slash = strchr(param,'=');
 		while ( k < 4) {
@@ -362,12 +367,10 @@ cmdarg(char *param)				/* process a single argument */
 				ZVIEWER   = 0;
 				XSHIFT    = 0;
 				YSHIFT    = 0;
-        /*  vvvvv TW 7/9/89 vvvvv  */
-                XLIGHT    = 0;
+		        XLIGHT    = 0;
                 YLIGHT    = 0;
-                ZLIGHT    = 1;
+              	ZLIGHT    = 1;
                 LIGHTAVG  = 1;
-        /*  ^^^^^ TW 7/9/89 ^^^^^  */
 				}   
 			if (k == 0 && !SPHERE) {
 				SPHERE    = FALSE;    
@@ -382,37 +385,161 @@ cmdarg(char *param)				/* process a single argument */
 				ZVIEWER   = 0;
 				XSHIFT    = 0;
 				YSHIFT    = 0;
-        /*  vvvvv TW 7/9/89 vvvvv  */
-                XLIGHT    = 0;
+		        XLIGHT    = 0;
                 YLIGHT    = 0;
                 ZLIGHT    = 1;
                 LIGHTAVG  = 1;
-        /*  ^^^^^ TW 7/9/89 ^^^^^  */
 				}
 			if ((slash = strchr(slash,'/')) == NULL) break;
 			k++;
 			}
 		}
-        /*  vvvvv MDS 7/1/89  vvvvv  */
-        else if (strcmp(variable,"printer") == 0 ) {	/* printer=?	*/
-                if (charval=='h') Printer_Type=1; /* HP LaserJet           */
-                if (charval=='i') Printer_Type=2; /* IBM Graphics          */
-                if (charval=='e') Printer_Type=2; /* Epson (model?)        */
+	else if (strcmp(variable,"sphere") == 0 ) {	/* sphere=?	*/
+		if (charval == 'y') 
+			SPHERE    = TRUE;    
+		else if (charval == 'n')
+			SPHERE    = FALSE;
+		else 
+		    argerror(param);		/* oops.  error. */
+		}
+	else if (strcmp(variable,"rotation") == 0) {	/* rotation=?/?/?	*/
+		k = 0;
+		slash = strchr(param,'=');
+		while ( k < 3) {
+			l = atoi(++slash);
+			if (slash[0] > 32 && slash[0] != '/') *(&XROT+k) = l;
+			if ((slash = strchr(slash,'/')) == NULL) k = 99;
+			k++;
+			}
+		}
+	else if (strcmp(variable,"scalexyz") == 0) {	/* scalexyz=?/?/?	*/
+		k = 0;
+		slash = strchr(param,'=');
+		while ( k < 3) {
+			l = atoi(++slash);
+			if (slash[0] > 32 && slash[0] != '/') *(&XSCALE+k) = l;
+			if ((slash = strchr(slash,'/')) == NULL) k = 99;
+			k++;
+			}
+		}
+    /* "rough" is really scale z, but we add it here for convenience */
+	else if (strcmp(variable,"roughness") == 0) {	/* roughness=?	*/
+		ROUGH = numval;
+		}
+	else if (strcmp(variable,"waterline") == 0) {	/* waterline=?	*/
+		if (numval<0) argerror(param);
+		WATERLINE = numval;
+		}
+	else if (strcmp(variable,"filltype") == 0) {	/* filltype=?	*/
+		if (numval < 0 || numval > 6) argerror(param);
+		FILLTYPE = numval;
+		}
+	else if (strcmp(variable,"perspective") == 0) {	/* perspective=?	*/
+		k = 0;
+		slash = strchr(param,'=');
+		while ( k < 1) {
+			l = atoi(++slash);
+			if (slash[0] > 32 && slash[0] != '/') *(&ZVIEWER+k) = l;
+			if ((slash = strchr(slash,'/')) == NULL) k = 99;
+			k++;
+			}
+		}
+	else if (strcmp(variable,"xyshift") == 0) {	/* xyshift=?/?	*/
+		k = 0;
+		slash = strchr(param,'=');
+		while ( k < 2) {
+			l = atoi(++slash);
+			if (slash[0] > 32 && slash[0] != '/') *(&XSHIFT+k) = l;
+			if ((slash = strchr(slash,'/')) == NULL) k = 99;
+			k++;
+			}
+		}
+	else if (strcmp(variable,"lightsource") == 0) {	/* lightsource=?/?/?	*/
+		k = 0;
+		slash = strchr(param,'=');
+		while ( k < 3) {
+			l = atoi(++slash);
+			if (slash[0] > 32 && slash[0] != '/') *(&XLIGHT+k) = l;
+			if ((slash = strchr(slash,'/')) == NULL) k = 99;
+			k++;
+			}
+		}
+	else if (strcmp(variable,"smoothing") == 0) {	/* smoothing=?	*/
+		if (numval<0) argerror(param);
+		LIGHTAVG = numval;
+		}
+	else if (strcmp(variable,"latitude") == 0) {	/* latitude=?/?	*/
+		k = 0;
+		slash = strchr(param,'=');
+		while ( k < 2) {
+			l = atoi(++slash);
+			if (slash[0] > 32 && slash[0] != '/') *(&THETA1+k) = l;
+			if ((slash = strchr(slash,'/')) == NULL) k = 99;
+			k++;
+			}
+		}
+	else if (strcmp(variable,"longitude") == 0) {	/* longitude=?/?	*/
+		k = 0;
+		slash = strchr(param,'=');
+		while ( k < 2) {
+			l = atoi(++slash);
+			if (slash[0] > 32 && slash[0] != '/') *(&PHI1+k) = l;
+			if ((slash = strchr(slash,'/')) == NULL) k = 99;
+			k++;
+			}
+		}
+	else if (strcmp(variable,"radius") == 0) {	/* radius=?	*/
+		if (numval<0) argerror(param);
+		RADIUS = numval;
+		}
+	else if (strcmp(variable,"invert") == 0) {	/* invert=?,?,?	*/
+		k = 0;
+		slash = strchr(param,'=');
+		while ( k < 3) {
+		    extern int invert;
+			inversion[k++] = atof(++slash);
+            if(inversion[0] != 0.0)
+    		    invert = k;      /* record highest inversion parameter set */
+			if ((slash = strchr(slash,'/')) == NULL) k = 99;
+			}
+		}
+	else if (strcmp(variable,"float") == 0 ) 	/* float=?	*/
+		if (charval == 'y')
+			floatflag = 1;
+		else if (charval == 'n')
+            floatflag = 0;
+        else
+            argerror(param);    
+	else if (strcmp(variable,"printer") == 0 ) {	/* printer=?	*/
+		if (charval=='h') Printer_Type=1; /* HP LaserJet           */
+        if (charval=='i') Printer_Type=2; /* IBM Graphics          */
+        if (charval=='e') Printer_Type=2; /* Epson (model?)        */
 		if (Printer_Type == 1)		/* assume low resolution */
 			Printer_Resolution = 75;
 		else
 			Printer_Resolution = 60;
-                slash=strchr(param,'=');
-                if ((slash=strchr(slash,'/')) == NULL) return;
-                if ((k=atoi(++slash)) > 0) Printer_Resolution=k;
-                if ((slash=strchr(slash,'/')) == NULL) return;
+        slash=strchr(param,'=');
+        if ((slash=strchr(slash,'/')) == NULL) return;
+        if ((k=atoi(++slash)) > 0) Printer_Resolution=k;
+        if ((slash=strchr(slash,'/')) == NULL) return;
 		if ((k=atoi(++slash))> 0) LPTNumber = k;
-                }
-	/*  ^^^^^  MDS 7/1/89  ^^^^^  */
+        }
+	else if (strcmp(variable,"transparent") == 0) { /* transparent? */
+		slash = strchr(param,'=');
+        if ((k=atoi(++slash)) > 0) transparent[0] = k;
+		transparent[1] = transparent[0];
+        if ((slash=strchr(slash,'/')) == NULL) return;
+		if ((k=atoi(++slash)) > 0) transparent[1] = k;
+		}
 	else if (strcmp(variable,"sound") == 0 ) {	/* sound=?	*/
 		sound = 0;				/* sound is off */
 		if (charval == 'y')
 			sound = 1;			/* sound is on  */
+		}
+	else if (strcmp(variable,"logmap") == 0 ) {	/* logmap=?	*/
+		LogFlag = 0;				/* palette is continuous */
+		if (charval == 'y')
+			LogFlag = 1;			/* palette is logarithmic */
 		}
 	else if (strcmp(variable,"debugflag") == 0 ||
 		 strcmp(variable,"debug") == 0) {	/* internal use only */
@@ -420,7 +547,285 @@ cmdarg(char *param)				/* process a single argument */
 		timerflag = debugflag & 1;		/* separate timer flag */
 		debugflag -= timerflag;
 		}
-
+	else if (strcmp(variable,"ifs") == 0) {		/* ifs=?	*/
+		strcpy(ifsfilename,value);
+		if (strchr(value,'.') == NULL)
+			strcat(ifsfilename,".ifs");
+		ifsgetfile();
+		}
+	else if (strcmp(variable,"ifs3d") == 0) {	/* ifs3d=?	*/
+		strcpy(ifs3dfilename,value);
+		if (strchr(value,'.') == NULL)
+			strcat(ifs3dfilename,".ifs");
+		ifs3dgetfile();
+		}
+	else if (strcmp(variable,"ifscodes") == 0) {    /* ifscodes=?,?,?,? */
+    	int ifsindex;
+        slash = strchr(param,'=');
+        ifsindex=atoi(++slash) - 1;
+        if(ifsindex < 0 || ifsindex > NUMIFS) argerror(param);
+        if ((slash = strchr(slash,'/')) == NULL) argerror(param);
+        initifs[ifsindex][0]=atof(++slash);
+        if ((slash = strchr(slash,'/')) == NULL) argerror(param);
+        initifs[ifsindex][1]=atof(++slash);
+        if ((slash = strchr(slash,'/')) == NULL) argerror(param);
+        initifs[ifsindex][2]=atof(++slash);
+        if ((slash = strchr(slash,'/')) == NULL) argerror(param);
+        initifs[ifsindex][3]=atof(++slash);
+        if ((slash = strchr(slash,'/')) == NULL) argerror(param);
+        initifs[ifsindex][4]=atof(++slash);
+        if ((slash = strchr(slash,'/')) == NULL) argerror(param);
+        initifs[ifsindex][5]=atof(++slash);
+        if ((slash = strchr(slash,'/')) == NULL) argerror(param);
+        initifs[ifsindex][6]=atof(++slash);
+        }
+	else if (strcmp(variable, "rseed") == 0) {
+		rseed = numval;
+		rflag = 1;
+		}
+	else if (strcmp(variable, "decomp") == 0) {
+		k = 0;
+		slash = strchr(param,'=');
+		while (k < 2) {
+			decomp[k++] = atoi(++slash);
+			if ((slash = strchr(slash,'/')) == NULL) break;
+			}
+		}
 	else argerror(param);
+}
 
+#ifdef __TURBOC__
+#include <dir.h>
+#endif
+
+findpath(char *filename, char *fullpathname)	/* return full pathnames */
+{
+
+fullpathname[0] = 0;				/* indicate none found */
+
+#ifdef __TURBOC__				/* look for the file */
+strcpy(fullpathname,searchpath(filename));
+#else
+_searchenv(filename,"PATH",fullpathname);
+#endif
+if (fullpathname[0] != 0) 			/* found it! */
+	if (strncmp(&fullpathname[2],"\\\\",2) == 0)	/* stupid klooge! */
+		strcpy(&fullpathname[3],filename);
+}
+
+/* keep this in synch with fractals.c !!! */
+#define IFS          26
+#define IFS3D        27
+extern int fractype;
+
+ifsgetparams()			/* prompt for IFS params */
+{
+char *filename;
+float far *initarray;
+static char ifstype = '2';
+int totrows, totcols;
+int i, j, numlines;
+FILE *tempfile;
+
+setfortext();			/* switch to text mode */
+
+setvideomode(3,0,0,0);		/* clear the ecreen entirely */
+
+
+ifsgetfile();			/* read in any "IFS=" file */
+
+ifs3dgetfile();			/* read in any "IFS3D=" file */
+
+filename = ifsfilename;
+initarray = &initifs[0][0];
+totrows = NUMIFS;
+totcols = IFSPARM;
+
+/* assume if an IFS type is already selected, user wants to edit that type */
+if(fractype == IFS)
+   ifstype = '2';
+else if (fractype == IFS3D)
+   ifstype = '3';
+else
+{
+   printf("Edit normal or 3D IFS parameters? (2 or 3 - if not %c) --> ",ifstype);
+   while((ifstype=getch())!='2' && ifstype!='3' && ifstype!=13);
+}
+if (ifstype == '3') {
+   filename = ifs3dfilename;
+   initarray = &initifs3d[0][0];
+   totrows = NUMIFS;
+   totcols = IFS3DPARM;
+   }
+
+for ( ;; ) {
+
+    for (numlines = 0; numlines < totrows; numlines++)    /* find the first zero entry */
+        if (initarray[(numlines * totcols) + totcols - 1] <= 0.0001) break;
+
+    setvideomode(3,0,0,0);
+
+    printf(" Your current IFS Parameters are: \n\n");
+    printf("#   a     b     c     d     e     f");
+    if (ifstype == '3')
+         printf("     g     h     i     j     k     l");
+    printf("    prob \n\n");
+
+    for (i = 0; i < numlines; i++) {
+        printf("%1d", i+1);
+        for (j = 0; j < totcols; j++)
+            printf("%6.2f", (float )initarray[(i*totcols)+j]);
+        printf("\n");
+        }
+
+    printf("\n\n Enter the number of the line you want to edit\n");
+    printf("  (or RESTORE to start from another (.IFS) file, or SAVE to\n");
+    if(ifstype == '3')
+    {
+       printf("   save your edits in an (.IFS) file, or TRANSFORM to alter\n");
+       printf("   3D transformation values, or <ENTER> to end) ==> ");
+    }
+    else
+       printf("   save your edits in an (.IFS) file, or <ENTER> to end) ==> ");
+    gets(temp1);
+    if (ifstype == '3' && (temp1[0] == 't' || temp1[0] == 'T')) {
+       getifs3dstuff();
+       continue;
+       }
+    if (temp1[0] == 's' || temp1[0] == 'S') {
+       printf("\n\n enter the name of your new .IFS file ==> ");
+       gets(filename);
+       if (strchr(filename,'.') == NULL)
+          strcat(filename,".ifs");
+       if ((tempfile=fopen(filename,"w")) != NULL) {
+          for (i = 0; i < numlines; i++) {
+             for (j = 0; j < totcols; j++)
+                fprintf(tempfile, "%6.2f", (float)initarray[(i*totcols)+j]);
+             fprintf(tempfile, "\n");
+             }
+          fclose(tempfile);
+          }
+       return(0);
+       }
+    if (temp1[0] == 'r' || temp1[0] == 'R') {
+       printf("\n\n enter the name of your new .IFS file ==> ");
+       gets(filename);
+       if (strchr(filename,'.') == NULL)
+          strcat(filename,".ifs");
+       if (ifstype == '3')
+          ifs3dgetfile();
+       else
+          ifsgetfile();
+       continue;
+       }
+    i = atoi(temp1) - 1;
+    if (temp1[0] == 0 || i < 0 || i > numlines) return(0);
+
+    for (j = 0; j < totcols; j++) {
+        printf(" Parameter %2d (if not %6.2f) ", j, (float)initarray[(i*totcols)+j]);
+        gets(temp1);
+        if (temp1[0] != 0)
+            initarray[(i*totcols)+j] = atof(temp1);
+        }
+    }
+}
+getifs3dstuff()
+{
+   int k;
+   printf("X-axis rotation in degrees (if not %3d) ",XROT);
+   gets(temp1);
+   k = atoi(temp1);
+   if (temp1[0] >19) XROT = k;
+   printf("Y-axis rotation in degrees (if not %3d) ",YROT);
+   gets(temp1);
+   k = atoi(temp1);
+   if (temp1[0] >19) YROT = k;
+   printf("Z-axis rotation in degrees (if not %3d)  ",ZROT);
+   gets(temp1);
+   k = atoi(temp1);
+   if (temp1[0] >19) ZROT = k;
+   /*
+   printf("X-axis scaling factor in pct  (if not %3d)  ",XSCALE);
+   gets(temp1);
+   k = atoi(temp1);
+   if (temp1[0] >19) XSCALE = k;
+   printf("Y-axis scaling factor in pct  (if not %3d)  ",YSCALE);
+   gets(temp1);
+   k = atoi(temp1);
+   if (temp1[0] >19) YSCALE = k;
+   printf("Z-axis scaling factor in pct  (if not %3d)  ",ROUGH);
+   gets(temp1);
+   k = atoi(temp1);
+   if (temp1[0] >19) ROUGH = k;
+   */
+   printf("Perspective 'height' [1 - 999, 0 for no perspective] (if not %3d) ",ZVIEWER);
+   gets(temp1);
+   k = atoi(temp1);
+   if (temp1[0] >19) ZVIEWER = k;
+   printf("X shift (positive = right)(if not %3d) ",XSHIFT);
+   gets(temp1);
+   k = atoi(temp1);
+   if (temp1[0] >19) XSHIFT = k;
+   printf("Y shift (positive = up    )(if not %3d) ",YSHIFT);
+   gets(temp1);
+   k = atoi(temp1);
+   if (temp1[0] >19) YSHIFT = k;
+}
+
+ifsgetfile()
+{
+   FILE	 *ifsfile;		/* IFS code file pointer */
+   float localifs[IFSPARM];
+   int i, j;
+
+   /* read in IFS codes from file */
+   if (ifsfilename[0] != 0) {
+      findpath(ifsfilename, temp1);
+      if ( (ifsfile = fopen( temp1,"r" )) != NULL ) {
+         i = -1;
+         while (fgets(temp1, 155, ifsfile) != NULL) {
+            if (++i >= NUMIFS) break;
+            sscanf(temp1," %f %f %f %f %f %f %f",
+               &localifs[0], &localifs[1], &localifs[2], &localifs[3], 
+               &localifs[4], &localifs[5], &localifs[6]  );
+            for (j = 0; j < IFSPARM; j++) {
+               initifs[i][j]   = localifs[j];
+               initifs[i+1][j] = 0.0;
+               }
+            }
+         fclose(ifsfile);				
+         }
+      ifsfilename[0] = 0;
+      }
+}
+
+ifs3dgetfile()
+{
+   FILE	 *ifsfile;		/* IFS code file pointer */
+   float localifs[IFS3DPARM];
+   int i, j;
+
+   /* read in IFS codes from file */
+   if (ifs3dfilename[0] != 0) {
+      findpath(ifs3dfilename, temp1);
+      if ( (ifsfile = fopen( temp1,"r" )) != NULL ) {
+         i = -1;
+         while (fgets(temp1, 155, ifsfile) != NULL) {
+            if (++i >= NUMIFS) break;
+            sscanf(temp1," %f %f %f %f %f %f %f %f %f %f %f %f %f",
+               &localifs[ 0], &localifs[ 1], &localifs[ 2],
+               &localifs[ 3], &localifs[ 4], &localifs[ 5],
+               &localifs[ 6], &localifs[ 7], &localifs[ 8],
+               &localifs[ 9], &localifs[10], &localifs[11],
+               &localifs[12]
+               );
+            for (j = 0; j < IFS3DPARM; j++) {
+               initifs3d[i][j]   = localifs[j];
+               initifs3d[i+1][j] = 0.0;
+               }
+            }
+         fclose(ifsfile);				
+         }
+      ifs3dfilename[0] = 0;
+      }
 }

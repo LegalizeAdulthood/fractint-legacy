@@ -9,6 +9,7 @@
 extern	unsigned char diskline[2049];
 extern	int xdots, ydots, colors;
 extern	int diskisactive, diskvideo;
+extern	int diskprintfs;		/* 0 = supress diskprintfs */
 
 static unsigned int pixelsperbyte, pixelshift, pixeloffset;
 static unsigned int pixeloffsetmask;
@@ -62,10 +63,12 @@ for (i = 0; i < pixelsperbyte; i++)
 	notpixelmask[i] = 255 - pixelmask[i] ;
 pixeloffsetmask = pixelsperbyte-1;
 
-printf("Clearing the 'screen'...\n\n");
-printf("\n\n'Disk-Video' (using the disk as your 'screen') has been activated.\n\n");
-printf("   Your 'screen' resolution is %d x %d x %d colors\n",
+if (diskprintfs) {
+   printf("Clearing the 'screen'...\n\n");
+   printf("\n\n'Disk-Video' (using the disk as your 'screen') has been activated.\n\n");
+   printf("   Your 'screen' resolution is %d x %d x %d colors\n",
 	xdots, ydots, colors);
+   }
 
 diskisgood = 0;			/* first claim disk file is no good */
 emmhandle = 0;			/* and claim no expanded memory */
@@ -73,10 +76,11 @@ emmhandle = 0;			/* and claim no expanded memory */
 memorypointer = xdots;  memorypointer *= ydots;	/* try RAM first */
 memorypointer >>= pixelshift;		/* adjust for pixels / byte */
 if ((memoryvideo = (unsigned char huge *)farmemalloc(memorypointer)) != NULL) {
-	printf("\n(Using your Memory)\n");
+	if (diskprintfs) 
+		printf("\n(Using your Memory)\n");
 	for (longi = 0; longi < memorypointer; longi++)	/* clear the RAM */
 		memoryvideo[longi] = 0;
-	diskvideo = 0;			/* NOT using a disk */
+	diskvideo = 0;			/* using regular RAM */
 	diskisgood = 1;			/* but the video IS good */
 	oldy = -1;			/* there is no current line */
 	return(0);			/* and bail out */
@@ -87,19 +91,24 @@ memorypointer >>= pixelshift;		/* adjust for pixels / byte */
 exppages = (memorypointer + 16383) >> 14;
 if ((expmemoryvideo = emmquery()) != NULL && 
 	(emmhandle = emmallocate(exppages)) != 0) {
-	printf("\n(Using your Expanded Memory)\n");
+	if (diskprintfs) 
+		printf("\n(Using your Expanded Memory)\n");
 	for (oldexppage = 0; oldexppage < exppages; oldexppage++)
 		emmclearpage(oldexppage, emmhandle);/* clear the "video" */
+	diskvideo = 1;			/* using Expanded RAM */
 	diskisgood = 1;			/* the video IS good */
 	oldy = -1;			/* there is no current line */
 	return(0);			/* and bail out */
 	}
 
-printf("\n(Using your Disk Drive)\n");
+if (diskprintfs) 
+	printf("\n(Using your Disk Drive)\n");
 
 if ((fp = fopen("FRACTINT.DSK","w+b")) == NULL) { /* else try the disk */
 	buzzer(2);
-	printf("\n((OOPS - Couldn't create FRACTINT.DSK))");
+	if (diskprintfs) 
+		printf("\n((OOPS - Couldn't create FRACTINT.DSK))");
+	diskprintfs = 1;		/* re-enable status msgs */
 	return(-1);
 	}
 
@@ -110,11 +119,15 @@ for (i = 0; i < bytesperline; i++)	/* clear the line to black */
 for (i = 0; i < ydots; i++)	/* "clear the screen" (write to the disk) */
 	if (fwrite(diskline,1,bytesperline,fp) < bytesperline) {
 		buzzer(2);
-		printf("\n((OOPS - ran out of disk space))\n");
+	if (diskprintfs) 
+			printf("\n((OOPS - ran out of disk space))\n");
 		fclose(fp);
 		remove("FRACTINT.DSK");
+		diskprintfs = 1;	/* re-enable status msgs */
 		return(-1);
 		}
+
+diskvideo = 2;			/* using your disk drive */
 diskisgood = 1;			/* now note that the file is intact */
 oldy = -1;			/* there is no current line */
 linehaschanged = 0;		/* current line has not changed */
@@ -126,6 +139,8 @@ return(0);
 enddisk()
 {
 unsigned int i;
+
+diskprintfs = 1;			/* re-enable status msgs */
 
 if (memoryvideo != NULL) {		/* RAM video? */
 	farmemfree((void far*)memoryvideo);/* then free it */
@@ -155,8 +170,10 @@ if (x < 0 || x >= xdots || y < 0 || y >= ydots) return(0);
 
 if (memoryvideo != NULL) {		/* RAM video? */
 	if (++oldy == xdots) {			/* need to get a new line? */
-		home();				/* show a progress report */
-		printf("Reading Line %4d...     ",y);
+		if (diskprintfs) {
+			home();			/* show a progress report */
+			printf("Reading Line %4d...     ",y);
+			}
 		oldy = -1;
 		}
 	start = y;  start = (start * xdots) + x;	/* then read it! */
@@ -167,8 +184,10 @@ if (memoryvideo != NULL) {		/* RAM video? */
 
 if (emmhandle != 0) {				/* expanded memory video? */
 	if (oldy != y) {			/* need to get a new line? */
-		home();				/* show a progress report */
-		printf("Reading Line %4d...     ",y);
+		if (diskprintfs) {
+			home();			/* show a progress report */
+			printf("Reading Line %4d...     ",y);
+		}
 		oldy = y;			/* reset oldy */
 		}
 	start = y; start = (start * xdots) + x;	/* figure out where it is */
@@ -191,8 +210,10 @@ if (oldy != y) {			/* need to get a new line? */
 	fseek(fp,start,SEEK_SET);	/* seek to start of line */
 	fread(diskline,1,bytesperline,fp);	/* read the line */
 	oldy = y;			/* reset oldy */
-	home();				/* show a progress report */
-	printf("Reading Line %4d...     ",y);
+	if (diskprintfs) {
+		home();				/* show a progress report */
+		printf("Reading Line %4d...     ",y);
+		}
 	}
 
 pixeloffset = x & pixeloffsetmask;	/* get pixel offset */
@@ -211,8 +232,10 @@ if (x < 0 || x >= xdots || y < 0 || y >= ydots) return(0);
 
 if (memoryvideo != NULL) {		/* RAM video? */
 	if (++oldy == xdots) {			/* need to get a new line? */
-		home();				/* show a progress report */
-		printf("Writing Line %4d...     ",y);
+		if (diskprintfs) {
+			home();			/* show a progress report */
+			printf("Writing Line %4d...     ",y);
+			}
 		oldy = -1;
 		}
 	start = y;  start = (start * xdots) + x;	/* then write it! */
@@ -224,8 +247,10 @@ if (memoryvideo != NULL) {		/* RAM video? */
 
 if (emmhandle != 0) {				/* expanded memory video? */
 	if (oldy != y) {			/* need to get a new line? */
-		home();				/* show a progress report */
-		printf("Writing Line %4d...     ",y);
+		if (diskprintfs) {
+			home();			/* show a progress report */
+			printf("Writing Line %4d...     ",y);
+			}
 		oldy = y;			/* reset oldy */
 		}
 	start = y; start = (start * xdots) + x;	/* figure out where it is */
@@ -249,8 +274,10 @@ if (oldy != y) {			/* need to get a new line? */
 	fseek(fp,start,SEEK_SET);	/* seek to start of line */
 	fread(diskline,1,bytesperline,fp);	/* read the line */
 	oldy = y;			/* reset oldy */
-	home();				/* show a progress report */
-	printf("Writing Line %4d...     ",y);
+	if (diskprintfs) {
+		home();			/* show a progress report */
+		printf("Writing Line %4d...     ",y);
+		}
 	}
 
 pixeloffset = x & pixeloffsetmask;	/* get pixel offset */

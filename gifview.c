@@ -179,6 +179,8 @@ gifview()
       }
    }
    close_file();
+   if (status == 0)
+      buzzer(0);             /* audible signal - we done */
    return(status);
 }
 close_file()

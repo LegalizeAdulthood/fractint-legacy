@@ -82,11 +82,13 @@ printf( "%08lx\n", tga32[index] );
 int
 LoadColorMap( void )
 {
+char temp[81];
 FILE *f;
 unsigned	r, g, b, index;
 
 	if( maploaded ) return( 1 );
-	f = fopen( palName, "r" );
+	findpath( palName, temp);		/* search the dos path */
+	f = fopen( temp, "r" );
 	if( f != NULL ) {
 		/** save first 16 color map entries **/
 		loaddac();
@@ -111,7 +113,7 @@ SetColorPaletteName( char * fn )
 	loadPalette = 0;
 	if (LoadColorMap() == 0) {
 		strcpy(palName,"default.map");
-		printf("\007");
+		buzzer(2);
 		}
 	else
 		loadPalette = 1;

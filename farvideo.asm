@@ -43,9 +43,9 @@ videotable	db	0	; video table actually starts on the NEXT byte
 ;		5) SuperVGA 256-Color mode using the Paradise Chipset
 ;		6) SuperVGA 256-Color mode using the Video-7 Chipset
 ;		7) Non-Standard IBM VGA 360 x 480 x 256-Color mode
-;		8) Reserved for future use (Super-VGA)
+;		8) SuperVGA 1024x768x16 mode for the Everex Chipset
 ;		9) TARGA video modes
-;		10) Reserved for Future use (HERCULES)
+;		10) HERCULES video mode
 ;		11) Non-Video [disk or RAM] "video"
 ;		12) 8514/A video modes
 ;		13) CGA 320x200x4-color and 640x200x2-color modes
@@ -53,6 +53,14 @@ videotable	db	0	; video table actually starts on the NEXT byte
 ;		15) SuperVGA 256-Color mode using the Trident Chipset
 ;		16) SuperVGA 256-Color mode using the Chips & Tech Chipset
 ;		17) SuperVGA 256-Color mode using the ATI VGA Wonder Chipset
+;		18) SuperVGA 256-Color mode using the Everex Chipset
+;		19) Roll-Your-Own video, as defined in YOURVID.C
+;		20) SuperVGA 1024x768x16 mode for the ATI VGA Wonder Chipset
+;		21) SuperVGA 1024x768x16 mode for the Tseng Labs Chipset
+;		22) SuperVGA 1024x768x16 mode for the Trident Chipset
+;		23) SuperVGA 1024x768x16 mode for the Video 7 Chipset
+;		24) SuperVGA 1024x768x16 mode for the Paradise Chipset
+;		25) SuperVGA 1024x768x16 mode for the Chips & Tech Chipset
 
 ;               |--Adapter/Mode-Name------|-------Comments-----------|
 
@@ -78,6 +86,8 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	db	"IBM Med-Rez EGA           (Silly but it's there!)   "
 	dw	  0eh,   0,   0,   0,   2, 640, 200,  16
 	db	"IBM VGA (non-std/no text) Register Compatibles ONLY "
+	dw	   0h,   0,   0,   9,   7, 320, 400, 256
+	db	"IBM VGA (non-std/no text) Register Compatibles ONLY "
 	dw	   0h,   0,   0,   8,   7, 360, 480, 256
 	db	"8514/A Low  Res           Requires IBM's HDIDLOAD   "
 	dw	   3h,   0,   0,   1,  12, 640, 480, 256
@@ -101,8 +111,8 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	6f05h, 63h,   0,   0,   1,1024, 768,   2
 	db	"Video-7 Vram VGA          OK: Ira Emus              "
 	dw	6f05h, 64h,   0,   0,   1,1024, 768,   4
-	db	"Video-7 Vram VGA w/512K   OK: Ira Emus              "
-	dw	6f05h, 65h,   0,   0,   1,1024, 768,  16
+	db	"Video-7 Vram VGA w/512K   UNTESTED: May not work    "
+	dw	6f05h, 65h,   0,   0,  23,1024, 768,  16
 	db	"Video-7 Vram VGA          OK: Michael Kaufman       "
 	dw	6f05h, 66h,   0,   0,   6, 640, 400, 256
 	db	"Video-7  w/512K           OK: Greg Reznick          "
@@ -111,14 +121,16 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	6f05h, 68h,   0,   0,   6, 720, 540, 256
 	db	"Video-7  w/512K           OK: Greg Reznick          "
 	dw	6f05h, 69h,   0,   0,   6, 800, 600, 256
+	db	"Tseng SuperVGA tweaked    (adds missing Tseng mode) "
+	dw	   0h,   0,   0,  10,   4, 640, 400, 256
 	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
 	dw	  2eh,   0,   0,   0,   4, 640, 480, 256
 	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
 	dw	  29h,   0,   0,   0,   2, 800, 600,  16
 	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
 	dw	  30h,   0,   0,   0,   4, 800, 600, 256
-	db	"Orchid/STB/GENOA/SIGMA    OK: David Mills           "
-	dw	  37h,   0,   0,   0,   1,1024, 768,  16
+	db	"Orchid/STB/GENOA/SIGMA    OK: Timothy Wegner        "
+	dw	  37h,   0,   0,   0,  21,1024, 768,  16
 	db	"GENOA/STB                 OK: Timothy Wegner        "
 	dw	  2dh,   0,   0,   0,   4, 640, 350, 256
 	db	"GENOA                     OK: Timothy Wegner        "
@@ -141,24 +153,26 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	  70h, 11h,   0,   0,   1,1280, 350,   4
 	db	"Everex EVGA               OK: Travis Harrison       "
 	dw	  70h, 12h,   0,   0,   1,1280, 600,   4
-	db	"Everex EVGA               OK: Travis Harrison       "
-	dw	  70h, 13h,   0,   0,   1, 640, 350, 256
-	db	"Everex EVGA               OK: Travis Harrison       "
-	dw	  70h, 14h,   0,   0,   1, 640, 400, 256
-	db	"Everex EVGA               OK: Travis Harrison       "
-	dw	  70h, 15h,   0,   0,   1, 512, 480, 256
-	db	"ATI EGA Wonder            UNTESTED: may not work    "
+	db	"Everex EVGA               UNTESTED: may not work    "
+	dw	  70h, 13h,   0,   0,  18, 640, 350, 256
+	db	"Everex EVGA               UNTESTED: may not work    "
+	dw	  70h, 14h,   0,   0,  18, 640, 400, 256
+	db	"Everex EVGA               UNTESTED: may not work    "
+	dw	  70h, 15h,   0,   0,  18, 512, 480, 256
+	db	"ATI EGA Wonder            OK: Garrett Wollman       "
 	dw	  51h,   0,   0,   0,   1, 640, 480,  16
-	db	"ATI EGA Wonder            UNTESTED: may not work    "
+	db	"ATI EGA Wonder            OK: Garrett Wollman       "
 	dw	  52h,   0,   0,   0,   1, 800, 560,  16
 	db	"ATI VGA Wonder            OK: Henry So              "
 	dw	  54h,   0,   0,   0,   2, 800, 600,  16
-	db	"ATI VGA Wonder            UNTESTED: may not work    "
+	db	"ATI VGA Wonder            OK: Mark Peterson         "
 	dw	  61h,   0,   0,   0,  17, 640, 400, 256
-	db	"ATI VGA Wonder (512K)     UNTESTED: may not work    "
+	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
 	dw	  62h,   0,   0,   0,  17, 640, 480, 256
-	db	"ATI VGA Wonder (512K)     UNTESTED: may not work    "
+	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
 	dw	  63h,   0,   0,   0,  17, 800, 600, 256
+	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
+	dw	  65h,   0,   0,   0,  20,1024, 768,  16
 	db	"Paradise EGA-480          UNTESTED: may not work    "
 	dw	  50h,   0,   0,   0,   1, 640, 480,  16
 	db	"Pdise/AST/COMPAQ VGA      OK: Tom Devlin            "
@@ -169,6 +183,8 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	  58h,   0,   0,   0,   2, 800, 600,  16
 	db	"Pdise/AST/COMPAQ VGA      OK: Phil Wilson           "
 	dw	  59h,   0,   0,   0,   1, 800, 600,   2
+	db	"Tandy 1000 16 Clr LoRez   OK: Tom Price             "
+	dw	   8h,   0,   0,   0,   1, 160, 200,  16
 	db	"Tandy 1000 16 Color CGA   OK: Tom Price             "
 	dw	   9h,   0,   0,   0,   1, 320, 200,  16
 	db	"Tandy 1000 4 Color hi-rez OK: Tom Price             "
@@ -185,24 +201,28 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	   0h,   0,   0,   0,   9, 512, 342, 256
 	db	"TARGA 256 Color 4 x 5     OK: Bruce Goren           "
 	dw	   0h,   0,   0,   0,   9, 512, 384, 256
-	db	"TRIDENT Chipset           UNTESTED: may not work    "
+	db	"TRIDENT Chipset           OK: Warren Gold           "
 	dw	  5bh,   0,   0,   0,   2, 800, 600,  16
-	db	"TRIDENT Chipset           UNTESTED: may not work    "
+	db	"TRIDENT Chipset           OK: Warren Gold           "
 	dw	  5ch,   0,   0,   0,  15, 640, 400, 256
-	db	"TRIDENT Chipset           UNTESTED: may not work    "
+	db	"TRIDENT Chipset           OK: Warren Gold           "
 	dw	  5dh,   0,   0,   0,  15, 640, 480, 256
-	db	"TRIDENT Chipset           UNTESTED: may not work    "
+	db	"TRIDENT Chipset           OK: Warren Gold           "
 	dw	  5eh,   0,   0,   0,  15, 800, 600, 256
-	db	"TRIDENT Chipset           OK: Lew Ramsey Mode (0)   "
-	dw	  5fh,   0,   0,   0,   1,1024, 768,  16
-	db	"Chips & Tech Chipset      UNTESTED: may not work    "
+	db	"TRIDENT Chipset           UNTESTED: May not work    "
+	dw	  5fh,   0,   0,   0,  22,1024, 768,  16
+	db	"Chips & Tech Chipset      OK: Andy Fu               "
 	dw	  78h,   0,   0,   0,  16, 640, 400, 256
-	db	"Chips & Tech Chipset      UNTESTED: may not work    "
+	db	"Chips & Tech Chipset      OK: Andy Fu               "
 	dw	  79h,   0,   0,   0,  16, 640, 480, 256
-	db	"Chips & Tech Chipset      UNTESTED: may not work    "
+	db	"Chips & Tech Chipset      OK: Andy Fu               "
 	dw	  7bh,   0,   0,   0,  16, 800, 600, 256
-	db	"Chips & Tech Chipset      UNTESTED: may not work    "
-	dw	  72h,   0,   0,   0,   1,1024, 768,  16
+	db	"Chips & Tech Chipset      OK: Andy Fu               "
+	dw	  70h,   0,   0,   0,   2, 800, 600,  16
+	db	"Chips & Tech Chipset      UNTESTED: May not work    "
+	dw	  72h,   0,   0,   0,  25,1024, 768,  16
+	db	"Hercules Graphics         OK: Timothy Wegner        "
+	dw	   8h,   0,   0,   0,  10, 720, 348,   2
 	db	"Disk/RAM 'Video'          Full-Page Epson @  60DPI  "
 	dw	   3h,   0,   0,   0,  11, 768, 480,   2
 	db	"Disk/RAM 'Video'          Full-Page Epson @ 120DPI  "
@@ -219,6 +239,8 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	   3h,   0,   0,   0,  11, 360, 480, 256
 	db	"Disk/RAM 'Video'          For Background Fractals   "
 	dw	   3h,   0,   0,   0,  11, 640, 350, 256
+	db	"Disk/RAM 'Video'          For Background Fractals   "
+	dw	   3h,   0,   0,   0,  11, 640, 400, 256
 	db	"Disk/RAM 'Video'          For Background Fractals   "
 	dw	   3h,   0,   0,   0,  11, 640, 480, 256
 	db	"Disk/RAM 'Video'          For Background Fractals   "

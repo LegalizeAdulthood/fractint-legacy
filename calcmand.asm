@@ -76,6 +76,8 @@ FUDGEFACTOR2	equ	24		; potential algoithm variant
 	extrn	bitshift:word		; number of bits to shift
 	extrn	lm:dword		; magnitude bailout limit
 	extrn	potflag:word		; "continuous potential" flag
+	extrn	LogFlag:word		; non-zero of logarithmic palettes
+	extrn	LogTable:dword		; far pointer to log palette table
 
 	extrn	ixstart:word, ixstop:word ; start, stop here
 	extrn	iystart:word, iystop:word ; start, stop here
@@ -163,6 +165,11 @@ yloop:					; for (y = iystart; y <= iystop; y++)
 	mov	ax,ixstart		; initialize inner loop
 	mov	ix,ax			;  ...
 	mov	oldcolor,0		; set (dummy) flag: old color was high
+	cmp	maxit,250		; over 250 iterations max?
+	jbe	xloop			;  nope.
+	mov	bx,maxit		; yup.  reset oldcolor
+	sub	bx,250			;  to maxit-250.
+	mov	oldcolor,bx		;  (avoids slowness at 32000 iters)
 
 xloop:					; for (x = ixstart; x <= ixstop; x++)
 	mov	bx,ix			; pull lx0 value out of the array
@@ -198,23 +205,37 @@ xloop:					; for (x = ixstart; x <= ixstop; x++)
 	cmp	fractype,1		; julia or mandelbrot set?
 	je	short dojulia		; julia set - go there
 
-	cmp	word ptr x,0		; Mandelbrot shortcut:
-	jne	short doeither		;  if creal = cimag = 0,
-	cmp	word ptr x+2,0		; the first iteration can be emulated.
-	jne	short doeither		;  ...
-	cmp	word ptr y,0		;  ...
-	jne	short doeither		;  ...
-	cmp	word ptr y+2,0		;  ...
-	jne	short doeither		;  ...
+;	(Tim wants this code changed so that, for the Mandelbrot,
+;	Z(1) = (x + iy) + (a + ib).  Affects only "fudged" Mandelbrots.
+;	(for the "normal" case, a = b = 0, and this works, too) 
+;	cmp	word ptr x,0		; Mandelbrot shortcut:
+;	jne	short doeither		;  if creal = cimag = 0,
+;	cmp	word ptr x+2,0		; the first iteration can be emulated.
+;	jne	short doeither		;  ...
+;	cmp	word ptr y,0		;  ...
+;	jne	short doeither		;  ...
+;	cmp	word ptr y+2,0		;  ...
+;	jne	short doeither		;  ...
+;	dec	k			; we know the first iteration passed
+;	mov	dx,word ptr a+2		; copy x = a
+;	mov	ax,word ptr a		;  ...
+;	mov	word ptr x+2,dx		;  ...
+;	mov	word ptr x,ax		;  ...
+;	mov	dx,word ptr b+2		; copy y = b
+;	mov	ax,word ptr b		;  ...
+;	mov	word ptr y+2,dx		;  ...
+;	mov	word ptr y,ax		;  ...
+
 	dec	k			; we know the first iteration passed
-	mov	dx,word ptr a+2		; copy x = a
+	mov	dx,word ptr a+2		; add x += a
 	mov	ax,word ptr a		;  ...
-	mov	word ptr x+2,dx		;  ...
-	mov	word ptr x,ax		;  ...
-	mov	dx,word ptr b+2		; copy y = b
+	add	word ptr x,ax		;  ...
+	adc	word ptr x+2,dx		;  ...
+	mov	dx,word ptr b+2		; add y += b
 	mov	ax,word ptr b		;  ...
-	mov	word ptr y+2,dx		;  ...
-	mov	word ptr y,ax		;  ...
+	add	word ptr y,ax		;  ...
+	adc	word ptr y+2,dx		;  ...
+	jmp	short doeither		; branch around the julia switch
 
 dojulia:				; Julia Set initialization
 					; "fudge" Mandelbrot start-up values
@@ -458,6 +479,17 @@ coloradjust2:				;
 	pop	es			;  ...
 	pop	es			;  ...
 coloradjust3:				;  
+	cmp	LogFlag,0		; are log palettes set?
+	je	coloradjust4		;  nope.  don't use log palettes.
+	push	es			; save some registers
+	push	si			;  ...
+	les	si,LogTable		; get the address of the Log Table
+	add	si,ax			; find the offset of the color
+	mov	al,es:0[si]		; replace the color value
+	mov	ah,0			;  ...
+	pop	si			; restore the registers
+	pop	es			;  ...
+coloradjust4:				;  
 	and	ax,andcolor		; select the color
 	mov	color,al		; color result
 
@@ -476,7 +508,8 @@ coloradjust3:				;
 	cmp	fractype,0		; Mandelbrot set?
 	je	sym01			;  yup.  Skip Julia symmetry
 	neg	cx			; convert ix 
-	add	cx,xdots		;  to (xdots-ix)
+	add	cx,xdots		;  to (xdots-1-ix)
+	dec	cx			;  ...
 sym01:	mov	al,color		; color to use
 	call	asmdotwrite		; invoke the appropriate write-a-dot
 
@@ -513,7 +546,8 @@ passcheck1:
 	cmp	fractype,0		; Mandelbrot set?
 	je	sym02			;  yup.  Skip Julia symmetry
 	neg	cx			; convert ix 
-	add	cx,xdots		;  to (xdots-ix)
+	add	cx,xdots		;  to (xdots-1-ix)
+	dec	cx			;  ...
 sym02:	mov	al,color		; color to use
 	call	asmdotwrite		; write the dot again
 	mov	cx,ix			; set up the registers
@@ -525,7 +559,8 @@ sym02:	mov	al,color		; color to use
 	cmp	fractype,0		; Mandelbrot set?
 	je	sym03			;  yup.  Skip Julia symmetry
 	neg	cx			; convert ix 
-	add	cx,xdots		;  to (xdots-ix)
+	add	cx,xdots		;  to (xdots-1-ix)
+	dec	cx			;  ...
 sym03:	mov	al,color		; color to use
 	call	asmdotwrite		; write the dot again
 	mov	cx,ix			; set up the registers
@@ -536,7 +571,8 @@ sym03:	mov	al,color		; color to use
 	cmp	fractype,0		; Mandelbrot set?
 	je	sym04			;  yup.  Skip Julia symmetry
 	neg	cx			; convert ix 
-	add	cx,xdots		;  to (xdots-ix)
+	add	cx,xdots		;  to (xdots-1-ix)
+	dec	cx			;  ...
 sym04:	mov	al,color		; color to use
 	call	asmdotwrite		; write the dot again
 

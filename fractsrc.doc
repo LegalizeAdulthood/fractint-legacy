@@ -21,7 +21,7 @@ the files FRACTINT.MAK and FRACTINT.LNK.  Note that the assembler .OBJ files
 have been included in the .ARC file, so that you don't really need MASM
 unless you are going to modify one or more of them.  If you ARE going to
 modify one of the assembler files, note that the distributed versions rely
-on some nifty features added to version 5.x (like the '.model medium,c'
+on some nifty features added to version 5.1 (like the '.model medium,c'
 option) and will not assemble under older versions of MASM without a LOT
 of work.
 
@@ -38,20 +38,25 @@ provided by Mark as examples of his particular method.  QCFRACT.MAK
 uses 5.1 to compile all but TESTPT.C, and QCTESTPT.MAK is used to load
 and test TESTPT.C in the interactive Quick-C environment.
 
-Uhh, we've gotten word that version 9.0 of FRACTINT is now too big for
+Uhh, we've gotten word that as of version 9.0, FRACTINT is now too big for
 the interactive Quick-C environment.  You apparantly have to use the
 command-line variant of Quick-C these days.
 
 Turbo-C and TASM
 ================
 
-We THINK FRACTINT is now compatible with both of these products, although
+FRACTINT is SUPPOSED to be compatible with both of these products, although
 this one is a constant struggle.  At various points in the development
 cycle the FRACTINT source is processed by several developers like Joe McLain
-that only have the Turbo compiler/assemblers.  Still, there is always the
-possibility that we managed to sneak a last-minute update by them.
-We have included two sample files from Joe (TC.MAK, TC.LNK) that he uses
-to compile and link his copy of FRACTINT.
+that only have the Turbo compiler/assemblers.  Also, when Bert remembers to
+do it (usually right after Joe points out a problem to him), he runs
+FRACTINT through his copy of Turbo C/TASM.  Still, there is always the
+possibility that we managed to sneak a last-minute update by everybody
+("but, we hardly changed anything at all!") that destroys this compatibility.
+We have included two sample files from Joe (TC.MAK, TC.LNK) that compile
+and link FRACTINT using the Turbo products (Note: with version 10.x, we've
+changed those routines to use Bert's non-standard Turbo directory names
+rather than Joe's non-standard Turbo directory names).  
 
 Note that FRACTINT is simply too large for the interactive Turbo-C
 environment.  Sorry, but you're gonna have to use the command line option.
@@ -67,35 +72,52 @@ to look:
 
 FRACTINT.C	- The main routine.  Nothing special here.
 FRACTINT.H	- General Include file.  Nothing special here, either.
+
+FRACTALS.C,	- Most of the fractal-specific code.  If you want to know
+CALCFRAC.C	  how a fractal is calculated, look in here.  Specific
+		  speed-em-up support for special fractal types is in...
+CALCMAND.ASM	- Mandelbrot/Julia set calculations.
+NEWTON.ASM	- Newton calculations
+TESTPT.C	- "Roll-your-own" fractal routine
+
+VIDEO.ASM	- Assembler code containing all of the video routines
+		  (setting up the video, reading/writing pixels, zoom-box
+		  code, color-cycling, graphics-to-text "help" switch,
+		  ... with help from the routines below for special adapters:
+TARGA.C,	- TARGA Video Routines
+TARGA.H,	  ...
+LOADMAP.C,	  ...
+TGASUBS.C	  ...
+FR8514A.ASM	- 8514/A Routines
+HGCFRA.ASM	- Hercules Video Routines
+DISKVID.C	- "DISK'RAM" video routines
+YOURVID.C	- "Roll-your-own" video routines
+
 GENERAL.ASM	- General assembler code having nothing to do with fractals.
-		  MOST OF THE TRICKY STUFF IS IN HERE, and many of the "C"
+		  Lots of the tricky stuff is in here, and many of the "C"
 		  routines that perform tricky functions rely on support
 		  code buried in here.  In particular, this routine has the:
 			CPU, FPU Detectors
-			All direct-video access routines
 			Keyboard routines
 			Mouse routines
-			Zoom-Box routines
 			Expanded memory routines
 			32-bit scaled integer multiply routine
 FARVIDEO.ASM	- Contains the ever-growing internal video table.
+
 ENCODER.C	- GIF Encoder routine.
 GIFVIEW.C,	- GIF Decoder routines.
 DECODER.C,
 TGAVIEW.C,	  (including a TARGA-format encoder/decoder currently used
 F16.C		  only for the "Continuous Potential" algorithm)
+
 LINE3D.C,	- 3D manipulation routines
 3D.C
+
 ROTATE.C	- routines which "spin" the VGA video-DAC.
-CALCMAND.ASM	- The Mandelbrot/Julia set calculations.
-NEWTON.ASM	- The Newton calculations
-CALCFRAC.C	- All of the other fractal set calculations
-TESTPT.C	- "Roll-your-own" fractal routine
 CONFIG.C	- general Fractal File configuration routines.
-DISKVID.C	- "DISK'RAM" video routines
+
 HELP.C,		- HELP support
-FARMSG.ASM
-TARGA.C,	- TARGA Video support
-TARGA.H,
-LOADMAP.C,
-TGASUBS.C
+FARMSG.ASM	- HELP and various other messages (placed in this FAR
+		  segment to free up some precious NEAR data space)
+
+PRINTER.C	- The Printer Routines

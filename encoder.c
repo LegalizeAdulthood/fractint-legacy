@@ -55,17 +55,18 @@ the duplicate string away, saving both string space and a hash table entry).
 expense of compression efficiency (filesize).   These trade-offs could be
 adjusted by modifying the #DEFINEd variables below.
 
-Note that the 'strlocn', 'entrynum', and 'teststring routines are declared
+Note that the 'strlocn' and 'teststring' routines are declared
 to be external just so that they can be defined (and the space re-used)
 elsewhere.  The actual declarations are in the assembler code.
 
 */
 
-#define MAXTEST   100
-#define MAXENTRY  4093		/* a prime number is best for hashing */
-#define MAXSTRING 64000
+#define MAXTEST   100		/* maximum single string length */
+#define MAXSTRING 64000		/* total space reserved for strings */
+				/* maximum number of strings available */
+#define MAXENTRY  5003		/* (a prime number is best for hashing) */
 
-extern int strlocn[MAXENTRY], entrynum[MAXENTRY];
+extern int strlocn[MAXENTRY];
 extern unsigned char teststring[MAXTEST];
 
 static int numsaves = 0;	/* For adjusting 'save-to-disk' filenames */
@@ -102,6 +103,7 @@ char openfile[80], openfiletype[10];
 int i, j, ydot, xdot, color, outcolor1, outcolor2;
 unsigned int hashentry;
 unsigned char bitsperpixel, x;
+int entrynum;
 
 if (extraseg == 0) {			/* not enough memory for this */
 	buzzer(2);
@@ -166,8 +168,13 @@ i = 0;
 fwrite(&i,1,1,out);
 fwrite(&i,1,1,out);
 
-if (colors == 256)			/* write out the 256-color palette */
-	shftwrite(dacbox,colors);
+if (colors == 256) {			/* write out the 256-color palette */
+	if (dacbox[0][0] != 255)	/* got a DAC - must be a VGA */
+		shftwrite(dacbox,colors);
+	else				/* uh oh - better fake it */
+		for (i = 0; i < 256; i += 16)
+			shftwrite(paletteEGA,16);
+	}
 if (colors == 2)			/* write out the B&W palette */
 	shftwrite(paletteBW,colors);
 if (colors == 4)			/* write out the CGA palette */
@@ -216,24 +223,26 @@ for (ydot = 0; ydot < ydots; ydot++) {	/* scan through the dots */
 		hashentry = ++hashcode % MAXENTRY;
 		for( i = 0; i < MAXENTRY; i++) {
 			if (++hashentry >= MAXENTRY) hashentry = 0;
-			if (cmpextra(strlocn[hashentry],
+			if (cmpextra(strlocn[hashentry]+2,
 				teststring,lentest+1) == 0)
 					break;
 			if (strlocn[hashentry] == 0) i = MAXENTRY;
 			}
 		/* found an entry and string length isn't too bad */
 		if (strlocn[hashentry] != 0 && lentest < MAXTEST-3) {
-			lastentry = entrynum[hashentry];
+			fromextra(strlocn[hashentry],&entrynum,2);
+			lastentry = entrynum;
 			continue;
 			}
 		raster(lastentry);			/* write entry */
 		numentries++;		/* act like you added one, anyway */
 		if (strlocn[hashentry] == 0) {	/* add new string, if any */
-			entrynum[hashentry] = numentries+endcode;
+			entrynum = numentries+endcode;
 			strlocn[hashentry] = nextentry;
-			toextra(nextentry,
+			toextra(nextentry, &entrynum,2);
+			toextra(nextentry+2,
 				teststring,lentest+1);
-			nextentry += lentest+1;
+			nextentry += lentest+3;
 			numrealentries++;
 			}
 		teststring[0] = 1;		/* reset current entry */
@@ -246,7 +255,7 @@ for (ydot = 0; ydot < ydots; ydot++) {	/* scan through the dots */
 
 		if ( numentries + endcode > 4093 ||	/* out of room? */
 		 	numrealentries > (MAXENTRY*2)/3 ||
-			nextentry > MAXSTRING-MAXTEST-3) {
+			nextentry > MAXSTRING-MAXTEST-5) {
 			raster(lastentry);		/* flush & restart */
 			inittable();
 			}

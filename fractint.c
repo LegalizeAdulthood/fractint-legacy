@@ -19,14 +19,9 @@
 
 int	adapter;		/* Video Adapter chosen from list in ...h */
 
-char *accessmethod[] =
-	{" ","B"," "," "," ",
-	 " "," "," "," "," ",
-	 " "," "," "," "," "}; /* BIOS access indicator */
-
 struct fractal_info save_info, read_info; /*  for saving data in file */
 
-extern	char    readname[81];     /* name of fractal input file */
+extern	char    readname[];     /* name of fractal input file */
 extern	int     showfile;        /* has file been displayed yet? */
 
 #define	FUDGEFACTOR	29		/* fudge all values up by 2**this */
@@ -40,7 +35,11 @@ long	far history[MAXHISTORY][7];	/* for historical (HOME Key) purposes */
 long	history[MAXHISTORY][7];		/* for historical (HOME Key) purposes */
 #endif
 
-extern	char	savename[80];		/* save files using this name */
+extern	char	savename[];		/* save files using this name */
+
+extern  char preview;    /* 3D preview mode flag */
+
+extern	char	temp1[];			/* temporary strings        */
 
 extern	int	debugflag;		/* internal use only - you didn't see this */
 /*
@@ -68,6 +67,7 @@ extern	int	debugflag;		/* internal use only - you didn't see this */
 	int	hasconfig;			/* = 0 if 'fractint.cfg'    */
 	int	diskisactive;			/* disk-video drivers flag  */
 	int	diskvideo;			/* disk-video access flag   */
+	int	diskprintfs;			/* disk-video access flag   */
 
 extern	long	lx0[MAXPIXELS], ly0[MAXPIXELS];	/* x, y grid                */
 
@@ -91,7 +91,8 @@ extern int	(*outln)();		/* called in decoder */
 extern	int	filetype;		/* GIF or other */
 
 /* variables defined by the command line/files processor */
-
+extern	double	inversion[];
+extern	int	invert;			/* non-zero if inversion active */
 extern	int	initbatch;		/* 1 if batch run (no kbd)  */
 extern	int	initmode;		/* initial video mode       */
 extern	int	inititer;		/* initial value of maxiter */
@@ -105,7 +106,11 @@ extern	double	initxmin,initxmax;	/* initial corner values    */
 extern	double	initymin,initymax;	/* initial corner values    */
 extern	double	initparam[4];		/* initial parameters       */
 extern	double	initpot[4];		/* potential parameters -TW 6/25/89  */
+extern	int	LogFlag;		/* non-zero if logarithmic palettes */
+extern int transparent[];
+extern int decomp[];
 
+extern int rflag, rseed;
 
 void main(argc,argv)
 int argc;
@@ -123,12 +128,12 @@ char *argv[];
 	int	kbdchar;			/* keyboard key-hit value */
 	int	more, kbdmore;			/* continuation variables */
 	int	i, j, k, l;			/* temporary loop counters */
-
-	char	temp1[81];			/* temporary strings        */
 	int	displaypage;			/* signon display page      */
 	int	savedac;			/* save-the-Video DAC flag  */
 	int	olddotmode;			/* temp copy of dotmode	    */
 	long	huge *xxxalloc;			/* Quick-C klooge (extraseg) */
+
+	char accessmethod[2];			/* "B" if through the BIOS */
 
 initasmvars();					/* initialize ASM stuff */
 
@@ -145,6 +150,7 @@ if (debugflag == 8088) cpu = debugflag;	/* for testing purposes */
 savedac = 0;				/* don't save the VGA DAC */
 diskisactive = 0;			/* disk-video is inactive */
 diskvideo = 0;				/* disk driver is not in use */
+diskprintfs = 1;			/* disk-video should display status */
 setvideomode(3,0,0,0);			/* switch to text mode */
 
 restorestart:
@@ -170,15 +176,17 @@ if(*readname){  /* This is why readname initialized to null string */
 			printf("You have selected an unknown (non-fractal) GIF image\n");
 			printf("I am treating this image as a PLASMA CLOUD of unknown video type\n");
 			}
-		if (read_info.dotmode == 11) {
+		if (read_info.dotmode == 11 && ! initbatch) {
 			buzzer(2);
 			printf("You have selected a fractal image generated in 'no-video' mode\n");
 			}
-		if (read_info.info_id[0] == 'G' || read_info.dotmode == 11) {
+		if (read_info.info_id[0] == 'G' ||
+			(read_info.dotmode == 11 && ! initbatch)) {
 			printf("with resolution %d x %d x %d\n",
 				read_info.xdots, read_info.ydots, read_info.colors);
 			}
-		if (read_info.info_id[0] != 'G' && read_info.dotmode != 11)
+		if (read_info.info_id[0] != 'G' &&
+			(read_info.dotmode != 11 || initbatch))
 	 		initmode = getGIFmode(&read_info);
 		if (initmode >= maxvideomode) initmode = -1;
 		if (read_info.info_id[0] != 'G' && read_info.dotmode != 11
@@ -186,6 +194,9 @@ if(*readname){  /* This is why readname initialized to null string */
 			&& hasconfig && ! initbatch ){
                         char c;
 			fromvideotable(initmode);
+			strcpy(accessmethod," ");
+			if (videoentry.dotmode == 1)
+				accessmethod[0] = 'B';
                 	printf("fractal file contains following mode:\n\n");
 #ifdef __TURBOC__
 			printf("%-6.6s %-25.25s%5d x%4d%5d %1.1s  %-25.25s\n",
@@ -197,7 +208,7 @@ if(*readname){  /* This is why readname initialized to null string */
 				videoentry.xdots,
 				videoentry.ydots,
 				videoentry.colors,
-				accessmethod[videoentry.dotmode],
+				accessmethod,
 				videoentry.comment);
                         printf("Legal for this machine? ([Y] or N) --> ");
                 	while((c=getch())!='y' && c!='Y' && c!='n' && c!='N' && c!=13);
@@ -249,6 +260,20 @@ if(*readname){  /* This is why readname initialized to null string */
 			}
 		if (initmode >= 0 && display3d && ! initbatch) {
 			printf("\n\n");
+		    if(preview)
+		       strcpy(temp1,"yes");
+		    else
+		       strcpy(temp1,"no");
+            printf("Preview Mode? (y or n) (if not %3s) ",temp1);
+			gets(temp1);
+			if(*temp1 == 'y' || *temp1 == 'Y') {
+                           preview = 1;
+                           temp1[0] = 0;
+                           }
+                        else {
+                           if (*temp1 != 0)
+                              preview = 0;                  
+                           }
 		    if(SPHERE)
 		       strcpy(temp1,"yes");
 		    else
@@ -392,6 +417,14 @@ if(*readname){  /* This is why readname initialized to null string */
 			k = atoi(temp1);
 			if (temp1[0] >19) LIGHTAVG = k;
 			}
+                        printf("First transparent color (if not %3d) ",transparent[0]);
+                        gets(temp1);
+                        k = atoi(temp1);
+                        if (k > 0) transparent[0] = k;
+                        printf("Last transparent color (if not %3d) ",transparent[1]);
+                        gets(temp1);
+                        k = atoi(temp1);
+                        if (k > 0) transparent[1] = k;
 			}
 		initcorners = 1;
       		}
@@ -437,9 +470,12 @@ bitshift = FUDGEFACTOR2;			/* shift bits by this much */
 if (xxmax - xxmin > 31.99) xxmax = xxmin + 31.99;	/* avoid overflow */
 if (yymax - yymin > 31.99) yymax = yymin + 31.99;
 if (fractype == MANDEL || fractype == MANDELFP || 
-	fractype == JULIA || fractype == JULIAFP) {
-	if (fabs(potparam[0]) < .0001		/* adjust shift bits if */
-		|| debugflag == 1234)		/* not using potential  */
+	fractype == JULIA || fractype == JULIAFP) { /* adust shift bits if.. */
+	if (fabs(potparam[0]) < .0001		/* not using potential & */
+                && (fractype != MANDEL ||	/* not an integer mandel w/ */
+                (ccreal == 0.0 && ccimag == 0.0))/*     "fudged" parameters */
+		&& ! invert			/* and not inverting */
+		&& debugflag != 1234)		/* not special debugging */
 		bitshift = FUDGEFACTOR;
 	if (ccreal < -1.99 || ccreal > 1.99) ccreal = 1.99;
 	if (ccimag < -1.99 || ccimag > 1.99) ccimag = 1.99;
@@ -454,6 +490,9 @@ xxmin = xxmin * fudge; xmin = xxmin;
 xxmax = xxmax * fudge; xmax = xxmax;
 yymin = yymin * fudge; ymin = yymin;
 yymax = yymax * fudge; ymax = yymax;
+
+jxmin = xmin;  jxmax = xmax;
+jymin = ymin;  jymax = ymax;
 
 #ifndef __TURBOC__
 if (extraseg == 0) { 
@@ -485,6 +524,7 @@ while (adapter < 0) {			/* cycle through instructions	*/
 		}
 	else
 		kbdchar = 27;
+        if (kbdchar == 32) continue;		/* spacebar stops scrolling */
 	while (kbdchar == 13 || kbdchar == 1013) { /* ENTER calls help, here */
 		kbdchar = help();
 		}
@@ -513,6 +553,15 @@ while (adapter < 0) {			/* cycle through instructions	*/
 		solidguessing = 1;
 		continue;
 		}
+	if (kbdchar == 'n' || kbdchar == 'N') { /* normal palette */
+		LogFlag = 0;
+		ChkLogFlag();
+		continue;
+		}
+	if (kbdchar == 'l' || kbdchar == 'L') { /* logarithmic palette */
+		LogFlag = 1;
+		continue;
+		}
 	if (kbdchar == 'r' || kbdchar == 'R' ||	kbdchar == '3'
 		|| kbdchar == 'o' || kbdchar == 'O') {	/* restore old image	*/
 		display3d = 0;
@@ -527,19 +576,31 @@ while (adapter < 0) {			/* cycle through instructions	*/
 		olddotmode = dotmode;	/* save the old dotmode */
 		dotmode = 1;		/* force a disable of any 8514/A */
 		setvideomode(3,0,0,0);	/* switch to text mode */
-		printf("\nSelect one of the available fractal types below\n\n");
-		printf("(your current fractal type is %s)\n\n",typelist[initfractype]);
-		for (i = 0; typelist[i] != NULL; i++) {
-			printf("%15s", typelist[i]);
+		printf("\nSelect one of the available fractal types below\n");
+		printf("  (fractal types that use only integer math are marked with an '*')\n");
+		printf("  ((note that you don't have to type in the '*'))\n\n");
+		printf("(your current fractal type is %s)\n\n",
+		        fractalspecific[initfractype].name);
+		for (i = 0; fractalspecific[i].name != NULL; i++) {
+			if (fractalspecific[i].name[0] != '*')
+				printf("%15s", fractalspecific[i].name);
+			if (fractalspecific[i].isinteger)
+				printf("*");
+			else
+				printf(" ");
 			if ((i & 3) == 3 ) printf("\n");
 			}
 		j = -1; while (j < 0) {
 			printf("\n\n Enter your fractal type (an empty response bails out) ->");
+			temp1[0] = 0;
 			gets(temp1);
 			if (temp1[0] == 0) break;
+			if (temp1[strlen(temp1)-1] == '*')
+				temp1[strlen(temp1)-1] = 0;
 			strlwr(temp1);
-			for (i = 0; typelist[i] != NULL && strcmp(typelist[i], temp1) != 0; i++) ;
-			if (typelist[i] == NULL) {
+			for (i = 0; fractalspecific[i].name != NULL &&
+			        strcmp(fractalspecific[i].name, temp1) != 0; i++) ;
+			if (fractalspecific[i].name == NULL) {
 				buzzer(2);
 				printf("\nPlease try that again");
 				}
@@ -548,28 +609,32 @@ while (adapter < 0) {			/* cycle through instructions	*/
 			}
 		if (temp1[0] == 0) goto restart;
 		initfractype = j;
+		invert = 0;
+		inversion[0] = inversion[1] = inversion[2] = 0;
 		for ( i = 0; i < 4; i++)
 			initparam[i] = 0.0;
 		for ( i = 0; i < 4; i++) /* TW 6/19/89 */
 			potparam[i] = 0.0;
 		printf("\n\n Please enter any parameters that apply (an empty response bails out) \n\n");
 		for (i = 0; i < 4; i++) {
-			if (paramlist[initfractype][i][0] == 0) break;
-			printf(" %s => ", paramlist[initfractype][i]);
+			if (fractalspecific[initfractype].param[i][0] == 0) break;
+			printf(" %s => ", fractalspecific[initfractype].param[i]);
+			temp1[0] = 0;
 			gets(temp1);
 			initparam[i] = atof(temp1);
 			if (temp1[0] == 0) i = 99;
 			}
 		initcorners = 1;
-		initxmin = -2.5;
-		initxmax =  1.5;
-		initymin = -1.5;
-		initymax =  1.5;
-		if (initfractype != MANDEL && initfractype != MANDELFP) {
-			initxmin = -2.0;
-			initxmax =  2.0;
-			}
+		initxmin = fractalspecific[initfractype].xmin;
+		initxmax = fractalspecific[initfractype].xmax;
+		initymin = fractalspecific[initfractype].ymin;
+		initymax = fractalspecific[initfractype].ymax;
 		dotmode = olddotmode;
+		goto restart;
+		}
+	if (kbdchar == 'e' || kbdchar == 'E') {	/* set IFS fractal parms */
+		clscr();
+		ifsgetparams();		/* get the parameters */
 		goto restart;
 		}
 	else 
@@ -599,7 +664,7 @@ while (more) {					/* eternal loop */
 
 	diskvideo = 0;				/* set diskvideo flag */
 	if (dotmode == 11)			/* default assumption is disk */
-		diskvideo = 1;
+		diskvideo = 2;
 
 	memcpy(olddacbox,dacbox,256*3);		/* save the DAC */
 	diskisactive = 1;		/* flag for disk-video routines */
@@ -645,6 +710,8 @@ while (more) {					/* eternal loop */
 	ystep   = ydots / 40;			/* zoom-box increment: down */
 	if (xdots == 640 && ydots == 350)	/* zoom-box adjust:  640x350 */
 		{ xstep = 16; ystep =  9; }
+	if (xdots == 720 && ydots == 348)	/* zoom-box adjust:  720x348 */
+		{ xstep = 18; ystep =  9; }
 	if (xdots == 632 && ydots == 474)	/* zoom-box adjust:  632x474 */
 		{ xstep = 16; ystep = 12; }
 	if (xdots == 720 && ydots == 512)	/* zoom-box adjust:  720x512 */
@@ -655,17 +722,20 @@ while (more) {					/* eternal loop */
 		{ xstep = 32; ystep = 24; }
 	if (xdots == 1016 && ydots == 762)	/* zoom-box adjust: 1018x762 */
 		{ xstep = 32; ystep = 24; }
+	if (xdots == 720 && ydots == 348)	/* zoom-box adjust:  720x348 */
+		{ xstep = 18; ystep =  9; }
 
 	delx = ((xmax - xmin) / (xdots - 1));	/* calculate the stepsizes */
 	dely = ((ymax - ymin) / (ydots - 1));
 
+	zoomoff = 1;				/* zooming is enabled */
 	if (delx <= 1 || dely <= 1) {	/* oops.  zoomed too far */
 		zoomoff = 0;
 		dely = 1;
 		delx = 1;
 		}
-	if (dotmode == 11 || fractype == PLASMA)	/* disable zooming */
-		zoomoff = 0;
+	if (dotmode == 11 || fractype == PLASMA)
+		zoomoff = 0;		/* disable zooming */
 
 	lx0[0] = xmin;				/* fill up the x, y grids */
 	ly0[0] = ymax;
@@ -678,6 +748,9 @@ while (more) {					/* eternal loop */
 		xmax = lx0[xdots-1];		/* re-set xmax and ymax */
 		ymin = ly0[ydots-1];
 		}
+
+         if ((fractype == MANDEL || fractype == JULIA) && bitshift == 29)
+            decomp[1] = 0;      /* make the world safe for decomposition */
 
 	if (history[0][0] == -1)			/* initialize the history file */
 		for (i = 0; i < MAXHISTORY; i++) {
@@ -784,19 +857,31 @@ resumeloop:					/* return here on failed overlays */
 				olddotmode = dotmode;	/* save the old dotmode */
 				dotmode = 1;		/* force a disable of any 8514/A */
 				setvideomode(3,0,0,0);	/* switch to text mode */
-				printf("\nSelect one of the available fractal types below\n\n");
-				printf("(your current fractal type is %s)\n\n",typelist[fractype]);
-				for (i = 0; typelist[i] != NULL; i++) {
-					printf("%15s", typelist[i]);
+				printf("\nSelect one of the available fractal types below\n");
+				printf("  (fractal types that use only integer math are marked with an '*')\n");
+				printf("  ((note that you don't have to type in the '*'))\n\n");
+				printf("(your current fractal type is %s)\n\n",
+				        fractalspecific[fractype].name);
+				for (i = 0; fractalspecific[i].name != NULL; i++) {
+					if (fractalspecific[i].name[0] != '*')
+						printf("%15s", fractalspecific[i].name);
+					if (fractalspecific[i].isinteger)
+						printf("*");
+					else
+						printf(" ");
 					if ((i & 3) == 3 ) printf("\n");
 					}
 				j = -1; while (j < 0) {
 					printf("\n\n Enter your fractal type (an empty response bails out) ->");
+					temp1[0] = 0;
 					gets(temp1);
 					if (temp1[0] == 0) goto restart;
+					if (temp1[strlen(temp1)-1] == '*')
+						temp1[strlen(temp1)-1] = 0;
 					strlwr(temp1);
-					for (i = 0; typelist[i] != NULL && strcmp(typelist[i], temp1) != 0; i++) ;
-					if (typelist[i] == NULL) {
+					for (i = 0; fractalspecific[i].name != NULL &&
+						strcmp(fractalspecific[i].name, temp1) != 0; i++) ;
+					if (fractalspecific[i].name == NULL) {
 						printf("\nPlease try that again");
 						buzzer(2);
 						}
@@ -804,54 +889,79 @@ resumeloop:					/* return here on failed overlays */
 						j = i;
 					}
 				if (temp1[0] == 0) break;
+				invert = 0;
+				inversion[0] = inversion[1] = inversion[2] = 0;
 				initfractype = j;
 				savedac = 0;
 				for ( i = 0; i < 4; i++)
 					initparam[i] = 0.0;
 				printf("\n\n Please enter any parameters that apply (an empty response bails out)\n\n");
 				for (i = 0; i < 4; i++) {
-					if (paramlist[initfractype][i][0] == 0) break;
-					printf(" %s => ", paramlist[initfractype][i]);
+					if (fractalspecific[initfractype].param[i][0] == 0) break;
+					printf(" %s => ", fractalspecific[initfractype].param[i]);
+					temp1[0] = 0;
 					gets(temp1);
 					initparam[i] = atof(temp1);
 					if (temp1[0] == 0) i = 99;
 					}
 				initcorners = 1;
-				initxmin = -2.5;
-				initxmax =  1.5;
-				initymin = -1.5;
-				initymax =  1.5;
-				if (initfractype != MANDEL && initfractype != MANDELFP) {
-					initxmin = -2.0;
-					initxmax =  2.0;
-					}
+				initxmin = fractalspecific[initfractype].xmin;
+				initxmax = fractalspecific[initfractype].xmax;
+				initymin = fractalspecific[initfractype].ymin;
+				initymax = fractalspecific[initfractype].ymax;
 				initmode = adapter;
 				dotmode = olddotmode;
 				goto restart;
 				break;
+			case 'e':			/* new IFS parms    */
+			case 'E':
+				setfortext();		/* switch to text mode */
+				ifsgetparams();		/* get the parameters */
+				setforgraphics();	/* back to graphics */
+				kbdmore = 0;
+				break;
+			case 'i':			/* inversion parms    */
+			case 'I':
+				setfortext();		/* switch to text mode */
+				get_invert_params();	/* get the parameters */
+				setforgraphics();	/* back to graphics */
+				kbdmore = 0;
+				break;
+			case 'q':			/* decomposition parms    */
+			case 'Q':
+				setfortext();		/* switch to text mode */
+				get_decomp_params();	/* get the parameters */
+				setforgraphics();	/* back to graphics */
+				kbdmore = 0;
+				break;
 			case 32:			/* spacebar */
-				if (fractype == MANDEL || fractype == MANDELFP) {	/* switch to Julia */
-					if (fractype == MANDEL) fractype = JULIA;
-					if (fractype == MANDELFP) fractype = JULIAFP;
+				if (fractalspecific[fractype].tojulia != NOFRACTAL
+					&& creal == 0 && cimag == 0) { 
+				 	/* switch to corresponding Julia set */
+					fractype = fractalspecific[fractype].tojulia;
 					creal = (xmax + xmin) / 2;
 					cimag = (ymax + ymin) / 2;
 					param[0] = creal; param[0] /= fudge;
 					param[1] = cimag; param[1] /= fudge;
+					jxmin = lx0[0]; jxmax = lx0[xdots-1];
+					jymax = ly0[0]; jymin = ly0[ydots-1];
+/*
 					jxmin = xmin;  jxmax = xmax;
 					jymin = ymin;  jymax = ymax;
-					xxmax =  1.99;
- 					xxmin = -1.99;
-					yymax =   1.5;
-					yymin =  -1.5;
+*/
+					xxmin = fractalspecific[fractype].xmin;
+					xxmax = fractalspecific[fractype].xmax;
+					yymin = fractalspecific[fractype].ymin;
+					yymax = fractalspecific[fractype].ymax;
 					xxmin = xxmin * fudge; xmin = xxmin;
-					xxmax = xxmax * fudge; xmax = xxmax + 100;
-					yymin = yymin * fudge; ymin = yymin - 100;
+					xxmax = xxmax * fudge; xmax = xxmax - 100;
+					yymin = yymin * fudge; ymin = yymin + 100;
 					yymax = yymax * fudge; ymax = yymax;
 					zoomoff = 1;
 					}
-				else { if (fractype == JULIA || fractype == JULIAFP) {	/* switch to Mandel */
-					if (fractype == JULIA) fractype = MANDEL;
-					if (fractype == JULIAFP) fractype = MANDELFP;
+				else if (fractalspecific[fractype].tomandel != NOFRACTAL) { 
+				 	/* switch to corresponding Mandel set */
+					fractype = fractalspecific[fractype].tomandel;
 					creal = 0;
 					cimag = 0;
 					param[0] = 0;
@@ -860,7 +970,7 @@ resumeloop:					/* return here on failed overlays */
 					ymin = jymin;  ymax = jymax;
 					zoomoff = 1;
 					}
-				else buzzer(2); }		/* no switch */
+				else buzzer(2);		/* no switch */
 				kbdmore = 0;
 				break;
 			case 1071:			/* home */
@@ -884,15 +994,25 @@ resumeloop:					/* return here on failed overlays */
 				yymax = ymax; yymax = yymax / fudge;
 				yymin = ymin; yymin = yymin / fudge;
 				setfortext();
-				printf("\n\nCurrent Fractal Type is: %-7s \n\n", typelist[fractype]);
-				printf("   Param1 = %12.9f \n",param[0]);
-				printf("   Param2 = %12.9f \n",param[1]);
+				printf("\n\nCurrent Fractal Type is: %-7s \n\n", 
+				        fractalspecific[fractype].name);
+                for(i=0;i<4;i++)
+				printf("   Param%1d = %12.9f \n",i+1,param[i]);
 				printf("\nCurrent Screen Corners are: \n\n");
 				printf("     Xmin = %12.9f \n",xxmin);
 				printf("     Xmax = %12.9f \n",xxmax);
 				printf("     Ymin = %12.9f \n",yymin);
 				printf("     Ymax = %12.9f \n",yymax);
 				printf("\nCurrent Iteration Maximum = %d\n",maxit);
+				if (fractype == PLASMA)
+				  printf("\nCurrent 'rseed=' value is %d\n",rseed);
+				if(invert) {
+					extern double f_radius,f_xcenter,f_ycenter;
+					printf("\nCurrent Inversion parameters are: \n\n");
+					printf("   radius = %12.9f \n",f_radius);
+					printf("  xcenter = %12.9f \n",f_xcenter);
+					printf("  ycenter = %12.9f \n",f_ycenter);
+					}
 				printf("\nPress any key to continue...");
 				getakey();
 				setforgraphics();
@@ -916,7 +1036,12 @@ resumeloop:					/* return here on failed overlays */
 				maxit -= initincr;	/* for fall-thru */
 			case '>':			/* raise iter maximum */
 			case '.':
-				if (maxit <= 1000-initincr) maxit += initincr;
+				if (maxit <= 32000-initincr) maxit += initincr;
+				if (LogFlag) {		/* log palettes? */
+					LogFlag = 0;	/* clear them out */
+					ChkLogFlag();
+					LogFlag = 1;	/* and re-calculate */
+					}
 				continue;
 				break;
 			case 'c':			/* switch to cycling */
@@ -1003,6 +1128,7 @@ resumeloop:					/* return here on failed overlays */
 						readname);
 				else
 					printf(" what file? ");
+				temp1[0] = 0;
 				gets(temp1);
 				if (temp1[0] != 0)
 					strcpy(readname,temp1);
@@ -1021,6 +1147,17 @@ resumeloop:					/* return here on failed overlays */
 				solidguessing = 1;
 				kbdmore = 0;	
 				break;
+			case 'n':			/* normal palette */
+			case 'N':
+				LogFlag = 0;
+				ChkLogFlag();
+				kbdmore = 0;
+				break;
+			case 'l':			/* log palette */
+			case 'L':
+				LogFlag = 1;
+				kbdmore = 0;
+				break;
 			case 'b':			/* make batch file */
 			case 'B':
 				{
@@ -1030,7 +1167,8 @@ resumeloop:					/* return here on failed overlays */
 				yymax = ymax; yymax = yymax / fudge;
 				yymin = ymin; yymin = yymin / fudge;
 				batch=fopen("frabatch.bat","a");
-				fprintf(batch,"fractint type=%s", typelist[fractype]);
+				fprintf(batch,"fractint type=%s",
+				        fractalspecific[fractype].name);
 				if (delx > 1000 && dely > 1000)
 				fprintf(batch," corners=%g/%g/%g/%g",
 					xxmin, xxmax, yymin, yymax);
@@ -1045,6 +1183,12 @@ resumeloop:					/* return here on failed overlays */
 					fprintf(batch," iterincr=%d", initincr);
 				if (inside != 1)
 					fprintf(batch," inside=%d", inside);
+				if (invert) 
+					fprintf(batch," invert=%g/%g/%g",
+						inversion[0], inversion[1], inversion[2]);
+				if (decomp[0]) 
+					fprintf(batch," decomp=%d/%d",
+						decomp[0], decomp[1]);
 				fprintf(batch,"\n");
 				if(batch != NULL) fclose(batch);
 				}
@@ -1155,6 +1299,13 @@ resumeloop:					/* return here on failed overlays */
 						iymin -= 5;
 						iymax += 5;
 						}
+					/* 720x348 Zoom-In Klooge:  Adjust the
+					   Zoom-Box on the initial Zoom-In */
+					if (xdots == 720 && ydots == 348
+					  && iymin == 0  && iymax == ydots-1) {
+						iymin -= 6;
+						iymax += 6;
+						}
 					/* 720x512 Zoom-In Klooge:  Adjust the
 					   Zoom-Box on the initial Zoom-In */
 					if (xdots == 720 && ydots == 512
@@ -1205,22 +1356,78 @@ resumeloop:					/* return here on failed overlays */
 
 }
 
+get_decomp_params()
+{
+   decomp[0] = decomp[1] = 0;
+   printf("\n\nPlease enter your Decomposition Parameters:\n");
+   printf("\nNumber of quadrant colors (2, 4 or <ENTER> to disable this option) : ");
+   gets(temp1);
+   if (temp1[0] == 0) return;
+   decomp[0] = atoi(temp1);
+   if (decomp[0] == 0) return;
+   printf("\nPlease enter your new Bailout value (or <ENTER> to use the default) : ");
+   gets(temp1);
+   decomp[1] = atoi(temp1);   
+}
+
+get_invert_params()
+{
+   extern int StandardFractal();
+   extern int calcmand();
+   invert = 0;
+   inversion[0] = inversion[1] = inversion[2] = 0;
+   if(fractalspecific[initfractype].calctype != StandardFractal &&
+      fractalspecific[initfractype].calctype != calcmand) 
+      return(0);
+   printf("\n\n Please enter inversion parameters that apply (an empty response bails out)\n");
+   printf(" (Also, note that the inversion option requires a fixed radius and center for zooming\n");
+   printf("  to make sense - if you want to zoom, do not use default values, but specify radius\n");
+   printf("  and center\n");
+   printf("Radius of inversion (-1 for auto calculate) => "); 
+   temp1[0] = 0;
+   gets(temp1);
+   if(temp1[0] != 0)
+   {
+      inversion[0] = atof(temp1);
+      invert++;
+      printf("X Center inversion (<enter for auto calc) => "); 
+      temp1[0] = 0;
+      gets(temp1);
+      if(temp1[0] != 0)
+      {
+         inversion[1] = atof(temp1);
+         invert++;
+         printf("Y Center inversion (<enter> for auto calculate) => "); 
+         temp1[0] = 0;
+         gets(temp1);
+         if(temp1[0] != 0)
+         {
+            inversion[2] = atof(temp1);
+            invert++;
+         }   
+      }
+   }
+}
+
+extern char far argerrormessage[];
+
 argerror(badarg)			/* oops.   couldn't decode this */
 char *badarg;
 {
 
 buzzer(2);
 printf("\nOops.   I couldn't understand the argument '%s'\n\n",badarg);
-printf("(see the Startup Help screens or FRACTINT.DOC for a complete argument list\n");
-printf(" with descriptions):\n\n");
+helpmessage(argerrormessage);
 exit(1);
 
 }
 
+extern char far goodbyemessage[];
+
 goodbye()
 {
 setvideomode(3,0,0,0);
-printf("\n\nThank You for using FRACTINT\n\n");
+helpmessage(goodbyemessage);
 exit(0);
 }
 

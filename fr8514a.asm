@@ -35,11 +35,11 @@ afiptr		dd	0
 xadj		dw	0
 yadj		dw	0
 
-paldata		db	1024 dup (?)
+extrn		paldata:byte		; 1024-byte array (in GENERAL.ASM)
+
+extrn		stbuff:byte		; 415-byte array (in GENERAL.ASM)
 
 linedata	db	0
-
-stbuff		db	415 dup (?)
 
 hopendata	db	3, 0, 0, 0, 0
 hclosedata	dw	2, 0
@@ -56,6 +56,13 @@ amode		dw	18, 9 dup(?)
 
 ;svpaldata	dw	769
 ;		db	769 dup(?)
+
+oops		db	13,10
+		db	"Couldn't find the 8514/A interface"
+		db	13,10
+		db	"(Maybe you forgot to load HDIDLOAD)"
+		db	13,10
+		db	"$"
 
 .CODE
 
@@ -186,9 +193,17 @@ ydotsok:
 	shr	ax, 1
 	mov	yadj, ax
 	clc
-
-afinotfound:
 	ret
+
+afinotfound:				; No 8514/A interface found
+	mov	ax,03h			; reset to text mode
+	int	10h
+	mov	dx,offset oops		; error out
+	mov	ah,9			; sending the message
+	int	21h
+	mov	ax,4c00h		; end the program
+	int	21h
+	ret				; should never get here!
 
 open8514	endp
 

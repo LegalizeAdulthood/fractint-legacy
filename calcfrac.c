@@ -1,3 +1,15 @@
+/*
+
+FRACTALS.C and CALCFRAC.C actually calculate the fractal images (well,
+SOMEBODY had to do it!).  The modules are set up so that all logic that
+is independent of any fractal-specific code is in CALCFRAC.C, and the
+code that IS fractal-specific is in FRACTALS.C. Original author Tim Wegner,
+but just about ALL the authors have contributed SOME code to this routine
+at one time or another, or contributed to one of the many massive
+restructurings.
+
+   -------------------------------------------------------------------- */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <float.h>
@@ -10,24 +22,25 @@
 #include "fmath.h"
 #include "targa_lc.h"
 
-/*******************************************************
-** Changes made to support external Newton() routine: **
-*******************************************************/
+/* defines should match fractalspecific array indices */
 
-double roverd, d1overd, threshold, floatmin;
-int infinity, maxcolor;
+extern char far plasmamessage[];
+long lmagnitud, llimit, llimit2, lclosenuff;
+struct complex init,tmp,old,new,saved;
+extern long inity;
 
-int color, oldcolor, oldmax, row, col, passes;
-struct complex init,tmp,old,new,saved,roots[10];
-int iterations, root, degree, not_done, invert, invertsym;
+int color, oldcolor, oldmax, oldmax10, row, col, passes;
+int iterations, invert;
+double f_radius,f_xcenter, f_ycenter; /* for inversion */
 double far *dx0, far *dy0;
+long XXOne, FgOne, FgTwo, LowerLimit;
+
+extern int LogFlag;
+extern char far *LogTable;
 
 void (*plot)() = putcolor;
 
-/**********************
-** Back to old code: **
-**********************/
-
+extern double inversion[];	    /* inversion radius, f_xcenter, f_ycenter */
 extern int	xdots, ydots;		/* coordinates of dots on the screen  */
 extern int	colors;				/* maximum colors available */
 extern int	inside;				/* "inside" color to use    */
@@ -39,6 +52,9 @@ extern int	debugflag;			/* for debugging purposes */
 extern int	timerflag;			/* ditto */
 extern	int	diskvideo;			/* for disk-video klooges */
 
+extern int rflag, rseed;
+extern int decomp[];
+
 extern double	param[];		/* parameters */
 extern double	potparam[];		/* potential parameters */
 extern long	lx0[], ly0[];		/* X, Y points */
@@ -47,42 +63,32 @@ extern long	fudge;				/* fudge factor (2**n) */
 extern int	bitshift;			/* bit shift for fudge */
 extern char potfile[];          /* potential filename */
 
-/* COMPLEX stuff */
-#define REAL_ONE     1
-#define REAL_NEG_ONE 2
-#define IMAG_ONE     3
-#define IMAG_NEG_ONE 4
-#define MAX_COLOR    5
-#define INFINITY    14
-#define THRESHOLD .2
 
 #ifndef sqr
 #define sqr(x) ((x)*(x))
 #endif
 
-#define modulus(z)       (sqr((z).x)+sqr((z).y))
-#define conjugate(pz)   ((pz)->y = 0.0 - (pz)->y)
-#define distance(z1,z2)  (sqr((z1).x-(z2).x)+sqr((z1).y-(z2).y))
-
-struct complex one = {1,0};
+extern    int extraseg;
 
 /* These are local but I don't want to pass them as parameters */
 static    unsigned char top;   /* flag to indicate top of calcfract */ 
-static    double xxmin,xxmax,yymin,yymax; /* corners */
-static	  struct complex lambda;
 static    unsigned char c;
 static	  int i;
-          double deltaX, deltaY;
-static    double magnitude, rqlim;
-static    int Xdots, Ydots; /* local dots */
-static    double parm1,parm2;
-extern    int extraseg;
-static    int (*calctype)();
-static    double closenuff;
-static    int pixelpi; /* value of pi in pixels */
-          FILE *fp_pot;
-          int potflag; /* tells if continuous potential on  */
-	  unsigned long lm;		/* magnitude limit (CALCMAND) */
+
+double xxmin,xxmax,yymin,yymax; /* corners */
+struct complex lambda;
+double deltaX, deltaY;
+double magnitude, rqlim;
+int XXdots, YYdots; /* local dots */
+double parm1,parm2;
+double *floatparmx,*floatparmy;
+long *longparmx,*longparmy;
+int (*calctype)();
+double closenuff;
+int pixelpi; /* value of pi in pixels */
+FILE *fp_pot;
+int potflag; /* tells if continuous potential on  */
+unsigned long lm;		/* magnitude limit (CALCMAND) */
 
 /* ORBIT variables */
 int	show_orbit;			/* flag to turn on and off */
@@ -94,6 +100,22 @@ int	ixstart, ixstop, iystart, iystop;	/* (for CALCMAND) start, stop here */
 int	symmetry;			/* symmetry flag for calcmand()	*/
 int	guessing;			/* solid-guessing flag for calcmand() */
 
+static	int	integerfractal;		/* TRUE if fractal uses integer math */
+
+/* -------------------------------------------------------------------- */
+/*		These variables are external for speed's sake only	*/
+/* -------------------------------------------------------------------- */
+
+long newx, newy;
+long lambdax, lambday;
+long savedx, savedy;
+int periodicitycheck;
+
+extern double floatmin, floatmax;
+
+int StandardFractal();
+
+
 calcfract()
 {
    top     = 1;
@@ -101,6 +123,12 @@ calcfract()
    {
       fclose(fp_pot);
       fp_pot = NULL;
+   }
+
+   if (invert)
+   {
+      floatmin = FLT_MIN;
+      floatmax = FLT_MAX;
    }
 
    ixstart = 0;				/* default values to disable ..	*/
@@ -131,14 +159,13 @@ calcfract()
       return(-1);
    dy0 = dx0 + MAXPIXELS;
 
-   plot = putcolor;
-   Xdots = xdots;
-   Ydots = ydots; 
-
    if(fabs(potparam[0]) > 0.0)
       potflag = 1;
    else
       potflag = 0;   
+
+   if (LogFlag)
+      ChkLogFlag();
 
    lm = 4;				/* CALCMAND magnitude limit */
    lm = lm << bitshift;
@@ -147,10 +174,13 @@ calcfract()
       lm = potparam[2]*fudge;
 */
    /* set modulus bailout value if 3rd potparam set */
-   if(fabs(potparam[2]) > 0.0) 
+
+   if (fabs(potparam[2]) > 0.0) 
       rqlim = potparam[2];
-   else
-      rqlim = 4.0;
+   else if (decomp[0] > 0 && decomp[1] > 0) 
+      rqlim = (double)decomp[1];
+   else 
+      rqlim = fractalspecific[fractype].orbit_bailout;
 
    /* ORBIT stuff */
    save_orbit = (int far *)(dx0 + 2*MAXPIXELS);
@@ -159,11 +189,8 @@ calcfract()
    if(colors < 16)
        orbit_color = 1;
 
-/* initialization code that gets run for all but the original mandelbrot
-   and Julia set functions */
-
-if (fractype != MANDEL && fractype != JULIA
-   && fractype != LAMBDA && fractype != PLASMA) 
+   integerfractal = fractalspecific[fractype].isinteger;
+   if ((!integerfractal) || invert)
    {
       /* set up dx0 and dy0 analogs of lx0 and ly0 in Bert's "extra" segment */
       /* put fractal parameters in doubles */
@@ -172,248 +199,92 @@ if (fractype != MANDEL && fractype != JULIA
       for(i=0;i<ydots;i++)
         dy0[i] = (double)ly0[i] / fudge;
    }
-   
-/* LC 5/9/89: Added support for Inversion of Newtons */
 
-   invert = 0;
-   invertsym = 1;
-   if ((fractype == NEWTON || fractype == NEWTBASIN) && param[1] != 0.0) 
+   if (integerfractal)	 	/* the bailout limit can't be too high here */
+      if (rqlim > 127.0) rqlim = 127.0;
+   if(inversion[0] != 0.0)
    {
-      invert = 1;
-      if (param[2] != 0.0 || param[3] != 0.0) invertsym = 0;
-      if (param[2] == 0.0) 
-         param[2] = (dx0[ixstart] + dx0[ixstop]) / 2.0;
-      if (param[3] == 0.0) 
-         param[3] = (dy0[iystart] + dy0[iystop]) / 2.0;
+      f_radius    = inversion[0];
+      f_xcenter   = inversion[1];
+      f_ycenter   = inversion[2];
+      
+      if (inversion[0] < 0.0)  /*  auto calc radius 1/6 screen */
+         inversion[0] = f_radius = (min(xxmax - xxmin,yymax - yymin)) / 6.0;
+      
+      if (invert < 2) { /* xcenter not already set */
+         inversion[1] = f_xcenter = (xxmin + xxmax) / 2.0;
+         if (fabs(f_xcenter) < (xxmax-xxmin) / 100)
+	         inversion[1] = f_xcenter = 0.0;
+         }
+
+      if (invert < 3) { /* ycenter not already set */
+         inversion[2] = f_ycenter = (yymin + yymax) / 2.0;
+         if (fabs(f_ycenter) < (yymax-yymin) / 100)
+	         inversion[2] = f_ycenter = 0.0;
+         }
+
+      invert = 3; /* so values will not be changed if we come back */
    }
 
-   if (potfile[0] != 0) 				/* potential file? */
+   setsymmetry(fractalspecific[fractype].symmetry);
+
+   if (potfile[0] != 0) 			/* potential file? */
    {
       numpasses = 0;				/* disable dual-pass */
 	  solidguessing = 0;			/* disable solid-guessing */
    }
-
-   /* set things up for right fractal calculation */
-   switch(fractype)
-   {
-   case PLASMA:
-      timer(plasma,0);
-      break;
-   case MANDEL:
-   case JULIA:
-      /* call original ASM fractint Mandelbrot or Julia */
-      symmetry = 0;           /* first, claim symmetry is true */
-      if (diskvideo || potfile[0])      /* no symmetry in disk-video mode */
-         symmetry = 1;
-      if (fabs(yymax + yymin) > fabs(yymax - yymin)*.01)
-         symmetry = 1;        /* non-symmetrical along the Y-axis */
-      if (fractype == JULIA && fabs(xxmax + xxmin) > fabs(xxmax - xxmin)*.01)
-         symmetry = 1;        /* non-symmetrical along the X-axis */
-      if (symmetry == 0)      /* is symmetry still true? */
-         Ydots /= 2;          /* well, then, let's cut the load in half! */
-
-      if(solidguessing)
-      {
-         calctype = calcmand;
-         timer(solidguess,0);
-      }   
-      else
-         timer(calcmand,0);
-      break;
-   case NEWTBASIN:
-   case NEWTON:
-      /* set up table of roots of 1 along unit circle */
-      degree = (int)parm1;
-      if(degree  >= 10)
-         degree = 10;
-      else if(degree < 3)
-         degree = 3;
-
-/*******************
-** More new code: **
-*******************/
-
-	  root = 1;
-	  roverd = (double)root / (double)degree;
-	  d1overd = (double)(degree - 1) / (double)degree;
-	  floatmin = FLT_MIN;
-	  threshold = THRESHOLD;
-	  infinity = INFINITY;
-	  maxcolor = MAX_COLOR;
-
-/***************************
-** Back to the old stuff: **
-***************************/
-
-      for(i=0;i<degree;i++)
-      {
-         roots[i].x = cos(i*PI*2.0/(float)degree);
-         roots[i].y = sin(i*PI*2.0/(float)degree);
-      }
-     if ((! diskvideo) 
-            && fabs(xxmax + xxmin) < .0001 && fabs(yymax + yymin) < .0001 
-            && fractype==NEWTON && degree%4 == 0 && invertsym)
-     {
-         plot = symplot4 ;
-         Xdots /= 2 ;
-         Ydots /= 2 ;
-         iystop = Ydots -1;
-         ixstop = Xdots -1;
-     }
-     else if ((! diskvideo) && fabs(yymax + yymin) < .0001 && fractype==NEWTON && invertsym)
-      {
-         plot = symplot2 ;
-         Ydots /= 2 ;
-         iystop = Ydots -1;
-     }
-     else
-         plot = putcolor;
-      if(solidguessing)
-      {
-         calctype = MainNewton;
-         timer(solidguess,0);
-      }   
-      else
-         timer(MainNewton,0);
-      break;
-   case LAMBDA:
-      /* lambda function */
-      closenuff = ((delx < dely ? delx : dely) >> 1); /* for periodicity checking */
-      closenuff /= fudge;
-      if(solidguessing)
-      {
-         calctype = Lambda;
-         timer(solidguess,0);
-      }   
-      else
-         timer(Lambda,0);
-      break;
-   case MANDELFP:
-      /* floating point mandelbrot */
-      if ((!potfile[0]) && (! diskvideo) &&
-         fabs(yymax + yymin) < fabs(yymax - yymin)*.01)	/* Take advantage of Y-axis */
-      {							/* symmetry to halve needed */
-         plot = symplot2 ; 		/* calculations.            */
-		 Ydots /= 2 ;		        /* Here, the choice of plot */
-         iystop = Ydots -1;
-      }							/* function is made         */
-      else
-         plot = putcolor ;
    
-      closenuff = ((delx < dely ? delx : dely) >> 1); /* for periodicity checking */
-      closenuff /= fudge;
-      if(solidguessing)
-      {
-         calctype = Mandelfp;
-         timer(solidguess,0);
-      }   
-      else
-         timer(Mandelfp,0);
-      break;
-   case JULIAFP:
-      /* floating point Julia */
-      if ((!potfile[0]) && (! diskvideo) &&
-          fabs(yymax + yymin) < fabs(yymax - yymin)*.01 &&
-          fabs(xxmax + xxmin) < fabs(xxmax - xxmin)*.01)
-      {
-         plot = symplot2J;
-         Ydots /= 2 ;
-         iystop = Ydots -1;
-      }				
-      else
-         plot = putcolor ;
-      closenuff = ((delx < dely ? delx : dely) >> 1); /* for periodicity checking */
-      closenuff /= fudge;
-      if(solidguessing)
-      {
-         calctype = Juliafp;
-         timer(solidguess,0);
-      }   
-      else
-         timer(Juliafp,0);
-      break;
+   closenuff = ((delx < dely ? delx : dely) >> 1); /* for periodicity checking */
+   closenuff /= fudge;
 
-   case LAMBDASINE:
-   case LAMBDACOS:
-   case LAMBDAEXP:
-
-   plot = putcolor;			/* default option: no symmetry */
-   Xdots = xdots;
-   Ydots = ydots; 
-
-      if (fractype == LAMBDAEXP && (! diskvideo) &&
-         fabs(yymax + yymin) < fabs(yymax - yymin)*.01)	/* Take advantage of Y-axis */
-      {							/* symmetry to halve needed */
-         plot = symplot2 ; 				/* calculations.            */
-		 Ydots /= 2 ;
-         iystop = Ydots -1;
-      }	
-
-      if ((fractype == LAMBDASINE || fractype == LAMBDACOS)) {	/* symmetry may apply here */
-        /* calculate value of PI in pixels */
-        pixelpi = (PI/fabs(xxmax-xxmin))*xdots;
-        if(pixelpi < xdots)
-        {
-           Xdots = pixelpi;
-           ixstop = Xdots-1;
-        }   
-        if ( (! diskvideo) &&
-          fabs(yymax + yymin) < fabs(yymax - yymin)*.01 &&
-          fabs(xxmax + xxmin) < fabs(xxmax - xxmin)*.01)
-        {
-           if(parm2 == 0.0)
-           {
-              plot = symPIplot4J ;
-              Ydots /= 2 ;
-              iystop = Ydots -1;
-           }
-           else
-           {
-              plot = symPIplot2J;
-              Ydots /= 2 ;
-              iystop = Ydots -1;
-           }
-        }				
-        else
-           plot = symPIplot ;
-      }
-      if(solidguessing)
-      {
-         calctype = Lambdasine;
-         timer(solidguess,0);
-      }   
-      else
-         timer(Lambdasine,0);
-      break;
-   case TEST:
-      timer(test,0);
-      break;
-   default:
-      return(-1);
-      break;
+   if (integerfractal) 		/* for integer routines (lambda) */
+   {
+      lambdax = parm1 * fudge;		/* real portion of Lambda */
+      lambday = parm2 * fudge;		/* imaginary portion of Lambda */
+      llimit = rqlim * fudge;		/* stop if magnitude exceeds this */
+      if (llimit <= 0) llimit = 0x7fffffff; /* klooge for integer math */
+      llimit2 = sqrt(rqlim) * fudge;	/* stop if magnitude exceeds this */
+      lclosenuff = closenuff * fudge;   /* "close enough" value */
    }
+
+   calctype = fractalspecific[fractype].calctype;		/* assume a standard fractal type */
+
+   periodicitycheck = 1;		/* turn on periodicity checking */
+   
+   /* per_image routine is run here */   
+   if (fractalspecific[fractype].per_image())  /* a stand-alone type? */
+   {
+      /* fractal routine (usually StandardFractal) is run here */
+      if(solidguessing) 	/* use std solid-guessing? */
+         timer(solidguess,0);
+      else
+         timer(calctype,0);
+   }
+
    potfile[0] = NULL;
    if (! check_key())
       return(0);
    else
       return(1);
 }
+
 test()
 {
    teststart();
    for (passes=0; passes <= numpasses ; passes++)
-   for (row = passes; row < Ydots; row=row+1+numpasses)
+   for (row = passes; row < YYdots; row=row+1+numpasses)
    {
       register int col;
       init.y = dy0[row];
-      for (col = 0; col < Xdots; col++)       /* look at each point on screen */
+      for (col = 0; col < XXdots; col++)       /* look at each point on screen */
       {
          register color;
          init.x = dx0[col];
-         if(check_key()) {
+         if(check_key()) 
+         {
             testend();
             return(-1);
-            }
+         }
          color = testpt(init.x,init.y,parm1,parm2,maxit,inside);
          (*plot)(col,row,color);
          if(numpasses && (passes == 0))
@@ -424,105 +295,12 @@ test()
    return(0);
 }
 
-/* calculate Julia set of lamda*sin(z) */
-/* Reference - The Science of Fractal Images , Barnsley et al, p. 158 */
-/* try params=1/.1  params=1/0  params=1/.4 */
-Lambdasine()
-{
-
-   double oldreal,oldimag,newreal,newimag,tmpreal,tmpimag;
-   int iterations;
-
-   /* note: numpasses must == 1 in solidguessing mode */
-   /* This is set in solidguess() */   
-   for (passes=0; passes <= numpasses ; passes++)
-   {
-      /* guessing == 1 means first pass only */
-      if(guessing == 1 && passes == 1)
-         break;
-         
-      /* guessing == 2 means second pass only */   
-      if(guessing == 2 && passes == 0)
-         continue;
-         
-      /* if numpasses == 1, on first pass skip rows */
-      for (row = iystart; row <= iystop; row = row + 1 + numpasses - passes)
-      {
-         register int col;
-         init.y = dy0[row];
-
-         /* if numpasses == 1, on first pass skip cols */
-         for (col = ixstart; col <= ixstop; col = col + 1 + numpasses - passes)
-         {
-            register color;
-            /* on second pass even row,col pts already done */
-            if(passes) /* second pass */
-               if(row&1 ==0 && col&1 == 0)
-                  continue;
-            init.x = dx0[col];
-            if(check_key())
-                  return(-1);
-            orbit_ptr = 0;        
-
-
-            /* calculate lambda * sin(z) [ or cos(x) or exp(x) ] */
-            /* lamda = parm1,parm2 */
-            oldreal=init.x;
-            oldimag=init.y;
-            iterations = 0;
-            while(iterations++ < maxit)
-            {   
-                if (fractype == LAMBDASINE) {     /* calculate sin(z) */
-                   if (fabs(oldimag) >= 50.0) break;
-                   tmpreal = sin(oldreal)*cosh(oldimag);
-                   tmpimag = cos(oldreal)*sinh(oldimag);
-                   }
-                if (fractype == LAMBDACOS) {    /* calculate cos(z) */
-                   if (fabs(oldimag) >= 50.0) break;
-                   tmpreal = cos(oldreal)*cosh(oldimag);
-                   tmpimag = sin(oldreal)*sinh(oldimag);
-                   }
-                if (fractype == LAMBDAEXP) {    /* calculate exp(z) */
-                   double tmpexp, tmpcos;
-                   if (fabs(oldimag) >= 1.0e8) break; /* TLOSS  errors */
-                   if (fabs(oldreal) >= 6.4e2) break; /* DOMAIN errors */
-                   tmpcos = cos(oldimag);
-                   if (oldreal >= 50.0 && tmpcos >= 0.0) break;
-                   tmpexp = exp(oldreal);
-                   tmpreal = tmpexp*tmpcos;
-                   tmpimag = tmpexp*sin(oldimag);
-                   }
-            
-                /*multiply by lamda */
-                newreal = parm1*tmpreal - parm2*tmpimag;
-                newimag = parm2*tmpreal + parm1*tmpimag;
-                oldreal = newreal;
-                oldimag = newimag;
-                if(show_orbit)
-                   plot_orbit(newreal,newimag);
-            }
-            if(show_orbit)
-               scrub_orbit();
-            if(iterations >= maxit && inside >= 0)
-               color = inside;
-            else
-               color = iterations&(colors-1);   
-            (*plot)(col,row,color);
-            if(numpasses && (passes == 0))
-            {
-                (*plot)(col  ,row+1,color);
-                (*plot)(col+1,row  ,color);
-                (*plot)(col+1,row+1,color);
-            }
-         }
-      }
-   }
-   return(0);
-}
-
-Mandelfp()
+StandardFractal()
 {
    int caught_a_cycle;
+   int savedand, savedincr;		/* for periodicity checking */
+
+        
    /* note: numpasses must == 1 in solidguessing mode */
    /* This is set in solidguess() */   
    for (passes=0; passes <= numpasses ; passes++)
@@ -538,150 +316,102 @@ Mandelfp()
       /* if numpasses == 1, on first pass skip rows */
       for (row = iystart; row <= iystop; row = row + 1 + numpasses - passes)
       {
-         register int col;
          oldcolor = 1;
-         oldmax = maxit;
-         saved.x = 0;
-         saved.y = 0;
-         init.y = dy0[row];
+         oldmax = min(maxit, 250);
+         oldmax10 = oldmax - 10;
+         
+         /* really fractal specific, but we'll leave it here */
+         if (! integerfractal) 
+            init.y = dy0[row];
+         else 
+            inity = ly0[row];
 
          /* if numpasses == 1, on first pass skip cols */
          for (col = ixstart; col <= ixstop; col = col + 1 + numpasses - passes)
          {
-            register color;
             /* on second pass even row,col pts already done */
             if(passes) /* second pass */
                if(row&1 ==0 && col&1 == 0)
                   continue;
-            init.x = dx0[col];
             if(check_key())
                   return(-1);
+            if (! integerfractal) 
+            {
+               saved.x = 0;
+               saved.y = 0;
+            }
+            else 
+            {
+               savedx = 0;
+               savedy = 0;
+            }
             orbit_ptr = 0;        
-            old.x=parm1;
-            old.y=parm2;
-            magnitude = 0.0;
-            color = -1;
-            caught_a_cycle = 1;
-            while ((magnitude < rqlim) && (color < maxit))
-            {
-               new.x = sqr (old.x) - sqr (old.y) + init.x;
-               new.y = 2 * old.x * old.y + init.y;
-               color++;
-               old=new;
-               magnitude = sqr (new.x) + sqr (new.y);
-               if(show_orbit)
-                  plot_orbit(new.x,new.y);
-               if (oldcolor >= oldmax-10) 
-               {
-                  if ((color & 15) == 0) 
-                     saved = new;
-                  else if ((fabs(saved.x-new.x) +
-                        fabs(saved.y-new.y)) < closenuff)
-                  {
-                     caught_a_cycle = 7;
-                     color = maxit;
-                  }  
-               }
-            }
-            if (oldcolor < maxit && color >= maxit)
-		       oldmax = oldcolor;
-            if(show_orbit)
-               scrub_orbit();
-            oldcolor = color;
-            if(color < maxit)
-            {
-               caught_a_cycle = color;   
-               if (color == 0)color = 1; /* needed to make same as calcmand */
-               if(debugflag==98) color = caught_a_cycle;
-            }
-            if(potflag) 
-            {
-               /* MUST call potential every pixel!! */
-               color = potential(magnitude,color); 
-               if(color < 0 || color >= colors) continue; 
-            }
- 
-            if(oldcolor >= maxit && inside >= 0) /* really color, not oldcolor */
-               color = inside;
-            else
-               color = color&(colors-1);    
-
-            (*plot)(col,row,color);
-            if(numpasses && (passes == 0))
-            {
-                (*plot)(col  ,row+1,color);
-                (*plot)(col+1,row  ,color);
-                (*plot)(col+1,row+1,color);
-            }
-         }
-      }
-   }
-   return(0);
-}
-Juliafp()
-{
-   int caught_a_cycle;
-   /* note: numpasses must == 1 in solidguessing mode */
-   /* This is set in solidguess() */   
-   for (passes=0; passes <= numpasses ; passes++)
-   {
-      /* guessing == 1 means first pass only */
-      if(guessing == 1 && passes == 1)
-         break;
-         
-      /* guessing == 2 means second pass only */   
-      if(guessing == 2 && passes == 0)
-         continue;
-         
-      /* if numpasses == 1, on first pass skip rows */
-      for (row = iystart; row <= iystop; row = row + 1 + numpasses - passes)
-      {
-         register int col;
-         oldcolor = 1;
-         oldmax = maxit;
-         saved.x = 0;
-         saved.y = 0;
-
-         /* if numpasses == 1, on first pass skip cols */
-         for (col = ixstart; col <= ixstop; col = col + 1 + numpasses - passes)
-         {
-            register color;
-            /* on second pass even row,col pts already done */
-            if(passes) /* second pass */
-               if(row&1 ==0 && col&1 == 0)
-                  continue;
-            old.x = dx0[col];
-            old.y = dy0[row];
-            if(check_key())
-               return(-1);
-            orbit_ptr = 0;   
-            magnitude = 0.0;
             color = 0;
-            while ((magnitude < rqlim) && (color < maxit))
+            caught_a_cycle = 1;
+            savedand = 1;		/* begin checking every other cycle */
+            savedincr = 1;		/* start checking the very first time */
+            
+            fractalspecific[fractype].per_pixel(); /* initialize the calculations */
+            while (++color < maxit)
             {
-               new.x = sqr (old.x) - sqr (old.y) + parm1;
-               new.y = 2 * old.x * old.y + parm2;
+               /* calculation of one orbit goes here */
+               /* input in "old" -- output in "new" */
 
-               /* START CODE SAME AS MANDELFP HERE TO BOTTOM */
-               color++;
-               old=new;
-               magnitude = sqr (new.x) + sqr (new.y);
-               if(show_orbit)
-                  plot_orbit(new.x,new.y);
-               if (oldcolor >= oldmax-10) 
+               if(fractalspecific[fractype].orbitcalc()) break;
+               if(show_orbit) 
                {
-                  if ((color & 15) == 0) 
-                     saved = new;
-                  else if ((fabs(saved.x-new.x) +
-                        fabs(saved.y-new.y)) < closenuff)
-                  {
-                     caught_a_cycle = 7;
-                     color = maxit;
-                  }  
+                  if (! integerfractal)
+                     plot_orbit(new.x,new.y);
+                  else
+                     iplot_orbit(newx,newy);
                }
+
+               if (oldcolor >= oldmax10)
+                  if (periodicitycheck)		/* only if this is OK to do */ 
+                  {
+                     if ((color & savedand) == 0) /* time to save a new value */
+                     {
+                        if (! integerfractal)
+                           saved = new;		/* floating pt fractals */
+                        else 
+                        {
+                           savedx = newx;		/* integer fractals */
+                           savedy = newy;		/*  ... */
+                        }
+                        if (--savedincr == 0) /* time to lengthen the periodicity? */
+                        { 
+                           savedand = (savedand << 1) + 1; /* longer periodicity */
+                           savedincr = 4;                  /* restart counter */
+                        }
+                     }
+                     else /* check against an old save */
+                     {
+                        if (! integerfractal)	/* floating-pt periodicity chk */
+                        { 
+                           if((fabs(saved.x-new.x)+fabs(saved.y-new.y)) 
+                                 < closenuff)
+                           {
+                              caught_a_cycle = 7;
+                              color = maxit;
+                           }  
+                        }
+                        else  /* integer periodicity check */
+                        {
+                           if(labs(savedx-newx)+labs(savedy-newy) 
+                                 < lclosenuff) 
+                           {
+                              caught_a_cycle = 7;
+                              color = maxit;
+                           }
+                        }
+                     }
+                  }
             }
-            if (oldcolor < maxit && color >= maxit)
+            if (oldcolor < maxit && color >= maxit) 
+            {
 		       oldmax = oldcolor;
+			   oldmax10 = oldmax - 10;
+			}
             if(show_orbit)
                scrub_orbit();
             oldcolor = color;
@@ -691,17 +421,50 @@ Juliafp()
                if (color == 0)color = 1; /* needed to make same as calcmand */
                if(debugflag==98) color = caught_a_cycle;
             }
+
             if(potflag) 
             {
+               if(integerfractal) 		/* adjust integer fractals */
+               { 
+                  new.x = newx; new.x *= fudge;
+                  new.y = newy; new.y *= fudge;
+               }
+               magnitude = sqr(new.x)+sqr(new.y);
                /* MUST call potential every pixel!! */
                color = potential(magnitude,color); 
                if(color < 0 || color >= colors) continue; 
             }
- 
+			else if (decomp[0] > 0) 
+			{
+				int quad;
+
+				if (integerfractal) 
+				{
+					if (newx > 0) 
+					{
+						if (newy > 0) quad = 0; else quad = 1;
+					} 
+					else 
+					{
+						if (newy > 0) quad = 3; else quad = 2;
+					}
+				} else {
+					if (new.x > 0) {
+						if (new.y > 0) quad = 0; else quad = 1;
+					} else {
+						if (new.y > 0) quad = 3; else quad = 2;
+					}
+				}
+				if (decomp[0] == 2) color = quad & 1; else color = quad;
+				if (colors > decomp[0]) color++;
+			}
+
+/* LDC */
+
             if(oldcolor >= maxit && inside >= 0) /* really color, not oldcolor */
                color = inside;
-            else
-               color = color&(colors-1);    
+            if(LogFlag)
+               color = LogTable[color];
 
             (*plot)(col,row,color);
             if(numpasses && (passes == 0))
@@ -716,267 +479,14 @@ Juliafp()
    return(0);
 }
 
+#if 0
 MainNewton()
 {
-   
-   {
-      Newton(); /* Lee's Newton */
-      return(0);
-   }
-   /* note: numpasses must == 1 in solidguessing mode */
-   /* This is set in solidguess() */   
-   for (passes=0; passes <= numpasses ; passes++)
-   {
-      /* guessing == 1 means first pass only */
-      if(guessing == 1 && passes == 1)
-         break;
-         
-      /* guessing == 2 means second pass only */   
-      if(guessing == 2 && passes == 0)
-         continue;
-         
-      /* if numpasses == 1, on first pass skip rows */
-      for (row = iystart; row <= iystop; row = row + 1 + numpasses - passes)
-      {
-         register int col;
-         oldcolor = 1;
-	     oldmax = maxit;
-         saved.x = 0;
-         saved.y = 0;
-         init.y = dy0[row];
-
-         /* if numpasses == 1, on first pass skip cols */
-         for (col = ixstart; col <= ixstop; col = col + 1 + numpasses - passes)
-         {
-            register color;
-            /* on second pass even row,col pts already done */
-            if(passes) /* second pass */
-               if(row&1 ==0 && col&1 == 0)
-                  continue;
-            init.x = dx0[col];
-            if(check_key())
-                  return(-1);
-            orbit_ptr = 0;        
-            old = init;
-            color = -1;
-            iterations = 0;
-            not_done = 1;
-            while (not_done)
-            {
-               iterations++;
-               complex_power(old,degree-1,&tmp);
-               complex_mult(tmp,old,&new);      /* new = old**5 */
-               if(distance(new,one) < threshold || iterations > maxit)
-                  not_done = 0; 
-               new.x = ((degree-1.0)*new.x+root)/degree;
-               new.y = (degree-1.0)*new.y/degree;
-         
-               /* watch out for divide underflow */
-               if(complex_div(new,tmp,&new))
-                  old = new;
-               else
-               {
-                  not_done = 0;
-                  color = infinity;
-                  break;
-               }         
-               if(show_orbit)
-                  plot_orbit(new.x,new.y);
-            }
-            if(show_orbit)
-               scrub_orbit();
-            if(fractype==2)
-            {
-               color = 0;
-               /* this code determines which degree-th root of root the        
-                  Newton formula converges to. The roots of a 1 are 
-                  distributed on a circle of radius 1 about the origin. */
-               for(i=0;i<degree;i++)
-               {
-                  /* color in alternating shades with iteration according to
-                     which root of 1 it converged to */
-                  if( distance(roots[i],new) < threshold)
-                     color = 1+i%8+8*(iterations%2);
-               }
-               if(!color) 
-                    color = maxcolor;
-            }else
-            {
-               if(iterations < maxit)
-                  color = iterations&(colors-1);
-               else
-                  color = inside;
-            }
-            (*plot)(col,row,color);
-            if(numpasses && (passes == 0))
-            {
-                (*plot)(col  ,row+1,color);
-                (*plot)(col+1,row  ,color);
-                (*plot)(col+1,row+1,color);
-            }
-         }
-      }
-   }
+   Newton(); /* Lee's Newton */
    return(0);
 }
+#endif
 
-extern long multiply(long x, long y, int shift);
-
-Lambda()
-{
-   int caught_a_cycle;
-   long lambdar, lambdai, zr, zi, oldzr, oldzi, savedr, savedi, tempr, tempi;
-   long lmagnitud, llimit, lclosenuff;
-
-   lambdar = parm1 * fudge;		/* real portion of Lambda */
-   lambdai = parm2 * fudge;		/* imaginary portion of Lambda */
-   llimit = rqlim * fudge;		/* stop if magnitude exceeds this */
-   lclosenuff = closenuff * fudge;      /* "close enough" value */
-
-   /* note: numpasses must == 1 in solidguessing mode */
-   /* This is set in solidguess() */   
-   for (passes=0; passes <= numpasses ; passes++)
-   {
-      /* guessing == 1 means first pass only */
-      if(guessing == 1 && passes == 1)
-         break;
-         
-      /* guessing == 2 means second pass only */   
-      if(guessing == 2 && passes == 0)
-         continue;
-         
-      /* if numpasses == 1, on first pass skip rows */
-      for (row = iystart; row <= iystop; row = row + 1 + numpasses - passes)
-      {
-         register int col;
-         oldcolor = maxit;
-         savedr = 0;
-         savedi = 0;
-
-         /* if numpasses == 1, on first pass skip cols */
-         for (col = ixstart; col <= ixstop; col = col + 1 + numpasses - passes)
-         {
-            register color;
-            /* on second pass even row,col pts already done */
-            if(passes) /* second pass */
-               if(row&1 ==0 && col&1 == 0)
-                  continue;
-            if(check_key())
-               return(-1);
-            orbit_ptr = 0;   
-            lmagnitud = 0;
-            color = 0;
-            oldzr = lx0[col];
-            oldzi = ly0[row];
-            while ((lmagnitud < llimit) && (color < maxit))
-            {
-		/* (in complex math) temp = Z * (1-Z) */
-		tempr = oldzr
-			- multiply(oldzr, oldzr, bitshift)
-			+ multiply(oldzi, oldzi, bitshift);
-		tempi = oldzi
-			- (multiply(oldzi, oldzr, bitshift)  << 1);
-		/* (in complex math) Z = Lambda * Z */
-		zr = 	  multiply(lambdar, tempr, bitshift)
-			- multiply(lambdai, tempi, bitshift);
-		zi =	  multiply(lambdar, tempi, bitshift)
-			+ multiply(lambdai, tempr, bitshift);
-		/* (in complex math) get the magnititude */
-		lmagnitud = multiply(zr, zr, bitshift)
-			+   multiply(zi, zi, bitshift);
-		oldzr = zr;  oldzi = zi;
-               color++;
-               if(show_orbit)
-                  iplot_orbit(zr,zi);
-               if (color >= oldcolor) 
-               {
-                  if ((color & 15) == 0) {
-			savedr = zr;
-			savedi = zi;
-			}
-                  else {
-                     tempr = savedr - zr;  if (tempr < 0) tempr = -tempr;
-                     tempi = savedi - zi;  if (tempi < 0) tempi = -tempi;
-                     if ((tempr + tempi) < lclosenuff) {
-                        caught_a_cycle = 7;
-                        color = maxit;
-                     }
-                  }  
-               }
-            }
-            oldcolor = color+10;
-            if (color >= maxit)
-               oldcolor = 0;
-            if(show_orbit)
-               scrub_orbit();
-            if (color >= maxit) 
-               color = inside;
-            else
-               caught_a_cycle = color;   
-            if (color == 0)color = 1; /* needed to make same as calcmand */
-            if(debugflag==98) color = caught_a_cycle;
-            (*plot)(col,row,color);
-            if(numpasses && (passes == 0))
-            {
-                (*plot)(col  ,row+1,color);
-                (*plot)(col+1,row  ,color);
-                (*plot)(col+1,row+1,color);
-            }
-         }
-      }
-   }
-   return(0);
-}
-
-complex_mult(arg1,arg2,pz)
-struct complex arg1,arg2,*pz;
-{
-   pz->x = arg1.x*arg2.x - arg1.y*arg2.y;
-   pz->y = arg1.x*arg2.y+arg1.y*arg2.x;
-   return(0);
-}
-complex_div(numerator,denominator,pout)
-struct complex numerator,denominator,*pout;
-{  
-   double mod;
-   if((mod = modulus(denominator)) < floatmin)
-      return(NULL);
-   conjugate(&denominator);
-   complex_mult(numerator,denominator,pout);
-   pout->x = pout->x/mod;
-   pout->y = pout->y/mod;
-   return(1);
-}
-complex_power(z,n,pout)
-struct complex z;
-int n;
-struct complex *pout;
-{
-   if(n<0)
-      return(NULL);
-   else if(n==0)
-   {
-      pout->x      = 1.0;
-      pout->y = 0.0;
-   }
-   else if(n == 1)
-   {
-      pout->x      = z.x;
-      pout->y = z.y;
-   }
-   else
-   {
-      struct complex tmp;
-      n--;
-      complex_mult(z,z,pout);
-      while(--n)
-      {
-         tmp = *pout;
-         complex_mult(z,tmp,pout);      /* new = old**2 */
-      }
-   }
-   return(1);
-}
 /* Symmetry plot for period PI */
 void symPIplot( x, y, color)
 int x, y, color ;
@@ -1020,6 +530,14 @@ int x, y, color ;
   putcolor( x, (ydots - y - 1), color) ;
 }
 
+/* Symmetry plot for Y Axis Symmetry */
+void symplot2Y( x, y, color)
+int x, y, color ;
+{
+  putcolor( x, y, color) ;
+  putcolor( (xdots - x - 1), y, color) ;
+}
+
 /* Symmetry plot for Origin Symmetry */
 void symplot2J( x, y, color)
 int x, y, color ;
@@ -1052,6 +570,7 @@ extern int colors;
 extern int xdots,ydots;
 extern Palettetype dacbox[256];
 extern int cpu, daccount, cyclelimit;
+static int plasma_check;			/* to limit kbd checking */
 
 void adjust(int xa,int ya,int x,int y,int xb,int yb)
 {
@@ -1072,8 +591,12 @@ void subDivide(int x1,int y1,int x2,int y2)
 {
    int x,y;
    int v;
-   if(check_key())
-      return;
+   if ((++plasma_check & 0x7f) == 1)
+      if(check_key()) 
+      {
+         plasma_check--;
+         return;
+      }
    if(x2-x1<2 && y2-y1<2)
       return;
    x = (x1+x2)>>1;
@@ -1100,21 +623,17 @@ plasma()
    if(colors < 4 || diskvideo) {
 	setvideomode(3,0,0,0);
 	buzzer(2);
-	printf("\n\nI'm sorry, but Plasma Clouds can currently only be run in a\n");
-	printf("4-or-more-color video mode (and color-cycled only on VGA adapters\n");
-	printf("[or EGA adapters in their 640x350x16 mode]).  Also, because of the\n");
-	printf("random-screen-access algorithm, Plasma Clouds cannot be run using\n");
-	printf("an Expanded-Memory or Disk-based 'Video' mode.  Finally, we REALLY\n");
-	printf("recommend using a 256-color mode if you have one.\n");
-	printf("\n\nEither press a function key (like F1 thru F5) that selects one of\n");
-	printf("those modes, or press the 't' key to select a new fractal type.\n");
+	helpmessage(plasmamessage);
 	return(-1);
 	}
    parm1  = param[0];
    iparm1 = (parm1 * 8) ;
    if (parm1 <= 0.0) iparm1 = 16;
    if (parm1 >= 100) iparm1 = 800;
-   srand((unsigned)(time(NULL)));
+
+   if (!rflag) rseed = (int)time(NULL);
+      srand(rseed);
+
    if (colors == 256)			/* set the (256-color) palette */
       set_Plasma_palette();		/* skip this if < 256 colors */
 
@@ -1172,20 +691,17 @@ set_Plasma_palette()
 	ValidateLuts( NULL );	/* TARGA 3 June 89  j mclain */
  	spindac(0,1);
 }
+
 check_key()
 {
-   if(keypressed())
-   {
-     if(keypressed() == 'o' || keypressed() == 'O')
-     {
-        getakey();
-        show_orbit = 1 - show_orbit;
-        return(0);
-      }   
-      else
-        return(-1);
+int key;
+  if((key = keypressed()) != 0) {
+    if(key != 'o' && key != 'O') 
+       return(-1);
+   getakey();
+   show_orbit = 1 - show_orbit;
    }
-return(0);
+   return(0);
 }
 
 iplot_orbit(ix, iy)
@@ -1199,7 +715,7 @@ int i, j;
   j = ydots - (iy - ly0[ydots-1]) / dely;
 
   /* save orbit value */
-  if( 0 <= i && i < xdots && 0 <= j && j < ydots)
+  if( 0 <= i && i < xdots && 0 <= j && j < ydots && orbit_ptr < 1000)
   {
      *(save_orbit + orbit_ptr++) = i; 
      *(save_orbit + orbit_ptr++) = j; 
@@ -1287,7 +803,7 @@ timer(int (*fractal)(),int argc,...)
          fprintf(fp,"decode ");
       fprintf(fp,"%s type=%s resolution = %dx%d maxiter=%d",
            timestring,
-           typelist[fractype],
+           fractalspecific[fractype].name,
            xdots,
            ydots,
            maxit);
@@ -1335,15 +851,15 @@ solidguess()
 
    guessing=2;  			/* solid guessing - second pass */
 
-   for(j=0;j<Ydots;j += yblock)
+   for(j=0;j<YYdots;j += yblock)
    {
       iystart = j;  
-/*      iystop  = min(j+yblock-1,Ydots-1);  */
+/*      iystop  = min(j+yblock-1,YYdots-1);  */
       iystop  = j+yblock-1;  
-      for(i=0;i<Xdots;i += xblock)
+      for(i=0;i<XXdots;i += xblock)
       {
          ixstart = i;
-/*         ixstop  = min(i+xblock-1,Xdots-1); */
+/*         ixstop  = min(i+xblock-1,XXdots-1); */
          ixstop  = i+xblock-1;
          if(checkblock())
          {
@@ -1503,5 +1019,120 @@ int intpotential(unsigned long longmagnitude, int iterations)
    double magnititude;
 
    magnitude = ((double)longmagnitude) / fudge;
+   magnitude = 256*magnitude;
    return(potential(magnitude, iterations));
+}
+
+setsymmetry(int sym)    /* set up proper symmetrical plot functions */
+{
+   plot = putcolor;		/* assume no symmetry */
+   XXdots = xdots;
+   YYdots = ydots; 
+   symmetry = 1;
+   
+   /* NOTE: either diskvideo or 16-bit potential disables symmetry */
+   /* also ant decomp= option and any inversion not about the origin */
+   if ((!potfile[0]) && (!diskvideo) && (!invert || inversion[2] == 0.0)
+   && decomp[0] == 0) 
+   {
+      if(sym != XAXIS && sym != XAXIS_NOPARM && inversion[1] != 0.0)
+         return;
+      switch(sym) 	/* symmetry switch */
+      {
+      case XAXIS_NOPARM:			/* X-axis Symmetry  (no params)*/
+         if (parm1 != 0.0 || parm2 != 0.0)
+            break;
+      case XAXIS:			/* X-axis Symmetry */
+         if (fabs(yymax + yymin) >= fabs(yymax - yymin)*.01)
+            break;
+         symmetry = 0;
+         plot = symplot2;
+         YYdots /= 2;	
+         iystop = YYdots -1;
+         break;
+      case YAXIS_NOPARM:			/* Y-axis Symmetry (No Parms)*/
+         if (parm1 != 0.0 || parm2 != 0.0)
+            break;
+      case YAXIS:			/* Y-axis Symmetry */
+         if (fabs(xxmax + xxmin) >= fabs(xxmax - xxmin)*.01)
+            break;
+         plot = symplot2Y;
+         XXdots /= 2;
+         ixstop = XXdots -1;
+         break;
+      case XYAXIS_NOPARM:			/* X-axis AND Y-axis Symmetry (no parms)*/
+         if(parm1 != 0.0 || parm2 != 0.0)
+            break;
+      case XYAXIS:			/* X-axis AND Y-axis Symmetry */
+         if (fabs(yymax + yymin) < fabs(yymax - yymin)*.01 &&
+             fabs(xxmax + xxmin) < fabs(xxmax - xxmin)*.01)
+         {
+            plot = symplot4 ;
+            XXdots /= 2 ;
+            YYdots /= 2 ;
+            iystop = YYdots -1;
+            ixstop = XXdots -1;
+         }
+         else if (fabs(yymax + yymin) < fabs(yymax - yymin)*.01)
+         {
+            plot = symplot2 ;
+            YYdots /= 2 ;
+            iystop = YYdots -1;
+         }
+         break;
+      case ORIGIN_NOPARM:			/* Origin Symmetry (no parms)*/
+         if (parm1 != 0.0 || parm2 != 0.0)
+            break;
+      case ORIGIN:			/* Origin Symmetry */
+         if (fabs(yymax + yymin) >= fabs(yymax - yymin)*.01 ||
+             fabs(xxmax + xxmin) >= fabs(xxmax - xxmin)*.01)
+            break;
+         symmetry = 0;
+         plot = symplot2J;
+         YYdots /= 2 ;
+         iystop = YYdots -1;
+         break;
+      case PI_SYM_NOPARM:
+         if (parm1 != 0.0 || parm2 != 0.0)
+            break;
+      case PI_SYM:			/* PI symmetry */
+         if(invert) {
+            if (fabs(yymax + yymin) >= fabs(yymax - yymin)*.01 ||
+                fabs(xxmax + xxmin) >= fabs(xxmax - xxmin)*.01)
+               break;
+            symmetry = 0;
+            plot = symplot2J;
+            YYdots /= 2 ;
+            iystop = YYdots -1;
+            break;
+            }
+         pixelpi = (PI/fabs(xxmax-xxmin))*xdots; /* PI in pixels */
+         if(pixelpi < xdots)
+         {
+            XXdots = pixelpi;
+            ixstop = XXdots-1;
+         }   
+         if (fabs(yymax + yymin) < fabs(yymax - yymin)*.01 &&
+             fabs(xxmax + xxmin) < fabs(xxmax - xxmin)*.01)
+         {
+            if(parm2 == 0.0)
+            {
+               plot = symPIplot4J ;
+               YYdots /= 2 ;
+               iystop = YYdots -1;
+            }
+            else
+            {
+               plot = symPIplot2J;
+               YYdots /= 2 ;
+               iystop = YYdots -1;
+            }
+         }				
+         else if(!invert)
+            plot = symPIplot ;
+         break;
+      default:			/* no symmetry */
+         break;
+      }
+   }
 }

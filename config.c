@@ -173,7 +173,7 @@ while (feof(cfgfile) == 0 && count < MAXVIDEOMODES) {	/* scan through strings */
 	ydots       = atoi(&tempstring[commas[6]]);
 	colors      = atoi(&tempstring[commas[7]]);
 	if (    i >= 0 || j != 0 ||
-		dotmode < 0 || dotmode > 20 ||
+		dotmode < 0 || dotmode > 30 ||
 		xdots < 160 || xdots > 2048 ||
 		ydots < 160 || ydots > 2048 ||
 		(colors != 2 && colors != 4 && colors != 16 && colors != 256)

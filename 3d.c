@@ -57,7 +57,9 @@ ROTZ(é) =           cosé  siné    0     0
 
 #include <stdio.h>
 #include <math.h>
+#include <float.h>
 #include "fractint.h"
+extern int bad_value;
 
 /* initialize a matrix and set to identity matrix 
    (all 0's, 1's on diagonal) */
@@ -113,7 +115,7 @@ void xrot (double theta, MATRIX m)
    costheta = cos(theta);
    identity(rot);
    rot[1][1] = costheta;
-   rot[1][2] = -1.0*sintheta;
+   rot[1][2] = -sintheta;
    rot[2][1] = sintheta;
    rot[2][2] = costheta;
    mat_mul(m,rot,m);
@@ -129,7 +131,7 @@ void yrot (double theta, MATRIX m)
    identity(rot);
    rot[0][0] = costheta;
    rot[0][2] = sintheta;
-   rot[2][0] = -1.0*sintheta;
+   rot[2][0] = -sintheta;
    rot[2][2] = costheta;
    mat_mul(m,rot,m);
 }
@@ -143,7 +145,7 @@ void zrot (double theta, MATRIX m)
    costheta = cos(theta);
    identity(rot);
    rot[0][0] = costheta;
-   rot[0][1] = -1.0*sintheta;
+   rot[0][1] = -sintheta;
    rot[1][0] = sintheta;
    rot[1][1] = costheta;
    mat_mul(m,rot,m);
@@ -185,6 +187,25 @@ int icross_product (IVECTOR v, IVECTOR w, IVECTOR cross)
    return(0);
 }
 
+/* normalize a vector to length 1 */
+normalize_vector(VECTOR v)
+{
+    double vlength;
+    vlength = dot_product(v,v);
+
+    /* bailout if zero vlength */
+    if(vlength < FLT_MIN || vlength > FLT_MAX)
+       return(-1);
+    vlength = sqrt(vlength);
+    if(vlength < FLT_MIN)
+       return(-1);
+       
+    v[0] /= vlength;
+    v[1] /= vlength;
+    v[2] /= vlength;
+    return(0);
+}
+
 /* multiply source vector s by matrix m, result in target t */
 /* used to apply transformations to a vector */
 int vmult(s,m,t)
@@ -204,89 +225,90 @@ MATRIX m;
    /* set target = tmp. Necessary to use tmp in case source = target */
    for(i=0;i<DIM;i++)
       t[i] = tmp[i];
+   return(0);
 }
 
-perspective(v)
-VECTOR v;
+/* perspective projection of vector v with respect to viewpont vector view */
+perspective(VECTOR v)
 {
-   extern VECTOR view; /* viewer's eye in screen coordinates */
+   extern VECTOR view;
    double denom;
    denom = view[2] - v[2];
-   if(denom > -0.00001)
+
+   if(denom >= 0.0)
    {
-      v[0] = -1.0;   /* clipping will catch these values */
-      v[1] = -1.0;   /* so they won't plot */
-      v[2] = -1.0;
+      v[0] = bad_value;   /* clipping will catch these values */
+      v[1] = bad_value;   /* so they won't plot values BEHIND viewer */
+      v[2] = bad_value;
       return(-1);
    }   
    v[0] = (v[0]*view[2] - view[0]*v[2])/denom;
    v[1] = (v[1]*view[2] - view[1]*v[2])/denom;
 
-   /* Not using Z now, but if we ever want it, this is it. We might
-      want it for hidden surfaces later */
+   /* calculation of z if needed later */
    /* v[2] =  v[2]/denom;*/
    return(0);
 }
 
-/* quick-and-dirty LONG INTEGER version of mult - requires 'multiply()' */
-/* (also, we've added a perspective 3D vector */
-/* TW 7/10/89 - added a parameter t0 so I can get at the pre-perspective
-   vector for illumination model purposes. t0[0] also used as a flag to
-   indicate whether z is needed */ 
-long multiply(long x, long y, int n);
-
-int ivmult(s,m,t0,t,iview)
-long s[4],t[4],t0[4],iview[4];
-long m[4][4];
+/* long version of vmult and perspective combined for speed */
+longvmultpersp(s, m, t0, t, lview, bitshift)
+LVECTOR s;       /* source vector */
+LMATRIX m;       /* transformation matrix */
+LVECTOR t0;      /* after transformation, before persp */
+LVECTOR t;       /* target vector */
+LVECTOR lview;   /* perspective viewer coordinates */
+int bitshift;    /* fixed point conversion bitshift */
 {
-   long tmp[4];
+   LVECTOR tmp;
    int i,j, k;
 
    k = CMAX-1;			/* shorten the math if non-perspective and non-illum */
-   if (iview[2] == 0 && t0[0] == 0) k--;
+   if (lview[2] == 0 && t0[0] == 0) k--;
 
    for(j=0;j<k;j++)
    {
       tmp[j] = 0;
       for(i=0;i<RMAX-1;i++)
-         tmp[j] += multiply(s[i],m[i][j],16);
+         tmp[j] += multiply(s[i],m[i][j],bitshift);
       /* vector is really four dimensional with last component always 1 */   
       tmp[j] += m[3][j];
    }
-   if(t0[0])
+   if(t0[0]) /* first component of  t0 used as flag */
    {
       /* faster than for loop, if less general */
       t0[0] = tmp[0];
       t0[1] = tmp[1];
       t0[2] = tmp[2];
    }
-   if (iview[2] != 0)		/* perspective 3D */
+   if (lview[2] != 0)		/* perspective 3D */
    {
-        /* sorry, guys, but we are going to "lie" to the multiply routine
-           on order to get integer perspective perspective 3D to work without
-           overflowing.  We're getting really "shifty", here. */
+
+      LVECTOR tmpview;
       long denom;
-      denom = (iview[2] - tmp[2]) >> 14;
+      
+      denom = lview[2] - tmp[2];
       if (denom >= 0) 		/* bail out if point is "behind" us */
       {
-         /* BERT! is -1 right bailout value? */
-         tmp[0] = -1;
-         tmp[1] = -1;
-         tmp[2] = -1;
-      } 
-      else 
-      {
-         tmp[0] = (multiply(tmp[0], iview[2], 30) -
-            multiply(iview[0], tmp[2], 30)) / denom;
-         tmp[0] = tmp[0] << 16;
-         tmp[1] = (multiply(tmp[1], iview[2], 30) -
-		    multiply(iview[1], tmp[2], 30)) / denom;
-	     tmp[1] = tmp[1] << 16;
-/*
-        tmp[2] = iview[2] / denom;
-        tmp[2] = tmp[2] << 16;
-*/
+           tmp[0] = bad_value;
+           tmp[0] = tmp[0]<<bitshift;
+           tmp[1] = tmp[0];
+           tmp[2] = tmp[0];
+           return(-1);
       }
+      
+      /* doing math in this order helps prevent overflow */ 
+      tmpview[0] = divide(lview[0],denom,bitshift);
+      tmpview[1] = divide(lview[1],denom,bitshift);
+      tmpview[2] = divide(lview[2],denom,bitshift);
+      
+      tmp[0] = multiply(tmp[0], tmpview[2], bitshift) -
+               multiply(tmpview[0], tmp[2], bitshift);
+   
+      tmp[1] = multiply(tmp[1], tmpview[2], bitshift) -
+               multiply(tmpview[1], tmp[2], bitshift);
+   
+      /* z coordinate if needed           */
+      /* tmp[2] = divide(lview[2],denom);  */
    }
 
    /* set target = tmp. Necessary to use tmp in case source = target */
@@ -294,42 +316,62 @@ long m[4][4];
    t[0] = tmp[0];
    t[1] = tmp[1];
    t[2] = tmp[2];
+   return(0);
 }
 
-ipersp(iv,iview)
-long iv[4], iview[4];
+/* Long version of perspective. Because of use of fixed point math, there
+   is danger of overflow and underflow */
+longpersp(LVECTOR lv, LVECTOR lview, int bitshift)
 {
-        long denom;
-        denom = (iview[2] - iv[2]) >> 14;
-     if (denom >= 0) {		/* bail out if point is "behind" us */
-        iv[0] = -1;
-        iv[1] = -1;
-        iv[2] = -1;
-     } else {
-        iv[0] = (multiply(iv[0], iview[2], 30) -
-		  multiply(iview[0], iv[2], 30)) / denom;
-	iv[0] = iv[0] << 16;
-        iv[1] = (multiply(iv[1], iview[2], 30) -
-		  multiply(iview[1], iv[2], 30)) / denom;
-	iv[1] = iv[1] << 16;
-/*
-        iv[2] = iview[2] / denom;
-        iv[2] = iv[2] << 16;
-*/
-     }
+   LVECTOR tmpview;
+   long denom;
+   
+   denom = lview[2] - lv[2];
+   if (denom == 0) 		/* bail out if point is "behind" us */
+   {
+        lv[0] = bad_value;
+        lv[0] = lv[0]<<bitshift;
+        lv[1] = lv[0];
+        lv[2] = lv[0];
+        return(-1);
+   }
 
+   /* doing math in this order helps prevent overflow */ 
+   tmpview[0] = divide(lview[0],denom,bitshift);
+   tmpview[1] = divide(lview[1],denom,bitshift);
+   tmpview[2] = divide(lview[2],denom,bitshift);
+   
+   lv[0] = multiply(lv[0], tmpview[2], bitshift) -
+           multiply(tmpview[0], lv[2], bitshift);
+
+   lv[1] = multiply(lv[1], tmpview[2], bitshift) -
+           multiply(tmpview[1], lv[2], bitshift);
+
+   /* z coordinate if needed           */
+   /* lv[2] = divide(lview[2],denom);  */
+   return(0);
 }
-/* normalize a vector (to length 1) */
-normalize_vector(VECTOR v)
+
+int longvmult(LVECTOR s,LMATRIX m,LVECTOR t,int bitshift)
 {
-    double vlength;
-    vlength = dot_product(v,v);
-    /* bailout if zero vlength */
-    if(!(vlength > 0.0)) return(-1);
-    vlength = sqrt(vlength);
-    if(!(vlength > 0.0)) return(-1);
-    v[0] /= vlength;
-    v[1] /= vlength;
-    v[2] /= vlength;
-    return(0);
+   LVECTOR tmp;
+   int i,j, k;
+
+   k = CMAX-1;
+
+   for(j=0;j<k;j++)
+   {
+      tmp[j] = 0;
+      for(i=0;i<RMAX-1;i++)
+         tmp[j] += multiply(s[i],m[i][j],bitshift);
+      /* vector is really four dimensional with last component always 1 */   
+      tmp[j] += m[3][j];
+   }
+
+   /* set target = tmp. Necessary to use tmp in case source = target */
+   /* faster than for loop, if less general */
+   t[0] = tmp[0];
+   t[1] = tmp[1];
+   t[2] = tmp[2];
+   return(0);
 }

@@ -1,7 +1,8 @@
-\tools\tc\libs\c0m +
+c:\turbo\lib\c0m +
 FRACTINT +
 3D +
 CALCFRAC +
+FRACTALS +
 CONFIG +
 DECODER +
 DISKVID +
@@ -15,10 +16,14 @@ CALCMAND +
 FARMSG +
 FARVIDEO +
 GENERAL +
+VIDEO +
 NEWTON +
 FR8514A +
+HGCFRA +
+YOURVID +
 CMDFILES +
 PRINTER +
+LOG +
 FMATH +
 FMATH086 +
 F16 +
@@ -26,7 +31,7 @@ TGAVIEW +
 targa loadmap tgasubs
 fractint.exe
 fractint.map /s
-\tools\tc\libs\emu  +
-\tools\tc\libs\mathm +
-\tools\tc\libs\cm
+c:\turbo\lib\emu  +
+c:\turbo\lib\mathm +
+c:\turbo\lib\cm
 

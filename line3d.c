@@ -12,9 +12,17 @@
 #include <limits.h>
 #include <dos.h>
 #include "fractint.h"
+#include "fmath.h"
 
 int clipcolor(int,int,int);   
 int interpcolor(int,int,int);
+int T_clipcolor(int,int,int);   
+int T_interpcolor(int,int,int);
+int (*fillplot)();   
+int (*normalplot)();   
+
+char preview = 0;
+extern char floatflag;
 extern int (*plot)();   
 extern int xdots, ydots, colors;
 extern int debugflag;
@@ -24,16 +32,16 @@ extern unsigned height;
 extern int rowcount; /* in general.asm */
 extern int init3d[];			/* 3D arguments (FRACTINT.C) */
 extern FILE *fp_pot;			/* potential file pointer */
+extern int strlocn[];
+extern int transparent[2];		/* transparency min/max */
 
-static float far *sinarray;		/* all sines go here */
-static float PISLICE;			/* cheap, one-time calc of PI/SLICE */
-#define SLICE  4096			/* chop up the pie this many times */
-#define SLICE4 1024			/* one fourth of the pie */
+static float far *sinthetaarray;	/* all sines thetas go here  */
+static float far *costhetaarray;	/* all cosine thetas go here */
 
 static double rXrscale;            /* precalculation factor */
 
 static int persp;       /* flag for indicating perspective transformations */
-
+int bad_value = -10000;
 /* this array remembers the previous line */
 struct point
 {
@@ -54,38 +62,43 @@ struct minmax
 {
     int minx;
     int maxx;
-} far *minmax_x;
+} *minmax_x;
      
 VECTOR view;    /* position of observer for perspective */
-
+VECTOR cross;
+VECTOR tmpcross;
 line3d(unsigned char pixels[], unsigned linelen)
 {
 
    /* these values come from FRACTINT.C */
 
    /* These variables must preserve their values across calls */
-   static float theta,theta1,theta2;  /* current,start,stop latitude */
-   static float phi,phi1,phi2;        /* current start,stop longitude */
    static double aspect;              /* aspect ration */
-   static int   deltatheta,deltaphi;  /* increment of latitude, longitude */
+   static float   deltaphi;  /* increment of latitude, longitude */
+   static float phi;
    static double rscale;              /* surface roughness factor */
    static long xcenter,ycenter;       /* circle center */
    static double sclx,scly,sclz;      /* scale factors */
    static double R;                   /* radius values */
    static double Rfactor;             /* for intermediate calculation */
-   static MATRIX m;                   /* transformation matric */
-   static long im[4][4];		      /* "" */
-   static long iview[4];		      /* for perspective views */
+   static MATRIX m;                   /* transformation matrix */
+   static LMATRIX lm;   		      /* "" */
+   static LVECTOR lview;		      /* for perspective views */
    static double zcutoff;             /* perspective backside cutoff value */  
-   
+   static float twocosdeltaphi;
+   static float cosphi,sinphi;              /* precalculated sin/cos of longitude */
+   static float oldcosphi1,oldsinphi1;
+   static float oldcosphi2,oldsinphi2;
+   float tmpx,tmpy,tmpz;      
    double r;                          /* sphere radius */
    double xval,yval,zval;             /* rotation values */
-   double costheta,sintheta;          /* precalculated sin/cos of latitude */
-   double cosphi,sinphi;              /* precalculated sin/cos of longitude */
-   int tmp_phi,tmp_theta;             /* temporary latitude/longitude */
-
+   float costheta,sintheta;          /* precalculated sin/cos of latitude */
+   float twocosdeltatheta;
+   
    struct point cur;                  /* current pixels */
    struct point old;                  /* old pixels */
+   struct point oldlast;              /* old pixels */
+
    static struct point bad;           /* out of range value */
 
    struct f_point f_cur;
@@ -96,21 +109,23 @@ line3d(unsigned char pixels[], unsigned linelen)
     
    VECTOR v;                          /* double vector */
    VECTOR v1,v2;
-   VECTOR cross;
    VECTOR crossavg;
+   char crossnotinit;                 /* flag for crossavg init indication */
+   
    static VECTOR light_direction;
    
-   long iv[4];			              /* long equivalent of v */
-   long iv0[4];			              /* long equivalent of v */
+   LVECTOR lv;			              /* long equivalent of v */
+   LVECTOR lv0;			              /* long equivalent of v */
    int color;                         /* current decoded color */
    int col;                           /* current column (original GIF) */ 
-   int showbox;                       /* flag for showing box */
    /* corners of transformed xdotx by ydots x colors box */ 
    double xmin, ymin, zmin, xmax, ymax, zmax; 
    int i,j;
+   if(transparent[0] || transparent[1])
+      plot = normalplot = T_clipcolor;  /*  Use the transparent plot function */
+   else
+      plot = normalplot = clipcolor;    /* the usual FRACTINT plot function with clipping */
 
-   plot = clipcolor;  /* the usual FRACTINT plot function with clipping */
-   
    /* 
       This IF clause is executed ONCE per image. All precalculations are 
       done here, with out any special concern about speed. DANGER - 
@@ -120,8 +135,18 @@ line3d(unsigned char pixels[], unsigned linelen)
    if(rowcount == 0)
    {
       long check_extra;       
+      float theta,theta1,theta2;  	/* current,start,stop latitude */
+      float phi1,phi2;        		/* current start,stop longitude */
+      float   deltatheta;  		/* increment of latitude */
+
       /* lastrow stores the previous row of the original GIF image for
          the purpose of filling in gaps with triangle procedure */
+
+      crossavg[0] = 0;
+      crossavg[1] = 0;
+      crossavg[2] = 0;
+      minmax_x = (struct minmax *)strlocn;
+
       if(extraseg)
       {
 #ifdef __TURBOC__
@@ -135,37 +160,20 @@ line3d(unsigned char pixels[], unsigned linelen)
 
       /* stick this array a safe distance from end */
       /* this array used in triangle-fill */
-      minmax_x = (struct minmax far *)(lastrow+MAXPIXELS);
-
-      /* have used up 12300 of extra seg now */
       check_extra = sizeof(*lastrow)*(MAXPIXELS);
-      /* printf("check extra = %ld\n",check_extra); */
-      
+
       /* now stuff the sine and cosine arrays still farther out */
-      sinarray = (float far *)(minmax_x+MAXPIXELS);
+      sinthetaarray = (float far *)(lastrow+MAXPIXELS);
+      check_extra = check_extra + sizeof(float)*MAXPIXELS;
 
-      /* have used up 16396 of extra seg now */
-      check_extra = check_extra + sizeof(*sinarray)*SLICE4;
-      /* printf("check extra = %ld\n",check_extra); */
+      costhetaarray = (float far *)(sinthetaarray+MAXPIXELS);
+      check_extra = check_extra + sizeof(float)*MAXPIXELS;
 
-      f_lastrow = (struct f_point far *)(sinarray+SLICE4);
-
-      /* have used up 40996 of extra seg now */
-      check_extra = check_extra + sizeof(*f_lastrow)*(MAXPIXELS+1);
-      /* printf("check extra = %ld\n",check_extra); */
+      f_lastrow = (struct f_point far *)(costhetaarray+MAXPIXELS);
+      check_extra = check_extra + sizeof(*f_lastrow)*(MAXPIXELS);
 
       fpixels = (float far *)(f_lastrow+MAXPIXELS);
-      
-      check_extra = check_extra + sizeof(float)*linelen;
-      /* printf("check extra = %ld\n",check_extra); */
-
-      /* (fill in the sine array with  <invalid> 2.0's) */
-      if (SPHERE) 
-      {
-         for (i = 0; i < SLICE4; i++) 
-            sinarray[i] = 2.0;
-         PISLICE = 2 * PI / SLICE;	/* calculate this just once */
-      }
+      check_extra = check_extra + sizeof(float)*MAXPIXELS;
 
       /* get scale factors */
       sclx =   XSCALE/100.0;
@@ -174,10 +182,22 @@ line3d(unsigned char pixels[], unsigned linelen)
 
       if(SPHERE==FALSE)  /* skip this slow stuff in sphere case */
       {
+         /* 
+            What is done here is to create a single matrix, m, which has 
+            scale, rotation, and shift all combined. This allows us to use 
+            a single matrix to transform any point. Additionally, we create 
+            two perspective vectors.
+            
+            Start with a unit matrix. Add scale and rotation. Then calculate 
+            the perspective vectors. Finally add enough translation to center 
+            the final image plus whatever shift the user has set.
+         */
+         
          /* start with identity */
          identity (m);
 
-         /* translate so origin is in center of box */
+         /* translate so origin is in center of box, so that when we rotate 
+            it, we do so through the center */
          trans ( (double)xdots/(-2.0),(double)ydots/(-2.0),
                  (double)colors/(-2.0),m);
      
@@ -200,69 +220,115 @@ line3d(unsigned char pixels[], unsigned linelen)
          corners(m,0,&xmin,&ymin,&zmin,&xmax,&ymax,&zmax);
       }   
 
-      /* perspective 3D vector - iview[2] == 0 means no perspective */
+      /* perspective 3D vector - lview[2] == 0 means no perspective */
 
       /* set perspective flag */
       persp = 0;
-      if (ZVIEWER != 0) persp = 1;
+      if (ZVIEWER != 0)
+      {
+         persp = 1;
+         if(ZVIEWER < 80) /* force float */
+             floatflag |= 2; /* turn on second bit */
+      }   
  
-      /* set of view vector */
-      iview[0] = xdots >> 1;  
-      iview[1] = ydots >> 1;
+      /* set up view vector, and put viewer in center of screen */
+      lview[0] = xdots >> 1;  
+      lview[1] = ydots >> 1;
       
       /* z value of user's eye - should be more negative than extreme 
          negative part of image */
       if(SPHERE) /* sphere case */
-         iview[2] = -(long)((double)ydots*(double)ZVIEWER/100.0);
+         lview[2] = -(long)((double)ydots*(double)ZVIEWER/100.0);
       else          /* non-sphere case */
-         iview[2] = (long)((zmin-zmax)*(double)ZVIEWER/100.0);
+         lview[2] = (long)((zmin-zmax)*(double)ZVIEWER/100.0);
 
-      view[0] = iview[0];  view[1] = iview[1]; view[2] = iview[2];
-      iview[0] = iview[0] << 16;
-      iview[1] = iview[1] << 16;
-      iview[2] = iview[2] << 16; 
+      view[0] = lview[0];  view[1] = lview[1]; view[2] = lview[2];
+      lview[0] = lview[0] << 16;
+      lview[1] = lview[1] << 16;
+      lview[2] = lview[2] << 16; 
 
       if(SPHERE==FALSE) /* sphere skips this */
       {
-         /* translate back exactly amount so maximum values are non-positive */
+         /* translate back exactly amount we translated earlier plus enough 
+            to center image so maximum values are non-positive */
          trans(((double)xdots-xmax-xmin)/2,((double)ydots-ymax-ymin)/2,-zmax,m);
          trans((double)XSHIFT,(double)(-YSHIFT),0.0,m);
          /* matrix m now contains ALL those transforms composed together !!!! */
          /* convert m to long integers shifted 16 bits */
          for (i = 0; i < 4; i++)
          for (j = 0; j < 4; j++)
-		    im[i][j] = m[i][j] * 65536.0;
+		    lm[i][j] = m[i][j] * 65536.0;
          /* this shows box before plotting fractal - very handy - should let
          user do this */
-         showbox = 0;
-         if(debugflag==20)
-            showbox=1;   
-         if(showbox)
-         {
-            /* 1 means show box - xmin etc. do nothing here */
-            corners(m,1,&xmin,&ymin,&zmin,&xmax,&ymax,&zmax);
-         }
       }
       else /* sphere stuff goes here */
       {
-         
+         float z;
+         double blob;    
          /* Sphere is on side - north pole on right. Top is -90 degrees
             latitude; bottom 90 degrees */
       
-         /* units tenths of a degree */
-         
          /* Map X to this LATITUDE range */
-         theta1 = THETA1*(1.0*SLICE/360);
-         theta2 = THETA2*(1.0*SLICE/360);
+         theta1 = THETA1*PI/180.0;
+         theta2 = THETA2*PI/180.0;
 
          /* Map Y to this LONGITUDE range */
-         phi1   = PHI1*(1.0*SLICE/360);
-         phi2   = PHI2*(1.0*SLICE/360);
+         phi1   = PHI1*PI/180.0;
+         phi2   = PHI2*PI/180.0;
 
-         theta = (int)theta1;
-         phi   = (int)phi1;
-         deltatheta = (float)(theta2 - theta1)/linelen;         
-         deltaphi   = (float)(phi2   - phi1  )/height;         
+         theta = theta1;
+         phi   = phi1;
+         
+         /*
+            Thanks to Hugh Bray for the following idea: when calculating
+            a table of evenly spaced sines or cosines, only a few initial
+            values need be calculated, and the remaining values can be 
+            gotten from a derivative of the sine/cosine angle sum formula
+            at the cost of one multiplication and one addition per value!
+
+            This idea is applied once here to get a complete table for 
+            latitude, and near the bottom of this routine to incrementally
+            calculate longitude.
+            
+            Precalculate 2*cos(deltaangle), sin(start) and sin(start+delta).
+            Then apply recursively:
+              sin(angle+2*delta) = sin(angle+delta) * 2cosdelta - sin(angle)
+
+            Similarly for cosine. Neat!
+          */
+
+         deltatheta = (float)(theta2 - theta1)/(float)linelen;         
+
+         /* initial sin,cos theta */
+         sinthetaarray[0] = sin((double)theta);
+         costhetaarray[0] = cos((double)theta);
+         sinthetaarray[1] = sin((double)(theta + deltatheta));
+         costhetaarray[1] = cos((double)(theta + deltatheta));
+      
+         /* sin,cos delta theta */
+         twocosdeltatheta = 2.0*cos((double)deltatheta);
+
+         /* build table of other sin,cos with trig identity */
+         for(i=2;i<linelen;i++)
+         {
+            sinthetaarray[i] = sinthetaarray[i-1]*twocosdeltatheta-
+                               sinthetaarray[i-2];
+            costhetaarray[i] = costhetaarray[i-1]*twocosdeltatheta-
+                               costhetaarray[i-2];
+         }         
+
+         /* now phi - these calculated as we go - get started here */
+         deltaphi   = (float)(phi2   - phi1  )/(float)height;
+
+         /* initial sin,cos phi */
+
+         sinphi = oldsinphi1 = sin((double)phi1);
+         cosphi = oldcosphi1 = cos((double)phi1);
+         oldsinphi2 = sin((double)(phi1+deltaphi));
+         oldcosphi2 = cos((double)(phi1+deltaphi));
+      
+         /* sin,cos delta phi */
+         twocosdeltaphi = 2*cos((double)deltaphi);
 
          xcenter = xdots/2 + XSHIFT;
          ycenter = ydots/2 - YSHIFT;
@@ -272,7 +338,7 @@ line3d(unsigned char pixels[], unsigned linelen)
 
          /* radius of planet */
          R = (double)(ydots)/2;
-         
+
          /* precalculate factor */
          rXrscale = R*rscale;
          
@@ -308,6 +374,22 @@ line3d(unsigned char pixels[], unsigned linelen)
             zcutoff *= 65536;
          }
       }
+      /* set fill plot function */
+      if(FILLTYPE != 3)
+      {
+         fillplot = interpcolor;
+
+         if(transparent[0] || transparent[1]) /*  If transparent colors are set */
+	        plot = T_interpcolor;  /*  Use the transparent plot function  */
+      }
+      else
+      {
+         fillplot = clipcolor;
+
+         if(transparent[0] || transparent[1]) /*  If transparent colors are set */
+	        fillplot = T_clipcolor;  /*  Use the transparent plot function  */
+      }
+
       /* Both Sphere and Normal 3D */
       light_direction[0] = XLIGHT;
       light_direction[1] = YLIGHT;
@@ -315,6 +397,10 @@ line3d(unsigned char pixels[], unsigned linelen)
       
       if(FILLTYPE==6 && !SPHERE) /* transform light direction */
       {
+         /* Think of light direction  as a vector with tail at (0,0,0) and
+            head at (light_direction). We apply the transformation to
+            BOTH head and tail and take the difference */
+
          v[0] = 0.0;
          v[1] = 0.0;
          v[2] = 0.0;
@@ -327,9 +413,9 @@ line3d(unsigned char pixels[], unsigned linelen)
       normalize_vector(light_direction);
       
       /* bad has values caught by clipping */
-      f_bad.x     = bad.x     = xdots;
-      f_bad.y     = bad.y     = ydots;
-      f_bad.color = bad.color = colors;
+      f_bad.x     = bad.x     = bad_value;
+      f_bad.y     = bad.y     = bad_value;
+      f_bad.color = bad.color = bad_value;
       for(i=0;i<linelen;i++)
       {
          lastrow[i]   = bad;
@@ -338,16 +424,34 @@ line3d(unsigned char pixels[], unsigned linelen)
       if(fp_pot)
          fclose(fp_pot);
       fp_pot=fopen("tmppot","rb");
-   }
+   } /* end of once-per-image intializations */ 
    
+   crossnotinit = 1;
    col = 0;
 
    /* make sure these pixel coordinates are out of range */
    old   = bad;
    f_old = f_bad;
 
+   /* copies pixels buffer to float type fpixels buffer for fill purposes */
    set_pixel_buff(pixels,fpixels,linelen);
-   
+
+   /*
+   This section of code allows the operation of a preview mode when the
+   preview flag is set. Enabled, it allows the drawing of only the first 
+   line of the source image, then every 10th line, until and including the 
+   last line. For the undrawn lines, only necessary calculations are 
+   made. As a bonus, in non-sphere mode a box is drawn to help visualize
+   the effects of 3D transformations. Thanks to Marc Reinig for this idea
+   and code -- BTW, Marc did NOT put the goto in, but WE did, to avoid
+   copying code here, and to avoid a HUGE "if-then" construct. Besides,
+   we have ALREADY sinned, so why not sin some more? */
+
+   /* Enter Preview mode, insure last line is drawn  */   
+   if (preview && (rowcount != ydots-1)) 
+      if ((rowcount - 10 * (rowcount/10)) != 0) /* insure FIRST line drawn */
+         goto reallythebottom; /* skip over most of the line3d calcs */
+
    /* PROCESS ROW LOOP BEGINS HERE */
    while(col < linelen)
    {
@@ -359,91 +463,9 @@ line3d(unsigned char pixels[], unsigned linelen)
 
       if(SPHERE) /* sphere case */
       {
-         register i, j;
-         /* avoid side effects by using temporary variables */
-         /* should be able to get rid of these */
-         tmp_phi   = phi;
-         tmp_theta = theta;
-
-         /* get angles in range */
-         if (tmp_phi >= 0)
-            tmp_phi = tmp_phi & (SLICE-1);
-         else
-            tmp_phi = SLICE - ((-tmp_phi) & (SLICE-1));
-         if (tmp_theta >= 0)
-            tmp_theta = tmp_theta & (SLICE-1);
-         else
-            tmp_theta = SLICE - ((-tmp_theta) & (SLICE-1));
-
-         /* lookup sines and cosines */ /* Hoo, Boy, is THIS ugly!! - Bert */
-         i = tmp_phi & (SLICE4-1);
-         j = SLICE4 - i;
-         if (sinarray[i] > 1.5) 
-         {
-            sinarray[i] = sin(PISLICE*i);
-            sinarray[j] = sin(PISLICE*j);
-         }
-         if (tmp_phi < SLICE4) 
-         {
-            sinphi   =  sinarray[i];
-            cosphi   =  sinarray[j];
-         } 
-         else 
-         {
-            if (tmp_phi < (SLICE4+SLICE4)) 
-            {
-               sinphi   =  sinarray[j];
-               cosphi   = -sinarray[i];
-            } 
-            else 
-            {
-               if (tmp_phi < (SLICE-SLICE4)) 
-               {
-                  sinphi   = -sinarray[i];
-                  cosphi   = -sinarray[j];
-               } 
-               else 
-               {
-                  sinphi   = -sinarray[j];
-                  cosphi   =  sinarray[i];
-               }
-            }
-         }
-
-         i = tmp_theta & (SLICE4-1);
-         j = SLICE4 - i;
-         if (sinarray[i] > 1.5) 
-         {
-            sinarray[i] = sin(PISLICE*i);
-            sinarray[j] = sin(PISLICE*j);
-         }
-         if (tmp_theta < SLICE4) 
-         {
-            sintheta   =  sinarray[i];
-            costheta   =  sinarray[j];
-         } 
-         else 
-         {
-            if (tmp_theta < (SLICE4+SLICE4)) 
-            {
-               sintheta   =  sinarray[j];
-               costheta   = -sinarray[i];
-            } 
-            else 
-            {
-               if (tmp_theta < (SLICE-SLICE4)) 
-               {
-                  sintheta   = -sinarray[i];
-                  costheta   = -sinarray[j];
-               } 
-               else 
-               {
-                  sintheta   = -sinarray[j];
-                  costheta   =  sinarray[i];
-               }
-            }
-         }
-
+         sintheta = sinthetaarray[col];
+         costheta = costhetaarray[col];
+         
          /* if naked use of goto's offend you don't read next two lines! */
          if(sinphi < 0) 
          {
@@ -451,17 +473,7 @@ line3d(unsigned char pixels[], unsigned linelen)
             f_cur = f_bad;
             goto loopbottom;   /* another goto ! */
          }
-         if(debugflag = 26) /* do math lib calc instead */
-         {
-            double dtheta,dphi;
-            dtheta = theta*PISLICE;
-            dphi   = phi*PISLICE;
-
-            sintheta = sin(dtheta);
-            costheta = cos(dtheta);
-            sinphi   = sin(dphi  );
-            cosphi   = cos(dphi  );
-         }
+         
          /* KEEP THIS FOR DOCS - original formula --
          if(rscale < 0.0)
             r = 1.0+((double)cur.color/(double)colors)*rscale;
@@ -482,15 +494,15 @@ line3d(unsigned char pixels[], unsigned linelen)
          if(persp)
          {
             /* NOTE: fudge was pre-calculated above in r and R */
-            iv[2] = -R - r*costheta*sinphi; /* (almost) guarantee negative */
-            if(iv[2] > zcutoff)
+            lv[2] = -R - r*costheta*sinphi; /* (almost) guarantee negative */
+            if(lv[2] > zcutoff)
             {
-               cur.x = xdots;
-               cur.y = ydots;
+               cur = bad;
+               f_cur = f_bad;
                goto loopbottom;   /* another goto ! */
             }
-            iv[0] = xcenter + sintheta*sclx*r;          /* x */
-            iv[1] = ycenter + costheta*cosphi*scly*r;   /* y */
+            lv[0] = xcenter + sintheta*sclx*r;          /* x */
+            lv[1] = ycenter + costheta*cosphi*scly*r;   /* y */
             
             if(FILLTYPE >= 5) /* calculate illumination normal before persp */
             {
@@ -505,10 +517,27 @@ line3d(unsigned char pixels[], unsigned linelen)
                f_cur.y     = ycenter0 + costheta*cosphi*scly*r0;
                f_cur.color = -r0*costheta*sinphi;
             }
-             
-            ipersp(iv,iview);
-            cur.x = (iv[0]+32768L) >> 16;
-            cur.y = (iv[1]+32768L) >> 16;
+            if(floatflag)
+            {
+               VECTOR v;
+               long fudge;
+               fudge = 1L<<16;
+               v[0] = lv[0];
+               v[1] = lv[1];
+               v[2] = lv[2];
+               v[0] /= fudge;
+               v[1] /= fudge;
+               v[2] /= fudge;
+               perspective(v);
+               cur.x = v[0]+.5;
+               cur.y = v[1]+.5;
+            }
+            else
+            {               
+               longpersp(lv,lview,16);
+               cur.x = (lv[0]+32768L) >> 16;
+               cur.y = (lv[1]+32768L) >> 16;
+            }
          }
          else
          {
@@ -520,7 +549,7 @@ line3d(unsigned char pixels[], unsigned linelen)
       }
       else /* non-sphere 3D */
       {
-         if(debugflag == 22)
+         if(floatflag)
          {
             /* slow float version for comparison */
             v[0] = col;
@@ -538,24 +567,26 @@ line3d(unsigned char pixels[], unsigned linelen)
          else
          {
              if(FILLTYPE >= 5) /* flag to save vector before perspective */
-                iv0[0] = 1;    /* in ivmult calculation */
+                lv0[0] = 1;    /* in longvmultpersp calculation */
              else
-                iv0[0] = 0;
+                lv0[0] = 0;
              
              /* use 32-bit multiply math to snap this out */
-             iv[0] = col;  iv[1] = rowcount;  iv[2] = f_cur.color*65536.0;
-             iv[0] = iv[0] << 16;  iv[1] = iv[1] << 16; /*iv[2] = iv[2] << 16;*/
-             ivmult(iv,im,iv0,iv,iview);
-             cur.x = (iv[0]+32768L) >> 16;
-             cur.y = (iv[1]+32768L) >> 16;
+             lv[0] = col;  lv[1] = rowcount;  lv[2] = f_cur.color*65536.0;
+             lv[0] = lv[0] << 16;  lv[1] = lv[1] << 16; /*lv[2] = lv[2] << 16;*/
+
+             longvmultpersp(lv,lm,lv0,lv,lview,16);
+
+             cur.x = (lv[0]+32768L) >> 16;
+             cur.y = (lv[1]+32768L) >> 16;
     
              if(FILLTYPE >= 5)
              {
-                f_cur.x      = iv0[0];
+                f_cur.x      = lv0[0];
                 f_cur.x     /= 65536.0;
-                f_cur.y      = iv0[1];
+                f_cur.y      = lv0[1];
                 f_cur.y     /= 65536.0;
-                f_cur.color  = iv0[2];
+                f_cur.color  = lv0[2];
                 f_cur.color /= 65536.0;
              }
          }
@@ -587,7 +618,10 @@ line3d(unsigned char pixels[], unsigned linelen)
             oldrow/col _____ trow/col   /
          */   
          if(rowcount && col)    /* skip first row and first column */
-         {  
+         {
+            if(col == 1)
+               putatriangle(lastrow[col],oldlast,old,old.color);
+              
             if(col < xdots-1)
                putatriangle(lastrow[col+1],lastrow[col],cur,cur.color);
             putatriangle(old,           lastrow[col],cur,cur.color);
@@ -613,13 +647,20 @@ line3d(unsigned char pixels[], unsigned linelen)
                   old.x = xcenter;
                   old.y = ycenter;
             }
-         } else 
+         } 
+         else 
          {
-            iv[0] = col;  iv[1] = rowcount;  iv[2] = 0;
-            iv[0] = iv[0] << 16;  iv[1] = iv[1] << 16; iv[2] = iv[2] << 16;
-            ivmult(iv,im,iv0,iv,iview);
-            old.x = (iv[0]+32768L) >> 16;
-            old.y = (iv[1]+32768L) >> 16;
+            lv[0] = col;  lv[1] = rowcount;  lv[2] = 0;
+
+            /* apply fudge bit shift for integer math */             
+            lv[0] = lv[0] << 16;  lv[1] = lv[1] << 16;
+            /* Since 0, unnecessary lv[2] = lv[2] << 16;*/
+
+            longvmultpersp(lv,lm,lv0,lv,lview,16);
+
+		  /*  Round and fudge back to original  */
+            old.x = (lv[0]+32768L) >> 16;
+            old.y = (lv[1]+32768L) >> 16;
          }
          if (old.x < 0) 
             old.x = 0;
@@ -636,6 +677,9 @@ line3d(unsigned char pixels[], unsigned linelen)
          /* light-source modulated fill */
          if(rowcount && col)    /* skip first row and first column */
          {  
+            if(f_cur.color <= f_bad.color || f_old.color <= f_bad.color ||
+            f_lastrow[col].color <= f_bad.color)
+               break;
             if(FILLTYPE==5)
             {
                v1[0] = 1;
@@ -648,9 +692,11 @@ line3d(unsigned char pixels[], unsigned linelen)
             }
             else if(FILLTYPE==6)
             {
-               v1[0] = f_cur.x     - f_lastrow[col-1].x;    
-               v1[1] = f_cur.y     - f_lastrow[col-1].y;    
-               v1[2] = f_cur.color - f_lastrow[col-1].color;
+               if(f_lastrow[col].color == f_bad.color)
+                  break;
+               v1[0] = f_cur.x     - f_old.x;    
+               v1[1] = f_cur.y     - f_old.y;    
+               v1[2] = f_cur.color - f_old.color;
     
                v2[0] = f_lastrow[col].x     - f_cur.x;
                v2[1] = f_lastrow[col].y     - f_cur.y;
@@ -658,52 +704,68 @@ line3d(unsigned char pixels[], unsigned linelen)
             } 
             
             cross_product (v1, v2, cross);
-      
+                
             /* normalize cross - and check if non-zero */
             if(normalize_vector(cross)) 
-            {
-               /* this shouldn't happen */
-               /*
-               printf("normal vector error\r");
-               showfpoint(f_cur);
-               showfpoint(f_lastrow[col]);
-               showfpoint(f_lastrow[col-1]);
-               getch();
-               */
-               cur.color = f_cur.color = colors;
-            }   
+               cur.color = f_cur.color = bad.color;
             else
             {
                /* line-wise averaging scheme */
                if(LIGHTAVG>0)
                {
-                  if(col==1)
+                  if(crossnotinit)
                   {
                      /* initialize array of old normal vectors */
                      crossavg[0] = cross[0];
                      crossavg[1] = cross[1];
                      crossavg[2] = cross[2];
+                     crossnotinit = 0;
                   }
-                  crossavg[0] = (crossavg[0]*LIGHTAVG+cross[0])/(LIGHTAVG+1);
-                  crossavg[1] = (crossavg[1]*LIGHTAVG+cross[1])/(LIGHTAVG+1);
-                  crossavg[2] = (crossavg[2]*LIGHTAVG+cross[2])/(LIGHTAVG+1);
-                  cross[0] = crossavg[0];
-                  cross[1] = crossavg[1];
-                  cross[2] = crossavg[2];
-                  normalize_vector(cross);
+                  tmpcross[0] = (crossavg[0]*LIGHTAVG+cross[0])/(LIGHTAVG+1);
+                  tmpcross[1] = (crossavg[1]*LIGHTAVG+cross[1])/(LIGHTAVG+1);
+                  tmpcross[2] = (crossavg[2]*LIGHTAVG+cross[2])/(LIGHTAVG+1);
+                     
+                  cross[0] = tmpcross[0];
+                  cross[1] = tmpcross[1];
+                  cross[2] = tmpcross[2];
+                  if(normalize_vector(cross)) 
+                  {
+                     /* this shouldn't happen */
+                     if(debugflag > 0)
+                     {
+                     printf("normal vector error #2\r");
+                     showfpoint(f_cur);
+                     showfpoint(f_lastrow[col]);
+                     showfpoint(f_lastrow[col-1]);
+                     getch();
+                     }
+                     cur.color = f_cur.color = colors;
+                  }
+                  crossavg[0] = tmpcross[0];
+                  crossavg[1] = tmpcross[1];
+                  crossavg[2] = tmpcross[2];
                } 
                /* dot product of unit vectors is cos of angle between */
                /* we will use this value to shade surface */
                cur.color = 1+(colors-2)*(1.0-dot_product(cross,light_direction));
             }
-            if(cur.color < 0) 
+            /* if colors out of range, set them to min or max color index
+               but avoid background index. This makes colors "opaque" so
+               SOMETHING plots */             
+            if(cur.color < 0)                  /* prevent transparent colors */
+               cur.color = 1;                  /* avoid background */
+            if(cur.color >= colors)
                cur.color = colors-1;
+
+            /* why "col < 2"? So we have sufficient geometry for the fill
+               algorithm, which needs previous point in same row to have
+               already been calculated (variable old) */   
             if(col < 2 || rowcount < 2) /* don't have valid colors yet */
                break;
             if(col < xdots-1)
                putatriangle(lastrow[col+1],lastrow[col],cur,cur.color);
             putatriangle(old,lastrow[col],cur,cur.color);
-            
+
             /* make sure corner colors not overwritten */
             (*plot)(cur.x,cur.y,cur.color);
             (*plot)(old.x,old.y,old.color);
@@ -712,38 +774,64 @@ line3d(unsigned char pixels[], unsigned linelen)
                (*plot)(lastrow[col+1].x,lastrow[col+1].y,lastrow[col+1].color);
          }
 	     break;
-      }
+      }  /*  End of CASE statement for fill type  */
+
       loopbottom:
       if (FILLTYPE >= 2 && FILLTYPE != 4)
       {
         /* for triangle fill purposes */
+        oldlast = lastrow[col];
         old = lastrow[col] = cur;
         
         if(FILLTYPE >= 5)
         {	    
            /* for illumination model purposes */
            f_old = f_lastrow[col] = f_cur;
-	 }
+        }
       }
       col++;
-      if(SPHERE) /* incremental latitude calculation */ 
-         theta += deltatheta;
-   }
+   }  /*  End of while statement for plotting line  */
+
+	/*  Done with the row (line). Now, increment rowcount and see if
+            you are  done with image  */
+   reallythebottom:
    if(++rowcount >= ydots)
    {
+      /* end of image mopup stuff */
       /* done - make sure pot file is closed */
       if(fp_pot)
       {
          fclose(fp_pot);
          fp_pot = NULL;
       }
+      if(preview && !SPHERE)
+      {
+         /* draw box to help visualize effect of rotations */
+         /* 1 means show box - xmin etc. do nothing here */
+         corners(m,1,&xmin,&ymin,&zmin,&xmax,&ymax,&zmax);
+      }
+      
+      /* reset floatflag */
+      floatflag &= 1; /* strip second bit */
    }
-
-   if(SPHERE) /* incremental longitude calculation */
+   /* stuff that HAS to be done, even in preview mode, goes here */
+   if(SPHERE)
    {
-      phi += deltaphi;
-      theta = theta1;
-   }
+      /* incremental sin/cos phi calc */
+      if(rowcount == 1)
+      {
+         sinphi = oldsinphi2;
+         cosphi = oldcosphi2;
+      }else
+      {
+         sinphi = twocosdeltaphi*oldsinphi2 - oldsinphi1;
+         cosphi = twocosdeltaphi*oldcosphi2 - oldcosphi1;
+         oldsinphi1 = oldsinphi2;
+         oldsinphi2 = sinphi;
+	     oldcosphi1 = oldcosphi2;
+         oldcosphi2 = cosphi;
+      }
+   }     
    return(0); /* decoder needs to know all is well !!! */
 }
 
@@ -1040,8 +1128,9 @@ double *pxmin,*pymin,*pzmin,*pxmax,*pymax,*pzmax;
 /* called by draw_line as part of triangle fill routine */
 int putminmax(int x,int y,int color)
 {
-    if(x < minmax_x[y].minx) minmax_x[y].minx = max(0,x);
-    if(x > minmax_x[y].maxx) minmax_x[y].maxx = min(xdots-1,x);
+    if(y < 0 || y >= ydots) return(-1); 
+    if(x < minmax_x[y].minx) minmax_x[y].minx = x;
+    if(x > minmax_x[y].maxx) minmax_x[y].maxx = x;
     return(0);
 }
 
@@ -1050,6 +1139,7 @@ int putminmax(int x,int y,int color)
    each row are calculated by calling the line function for the sides.
    Then rows are filled in with horizontal lines 
 */
+#define MAXOFFSCREEN  2 /* allow two of three points to be off screen */
 putatriangle(pt1,pt2,pt3,color)
 struct point pt1,pt2,pt3;
 int color;
@@ -1062,17 +1152,30 @@ int color;
    p2 = pt2;
    p3 = pt3;
 
-   /* clip if out of range */
-   if( p1.x < 0 || p1.x >= xdots) return(-1);
-   if( p2.x < 0 || p2.x >= xdots) return(-1);
-   if( p3.x < 0 || p3.x >= xdots) return(-1);
-   if( p1.y < 0 || p1.y >= ydots) return(-1);
-   if( p2.y < 0 || p2.y >= ydots) return(-1);
-   if( p3.y < 0 || p3.y >= ydots) return(-1);
-   
+   /* are these all good points? */
+   if(-abs(p1.x) <= bad_value) return(-1);   
+   if(-abs(p1.y) <= bad_value) return(-1);   
+   if(-abs(p2.x) <= bad_value) return(-1);   
+   if(-abs(p2.y) <= bad_value) return(-1);   
+   if(-abs(p3.x) <= bad_value) return(-1);   
+   if(-abs(p3.y) <= bad_value) return(-1);   
+
+   /* Too many points off the screen? */
+   if(offscreen(&p1) + offscreen(&p2) + offscreen(&p3) > MAXOFFSCREEN)
+      return(-1);
+      
+   /* bail out if points are equal */
+   if (pt1.x == pt2.x)
+      if (pt2.x == pt3.x)
+         if (pt1.y == pt2.y)
+            if (pt2.y == pt3.y)
+                return(-1);
+
+
+    
    /* find min max y */
-   miny = ydots;
-   maxy = 0;
+   miny = INT_MAX;
+   maxy = INT_MIN;
    if(p1.y < miny) miny = p1.y;
    if(p2.y < miny) miny = p2.y;
    if(p3.y < miny) miny = p3.y;
@@ -1081,12 +1184,14 @@ int color;
    if(p2.y > maxy) maxy = p2.y;
    if(p3.y > maxy) maxy = p3.y;
 
+   if(maxy < 0 || miny >= ydots) /* bail out if totally off screen */
+      return(-1);   
+
    if(maxy - miny <= 1)
    {
-      
       /* find min max x */
-      minx = xdots;
-      maxx = 0;
+      minx = INT_MAX;
+      maxx = INT_MIN;
       if(p1.x < minx) minx = p1.x;
       if(p2.x < minx) minx = p2.x;
       if(p3.x < minx) minx = p3.x;
@@ -1096,7 +1201,14 @@ int color;
       if(p3.x > maxx) maxx = p3.x;
       if(maxx - minx <= 1) /* bail out if too close together */
          return(-1);
+      if(maxx < 0 || minx >= xdots) /* bail out if totally off screen */
+         return(-1);   
    }
+   
+   /* only worried about values on screen */
+   miny = max(0,miny);
+   maxy = min(ydots-1,maxy);
+   
    for(y=miny;y<=maxy;y++)
    {
       minmax_x[y].minx = INT_MAX;
@@ -1111,21 +1223,29 @@ int color;
    draw_line(p2.x,p2.y,p3.x,p3.y,0);
    draw_line(p3.x,p3.y,p1.x,p1.y,0);
 
-   /* fill in triangle */
-   if(FILLTYPE != 3)
-      plot = interpcolor;
-   else
-      plot = putcolor;   
+   plot = fillplot;
    for(y=miny;y<=maxy;y++)
       draw_line(minmax_x[y].minx,y,minmax_x[y].maxx,y,color);
-   plot = clipcolor;
+   plot = normalplot;
+
    return(0); /* zero means ok */
 }
+
+offscreen(struct point *pt)
+{
+   if(pt->x >= 0)
+      if(pt->x < xdots)
+        if(pt->y >= 0)
+          if(pt->y < ydots)
+             return(0); /* point is ok */
+   return(1); /* point is off the screen */          
+}
+
 clipcolor(x,y,color)
 {
    if(0 <= x    && x < xdots   && 
       0 <= y    && y < ydots   && 
-      0 < color && color < colors)
+      0 <= color && color < colors)
    {   
       putcolor(x,y,color);
       return(0);
@@ -1134,28 +1254,48 @@ clipcolor(x,y,color)
       return(-1);
 }
 
+T_clipcolor(x,y,color)
+/*	This function is the same as clipcolor but checks for color being
+	in transparent range. Intended to be called only if transparency
+	has been enabled. - MRR
+*/
+
+{
+   if(0 <= x    && x < xdots         && /*  is the point on screen?  */ 
+      0 <= y    && y < ydots         && /*  Yes?  */
+      0 <= color && color < colors   && /*  Colors in valid range?  */
+      /*  Lets make sure its not a transparent color  */
+      (transparent[0] > color || color > transparent[1]))
+   {   
+      putcolor(x,y,color); /* I guess we can plot then  */
+      return(0);  /*  Done  */
+   } 
+   else   
+      return(-1);  /*  Sorry, can't plot that  */
+}
+
 /* A substitute for plotcolor that interpolates the colors according
-   to the x and y values in three points p1,p2,p3 which are static in
+   to the x and y values of three points (p1,p2,p3) which are static in
    this routine */
+
 int interpcolor(x,y,color)
 {
    int d1,d2,d3;
 
+   /* this distance formula is not the usual one - put it has the virtue
+      that it uses ONLY additions (almost) and it DOES go to zero as the
+      points get close. */
 
-      /* this distance formula is not the usual one - put it has the virtue
-         that it uses ONLY additions (almost) and it DOES go to zero as the
-         points get close. */
-
-      d1 = abs(p1.x-x)+abs(p1.y-y);
-      d2 = abs(p2.x-x)+abs(p2.y-y);
-      d3 = abs(p3.x-x)+abs(p3.y-y);
-         
-      /* calculate a weighted average of colors */   
-      color = ((d2+d3)*p1.color + (d1+d3)*p2.color + (d1+d2)*p3.color)
-                /(d2+d3+d1+d3+d1+d2);
+   d1 = abs(p1.x-x)+abs(p1.y-y);
+   d2 = abs(p2.x-x)+abs(p2.y-y);
+   d3 = abs(p3.x-x)+abs(p3.y-y);
+      
+   /* calculate a weighted average of colors */   
+   color = ((d2+d3)*p1.color + (d1+d3)*p2.color + (d1+d2)*p3.color)
+             /(d2+d3+d1+d3+d1+d2);
    if(0 <= x    && x < xdots   && 
       0 <= y    && y < ydots   && 
-      0 < color && color < colors)
+      0 <= color && color < colors)
    {
       putcolor(x,y,color);
       return(0);
@@ -1164,11 +1304,48 @@ int interpcolor(x,y,color)
       return(-1);
 }
 
+int T_interpcolor(x,y,color)
+
+/* A substitute for interpcolor that interpolates the colors according
+   to the x and y values of three points (p1,p2,p3) which are static in
+   this routine AND additionally checks for transparent colors - MRR  */
+
+{
+   int d1,d2,d3;
+
+   /* this distance formula is not the usual one - put it has the virtue
+      that it uses ONLY additions (almost) and it DOES go to zero as the
+      points get close. */
+
+   d1 = abs(p1.x-x)+abs(p1.y-y);
+   d2 = abs(p2.x-x)+abs(p2.y-y);
+   d3 = abs(p3.x-x)+abs(p3.y-y);
+      
+   /* calculate a weighted average of colors */   
+   color = ((d2+d3)*p1.color + (d1+d3)*p2.color + (d1+d2)*p3.color)
+             /(d2+d3+d1+d3+d1+d2);
+
+/*  Checking for on-screen x,y might be moved to top of routine if
+    it would speed things significantly for values of perspective <100  */
+
+   if(0 <= x    && x < xdots         && /*  is the point on screen?  */ 
+      0 <= y    && y < ydots         && /*  Yes?  */
+      0 <= color && color < colors   && /*  Colors in valid range?  */
+      /*  Lets make sure its not a transparent color  */
+      (transparent[0] > color || color > transparent[1]))
+   {   
+      putcolor(x,y,color); /* I guess we can plot then  */
+      return(0);  /*  Done  */
+   } 
+   else   
+      return(-1);  /*  Sorry, can't plot that  */
+}
+
 int set_pixel_buff(unsigned char *pixels,float far *fpixels,unsigned linelen)
 {
    unsigned int *intbuf;
    int i;
-   extern int filetype; /* 0=GIF (8 bit), 1=TIW (16 bit) */
+   extern int filetype;
    switch(filetype)
    {
    case 2:       /* TARGA type 10 (RGB 16 bit) */
@@ -1187,9 +1364,45 @@ int set_pixel_buff(unsigned char *pixels,float far *fpixels,unsigned linelen)
    }
    return(0);
 }
-/*
-showfpoint(struct f_point f_pt)
+
+
+showfpoint(struct f_point pt)
 {
-   printf("%f %f %f\n",f_pt.x,f_pt.y,f_pt.color);
+   printf("%f %f %f\n",pt.x,pt.y,pt.color);
 }
-*/
+
+matherr(x)
+struct exception *x;
+{
+   printf("%e %e %e\n",cross[0], cross[1], cross[2]);
+   exit(0);
+   return(0);
+}
+
+/* cross product  - useful because cross is perpendicular to v and w */
+int chk_cross_product (int col, int row,VECTOR v, VECTOR w, VECTOR cross, VECTOR crossavg)
+{
+   static start = 1;
+   static FILE *fp;
+
+   if(start)
+   {
+      fp = fopen("blob","w");
+      start = 0;
+   }
+
+   fprintf(fp,"row %+4d col %+4d v1 %+8.3e %+8.3e %+8.3e v2 %+8.3e %+8.3e %+8.3e cross %+8.3e %+8.3e %+8.3e crossavg %+8.3e %+8.3e %+8.3e \n",
+        row,col,v[0],v[1],v[2],w[0],w[1],w[2],cross[0],cross[1],cross[2],crossavg[0],crossavg[1],crossavg[2]);
+   return(0);
+}
+#ifdef DEBUG
+/* requires /NOE in link statement */
+/* called if a math function error */
+matherr(x)
+struct exception *x;
+{
+   printf("%e %e %e\n",cross[0], cross[1], cross[2]);
+   exit(0);
+   return(0);
+}
+#endif
