@@ -140,4 +140,12 @@
 #define LSYSTEM 	       107
 #define MANOWARJFP	       108
 #define MANOWARJ	       109
+#define FNPLUSFNPIXFP	       110
+#define FNPLUSFNPIXLONG        111
+#define MARKSMANDELPWRFP       112
+#define MARKSMANDELPWR	       113
+#define TIMSERRORFP	       114
+#define TIMSERROR	       115
+#define LBIFEQSINPI	       116
+#define LBIFADSINPI	       117
 

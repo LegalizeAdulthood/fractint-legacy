@@ -5,6 +5,7 @@
 #include	<stdlib.h>
 #include	<dos.h>
 #include	<string.h>
+#include	"fractint.h"
 
 typedef unsigned char uchar;
 
@@ -14,12 +15,12 @@ typedef struct palett {
    uchar blue;
 } Palettetype;
 
-extern char		loadPalette;
 extern Palettetype	dacbox[ 256 ];
 extern unsigned far    *tga16;
 extern long	far    *tga32;
-
-char far *mapdacbox = NULL;
+extern char	far    *mapdacbox;
+extern int		colorstate; /* comments in cmdfiles */
+extern char		colorfile[];
 
 /***************************************************************************/
 
@@ -39,15 +40,18 @@ int ValidateLuts( char * fn )
 {
 FILE * f;
 unsigned	r, g, b, index;
-unsigned char	line[101];
+unsigned char	line[160];
 unsigned char	temp[81];
 	strcpy (temp,fn);
 	if (strchr(temp,'.') == NULL) /* Did name have an extension? */
 		strcat(temp,".map");  /* No? Then add .map */
 	findpath( temp, line);	      /* search the dos path */
 	f = fopen( line, "r" );
-	if (f == NULL)
+	if (f == NULL) {
+		sprintf(line,"Could not load color map %s",fn);
+		stopmsg(0,line);
 		return 1;
+		}
 	for( index = 0; index < 256; index++ ) {
 		if (fgets(line,100,f) == NULL)
 			break;
@@ -58,7 +62,13 @@ unsigned char	temp[81];
 		dacbox[index].blue  = b >> 2;
 	}
 	fclose( f );
+	while (index < 256)  { /* zap unset entries */
+		dacbox[index].red = dacbox[index].blue = dacbox[index].green = 40;
+		++index;
+	}
 	SetTgaColors();
+	colorstate = 2;
+	strcpy(colorfile,fn);
 	return 0;
 }
 
@@ -67,29 +77,18 @@ unsigned char	temp[81];
 
 int SetColorPaletteName( char * fn )
 {
-	extern unsigned char far *farmemalloc(long);
 	char msg[200];
-	char far *saveptr;
-	char *dacptr;
 	int  i;
-	if( ValidateLuts( fn ) != 0) {
-		sprintf(msg,"Could not load color map %s",fn);
+	if( ValidateLuts( fn ) != 0)
+		return 1;
+	if( mapdacbox == NULL && (mapdacbox = farmemalloc(768L)) == NULL) {
+		static char far msg[]={"Insufficient memory for color map."};
 		stopmsg(0,msg);
 		return 1;
 		}
-	if( mapdacbox == NULL && (mapdacbox = farmemalloc(768L)) == NULL) {
-		stopmsg(0,"Insufficient memory for color map.");
-		return 1;
-		}
-	saveptr = mapdacbox;
-	dacptr = (char *)&dacbox[0];
-	for (i = 0; i < 768; ++i)
-		*(saveptr++) = *(dacptr++);
-	loadPalette = 1;
+	far_memcpy((char far *)mapdacbox,(char far *)dacbox,768);
 	/* PB, 900829, removed atexit(RestoreMap) stuff, goodbye covers it */
 	return 0;
 }
 
-
-/***************************************************************************/
 

@@ -33,8 +33,9 @@ static int disktarga;
 #define BLOCKLEN 64	/* must be a power of 2, must match next */
 #define BLOCKSHIFT 6	/* must match above */
 #define CACHEMIN 4	/* minimum cache size in Kbytes */
-#define CACHEMAX 24	/* maximum cache size in Kbytes */
-#define HASHSIZE 256	/* power of 2, near CACHEMAX/(BLOCKLEN+8) */
+#define CACHEMAX 64	/* maximum cache size in Kbytes */
+#define FREEMEM  20	/* try to leave this much far memory unallocated */
+#define HASHSIZE 1024	/* power of 2, near CACHEMAX/(BLOCKLEN+8) */
 
 static struct cache {	/* structure of each cache entry */
    long offset; 		   /* pixel offset in image */
@@ -88,16 +89,24 @@ void targa_readdisk (unsigned int, unsigned int,
 		     unsigned char *, unsigned char *, unsigned char *);
 void targa_writedisk(unsigned int, unsigned int,
 		     unsigned char, unsigned char, unsigned char);
-
-static int common_startdisk();
-static void findload_cache(long);
-static struct cache far *find_cache(long);
-static void write_cache_lru();
-static void (*put_char)(unsigned char),disk_putc(unsigned char),
-	    exp_putc(unsigned char),  ext_putc(unsigned char);
-static unsigned char (*get_char)(),disk_getc(),exp_getc(),ext_getc();
-static void (*doseek)(),disk_seek(),exp_seek(),ext_seek();
 void dvid_status(int,char *);
+
+static int  _fastcall near common_startdisk(int newrowsize, int newcolsize);
+static void _fastcall near findload_cache(long);
+static struct cache far * _fastcall near find_cache(long);
+static void near write_cache_lru(void);
+static void (_fastcall near *put_char)(unsigned char);
+static void _fastcall near disk_putc(unsigned char);
+static void _fastcall near exp_putc(unsigned char);
+static void _fastcall near ext_putc(unsigned char);
+static unsigned char (near *get_char)();
+static unsigned char near disk_getc();
+static unsigned char near exp_getc();
+static unsigned char near ext_getc();
+static void (_fastcall near *doseek)(long);
+static void _fastcall near disk_seek(long);
+static void _fastcall near exp_seek(long);
+static void _fastcall near ext_seek(long);
 
 int made_dsktemp = 0;
 
@@ -138,7 +147,7 @@ int targa_startdisk(FILE *targafp,int overhead)
    return (i);
 }
 
-static int common_startdisk(int newrowsize, int newcolsize)
+static int _fastcall near common_startdisk(int newrowsize, int newcolsize)
 {
    int i,j,success;
    long memorysize;
@@ -186,20 +195,26 @@ static int common_startdisk(int newrowsize, int newcolsize)
       }
    timetodisplay = 1000;  /* time-to-display-status counter */
 
-   /* allocate cache: try for the max, but don't take more than 1/2
-      of what's available, demand a certain minimum or nogo at all */
-   longtmp = (long)CACHEMAX << 11;
-   while ((tempfar = farmemalloc(longtmp)) == NULL && longtmp > (CACHEMIN << 11))
-      longtmp -= 2048;
-   if (tempfar != NULL)
-      farmemfree(tempfar);
-   longtmp >>= 1; /* take 1/2 of what we got above */
-   cache_size = (unsigned short)longtmp >> 10;
+   /* allocate cache: try for the max; leave FREEMEMk free if we can get
+      that much or more; if we can't get that much leave 1/2 of whatever
+      there is free; demand a certain minimum or nogo at all */
+   for (cache_size = CACHEMAX; cache_size >= CACHEMIN; --cache_size) {
+      longtmp = (cache_size < FREEMEM) ? (long)cache_size << 11
+				       : (long)(cache_size+FREEMEM) << 10;
+      if ((tempfar = farmemalloc(longtmp))) {
+	 farmemfree(tempfar);
+	 break;
+	 }
+      }
+   longtmp = (long)cache_size << 10;
    cache_start = (struct cache far *)farmemalloc(longtmp);
-   cache_end = (cache_lru = cache_start) + (cache_size<<10)/sizeof(*cache_start);
+   if (cache_size == 64)
+      --longtmp; /* safety for next line */
+   cache_end = (cache_lru = cache_start) + longtmp / sizeof(*cache_start);
    hash_ptr  = (unsigned int far *)farmemalloc((long)(HASHSIZE<<1));
    if (cache_start == NULL || hash_ptr == NULL) {
-      stopmsg(0,"*** insufficient free memory for cache buffers ***");
+      static char far msg[]={"*** insufficient free memory for cache buffers ***"};
+      stopmsg(0,msg);
       return(-1);
       }
    if (dotmode == 11) {
@@ -286,7 +301,8 @@ static int common_startdisk(int newrowsize, int newcolsize)
 	 while (--memorysize >= 0) /* "clear the screen" (write to the disk) */
 	    putc(0,fp);
 	 if (ferror(fp)) {
-	    stopmsg(0,"*** insufficient free disk space ***");
+	    static char far msg[]={"*** insufficient free disk space ***"};
+	    stopmsg(0,msg);
 	    fclose(fp);
 	    fp = NULL;
 	    rowsize = 0;
@@ -296,7 +312,8 @@ static int common_startdisk(int newrowsize, int newcolsize)
 	 fp = fopen("FRACTINT.DSK","r+b"); /* reopen */
 	 }
       if (fp == NULL) {
-	 stopmsg(0,"*** Couldn't create FRACTINT.DSK ***");
+	 static char far msg[]={"*** Couldn't create FRACTINT.DSK ***"};
+	 stopmsg(0,msg);
 	 rowsize = 0;
 	 return(-1);
 	 }
@@ -342,8 +359,6 @@ int readdisk(unsigned int col, unsigned int row)
    int col_subscr;
    long offset;
    char buf[41];
-   if (col >= rowsize || row >= colsize) /* if init bad, rowsize is 0 */
-      return(0);
    if (--timetodisplay < 0) {  /* time to display status? */
       if (dotmode == 11) {
 	 sprintf(buf," reading line %4d",
@@ -352,12 +367,17 @@ int readdisk(unsigned int col, unsigned int row)
 	 }
       timetodisplay = 1000;
       }
-   if (row != cur_row) /* try to avoid ghastly code generated for multiply */
+   if (row != cur_row)	{ /* try to avoid ghastly code generated for multiply */
+      if (row >= colsize) /* while we're at it avoid this test if not needed  */
+	 return(0);
       cur_row_base = (long)(cur_row = row) * rowsize;
+      }
+   if (col >= rowsize)
+      return(0);
    offset = cur_row_base + col;
    col_subscr = (short)offset & (BLOCKLEN-1); /* offset within cache entry */
-   if (cur_offset + col_subscr != offset)     /* same entry as last ref? */
-      findload_cache(offset - col_subscr);
+   if (cur_offset != (offset & (0L-BLOCKLEN))) /* same entry as last ref? */
+      findload_cache(offset & (0L-BLOCKLEN));
    return (cur_cache->pixel[col_subscr]);
    }
 
@@ -375,8 +395,6 @@ void writedisk(unsigned int col, unsigned int row, unsigned int color)
    int col_subscr;
    long offset;
    char buf[41];
-   if (col >= rowsize || row >= colsize)
-      return;
    if (--timetodisplay < 0) {  /* time to display status? */
       if (dotmode == 11) {
 	 sprintf(buf," writing line %4d",
@@ -385,12 +403,17 @@ void writedisk(unsigned int col, unsigned int row, unsigned int color)
 	 }
       timetodisplay = 1000;
       }
-   if (row != cur_row) /* try to avoid ghastly code generated for multiply */
+   if (row != cur_row)	{ /* try to avoid ghastly code generated for multiply */
+      if (row >= colsize) /* while we're at it avoid this test if not needed  */
+	 return;
       cur_row_base = (long)(cur_row = row) * rowsize;
+      }
+   if (col >= rowsize)
+      return;
    offset = cur_row_base + col;
    col_subscr = (short)offset & (BLOCKLEN-1);
-   if (cur_offset + col_subscr != offset)
-      findload_cache(offset - col_subscr);
+   if (cur_offset != (offset & (0L-BLOCKLEN))) /* same entry as last ref? */
+      findload_cache(offset & (0L-BLOCKLEN));
    if (cur_cache->pixel[col_subscr] != (color & 0xff)) {
       cur_cache->pixel[col_subscr] = color;
       cur_cache->dirty = 1;
@@ -405,7 +428,7 @@ void targa_writedisk(unsigned int col, unsigned int row,
    writedisk(col+1, row,red);
 }
 
-static void findload_cache(long offset) /* used by read/write */
+static void _fastcall near findload_cache(long offset) /* used by read/write */
 {
    unsigned int tbloffset;
    int i,j;
@@ -489,7 +512,8 @@ static void findload_cache(long offset) /* used by read/write */
    cur_cache = cache_lru;
    }
 
-static struct cache far *find_cache(long offset) /* lookup for write_cache_lru */
+static struct cache far * _fastcall near find_cache(long offset)
+/* lookup for write_cache_lru */
 {
    unsigned int tbloffset;
    struct cache far *ptr1;
@@ -503,54 +527,70 @@ static struct cache far *find_cache(long offset) /* lookup for write_cache_lru *
    return (NULL);
 }
 
-static void write_cache_lru()
+static void near write_cache_lru()
 {
    int i,j;
    unsigned char far *pixelptr;
    long offset;
    unsigned char tmpchar;
    struct cache far *ptr1, far *ptr2;
-   /* scan back to also write any preceding dirty blocks */
+#define WRITEGAP 4 /* 1 for no gaps */
+   /* scan back to also write any preceding dirty blocks, skipping small gaps */
    ptr1 = cache_lru;
-   while ((ptr2 = find_cache(ptr1->offset - BLOCKLEN)) != NULL && ptr2->dirty)
-      ptr1 = ptr2;
-   (*doseek)(ptr1->offset >> pixelshift);
-   seek_offset = -1; /* force a seek before next read */
-   /* write all consecutive dirty blocks (often whole cache in 1pass modes) */
-   while (ptr1 != NULL && ptr1->dirty) {
-      pixelptr = &ptr1->pixel[0];
-      switch (pixelshift) {
-	 case 0:
-	    for (i = 0; i < BLOCKLEN; ++i)
-	       (*put_char)(*(pixelptr++));
-	    break;
-	 case 1:
-	    for (i = 0; i < BLOCKLEN/2; ++i) {
-	       tmpchar = *(pixelptr++) << 4;
-	       tmpchar += *(pixelptr++);
-	       (*put_char)(tmpchar);
-	       }
-	    break;
-	 case 2:
-	    for (i = 0; i < BLOCKLEN/4; ++i) {
-	       for (j = 6; j >= 0; j -= 2)
-		  tmpchar = (tmpchar << 2) + *(pixelptr++);
-	       (*put_char)(tmpchar);
-	       }
-	    break;
-	 case 3:
-	    for (i = 0; i < BLOCKLEN/8; ++i) {
-	       (*put_char)( ((((((*pixelptr << 1 | *(pixelptr+1)) << 1
-			  | *(pixelptr+2)) << 1 | *(pixelptr+3)) << 1
-			  | *(pixelptr+4)) << 1 | *(pixelptr+5)) << 1
-			  | *(pixelptr+6)) << 1 | *(pixelptr+7));
-	       pixelptr += 8;
-	       }
-	    break;
+   offset = ptr1->offset;
+   i = 0;
+   while (++i <= WRITEGAP) {
+      if ((ptr2 = find_cache(offset -= BLOCKLEN)) != NULL && ptr2->dirty) {
+	 ptr1 = ptr2;
+	 i = 0;
 	 }
-      ptr1->dirty = 0;
-      ptr1 = find_cache(ptr1->offset + BLOCKLEN);
       }
+   /* write all consecutive dirty blocks (often whole cache in 1pass modes) */
+   /* keep going past small gaps */
+write_seek:
+   (*doseek)(ptr1->offset >> pixelshift);
+write_stuff:
+   pixelptr = &ptr1->pixel[0];
+   switch (pixelshift) {
+      case 0:
+	 for (i = 0; i < BLOCKLEN; ++i)
+	    (*put_char)(*(pixelptr++));
+	 break;
+      case 1:
+	 for (i = 0; i < BLOCKLEN/2; ++i) {
+	    tmpchar = *(pixelptr++) << 4;
+	    tmpchar += *(pixelptr++);
+	    (*put_char)(tmpchar);
+	    }
+	 break;
+      case 2:
+	 for (i = 0; i < BLOCKLEN/4; ++i) {
+	    for (j = 6; j >= 0; j -= 2)
+	       tmpchar = (tmpchar << 2) + *(pixelptr++);
+	    (*put_char)(tmpchar);
+	    }
+	 break;
+      case 3:
+	 for (i = 0; i < BLOCKLEN/8; ++i) {
+	    (*put_char)((unsigned char)
+			(((((((*pixelptr << 1 | *(pixelptr+1)) << 1
+			| *(pixelptr+2)) << 1 | *(pixelptr+3)) << 1
+			| *(pixelptr+4)) << 1 | *(pixelptr+5)) << 1
+			| *(pixelptr+6)) << 1 | *(pixelptr+7)));
+	    pixelptr += 8;
+	    }
+	 break;
+      }
+   ptr1->dirty = 0;
+   offset = ptr1->offset + BLOCKLEN;
+   if ((ptr1 = find_cache(offset)) && ptr1->dirty)
+      goto write_stuff;
+   i = 1;
+   while (++i <= WRITEGAP) {
+      if ((ptr1 = find_cache(offset += BLOCKLEN)) && ptr1->dirty)
+	 goto write_seek;
+      }
+   seek_offset = -1; /* force a seek before next read */
 }
 
 /* Seek, get_char, put_char routines follow for expanded, extended, disk.
@@ -559,22 +599,22 @@ static void write_cache_lru()
    a put_char nor v.v. without a seek between them.
    */
 
-static void disk_seek(long offset)     /* real disk seek */
+static void _fastcall near disk_seek(long offset)	/* real disk seek */
 {
    fseek(fp,offset+headerlength,SEEK_SET);
    }
 
-static unsigned char disk_getc()       /* real disk get_char */
+static unsigned char near disk_getc()			/* real disk get_char */
 {
    return(getc(fp));
    }
 
-void disk_putc(unsigned char c) /* real disk put_char */
+static void _fastcall near disk_putc(unsigned char c)	/* real disk put_char */
 {
    putc(c,fp);
    }
 
-static void exp_seek(long offset)      /* expanded mem seek */
+static void _fastcall near exp_seek(long offset)	/* expanded mem seek */
 {
    int page;
    expoffset = (short)offset & 0x3fff;
@@ -585,21 +625,21 @@ static void exp_seek(long offset)      /* expanded mem seek */
       }
    }
 
-static unsigned char exp_getc()        /* expanded mem get_char */
+static unsigned char near exp_getc()			/* expanded get_char */
 {
    if (expoffset > 0x3fff) /* wrapped into a new page? */
       exp_seek((long)(oldexppage+1) << 14);
    return(expmemoryvideo[expoffset++]);
    }
 
-static void exp_putc(unsigned char c)  /* expanded mem put_char */
+static void _fastcall near exp_putc(unsigned char c)	/* expanded put_char */
 {
    if (expoffset > 0x3fff) /* wrapped into a new page? */
       exp_seek((long)(oldexppage+1) << 14);
    expmemoryvideo[expoffset++] = c;
    }
 
-static void ext_writebuf()	       /* subrtn for extended mem seek/put_char */
+static void near ext_writebuf() /* subrtn for extended mem seek/put_char */
 {
    struct XMM_Move MoveStruct;
    MoveStruct.Length = extbufptr - charbuf;
@@ -610,7 +650,7 @@ static void ext_writebuf()	       /* subrtn for extended mem seek/put_char */
    xmmmoveextended(&MoveStruct);
    }
 
-static void ext_seek(long offset)      /* extended mem seek */
+static void _fastcall near ext_seek(long offset)	/* extended mem seek */
 {
    if (extbufptr > endreadbuf) /* only true if there was a put_char sequence */
       ext_writebuf();
@@ -618,7 +658,7 @@ static void ext_seek(long offset)      /* extended mem seek */
    extbufptr = endreadbuf = charbuf;
    }
 
-static unsigned char ext_getc()        /* extended mem get_char */
+static unsigned char near ext_getc()			/* extended get_char */
 {
    struct XMM_Move MoveStruct;
    if (extbufptr >= endreadbuf) { /* drained the last read buffer we fetched? */
@@ -634,7 +674,7 @@ static unsigned char ext_getc()        /* extended mem get_char */
    return (*(extbufptr++));
    }
 
-static void ext_putc(unsigned char c)  /* extended mem get_char */
+static void _fastcall near ext_putc(unsigned char c)	/* extended get_char */
 {
    if (extbufptr >= endwritebuf) { /* filled the local write buffer? */
       ext_writebuf();
@@ -647,11 +687,16 @@ static void ext_putc(unsigned char c)  /* extended mem get_char */
 void dvid_status(int line,char *msg)
 {
    char buf[41];
+   int attrib;
    memset(buf,' ',40);
-   strcpy(buf,msg);
-   buf[strlen(msg)] = ' ';
+   memcpy(buf,msg,strlen(msg));
    buf[40] = 0;
-   putstring(BOXROW+8+line,BOXCOL+12,C_DVID_HI,buf);
+   attrib = C_DVID_HI;
+   if (line >= 100) {
+      line -= 100;
+      attrib = C_STOP_ERR;
+      }
+   putstring(BOXROW+8+line,BOXCOL+12,attrib,buf);
    movecursor(25,80);
 }
 

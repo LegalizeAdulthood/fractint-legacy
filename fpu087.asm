@@ -11,9 +11,9 @@ SUBTTL All rights reserved.
 ;    I would appreciate a copy of any work which incorporates this code.
 ;
 ;    Mark C. Peterson
-;    253 West St., H
-;    Plantsville, CT 06579
-;    (203) 276-9474
+;    405-C Queen St., Suite #181
+;    Southington, CT 06489
+;    (203) 276-9721
 ;
 ;  References:
 ;     The VNR Concise Encyclopedia of Mathematics

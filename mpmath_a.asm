@@ -12,9 +12,9 @@ SUBTTL All rights reserved.
 ;    however this is optional.
 ;
 ;    Mark C. Peterson
-;    253 West St., H
-;    Planstville, CT 06479
-;    (203) 276-9474
+;    405-C Queen St., Suite #181
+;    Southington, CT 06489
+;    (203) 276-9721
 ;
 ;  Note: Remark statements following floating point commands generally indicate
 ;     the FPU stack contents after the command is completed.

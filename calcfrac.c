@@ -44,27 +44,27 @@ int  popcorn(void);
 
 static void perform_worklist(void);
 static int  OneOrTwoPass(void);
-static int  StandardCalc(int);
-static int  potential(double,int);
+static int  _fastcall StandardCalc(int);
+static int  _fastcall potential(double,int);
 static void decomposition(void);
 static int  bound_trace_main(void);
-static int  boundary_trace(int,int);
-static int  calc_xy(int,int);
-static int  fillseg1(int,int,int,int);
-static int  fillseg(int,int,int,int);
-static void reverse_string(char *,char *,int);
+static int  _fastcall boundary_trace(int,int);
+static int  _fastcall calc_xy(int,int);
+static int  _fastcall fillseg1(int,int,int,int);
+static int  _fastcall fillseg(int,int,int,int);
+static void _fastcall reverse_string(char *,char *,int);
 static int  solidguess(void);
-static int  guessrow(int,int,int);
-static void plotblock(int,int,int,int);
-static void setsymmetry(int,int);
-static int  xsym_split(int,int);
-static int  ysym_split(int,int);
-static void set_Plasma_palette();
-static void adjust();
-static void subDivide();
+static int  _fastcall guessrow(int,int,int);
+static void _fastcall plotblock(int,int,int,int);
+static void _fastcall setsymmetry(int,int);
+static int  _fastcall xsym_split(int,int);
+static int  _fastcall ysym_split(int,int);
+static void set_Plasma_palette(void);
+static void _fastcall adjust(int xa,int ya,int x,int y,int xb,int yb);
+static void _fastcall subDivide(int x1,int y1,int x2,int y2);
 static void verhulst(void);
 static void Bif_Period_Init(void);
-static int  Bif_Periodic(int);
+static int  _fastcall Bif_Periodic(int);
 
 
 extern struct complex initorbit;
@@ -75,12 +75,13 @@ extern unsigned int decoderline[];
 extern int overflow;
 long lmagnitud, llimit, llimit2, lclosenuff, l16triglim;
 struct complex init,tmp,old,new,saved;
-extern int biomorph;
+extern int biomorph,usr_biomorph;
 extern struct lcomplex linit;
 extern int basin;
 extern int cpu;
 extern char savename[80];   /* save files using this name */
 extern int resave_flag;
+extern int started_resaves;
 extern int dotmode;
 
 int color, oldcolor, row, col, passes;
@@ -92,8 +93,10 @@ extern double far *dx1, far *dy1;
 
 extern int LogFlag;
 extern unsigned char far *LogTable;
+extern int rangeslen;
+extern int far *ranges;
 
-void (*plot)() = putcolor;
+void (_fastcall *plot)(int,int,int) = putcolor;
 
 extern double inversion[];	    /* inversion radius, f_xcenter, f_ycenter */
 extern int	xdots, ydots;	    /* coordinates of dots on the screen  */
@@ -116,7 +119,7 @@ extern long	calctime;	    /* total calc time for image */
 
 extern int rflag, rseed;
 extern int decomp[];
-extern int distest;
+extern int distest,distestwidth;
 
 extern double	param[];	    /* parameters */
 extern int	potflag;	    /* potential enabled? */
@@ -133,7 +136,7 @@ extern long   xmin, xmax, ymin, ymax;		   /* integer equivs */
 extern long   delx,dely;			   /* X, Y increments */
 extern double delxx,delxx2,delyy,delyy2;
 double deltaX, deltaY;
-double magnitude, rqlim, rqlim2;
+double magnitude, rqlim, rqlim2, rqlim_save;
 extern struct complex parm,parm2;
 int (*calctype)();
 double closenuff;
@@ -165,13 +168,14 @@ int workpass,worksym;			/* for the sake of calcmand    */
 
 extern long timer_interval;		/* timer(...) total */
 
-struct complex far *dem_orbit = NULL;	/* temp used with distance estimator */
-static int dem_iter;			/* number of entries in dem_orbit */
-double dem_delta, dem_width;
-#define DEMOVERFLOW 100000000000000.0
+extern void far *typespecific_workarea = NULL;
+
+static double dem_delta, dem_width;	/* distance estimator variables */
+static double dem_toobig;
+#define DEM_BAILOUT 535.5  /* (pb: not sure if this is special or arbitrary) */
 
 /* variables which must be visible for tab_display */
-int got_status; /* -1 if not, 0 for 1or2pass, 1 for ssg, 2 for btm */
+int got_status; /* -1 if not, 0 for 1or2pass, 1 for ssg, 2 for btm, 3 for 3d */
 int curpass,totpasses;
 int currow,curcol;
 
@@ -193,17 +197,6 @@ extern char dstack[4096];		/* common temp, two put_line calls */
 int	attractors;		    /* number of finite attractors  */
 struct complex	attr[N_ATTR];	    /* finite attractor vals (f.p)  */
 struct lcomplex lattr[N_ATTR];	    /* finite attractor vals (int)  */
-
-extern void symPIplot(int,int,int);
-extern void symPIplot2J(int,int,int);
-extern void symPIplot4J(int,int,int);
-extern void symplot2(int,int,int);
-extern void symplot2Y(int,int,int);
-extern void symplot2J(int,int,int);
-extern void symplot4(int,int,int);
-extern void symplot2basin(int,int,int);
-extern void symplot4basin(int,int,int);
-extern void noplot(int,int,int);
 
 #ifndef sqr
 #define sqr(x) ((x)*(x))
@@ -261,8 +254,41 @@ int calcfract()
    parm2.x  = param[2];
    parm2.y  = param[3];
 
-   if (LogFlag)
-      SetupLogTable();
+   if (LogFlag && colors < 16) {
+      static char far msg[]={"Need at least 16 colors to use logmap"};
+      stopmsg(0,msg);
+      LogFlag = 0;
+      }
+   if (LogFlag || rangeslen)
+      if (!(LogTable = farmemalloc((long)maxit + 1))) {
+	  static char far msg[]={"Insufficient memory for logmap/ranges with this maxiter"};
+      stopmsg(0,msg);
+      }
+      else if (rangeslen) {
+	 int i,k,l,m,numval,flip,altern;
+	 i = k = l = 0;
+	 while (i < rangeslen) {
+	    m = flip = 0;
+	    altern = 32767;
+	    if ((numval = ranges[i++]) < 0) {
+	       altern = ranges[i++];	/* sub-range iterations */
+	       numval = ranges[i++];
+	       }
+	    if (numval > maxit || i >= rangeslen)
+	       numval = maxit;
+	    while (l <= numval)  {
+	       LogTable[l++] = k + flip;
+	       if (++m >= altern) {
+		  flip ^= 1;		/* Alternate colors */
+		  m = 0;
+		  }
+	       }
+	    ++k;
+	    if (altern != 32767) ++k;
+	    }
+	 }
+      else
+	 SetupLogTable();
 
    lm = 4L << bitshift; 		/* CALCMAND magnitude limit */
 
@@ -303,6 +329,7 @@ int calcfract()
 
    closenuff = delmin >> abs(periodicitycheck); /* for periodicity checking */
    closenuff /= fudge;
+   rqlim_save = rqlim;
    rqlim2 = sqrt(rqlim);
    if (integerfractal)		/* for integer routines (lambda) */
    {
@@ -324,16 +351,16 @@ int calcfract()
       end_resume();
       if (resave_flag) {
 	 updatesavename(savename); /* do the pending increment */
-	 resave_flag = 0;
+	 resave_flag = started_resaves = 0;
 	 }
       calctime = 0;
    }
 
-   if (fractalspecific[fractype].calctype != StandardFractal
-       && fractalspecific[fractype].calctype != calcmand)
+   if (curfractalspecific->calctype != StandardFractal
+       && curfractalspecific->calctype != calcmand)
    {
-      calctype = fractalspecific[fractype].calctype; /* per_image can override */
-      symmetry = fractalspecific[fractype].symmetry; /*   calctype & symmetry  */
+      calctype = curfractalspecific->calctype; /* per_image can override */
+      symmetry = curfractalspecific->symmetry; /*   calctype & symmetry  */
       plot = putcolor; /* defaults when setsymmetry not called or does nothing */
       iystart = ixstart = yystart = xxstart = yybegin = 0;
       iystop = yystop = ydots -1;
@@ -341,7 +368,7 @@ int calcfract()
       calc_status = 1; /* mark as in-progress */
       distest = 0; /* only standard escape time engine supports distest */
       /* per_image routine is run here */
-      if (fractalspecific[fractype].per_image())
+      if (curfractalspecific->per_image())
       { /* not a stand-alone */
 	 /* next two lines in case periodicity changed */
 	 closenuff = delmin >> abs(periodicitycheck); /* for periodicity checking */
@@ -365,7 +392,12 @@ int calcfract()
    if(LogTable)
    {
       farmemfree(LogTable);
-      LogTable = (char far *)0;
+      LogTable = NULL;
+   }
+   if(typespecific_workarea)
+   {
+      farmemfree(typespecific_workarea);
+      typespecific_workarea = NULL;
    }
 
    EXIT_OVLY;
@@ -386,9 +418,9 @@ static void perform_worklist()
       if (resuming == 0)
 	 pot_startdisk();
    }
-   if (stdcalcmode == 'b' && (fractalspecific[fractype].flags & NOTRACE))
+   if (stdcalcmode == 'b' && (curfractalspecific->flags & NOTRACE))
       stdcalcmode = '1';
-   if (stdcalcmode == 'g' && (fractalspecific[fractype].flags & NOGUESS))
+   if (stdcalcmode == 'g' && (curfractalspecific->flags & NOGUESS))
       stdcalcmode = '1';
 
    /* default setup a new worklist */
@@ -407,26 +439,26 @@ static void perform_worklist()
 
    if (distest) /* setup stuff for distance estimator */
    {
-      dem_delta = ( sqrt( sqr(delxx) + sqr(delxx2) )  /* half a pixel width */
-	  + sqrt( sqr(delyy) + sqr(delyy2) ) ) / 4;
+      double ftemp,ftemp2;
+      dem_delta = sqr(delxx) + sqr(delyy2);
+      if ((ftemp = sqr(delyy) + sqr(delxx2)) > dem_delta)
+	 dem_delta = ftemp;
+      if (distestwidth == 0)
+	 distestwidth = 71;
+      ftemp = distestwidth;
+      dem_delta *= sqr(ftemp)/10000; /* multiply by thickness desired */
       dem_width = ( sqrt( sqr(xxmax-xxmin) + sqr(xx3rd-xxmin) ) * ydots/xdots
 	  + sqrt( sqr(yymax-yymin) + sqr(yy3rd-yymin) ) ) / distest;
-      dem_orbit = (struct complex far *)
-	 farmemalloc(((long)(maxit+1)) * sizeof(*dem_orbit));
-      if (dem_orbit == NULL)
-      {
-	 stopmsg(0,"\
-insufficient memory for distance estimator option.\n\
-Try reducing maximum iterations.");
-	 calc_status = 0;
-	 return;
-      }
+      ftemp = (rqlim < DEM_BAILOUT) ? DEM_BAILOUT : rqlim;
+      ftemp += 3; /* bailout plus just a bit */
+      ftemp2 = log(ftemp);
+      dem_toobig = sqr(ftemp) * sqr(ftemp2) * 4 / dem_delta;
    }
 
    while (num_worklist > 0)
    {
-      calctype = fractalspecific[fractype].calctype; /* per_image can override */
-      symmetry = fractalspecific[fractype].symmetry; /*   calctype & symmetry  */
+      calctype = curfractalspecific->calctype; /* per_image can override */
+      symmetry = curfractalspecific->symmetry; /*   calctype & symmetry  */
       plot = putcolor; /* defaults when setsymmetry not called or does nothing */
 
       /* pull top entry off worklist */
@@ -443,7 +475,7 @@ Try reducing maximum iterations.");
 
       calc_status = 1; /* mark as in-progress */
 
-      fractalspecific[fractype].per_image();
+      curfractalspecific->per_image();
 
       /* some common initialization for escape-time pixel level routines */
       closenuff = delmin >> abs(periodicitycheck); /* for periodicity checking */
@@ -476,12 +508,6 @@ Try reducing maximum iterations.");
 
       if (check_key()) /* interrupted? */
 	 break;
-   }
-
-   if (dem_orbit != NULL) /* release distance estimator work area */
-   {
-      farmemfree((unsigned char far *)dem_orbit);
-      dem_orbit = NULL;
    }
 
    if (num_worklist > 0)
@@ -525,7 +551,7 @@ static int OneOrTwoPass()
    return(0);
 }
 
-static int StandardCalc(int passnum)
+static int _fastcall StandardCalc(int passnum)
 {
    got_status = 0;
    curpass = passnum;
@@ -571,7 +597,7 @@ int calcmand()		/* fast per pixel 1/2/b/g, called with row & col set */
    linity = ly0[row] + ly1[col];
    if (calcmandasm() >= 0)
    {
-      if (LogFlag /* use logpal, but not if maxit & adjusted for inside,etc */
+      if (LogTable /* map color, but not if maxit & adjusted for inside,etc */
 	&& (realcolor < maxit || (inside < 0 && color == maxit)))
 	 color = LogTable[color];
       if (color >= colors) /* don't use color 0 unless from inside/outside */
@@ -590,6 +616,9 @@ int StandardFractal()	/* per pixel 1/2/b/g, called with row & col set */
    int savedand, savedincr;	/* for periodicity checking */
    struct lcomplex lsaved;
    int i, attracted;
+   struct complex deriv;
+   int dem_color;
+   struct complex dem_new;
 
    if (periodicitycheck == 0)
       oldcolor = 32767; 	/* don't check periodicity at all */
@@ -599,7 +628,6 @@ int StandardFractal()	/* per pixel 1/2/b/g, called with row & col set */
    /* really fractal specific, but we'll leave it here */
    if (!integerfractal)
    {
-
       if (useinitorbit == 1)
 	 saved = initorbit;
       else {
@@ -607,6 +635,17 @@ int StandardFractal()	/* per pixel 1/2/b/g, called with row & col set */
 	 saved.y = 0;
 	 }
       init.y = dy0[row] + dy1[col];
+      if (distest)
+      {
+	 rqlim = rqlim_save;		  /* start with regular bailout */
+	 if (distest != 1 || colors == 2) /* not doing regular outside colors */
+	    if (rqlim < DEM_BAILOUT)	  /* so go straight for dem bailout */
+	       rqlim = DEM_BAILOUT;
+	 deriv.x = 1;
+	 deriv.y = 0;
+	 magnitude = 0;
+	 dem_color = -1;
+      }
    }
    else
    {
@@ -630,27 +669,47 @@ int StandardFractal()	/* per pixel 1/2/b/g, called with row & col set */
       min_orbit = 100000.0;
    }
    overflow = 0;		/* reset integer math overflow flag */
-   if (distest)
-   {
-      dem_iter = 0;
-      if (fractalspecific[fractype].per_pixel()) /* mandels do the 1st iter */
-      {
-	 dem_orbit[0].x = dem_orbit[0].y = 0;
-	 ++dem_iter;
-      }
-   }
-   else
-      fractalspecific[fractype].per_pixel(); /* initialize the calculations */
+
+   curfractalspecific->per_pixel(); /* initialize the calculations */
+
    attracted = FALSE;
    while (++color < maxit)
    {
-      if (distest)
-	 dem_orbit[dem_iter++] = old;
+
       /* calculation of one orbit goes here */
       /* input in "old" -- output in "new" */
 
-      if (fractalspecific[fractype].orbitcalc())
-	 break;
+      if (distest)
+      {
+	 double ftemp;
+	 /* Distance estimator for points near Mandelbrot set */
+	 /* Original code by Phil Wilson, hacked around by PB */
+	 /* Algorithms from Peitgen & Saupe, Science of Fractal Images, p.198 */
+	 ftemp	 = 2 * (old.x * deriv.x - old.y * deriv.y) + 1;
+	 deriv.y = 2 * (old.y * deriv.x + old.x * deriv.y);
+	 deriv.x = ftemp;
+	 if (sqr(deriv.x)+sqr(deriv.y) > dem_toobig)
+	    break;
+	 /* if above exit taken, the later test vs dem_delta will place this
+	    point on the boundary, because mag(old)<bailout just now */
+	 if (curfractalspecific->orbitcalc())
+	 {
+	    if (dem_color < 0)	      /* note "regular" color for later */
+	    {
+	       dem_color = color;
+	       dem_new = new;
+	    }
+	    if (rqlim >= DEM_BAILOUT  /* exit if past real bailout */
+	     || magnitude >= (rqlim = DEM_BAILOUT) /* reset to real bailout */
+	     || magnitude == 0)       /* exit if type doesn't "floatbailout" */
+	       break;
+	    old = new;		      /* carry on till past real bailout */
+	 }
+      }
+
+      else /* the usual case */
+	 if (curfractalspecific->orbitcalc())
+	    break;
 
       if (inside <= -60 && inside >= -61)
       {
@@ -745,51 +804,20 @@ int StandardFractal()	/* per pixel 1/2/b/g, called with row & col set */
       }
    }
 
-   realcolor = color;		/* save this before we start adjusting it */
-   if (color >= maxit)
-   {
-      oldcolor = 0;		/* check periodicity immediately next time */
-      if (periodicitycheck < 0 && caught_a_cycle)
-	 color = caught_a_cycle = 7; /* show periodicity */
-   }
-   else
-      oldcolor = color + 10;	/* check when past this + 10 next time */
    if (show_orbit)
       scrub_orbit();
-   if (color == 0)
-      color = 1;		/* needed to make same as calcmand */
 
-   if (distest)
+   realcolor = color;		/* save this before we start adjusting it */
+   if (color >= maxit)
+      oldcolor = 0;		/* check periodicity immediately next time */
+   else
    {
-      double dist,temp;
-      struct complex deriv;
-      if (color < maxit && caught_a_cycle == 0) /* appears to be outside */
-      {
-	 /* Distance estimator for points near Mandelbrot set */
-	 /* Original code by Phil Wilson, hacked around by PB */
-	 /* Algorithms from Peitgen & Saupe, Science of Fractal Images, p.198 */
-	 deriv.x = 1; /* preset and skip 1st orbit */
-	 deriv.y = 0;
-	 i = 0;
-	 while (++i < dem_iter)
-	 {
-	    temp = 2 * (dem_orbit[i].x * deriv.x - dem_orbit[i].y * deriv.y) + 1;
-	    deriv.y = 2 * (dem_orbit[i].y * deriv.x + dem_orbit[i].x * deriv.y);
-	    deriv.x = temp;
-	    if (fabs(deriv.x) > DEMOVERFLOW || fabs(deriv.y) > DEMOVERFLOW)
-	       break;
-	 }
-	 temp = sqr(new.x) + sqr(new.y);
-	 dist = log(temp) * sqrt(temp) / sqrt(sqr(deriv.x) + sqr(deriv.y));
-	 if (dist < dem_delta)
-	    color = inside;
-	 else if (colors == 2)
-	    color = !inside;
-	 else
-	    color = sqrt(dist / dem_width + 1);
-      }
+      oldcolor = color + 10;	/* check when past this + 10 next time */
+      if (color == 0)
+	 color = 1;		/* needed to make same as calcmand */
    }
-   else if (potflag)
+
+   if (potflag)
    {
       if (integerfractal)	/* adjust integer fractals */
       {
@@ -798,8 +826,40 @@ int StandardFractal()	/* per pixel 1/2/b/g, called with row & col set */
       }
       magnitude = sqr(new.x) + sqr(new.y);
       color = potential(magnitude, color);
+      goto plot_pixel;		/* skip any other adjustments */
    }
-   else if (decomp[0] > 0)
+
+   if (color >= maxit)		/* an "inside" point */
+      goto plot_inside; 	/* distest, decomp, biomorph don't apply */
+
+   if (distest)
+   {
+      double dist,temp;
+      dist = sqr(new.x) + sqr(new.y);
+      temp = log(dist);
+      dist = dist * sqr(temp) / ( sqr(deriv.x) + sqr(deriv.y) );
+      if (dist < dem_delta)	/* point is on the edge */
+      {
+	 if (distest > 0)
+	    goto plot_inside;	/* show it as an inside point */
+	 color = 0 - distest;	/* show boundary as specified color */
+	 goto plot_pixel;	/* no further adjustments apply */
+      }
+      if (colors == 2)
+      {
+	 color = !inside;	/* the only useful distest 2 color use */
+	 goto plot_pixel;	/* no further adjustments apply */
+      }
+      if (distest > 1)		/* pick color based on distance */
+      {
+	 color = sqrt(dist / dem_width + 1);
+	 goto plot_pixel;	/* no further adjustments apply */
+      }
+      color = dem_color;	/* use pixel's "regular" color */
+      new = dem_new;
+   }
+
+   if (decomp[0] > 0)
       decomposition();
    else if (biomorph != -1)
    {
@@ -813,47 +873,46 @@ int StandardFractal()	/* per pixel 1/2/b/g, called with row & col set */
 	    color = biomorph;
    }
 
-   if ((kbdcount -= color) <= 0)
+   if (outside >= 0 && attracted == FALSE) /* merge escape-time stripes */
+      color = outside;
+   else if (LogTable)
+      color = LogTable[color];
+   goto plot_pixel;
+
+plot_inside: /* we're "inside" */
+   if (periodicitycheck < 0 && caught_a_cycle)
+      color = 7;	       /* show periodicity */
+   else if (inside >= 0)
+      color = inside;	       /* set to specified color, ignore logpal */
+   else
+   {
+      if (inside == -60)
+	 color = sqrt(min_orbit) * 75;
+      else if (inside == -61)
+	 color = min_index;
+      else /* inside == -1 */
+	 color = maxit;
+      if (LogTable)
+	 color = LogTable[color];
+   }
+
+plot_pixel:
+
+   if (color >= colors) /* don't use color 0 unless from inside/outside */
+      if (colors < 16)
+	 color &= andcolor;
+      else
+	 color = ((color - 1) % andcolor) + 1;	/* skip color zero */
+
+   (*plot) (col, row, color);
+
+   if ((kbdcount -= realcolor) <= 0)
    {
       if (check_key())
 	 return (-1);
       kbdcount = (cpu == 386) ? 80 : 30;
    }
 
-   if (potflag == 0) /* don't adjust color returned by potential routine */
-   {
-      if (realcolor >= maxit) /* we're "inside" */
-      {
-	 if (caught_a_cycle != 7) /* not showing periodicity */
-	    if (inside >= 0)	  /* set to specified color, ignore logpal */
-	       color = inside;
-	    else
-	    {
-	       if (inside == -60)
-		  color = sqrt(min_orbit) * 75;
-	       else if (inside == -61)
-		  color = min_index;
-	       else /* inside == -1 */
-		  color = maxit;
-	       if (LogFlag)
-		  color = LogTable[color];
-	    }
-      }
-      else /* not inside */
-      {
-	 if (outside >= 0 && attracted == FALSE) /* merge escape-time stripes */
-	    color = outside;
-	 else if (LogFlag)
-	    color = LogTable[color];
-      }
-      if (color >= colors) /* don't use color 0 unless from inside/outside */
-	 if (colors < 16)
-	    color &= andcolor;
-	 else
-	    color = ((color - 1) % andcolor) + 1;  /* skip color zero */
-   }
-
-   (*plot) (col, row, color);
    return (color);
 }
 
@@ -888,31 +947,31 @@ static void decomposition()
    static long ltan5_625  ; /* tan 5.625  degrees */
    static long ltan2_8125 ; /* tan 2.8125 degrees */
    static long ltan1_4063 ; /* tan 1.4063 degrees */
-   static char start=1;
+   static reset_fudge = -1;
    int temp = 0;
    int i;
    struct lcomplex lalt;
    struct complex alt;
-   if(start & integerfractal)
-   {
-      start = 0;
-      lcos45	 = cos45      *fudge;
-      lsin45	 = sin45      *fudge;
-      lcos22_5	 = cos22_5    *fudge;
-      lsin22_5	 = sin22_5    *fudge;
-      lcos11_25  = cos11_25   *fudge;
-      lsin11_25  = sin11_25   *fudge;
-      lcos5_625  = cos5_625   *fudge;
-      lsin5_625  = sin5_625   *fudge;
-      ltan22_5	 = tan22_5    *fudge;
-      ltan11_25  = tan11_25   *fudge;
-      ltan5_625  = tan5_625   *fudge;
-      ltan2_8125 = tan2_8125  *fudge;
-      ltan1_4063 = tan1_4063  *fudge;
-   }
    color = 0;
    if (integerfractal) /* the only case */
    {
+      if (reset_fudge != fudge)
+      {
+	 reset_fudge = fudge;
+	 lcos45     = cos45	 *fudge;
+	 lsin45     = sin45	 *fudge;
+	 lcos22_5   = cos22_5	 *fudge;
+	 lsin22_5   = sin22_5	 *fudge;
+	 lcos11_25  = cos11_25	 *fudge;
+	 lsin11_25  = sin11_25	 *fudge;
+	 lcos5_625  = cos5_625	 *fudge;
+	 lsin5_625  = sin5_625	 *fudge;
+	 ltan22_5   = tan22_5	 *fudge;
+	 ltan11_25  = tan11_25	 *fudge;
+	 ltan5_625  = tan5_625	 *fudge;
+	 ltan2_8125 = tan2_8125  *fudge;
+	 ltan1_4063 = tan1_4063  *fudge;
+      }
       if (lnew.y < 0)
       {
 	 temp = 2;
@@ -1113,7 +1172,7 @@ static void decomposition()
 /*								  */
 /******************************************************************/
 
-static int potential(double mag, int iterations)
+static int _fastcall potential(double mag, int iterations)
 {
    float f_mag,f_tmp,pot;
    double d_tmp;
@@ -1132,7 +1191,7 @@ static int potential(double mag, int iterations)
 	 {
 	    f_mag = mag;
 	    fLog14(f_mag,f_tmp); /* this SHOULD be non-negative */
-	    fShift(f_tmp,-i_pot,pot);
+	    fShift(f_tmp,(char)-i_pot,pot);
 	 }
 	 else
 	 {
@@ -1194,7 +1253,7 @@ static int far *LeftX  = (int far *)NULL;
 static int far *RightX = (int far *)NULL;
 static unsigned repeats;
 
-static int calc_xy(int mx, int my) /* return the color for a pixel */
+static int _fastcall calc_xy(int mx, int my) /* return the color for a pixel */
 {
 
    color = getcolor(mx,my); /* see if pixel is black */
@@ -1211,7 +1270,7 @@ static int calc_xy(int mx, int my) /* return the color for a pixel */
    return(color);
 } /* calc_xy function of BTM code */
 
-static int boundary_trace(int C, int R)   /* BTM main function */
+static int _fastcall boundary_trace(int C, int R)   /* BTM main function */
 {
    enum
        {
@@ -1363,7 +1422,7 @@ static int boundary_trace(int C, int R)   /* BTM main function */
    return(0);
 } /* BTM function */
 
-static int fillseg1(int LeftX, int RightX, int R,  int bcolor)
+static int _fastcall fillseg1(int LeftX, int RightX, int R,  int bcolor)
 {
    register modeON, C;
    int	gcolor;
@@ -1385,7 +1444,7 @@ static int fillseg1(int LeftX, int RightX, int R,  int bcolor)
    return(C);
 }
 
-static int fillseg(int LeftX, int RightX, int R,  int bcolor)
+static int _fastcall fillseg(int LeftX, int RightX, int R,  int bcolor)
 {
    unsigned char *forwards;
    unsigned char *backwards;
@@ -1451,7 +1510,7 @@ static int fillseg(int LeftX, int RightX, int R,  int bcolor)
 }
 
 /* copy a string backwards for symmetry functions */
-static void reverse_string(char *t, char *s, int len)
+static void _fastcall reverse_string(char *t, char *s, int len)
 {
    register i;
    len--;
@@ -1464,12 +1523,13 @@ static int bound_trace_main()
    long maxrow;
    maxrow = ((long)ydots)*sizeof(int);
 
-   if (inside == 0) {
-      stopmsg(0,"Sorry, boundary tracing cannot be used with inside=0.");
+   if (inside == 0 || outside == 0) {
       return(-1);
       }
    if (colors < 16) {
-      stopmsg(0,"Sorry, boundary tracing cannot be used with < 16 colors.");
+      static char far msg[]=
+	  {"Boundary tracing cannot be used with < 16 colors."};
+      stopmsg(0,msg);
       return(-1);
       }
 
@@ -1686,7 +1746,7 @@ static int solidguess()
 
 #define calcadot(c,x,y) { col=x; row=y; if((c=(*calctype)())==-1) return -1; }
 
-static int guessrow(int firstpass,int y,int blocksize)
+static int _fastcall guessrow(int firstpass,int y,int blocksize)
 {
    int x,i,j,color;
    int xplushalf,xplusblock;
@@ -1919,7 +1979,7 @@ static int guessrow(int firstpass,int y,int blocksize)
    return 0;
 }
 
-static void plotblock(int buildrow,int x,int y,int color)
+static void _fastcall plotblock(int buildrow,int x,int y,int color)
 {
    int i,xlim,ylim;
    if((xlim=x+halfblock)>ixstop)
@@ -1952,7 +2012,7 @@ static void plotblock(int buildrow,int x,int y,int color)
 
 /************************* symmetry plot setup ************************/
 
-static int xsym_split(int xaxis_row,int xaxis_between)
+static int _fastcall xsym_split(int xaxis_row,int xaxis_between)
 {
    int i;
    if ((worksym&0x11) == 0x10) /* already decided not sym */
@@ -1992,7 +2052,7 @@ static int xsym_split(int xaxis_row,int xaxis_between)
    return(0); /* tell set_symmetry its a go */
 }
 
-static int ysym_split(int yaxis_col,int yaxis_between)
+static int _fastcall ysym_split(int yaxis_col,int yaxis_between)
 {
    int i;
    if ((worksym&0x22) == 0x20) /* already decided not sym */
@@ -2032,7 +2092,7 @@ static int ysym_split(int yaxis_col,int yaxis_between)
    return(0); /* tell set_symmetry its a go */
 }
 
-static void setsymmetry(int sym, int uselist) /* set up proper symmetrical plot functions */
+static void _fastcall setsymmetry(int sym, int uselist) /* set up proper symmetrical plot functions */
 {
    extern int forcesymmetry;
    int i;
@@ -2192,7 +2252,8 @@ int test()
       get_resume(sizeof(int),&startrow,sizeof(int),&startpass,0);
       end_resume();
    }
-   teststart();
+   if(teststart()) /* assume it was stand-alone, doesn't want passes logic */
+      return(0);
    numpasses = (stdcalcmode == '1') ? 0 : 1;
    for (passes=startpass; passes <= numpasses ; passes++)
    {
@@ -2245,7 +2306,7 @@ Palettetype;
 extern Palettetype dacbox[256];
 static int plasma_check;			/* to limit kbd checking */
 
-static void adjust(int xa,int ya,int x,int y,int xb,int yb)
+static void _fastcall adjust(int xa,int ya,int x,int y,int xb,int yb)
 {
    long pseudorandom;
    if(getcolor(x,y) != 0)
@@ -2260,7 +2321,7 @@ static void adjust(int xa,int ya,int x,int y,int xb,int yb)
    putcolor(x,y,(int)pseudorandom);
 }
 
-static void subDivide(int x1,int y1,int x2,int y2)
+static void _fastcall subDivide(int x1,int y1,int x2,int y2)
 {
    int x,y;
    int v;
@@ -2339,7 +2400,7 @@ mode (and color-cycled only on VGA adapters [or EGA adapters in their\n\
 
 static void set_Plasma_palette()
 {
-   extern char loadPalette;
+   extern char far *mapdacbox;
    static Palettetype Red    = {
       63, 0, 0	 };
    static Palettetype Green  = {
@@ -2348,7 +2409,7 @@ static void set_Plasma_palette()
       0, 0,63	};
    int i;
 
-   if(loadPalette) return;		/* TARGA 3 June 89 j mclain */
+   if (mapdacbox) return;		/* map= specified */
 
    dacbox[0].red  = 0 ;
    dacbox[0].green= 0 ;
@@ -2368,8 +2429,7 @@ static void set_Plasma_palette()
       dacbox[i+170].blue  = (i*Blue.blue  + (86-i)*Red.blue)/85;
    }
    SetTgaColors();	/* TARGA 3 June 89  j mclain */
-   if (dotmode != 11)
-      spindac(0,1);
+   spindac(0,1);
 }
 
 
@@ -2387,7 +2447,7 @@ int diffusion()
    int i;
    double cosine,sine,angle;
    long lcosine,lsine;
-   register int x,y;
+   int x,y;
    extern char floatflag;
 
    if (diskvideo)
@@ -2554,6 +2614,7 @@ static unsigned int half_time_check;
 static long   lPopulation, lRate;
 static double Population,  Rate;
 static int    mono, outside_x;
+static long   LPI;
 
 int Bifurcation(void)
 {
@@ -2570,9 +2631,12 @@ int Bifurcation(void)
    array_size =  (iystop + 2) * sizeof(int);
    if ((verhulst_array = (int far *) farmemalloc(array_size)) == NULL)
    {
-      stopmsg(0,"Insufficient free memory for calculation.");
+      static char far msg[]={"Insufficient free memory for calculation."};
+      stopmsg(0,msg);
       return(-1);
    }
+
+   LPI = PI * fudge;
 
    for (row = 0; row <= iystop+1; row++)
       verhulst_array[row] = 0;
@@ -2650,7 +2714,7 @@ static void verhulst()		/* P. F. Verhulst (1845) */
 
    for (counter=0 ; counter < filter_cycles ; counter++)
    {
-      errors = (*fractalspecific[fractype].orbitcalc)();
+      errors = (*(curfractalspecific->orbitcalc))();
       if (errors)
 	 return;
    }
@@ -2660,7 +2724,7 @@ static void verhulst()		/* P. F. Verhulst (1845) */
       Bif_Period_Init();
       for (counter=0 ; counter < maxit ; counter++)
       {
-	 errors = (*fractalspecific[fractype].orbitcalc)();
+	 errors = (*(curfractalspecific->orbitcalc))();
 	 if (errors) return;
 	 if (periodicitycheck && Bif_Periodic(counter)) break;
       }
@@ -2668,7 +2732,7 @@ static void verhulst()		/* P. F. Verhulst (1845) */
       {
 	 for (counter=0 ; counter < filter_cycles ; counter++)
 	 {
-	    errors = (*fractalspecific[fractype].orbitcalc)();
+	    errors = (*(curfractalspecific->orbitcalc))();
 	    if (errors) return;
 	 }
       }
@@ -2678,7 +2742,7 @@ static void verhulst()		/* P. F. Verhulst (1845) */
 
    for (counter=0 ; counter < maxit ; counter++)
    {
-      errors = (*fractalspecific[fractype].orbitcalc)();
+      errors = (*(curfractalspecific->orbitcalc))();
       if (errors) return;
 
       /* assign population value to Y coordinate in pixels */
@@ -2719,7 +2783,7 @@ static void Bif_Period_Init()
    }
 }
 
-static int Bif_Periodic (time)	/* Bifurcation Population Periodicity Check */
+static int _fastcall Bif_Periodic (time)  /* Bifurcation Population Periodicity Check */
 int time;		/* Returns : 1 if periodicity found, else 0 */
 {
    if ((time & Bif_savedand) == 0)	/* time to save a new value */
@@ -2786,10 +2850,26 @@ int BifurcAddSinPi()
     return (fabs(Population) > BIG);
   }
 
+int LongBifurcAddSinPi()
+  {
+    ltmp.x = multiply(lPopulation,LPI,bitshift);
+    SinCos086(ltmp.x,&ltmp.x,&ltmp.y);
+    lPopulation += multiply(lRate,ltmp.x,bitshift);
+    return (overflow);
+  }
+
 int BifurcSetSinPi()
   {
     Population = Rate * sin(PI*Population);
     return (fabs(Population) > BIG);
+  }
+
+int LongBifurcSetSinPi()
+  {
+    ltmp.x = multiply(lPopulation,LPI,bitshift);
+    SinCos086(ltmp.x,&ltmp.x,&ltmp.y);
+    lPopulation = multiply(lRate,ltmp.x,bitshift);
+    return (overflow);
   }
 
 /* Here Endeth the Generalised Bifurcation Fractal Engine   */

@@ -228,7 +228,8 @@ doeither:				; common Mandelbrot, Julia set code
 	mov	kbdcount,5000		; else, stuff an appropriate count val
 	cmp	cpu,386 		; ("appropriate" to the CPU)
 	je	short kbddiskadj	;  ...
-	cmp	word ptr delmin+2,1	; is 16-bit math good enough?
+;;	cmp	word ptr delmin+2,1	; is 16-bit math good enough?
+	cmp	word ptr delmin+2,8	; is 16-bit math good enough?
 	ja	kbddiskadj		;  yes. test less often
 	mov	kbdcount,500		;  no.	test more often
 kbddiskadj:
@@ -261,7 +262,8 @@ nokey:
 	jne	no16bitcode		;  yup.  slow down.
 	cmp	cpu,386 		; are we on a 386?
 	je	short code386bit	;  YAY!! 386-class speed!
-	cmp	word ptr delmin+2,1	; OK, we're desperate.  16 bits OK?
+;;	cmp	word ptr delmin+2,1	; OK, we're desperate.  16 bits OK?
+	cmp	word ptr delmin+2,8	; OK, we're desperate.  16 bits OK?
 	ja	yes16bitcode		;  YAY!  16-bit speed!
 no16bitcode:
 	call	near ptr code32bit	; BOO!! nap time.  Full 32 bit math
@@ -273,7 +275,8 @@ yes16bitcode:
 .386					; 386-specific code starts here
 
 code386bit:
-	cmp	word ptr delmin+2,3	; is 16-bit math good enough?
+;;	cmp	word ptr delmin+2,3	; is 16-bit math good enough?
+	cmp	word ptr delmin+2,8	; is 16-bit math good enough?
 	jbe	code386_32		; nope, go do 32 bit stuff
 IFDEF ??version
 	jmp	code386_32		; TASM screws up IMUL EBX,EBX!!

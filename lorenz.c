@@ -9,6 +9,7 @@
 #include <float.h>
 #include "fractint.h"
 #include "fractype.h"
+
 struct affine
 {
    /* weird order so a,b,e and c,d,f are vectors */
@@ -18,6 +19,47 @@ struct affine
    double c;
    double d;
    double f;
+};
+struct l_affine
+{
+   /* weird order so a,b,e and c,d,f are vectors */
+   long a;
+   long b;
+   long e;
+   long c;
+   long d;
+   long f;
+};
+struct long3dvtinf /* data used by 3d view transform subroutine */
+{
+   long ct;		/* iteration counter */
+   long orbit[3];	/* interated function orbit value */
+   long iview[3];	/* perspective viewer's coordinates */
+   long viewvect[3];	/* orbit transformed for viewing */
+   long viewvect1[3];	/* orbit transformed for viewing */
+   long maxvals[3];
+   long minvals[3];
+   MATRIX doublemat;	/* transformation matrix */
+   MATRIX doublemat1;	/* transformation matrix */
+   long longmat[4][4];	/* long version of matrix */
+   long longmat1[4][4]; /* long version of matrix */
+   int row,col; 	/* results */
+   int row1,col1;
+   struct l_affine cvt;
+};
+struct float3dvtinf /* data used by 3d view transform subroutine */
+{
+   long ct;		/* iteration counter */
+   double orbit[3];		   /* interated function orbit value */
+   double viewvect[3];	      /* orbit transformed for viewing */
+   double viewvect1[3];        /* orbit transformed for viewing */
+   double maxvals[3];
+   double minvals[3];
+   MATRIX doublemat;	/* transformation matrix */
+   MATRIX doublemat1;	/* transformation matrix */
+   int row,col; 	/* results */
+   int row1,col1;
+   struct affine cvt;
 };
 
 /* Routines in this module	*/
@@ -42,6 +84,7 @@ int  funny_glasses_call(int (*calc)());
 int  ifs(void);
 int  orbit3dfloat(void);
 int  orbit3dlong(void);
+int  ifs2d(void);
 int  ifs3d(void);
 
 static int  ifs3dlong(void);
@@ -49,9 +92,16 @@ static int  ifs3dfloat(void);
 static double determinant(double mat[3][3]);
 static int  solve3x3(double mat[3][3],double vec[3],double ans[3]);
 static int  setup_convert_to_screen(struct affine *);
+static int  l_setup_convert_to_screen(struct l_affine *);
 static void setupmatrix(MATRIX);
+static int  long3dviewtransf(struct long3dvtinf *inf);
+static int  float3dviewtransf(struct float3dvtinf *inf);
+static FILE *open_orbitsave();
 
 static int realtime;
+extern int orbitsave;
+static char orbitsavename[]    = {"orbits.raw"};
+static char orbitsave_format[] = {"%g %g %g 15\n"};
 extern int active_system;
 extern int overflow;
 extern int soundflag;
@@ -66,8 +116,6 @@ extern int xxadjust, yyadjust;
 extern int xxadjust1, yyadjust1;
 extern int xshift,yshift;
 extern int xshift1,yshift1;
-extern void (*plot)();
-extern void (*standardplot)();
 extern int	debugflag;			/* for debugging purposes */
 extern int	xdots, ydots;		/* coordinates of dots on the screen  */
 extern int	maxit;				/* try this many iterations */
@@ -77,8 +125,11 @@ extern	int	diskvideo;			/* for disk-video klooges */
 extern int	bitshift;			/* bit shift for fudge */
 extern long	fudge;				/* fudge factor (2**n) */
 extern int	colors; 			/* maximum colors available */
-
 extern int display3d;
+
+extern float far *ifs_defn;
+extern int ifs_type;
+
 static int t;
 static long l_dx,l_dy,l_dz,l_dt,l_a,l_b,l_c,l_d;
 static long l_adt,l_bdt,l_cdt,l_xdt,l_ydt;
@@ -98,7 +149,6 @@ extern int  put_resume(int len, ...);
 extern int  get_resume(int len, ...);
 extern int  calc_status, resuming;
 extern int  diskisactive;
-extern int  resave_flag;
 extern char savename[];
 
 /* these are potential user parameters */
@@ -211,15 +261,23 @@ static int setup_convert_to_screen(struct affine *scrn_cnvt)
    return(0);
 }
 
+static int l_setup_convert_to_screen(struct l_affine *l_cvt)
+{
+   struct affine cvt;
+   setup_convert_to_screen(&cvt);
+   l_cvt->a = cvt.a*fudge; l_cvt->b = cvt.b*fudge; l_cvt->c = cvt.c*fudge;
+   l_cvt->d = cvt.d*fudge; l_cvt->e = cvt.e*fudge; l_cvt->f = cvt.f*fudge;
+}
+
 /******************************************************************/
 /*   setup functions - put in fractalspecific[fractype].per_image */
 /******************************************************************/
 
-double orbit;
-long   l_orbit;
+static double orbit;
+static long   l_orbit;
 
 extern double sinx,cosx;
-long l_sinx,l_cosx;
+static long l_sinx,l_cosx;
 
 int orbit3dlongsetup()
 {
@@ -294,8 +352,8 @@ int orbit3dfloatsetup()
    initorbit[2] = 1;
    if(fractype==FPGINGERBREAD)
    {
-      initorbit[0] = -.1;  /* initial conditions */
-      initorbit[1] = 0;
+      initorbit[0] = param[0];	/* initial conditions */
+      initorbit[1] = param[1];
    }
    if(fractype==FPHENON || fractype==FPPICKOVER)
    {
@@ -489,6 +547,7 @@ int kamtoruslongorbit(long *r, long *s, long *z)
 
 int orbit2dfloat()
 {
+   FILE *fp;
    double *soundvar;
    double x,y,z;
    int color,col,row;
@@ -496,7 +555,9 @@ int orbit2dfloat()
    int oldrow, oldcol;
    double *p0,*p1,*p2;
    struct affine cvt;
+   int ret;
 
+   fp = open_orbitsave();
    /* setup affine screen coord conversion */
    setup_convert_to_screen(&cvt);
 
@@ -547,6 +608,7 @@ int orbit2dfloat()
       end_resume();
    }
 
+   ret = 0;
    while(1)
    {
       if(check_key())
@@ -558,7 +620,8 @@ int orbit2dfloat()
 		    sizeof(x),&x,sizeof(y),&y,sizeof(z),&z,
 		    sizeof(t),&t,sizeof(orbit),&orbit,
 		    0);
-	     return(-1);
+	     ret = -1;
+	     break;
       }
 
       if (++count > 1000)
@@ -585,27 +648,32 @@ int orbit2dfloat()
       else
 	 oldrow = oldcol = -1;
 
-      if(fractalspecific[fractype].orbitcalc(p0, p1, p2))
+      if(curfractalspecific->orbitcalc(p0, p1, p2))
 	 break;
+      if(fp)
+	  fprintf(fp,orbitsave_format,*p0,*p1,0.0);
    }
-   return(0);
+   if(fp)
+      fclose(fp);
+   return(ret);
 }
 
 int orbit2dlong()
 {
-   long a,b,c,d,e,f;
+   FILE *fp;
    long *soundvar;
    long x,y,z;
    int color,col,row;
    int count;
    int oldrow, oldcol;
    long *p0,*p1,*p2;
-   struct affine cvt;
+   struct l_affine cvt;
+   int ret;
+
+   fp = open_orbitsave();
 
    /* setup affine screen coord conversion */
-   setup_convert_to_screen(&cvt);
-   a = cvt.a*fudge; b = cvt.b*fudge; c = cvt.c*fudge;
-   d = cvt.d*fudge; e = cvt.e*fudge; f = cvt.f*fudge;
+   l_setup_convert_to_screen(&cvt);
 
    /* set up projection scheme */
    if(projection==0)
@@ -653,6 +721,7 @@ int orbit2dlong()
       end_resume();
    }
 
+   ret = 0;
    while(1)
    {
       if(check_key())
@@ -664,7 +733,8 @@ int orbit2dlong()
 		    sizeof(x),&x,sizeof(y),&y,sizeof(z),&z,
 		    sizeof(t),&t,sizeof(l_orbit),&l_orbit,
 		    0);
-	 return(-1);
+	 ret = -1;
+	 break;
       }
       if (++count > 1000)
       {        /* time to switch colors? */
@@ -673,8 +743,8 @@ int orbit2dlong()
 	      color = 1;	/* (don't use the background color) */
       }
 
-      col = (multiply(a,x,bitshift) + multiply(b,y,bitshift) + e) >> bitshift;
-      row = (multiply(c,x,bitshift) + multiply(d,y,bitshift) + f) >> bitshift;
+      col = (multiply(cvt.a,x,bitshift) + multiply(cvt.b,y,bitshift) + cvt.e) >> bitshift;
+      row = (multiply(cvt.c,x,bitshift) + multiply(cvt.d,y,bitshift) + cvt.f) >> bitshift;
       if ( col >= 0 && col < xdots && row >= 0 && row < ydots )
       {
 	 if (soundflag > 0)
@@ -695,85 +765,53 @@ int orbit2dlong()
 	 oldrow = oldcol = -1;
 
       /* Calculate the next point */
-      if(fractalspecific[fractype].orbitcalc(p0, p1, p2))
+      if(curfractalspecific->orbitcalc(p0, p1, p2))
 	 break;
+      if(fp)
+	 fprintf(fp,orbitsave_format,(double)*p0/fudge,(double)*p1/fudge,0.0);
    }
-   return(0);
+   if(fp)
+      fclose(fp);
+   return(ret);
 }
 
 int orbit3dlongcalc()
 {
-   long a,b,c,d,e,f;
+   FILE *fp;
    unsigned count;
    int oldcol,oldrow;
    int oldcol1,oldrow1;
-
-   double tmpx, tmpy, tmpz;
-   long iview[3];	  /* perspective viewer's coordinates */
-
-   long tmp;
-   long maxvals[3];
-   long minvals[3];
-   unsigned long maxct,ct;
-   register int col;
-   register int row;
-   register int color;
-
+   struct long3dvtinf inf;
+   unsigned long maxct;
+   int color;
    int i,j,k;
-
-   /* 3D viewing stuff */
-   MATRIX doublemat;	       /* transformation matrix */
-   MATRIX doublemat1;		/* transformation matrix */
-   long longmat[4][4];	       /* long version of matrix */
-   long longmat1[4][4]; 	/* long version of matrix */
-   long orbit[3];		   /* interated function orbit value */
-   long viewvect[3];	    /* orbit transformed for viewing */
-   long viewvect1[3];	     /* orbit transformed for viewing */
-
-   struct affine cvt;
+   int ret;
 
    /* setup affine screen coord conversion */
-   setup_convert_to_screen(&cvt);
-   a = cvt.a*fudge; b = cvt.b*fudge; c = cvt.c*fudge;
-   d = cvt.d*fudge; e = cvt.e*fudge; f = cvt.f*fudge;
+   l_setup_convert_to_screen(&inf.cvt);
 
    oldcol1 = oldrow1 = oldcol = oldrow = -1;
    color = 2;
    if(color >= colors)
       color = 1;
 
-   orbit[0] = initorbitlong[0];
-   orbit[1] = initorbitlong[1];
-   orbit[2] = initorbitlong[2];
+   inf.orbit[0] = initorbitlong[0];
+   inf.orbit[1] = initorbitlong[1];
+   inf.orbit[2] = initorbitlong[2];
 
-   for(i=0;i<3;i++)
-   {
-      minvals[i] =  1L << 30;
-      maxvals[i] = -minvals[i];
-   }
-
-   setupmatrix(doublemat);
-   if(realtime)
-      setupmatrix(doublemat1);
-
-   /* copy xform matrix to long for for fixed point math */
-   for (i = 0; i < 4; i++)
-      for (j = 0; j < 4; j++)
-      {
-	 longmat[i][j] = doublemat[i][j] * fudge;
-	 if(realtime)
-	    longmat1[i][j] = doublemat1[i][j] * fudge;
-      }
    if(diskvideo)		/* this would KILL a disk drive! */
    {
       notdiskmsg();
       return(-1);
    }
 
+   fp = open_orbitsave();
+
    /* make maxct a function of screen size		 */
    maxct = maxit*40L;
-   count = ct = 0L;
-   while(ct++ < maxct) /* loop until keypress or maxit */
+   count = inf.ct = 0L;
+   ret = 0;
+   while(inf.ct++ < maxct) /* loop until keypress or maxit */
    {
       /* calc goes here */
       if (++count > 1000)
@@ -785,213 +823,82 @@ int orbit3dlongcalc()
       if(check_key())
       {
 	 nosnd();
-	 return(-1);
+	 ret = -1;
+	 break;
       }
 
-      fractalspecific[fractype].orbitcalc(&orbit[0],&orbit[1],&orbit[2]);
-
-      /* 3D VIEWING TRANSFORM */
-      longvmult(orbit,longmat,viewvect, bitshift);
-      if(realtime)
-	 longvmult(orbit,longmat1,viewvect1, bitshift);
-
-      if(ct <= waste) /* waste this many points to find minz and maxz */
+      curfractalspecific->orbitcalc(&inf.orbit[0],&inf.orbit[1],&inf.orbit[2]);
+      if(fp)
+	 fprintf(fp,orbitsave_format,(double)inf.orbit[0]/fudge,(double)inf.orbit[1]/fudge,(double)inf.orbit[2]/fudge);
+      if (long3dviewtransf(&inf))
       {
-	 /* find minz and maxz */
-	 for(i=0;i<3;i++)
-	    if ((tmp = viewvect[i]) < minvals[i])
-	       minvals[i] = tmp;
-	    else if (tmp > maxvals[i])
-	       maxvals[i] = tmp;
-	 if(ct == waste)
-	 {
-	    iview[0] = iview[1] = 0L; /* center viewer on origin */
-
-	    /* z value of user's eye - should be more negative than extreme
-			   negative part of image */
-	    iview[2] = (long)((minvals[2]-maxvals[2])*(double)ZVIEWER/100.0);
-
-	    /* center image on origin */
-	    tmpx = (-minvals[0]-maxvals[0])/(2.0*fudge); /* center x */
-	    tmpy = (-minvals[1]-maxvals[1])/(2.0*fudge); /* center y */
-
-	    /* apply perspective shift */
-	    tmpx += ((double)xshift*(xxmax-xxmin))/(xdots)  ;
-	    tmpy += ((double)yshift*(yymax-yymin))/(ydots);
-	    tmpz = -((double)maxvals[2]);
-	    tmpz /= fudge;
-	    trans(tmpx,tmpy,tmpz,doublemat);
-
-	    if(realtime)
-	    {
-	       /* center image on origin */
-	       tmpx = (-minvals[0]-maxvals[0])/(2.0*fudge); /* center x */
-	       tmpy = (-minvals[1]-maxvals[1])/(2.0*fudge); /* center y */
-
-	       tmpx += ((double)xshift1*(xxmax-xxmin))/(xdots);
-	       tmpy += ((double)yshift1*(yymax-yymin))/(ydots);
-	       tmpz = -((double)maxvals[2]);
-	       tmpz /= fudge;
-	       trans(tmpx,tmpy,tmpz,doublemat1);
-	    }
-	    for(i=0;i<3;i++)
-	    {
-	       view[i] = iview[i];
-	       view[i] /= fudge;
-	    }
-
-	    /* copy xform matrix to long for for fixed point math */
-	    for (i = 0; i < 4; i++)
-	       for (j = 0; j < 4; j++)
-	       {
-		  longmat[i][j] = doublemat[i][j] * fudge;
-		  if(realtime)
-		     longmat1[i][j] = doublemat1[i][j] * fudge;
-	       }
-	 }
-      }
-
-      if(ct > waste)
-      {
-	 /* apply perspective if requested */
-	 if(ZVIEWER)
-	 {
-	    if(debugflag==22 || ZVIEWER < 100) /* use float for small persp */
-	    {
-	       /* use float perspective calc */
-	       VECTOR tmpv;
-	       for(i=0;i<3;i++)
-	       {
-		  tmpv[i] = viewvect[i];
-		  tmpv[i] /= fudge;
-	       }
-	       perspective(tmpv);
-	       for(i=0;i<3;i++)
-		  viewvect[i] = tmpv[i]*fudge;
-	       if(realtime)
-	       {
-		  for(i=0;i<3;i++)
-		  {
-		     tmpv[i] = viewvect1[i];
-		     tmpv[i] /= fudge;
-		  }
-		  perspective(tmpv);
-		  for(i=0;i<3;i++)
-		     viewvect1[i] = tmpv[i]*fudge;
-	       }
-	    }
-	    else
-	    {
-	       longpersp(viewvect,iview,bitshift);
-	       if(realtime)
-		  longpersp(viewvect1,iview,bitshift);
-	    }
-	 }
-	 if(realtime)
-	    whichimage=1;
 	 /* plot if inside window */
-	 col = (multiply(a,viewvect[0],bitshift)+
-		multiply(b,viewvect[1],bitshift)+e) >> bitshift;
-	 row = (multiply(c,viewvect[0],bitshift)+
-		multiply(d,viewvect[1],bitshift)+f) >> bitshift;
-	 col += xxadjust;
-	 row += yyadjust;
-	 if ( 0 <= col && col < xdots && 0 <= row && row < ydots)
+	 if (inf.col >= 0)
 	 {
+	    if(realtime)
+	       whichimage=1;
 	    if (soundflag > 0)
 	    {
 	       double yy;
-	       yy = viewvect[soundflag-1];
+	       yy = inf.viewvect[soundflag-1];
 	       yy = yy/fudge;
 	       snd((int)(yy*100+basehertz));
 	    }
 	    if(oldcol != -1 && connect)
-	       draw_line(col,row,oldcol,oldrow,color&(colors-1));
+	       draw_line(inf.col,inf.row,oldcol,oldrow,color&(colors-1));
 	    else
-	       (*plot)(col,row,color&(colors-1));
-	    oldcol = col;
-	    oldrow = row;
+	       (*plot)(inf.col,inf.row,color&(colors-1));
 	 }
-	 else
-	    oldrow = oldcol = -1;
+	 oldcol = inf.col;
+	 oldrow = inf.row;
 	 if(realtime)
 	 {
 	    whichimage=2;
 	    /* plot if inside window */
-	    col = (multiply(a,viewvect1[0],bitshift)+
-		   multiply(b,viewvect1[1],bitshift)+e) >> bitshift;
-	    row = (multiply(c,viewvect1[0],bitshift)+
-		   multiply(d,viewvect1[1],bitshift)+f) >> bitshift;
-	    col += xxadjust1;
-	    row += yyadjust1;
-
-	    if ( 0 <= col && col < xdots && 0 <= row && row < ydots)
+	    if (inf.col1 >= 0)
 	    {
 	       if(oldcol1 != -1 && connect)
-		  draw_line(col,row,oldcol1,oldrow1,color&(colors-1));
+		  draw_line(inf.col1,inf.row1,oldcol1,oldrow1,color&(colors-1));
 	       else
-		  (*plot)(col,row,color&(colors-1));
-	       oldcol1 = col;
-	       oldrow1 = row;
+		  (*plot)(inf.col1,inf.row1,color&(colors-1));
 	    }
-	    else
-	       oldrow1 = oldcol1 = -1;
+	    oldcol1 = inf.col1;
+	    oldrow1 = inf.row1;
 	 }
       }
    }
-   return(0);
+   if(fp)
+      fclose(fp);
+   return(ret);
 }
 
 
 int orbit3dfloatcalc()
 {
+   FILE *fp;
    unsigned count;
    int oldcol,oldrow;
    int oldcol1,oldrow1;
-
    double tmpx, tmpy, tmpz;
-   extern VECTOR view;
    double tmp;
-   double maxvals[3];
-   double minvals[3];
    extern int init3d[];
-   unsigned long maxct,ct;
-   register int col;
-   register int row;
-   register int color;
-
-
+   unsigned long maxct;
+   int color;
    int i,j,k;
-
-   /* 3D viewing stuff */
-   MATRIX doublemat;	       /* transformation matrix */
-   MATRIX doublemat1;		/* transformation matrix */
-   double orbit[3];		   /* interated function orbit value */
-   double viewvect[3];	      /* orbit transformed for viewing */
-   double viewvect1[3];        /* orbit transformed for viewing */
-   struct affine cvt;
+   int ret;
+   struct float3dvtinf inf;
 
    /* setup affine screen coord conversion */
-   setup_convert_to_screen(&cvt);
+   setup_convert_to_screen(&inf.cvt);
 
    oldcol = oldrow = -1;
    oldcol1 = oldrow1 = -1;
    color = 2;
    if(color >= colors)
       color = 1;
-   orbit[0] = initorbit[0];
-   orbit[1] = initorbit[1];
-   orbit[2] = initorbit[2];
-
-   for(i=0;i<3;i++)
-   {
-      minvals[i] =  100000.0; /* impossible value */
-      maxvals[i] = -100000.0;
-   }
-
-   setupmatrix(doublemat);
-   if(realtime)
-      setupmatrix(doublemat1);
+   inf.orbit[0] = initorbit[0];
+   inf.orbit[1] = initorbit[1];
+   inf.orbit[2] = initorbit[2];
 
    if(diskvideo)		/* this would KILL a disk drive! */
    {
@@ -999,9 +906,12 @@ int orbit3dfloatcalc()
       return(-1);
    }
 
+   fp = open_orbitsave();
+
    maxct = maxit*40L;
-   count = ct = 0L;
-   while(ct++ < maxct) /* loop until keypress or maxit */
+   count = inf.ct = 0L;
+   ret = 0;
+   while(inf.ct++ < maxct) /* loop until keypress or maxit */
    {
       /* calc goes here */
       if (++count > 1000)
@@ -1014,103 +924,48 @@ int orbit3dfloatcalc()
       if(check_key())
       {
 	 nosnd();
-	 return(-1);
+	 ret = -1;
+	 break;
       }
 
-      fractalspecific[fractype].orbitcalc(&orbit[0],&orbit[1],&orbit[2]);
-
-      /* 3D VIEWING TRANSFORM */
-      vmult(orbit,doublemat,viewvect );
-      if(realtime)
-	 vmult(orbit,doublemat1,viewvect1);
-
-      if(ct <= waste) /* waste this many points to find minz and maxz */
+      curfractalspecific->orbitcalc(&inf.orbit[0],&inf.orbit[1],&inf.orbit[2]);
+      if(fp)
+	  fprintf(fp,orbitsave_format,inf.orbit[0],inf.orbit[1],inf.orbit[2]);
+      if (float3dviewtransf(&inf))
       {
-	 /* find minz and maxz */
-	 for(i=0;i<3;i++)
-	    if ((tmp = viewvect[i]) < minvals[i])
-	       minvals[i] = tmp;
-	    else if (tmp > maxvals[i])
-	       maxvals[i] = tmp;
-	 if(ct == waste)
-	 {
-	    view[0] = view[1] = 0; /* center on origin */
-	    /* z value of user's eye - should be more negative than extreme
-			   negative part of image */
-	    view[2] = (minvals[2]-maxvals[2])*(double)ZVIEWER/100.0;
-
-	    /* center image on origin */
-	    tmpx = (-minvals[0]-maxvals[0])/(2.0); /* center x */
-	    tmpy = (-minvals[1]-maxvals[1])/(2.0); /* center y */
-
-	    /* apply perspective shift */
-	    tmpx += ((double)xshift*(xxmax-xxmin))/(xdots)  ;
-	    tmpy += ((double)yshift*(yymax-yymin))/(ydots);
-	    tmpz = -((double)maxvals[2]);
-	    trans(tmpx,tmpy,tmpz,doublemat);
-
-	    if(realtime)
-	    {
-	       /* center image on origin */
-	       tmpx = (-minvals[0]-maxvals[0])/(2.0); /* center x */
-	       tmpy = (-minvals[1]-maxvals[1])/(2.0); /* center y */
-
-	       tmpx += ((double)xshift1*(xxmax-xxmin))/(xdots);
-	       tmpy += ((double)yshift1*(yymax-yymin))/(ydots);
-	       tmpz = -((double)maxvals[2]);
-	       trans(tmpx,tmpy,tmpz,doublemat1);
-	    }
-	 }
-      }
-
-      if(ct > waste)
-      {
-	 /* apply perspective if requested */
-	 if(ZVIEWER)
-	 {
-	    perspective(viewvect);
-	    if(realtime)
-	       perspective(viewvect1);
-	 }
-	 if(realtime)
-	    whichimage=1;
 	 /* plot if inside window */
-	 col = cvt.a*viewvect[0] + cvt.b*viewvect[1] + cvt.e + xxadjust;
-	 row = cvt.c*viewvect[0] + cvt.d*viewvect[1] + cvt.f + yyadjust;
-	 if ( 0 <= col && col < xdots && 0 <= row && row < ydots)
+	 if (inf.col >= 0)
 	 {
+	    if(realtime)
+	       whichimage=1;
 	    if (soundflag > 0)
-	       snd((int)(viewvect[soundflag-1]*100+basehertz));
+	       snd((int)(inf.viewvect[soundflag-1]*100+basehertz));
 	    if(oldcol != -1 && connect)
-	       draw_line(col,row,oldcol,oldrow,color&(colors-1));
+	       draw_line(inf.col,inf.row,oldcol,oldrow,color&(colors-1));
 	    else
-	       (*plot)(col,row,color&(colors-1));
-	    oldcol = col;
-	    oldrow = row;
+	       (*plot)(inf.col,inf.row,color&(colors-1));
 	 }
-	 else
-	    oldrow = oldcol = -1;
+	 oldcol = inf.col;
+	 oldrow = inf.row;
 	 if(realtime)
 	 {
 	    whichimage=2;
 	    /* plot if inside window */
-	    col = cvt.a*viewvect1[0] + cvt.b*viewvect1[1] + cvt.e + xxadjust1;
-	    row = cvt.c*viewvect1[0] + cvt.d*viewvect1[1] + cvt.f + yyadjust1;
-	    if ( 0 <= col && col < xdots && 0 <= row && row < ydots)
+	    if (inf.col1 >= 0)
 	    {
 	       if(oldcol1 != -1 && connect)
-		  draw_line(col,row,oldcol1,oldrow1,color&(colors-1));
+		  draw_line(inf.col1,inf.row1,oldcol1,oldrow1,color&(colors-1));
 	       else
-		  (*plot)(col,row,color&(colors-1));
-	       oldcol1 = col;
-	       oldrow1 = row;
+		  (*plot)(inf.col1,inf.row1,color&(colors-1));
 	    }
-	    else
-	       oldrow1 = oldcol1 = -1;
+	    oldcol1 = inf.col1;
+	    oldrow1 = inf.row1;
 	 }
       }
    }
-   return(0);
+   if(fp)
+      fclose(fp);
+   return(ret);
 }
 
 /* this function's only purpose is to manage funnyglasses related */
@@ -1141,8 +996,6 @@ First image (left eye) is ready.  Hit any key to see it,\n\
 then hit <s> to save, hit any other key to create second image."};
 	    stopmsg(16,firstready);
 	    while ((i = getakey()) == 's' || i == 'S') {
-	       if (resave_flag == 2)
-		  resave_flag = 0;
 	       diskisactive = 1;
 	       savetodisk(savename);
 	       diskisactive = 0;
@@ -1176,42 +1029,22 @@ static char far secondready[]={"Second image (right eye) is ready"};
 /* double version - mainly for testing */
 static int ifs3dfloat()
 {
-   double tmp;
-   double tmpx;
-   double tmpy;
-   double tmpz;
-   VECTOR minvals;
-   VECTOR maxvals;
-   unsigned long maxct,ct;
-   register int col;
-   register int row;
-   register int color;
+   FILE *fp;
+   unsigned long maxct;
+   int color;
 
    double newx,newy,newz,r,sum;
 
    int i,k;
+   int ret;
 
-   /* 3D viewing stuff */
-   MATRIX doublemat;	       /* transformation matrix */
-   MATRIX doublemat1;		/* transformation matrix */
-   VECTOR orbitvect;		   /* interated function orbit value */
-   VECTOR viewvect;	   /* orbit transformed for viewing */
-   VECTOR viewvect1;	    /* orbit transformed for viewing */
-   struct affine cvt;
+   struct float3dvtinf inf;
+
+   float far *ffptr;
 
    /* setup affine screen coord conversion */
-   setup_convert_to_screen(&cvt);
-
+   setup_convert_to_screen(&inf.cvt);
    srand(1);
-   for(i=0;i<3;i++)
-   {
-      minvals[i] =  100000.0; /* impossible value */
-      maxvals[i] = -100000.0;
-   }
-
-   setupmatrix(doublemat);
-   if(realtime)
-      setupmatrix(doublemat1);
 
    if(diskvideo)		/* this would KILL a disk drive! */
    {
@@ -1219,173 +1052,133 @@ static int ifs3dfloat()
       return(-1);
    }
 
-   orbitvect[0] = 0;
-   orbitvect[1] = 0;
-   orbitvect[2] = 0;
+   inf.orbit[0] = 0;
+   inf.orbit[1] = 0;
+   inf.orbit[2] = 0;
+
+   fp = open_orbitsave();
 
    maxct = maxit*40L;
-   ct = 0L;
-   while(ct++ < maxct) /* loop until keypress or maxit */
+   inf.ct = 0L;
+   ret = 0;
+   while(inf.ct++ < maxct) /* loop until keypress or maxit */
    {
-      if (ct & 127)	      /* reduce the number of keypress checks */
-	 if( check_key() )    /* keypress bails out */
-	    return(-1);
+      if( check_key() )  /* keypress bails out */
+      {
+	 ret = -1;
+	 break;
+      }
       r = rand();	 /* generate fudged random number between 0 and 1 */
       r /= 32767;
 
       /* pick which iterated function to execute, weighted by probability */
-      sum = initifs3d[0][12];
+      sum = ifs_defn[12]; /* [0][12] */
       k = 0;
       while ( sum < r)
       {
 	 k++;
-	 sum += initifs3d[k][12];
-	 if (initifs3d[k+1][12] == 0) break;	/* for safety */
+	 sum += ifs_defn[k*IFS3DPARM+12];
+	 if (ifs_defn[(k+1)*IFS3DPARM+12] == 0) break; /* for safety */
       }
 
       /* calculate image of last point under selected iterated function */
-      newx = initifs3d[k][0] * orbitvect[0] +
-	  initifs3d[k][1] * orbitvect[1] +
-	  initifs3d[k][2] * orbitvect[2] + initifs3d[k][9];
-      newy = initifs3d[k][3] * orbitvect[0] +
-	  initifs3d[k][4] * orbitvect[1] +
-	  initifs3d[k][5] * orbitvect[2] + initifs3d[k][10];
-      newz = initifs3d[k][6] * orbitvect[0] +
-	  initifs3d[k][7] * orbitvect[1] +
-	  initifs3d[k][8] * orbitvect[2] + initifs3d[k][11];
+      ffptr = ifs_defn + k*IFS3DPARM; /* point to first parm in row */
+      newx = *ffptr * inf.orbit[0] +
+	     *(ffptr+1) * inf.orbit[1] +
+	     *(ffptr+2) * inf.orbit[2] + *(ffptr+9);
+      newy = *(ffptr+3) * inf.orbit[0] +
+	     *(ffptr+4) * inf.orbit[1] +
+	     *(ffptr+5) * inf.orbit[2] + *(ffptr+10);
+      newz = *(ffptr+6) * inf.orbit[0] +
+	     *(ffptr+7) * inf.orbit[1] +
+	     *(ffptr+8) * inf.orbit[2] + *(ffptr+11);
 
-      orbitvect[0] = newx;
-      orbitvect[1] = newy;
-      orbitvect[2] = newz;
-
-      /* 3D VIEWING TRANSFORM */
-      vmult(orbitvect,doublemat,viewvect);
-      if(realtime)
-	 vmult(orbitvect,doublemat1,viewvect1);
-
-      /* find minz and maxz */
-      if(ct <= waste) /* waste this many points to find minz and maxz */
+      inf.orbit[0] = newx;
+      inf.orbit[1] = newy;
+      inf.orbit[2] = newz;
+      if(fp)
+	  fprintf(fp,orbitsave_format,newx,newy,newz);
+      if (float3dviewtransf(&inf))
       {
-	 for(i=0;i<3;i++)
-	    if ((tmp = viewvect[i]) < minvals[i])
-	       minvals[i] = tmp;
-	    else if (tmp > maxvals[i])
-	       maxvals[i] = tmp;
-	 if(ct == waste)
-	 {
-	    /* center viewer position on object */
-	    view[0] = view[1] = 0; /* center on origin */
-
-	    /* z value of user's eye - should be more negative than extreme
-			   negative part of image */
-	    view[2] = (minvals[2]-maxvals[2])*(double)ZVIEWER/100.0;
-
-	    /* center image on origin */
-	    tmpx = (-minvals[0]-maxvals[0])/(2.0); /* center x */
-	    tmpy = (-minvals[1]-maxvals[1])/(2.0); /* center y */
-
-	    /* apply perspective shift */
-	    tmpx += ((double)xshift*(xxmax-xxmin))/(xdots)  ;
-	    tmpy += ((double)yshift*(yymax-yymin))/(ydots);
-	    tmpz = -((double)maxvals[2]);
-	    trans(tmpx,tmpy,tmpz,doublemat);
-
-	    if(realtime)
-	    {
-	       /* center image on origin */
-	       tmpx = (-minvals[0]-maxvals[0])/(2.0); /* center x */
-	       tmpy = (-minvals[1]-maxvals[1])/(2.0); /* center y */
-
-	       tmpx += ((double)xshift1*(xxmax-xxmin))/(xdots);
-	       tmpy += ((double)yshift1*(yymax-yymin))/(ydots);
-	       tmpz = -((double)maxvals[2]);
-	       trans(tmpx,tmpy,tmpz,doublemat1);
-	    }
-	 }
-      }
-
-
-      if(ct > waste)
-      {
-	 /* apply perspective if requested */
-	 if(ZVIEWER)
-	 {
-	    perspective(viewvect);
-	    if(realtime)
-	       perspective(viewvect1);
-	 }
-	 if(realtime)
-	    whichimage=1;
 	 /* plot if inside window */
-	 col = cvt.a*viewvect[0] + cvt.b*viewvect[1] + cvt.e + xxadjust;
-	 row = cvt.c*viewvect[0] + cvt.d*viewvect[1] + cvt.f + yyadjust;
-	 if ( 0 <= col && col < xdots && 0 <= row && row < ydots)
+	 if (inf.col >= 0)
 	 {
-	    color = getcolor(col,row)+1;
+	    if(realtime)
+	       whichimage=1;
+	    color = getcolor(inf.col,inf.row)+1;
 	    if( color < colors ) /* color sticks on last value */
-	       (*plot)(col,row,color);
+	       (*plot)(inf.col,inf.row,color);
 	 }
 	 if(realtime)
 	 {
 	    whichimage=2;
 	    /* plot if inside window */
-	    col = cvt.a*viewvect1[0] + cvt.b*viewvect1[1] + cvt.e + xxadjust1;
-	    row = cvt.c*viewvect1[0] + cvt.d*viewvect1[1] + cvt.f + yyadjust1;
-	    if ( 0 <= col && col < xdots && 0 <= row && row < ydots)
+	    if (inf.col1 >= 0)
 	    {
-	       color = getcolor(col,row)+1;
+	       color = getcolor(inf.col1,inf.row1)+1;
 	       if( color < colors ) /* color sticks on last value */
-		  (*plot)(col,row,color);
+		  (*plot)(inf.col1,inf.row1,color);
 	    }
 	 }
       }
    } /* end while */
-   return(0);
+   if(fp)
+      fclose(fp);
+   return(ret);
 }
 
-int ifs()	/* IFS logic shamelessly converted to integer math */
+int ifs()			/* front-end for ifs2d and ifs3d */
 {
-   long a,b,c,d,e,f;
+   if (ifs_defn == NULL && ifsload() < 0)
+      return(-1);
+   if (diskvideo) {		 /* this would KILL a disk drive! */
+      notdiskmsg();
+      return(-1);
+      }
+   return((ifs_type == 0) ? ifs2d() : ifs3d());
+}
+
+int ifs2d()	/* IFS logic shamelessly converted to integer math */
+{
+   FILE *fp;
    long  *lifsptr;
    unsigned long maxct,ct;
-   register int col;
-   register int row;
-   register int color;
+   int col;
+   int row;
+   int color;
+   int ret;
 
    long localifs[NUMIFS][7];	    /* local IFS values */
    long x,y,newx,newy,r,sum, tempr;
 
    int i,j,k;
-   struct affine cvt;
-
+   struct l_affine cvt;
    /* setup affine screen coord conversion */
-   setup_convert_to_screen(&cvt);
-   a = cvt.a*fudge; b = cvt.b*fudge; c = cvt.c*fudge;
-   d = cvt.d*fudge; e = cvt.e*fudge; f = cvt.f*fudge;
+   l_setup_convert_to_screen(&cvt);
 
    srand(1);
 
-   if(diskvideo) {		/* this would KILL a disk drive! */
-	notdiskmsg();
-	return(-1);
-	}
-
    for (i = 0; i < NUMIFS; i++)    /* fill in the local IFS array */
-   for (j = 0; j < IFSPARM; j++)
-	 localifs[i][j] = initifs[i][j] * fudge;
+      for (j = 0; j < IFSPARM; j++)
+	 localifs[i][j] = ifs_defn[i*IFSPARM+j] * fudge;
 
    tempr = fudge / 32767;	 /* find the proper rand() fudge */
+
+   fp = open_orbitsave();
 
    /* make maxct a function of screen size		 */
    /* 1k times maxit at EGA resolution seems about right */
    maxct = (float)maxit*(1024.0*xdots*ydots)/(640.0*350.0);
    ct = 0L;
    x = y = 0;
+   ret = 0;
    while(ct++ < maxct) /* loop until keypress or maxit */
    {
-      if (ct & 127)	      /* reduce the number of keypress checks */
-	 if( check_key() )    /* keypress bails out */
-	    return(-1);
+      if( check_key() )  /* keypress bails out */
+      {
+	 ret = -1;
+	 break;
+      }
       r = rand();	 /* generate fudged random number between 0 and 1 */
       r *= tempr;
 
@@ -1408,10 +1201,12 @@ int ifs()	/* IFS logic shamelessly converted to integer math */
 	  localifs[k][5];
       x = newx;
       y = newy;
+      if(fp)
+	 fprintf(fp,orbitsave_format,(double)newx/fudge,(double)newy/fudge,0.0);
 
       /* plot if inside window */
-      col = (multiply(a,x,bitshift) + multiply(b,y,bitshift) + e) >> bitshift;
-      row = (multiply(c,x,bitshift) + multiply(d,y,bitshift) + f) >> bitshift;
+      col = (multiply(cvt.a,x,bitshift) + multiply(cvt.b,y,bitshift) + cvt.e) >> bitshift;
+      row = (multiply(cvt.c,x,bitshift) + multiply(cvt.d,y,bitshift) + cvt.f) >> bitshift;
       if ( col >= 0 && col < xdots && row >= 0 && row < ydots )
       {
 	 /* color is count of hits on this pixel */
@@ -1420,87 +1215,52 @@ int ifs()	/* IFS logic shamelessly converted to integer math */
 	    (*plot)(col,row,color);
       }
    }
-   return(0);
+   if(fp)
+      fclose(fp);
+   return(ret);
 }
 
 static int ifs3dlong()
 {
-   long a,b,c,d,e,f;
-   double tmpx, tmpy, tmpz;
-   extern VECTOR view;
-   long iview[3];	  /* perspective viewer's coordinates */
-   long tmp;
-   long maxvals[3];
-   long minvals[3];
+   FILE *fp;
    extern int init3d[];
-   unsigned long maxct,ct;
-   register int col;
-   register int row;
-   register int color;
+   unsigned long maxct;
+   int color;
+   int ret;
 
    long localifs[NUMIFS][IFS3DPARM];	    /* local IFS values */
    long newx,newy,newz,r,sum, tempr;
 
    int i,j,k;
 
-   /* 3D viewing stuff */
-   MATRIX doublemat;	       /* transformation matrix */
-   MATRIX doublemat1;		/* transformation matrix */
-   long longmat[4][4];	       /* long version of matrix */
-   long longmat1[4][4]; 	/* long version of matrix */
-   long orbitvect[3];		   /* interated function orbit value */
-   long viewvect[3];	    /* orbit transformed for viewing */
-   long viewvect1[3];	     /* orbit transformed for viewing */
-   struct affine cvt;
-
+   struct long3dvtinf inf;
    srand(1);
 
    /* setup affine screen coord conversion */
-   setup_convert_to_screen(&cvt);
-   a = cvt.a*fudge; b = cvt.b*fudge; c = cvt.c*fudge;
-   d = cvt.d*fudge; e = cvt.e*fudge; f = cvt.f*fudge;
-
-   for(i=0;i<3;i++)
-   {
-      minvals[i] =  1L << 30;
-      maxvals[i] = -minvals[i];
-   }
-
-   setupmatrix(doublemat);
-   if(realtime)
-      setupmatrix(doublemat1);
-
-   /* copy xform matrix to long for for fixed point math */
-   for (i = 0; i < 4; i++)
-      for (j = 0; j < 4; j++)
-      {
-	 longmat[i][j] = doublemat[i][j] * fudge;
-	 if(realtime)
-	    longmat1[i][j] = doublemat1[i][j] * fudge;
-      }
-   if(diskvideo)		/* this would KILL a disk drive! */
-   {
-      notdiskmsg();
-      return(-1);
-   }
+   l_setup_convert_to_screen(&inf.cvt);
 
    for (i = 0; i < NUMIFS; i++)    /* fill in the local IFS array */
       for (j = 0; j < IFS3DPARM; j++)
-	 localifs[i][j] = initifs3d[i][j] * fudge;
+	 localifs[i][j] = ifs_defn[i*IFS3DPARM+j] * fudge;
 
    tempr = fudge / 32767;	 /* find the proper rand() fudge */
 
-   orbitvect[0] = 0;
-   orbitvect[1] = 0;
-   orbitvect[2] = 0;
+   inf.orbit[0] = 0;
+   inf.orbit[1] = 0;
+   inf.orbit[2] = 0;
+
+   fp = open_orbitsave();
 
    maxct = maxit*40L;
-   ct = 0L;
-   while(ct++ < maxct) /* loop until keypress or maxit */
+   inf.ct = 0L;
+   ret = 0;
+   while(inf.ct++ < maxct) /* loop until keypress or maxit */
    {
-      if (ct & 127)	      /* reduce the number of keypress checks */
-	 if( check_key() )    /* keypress bails out */
-	    return(-1);
+      if( check_key() )  /* keypress bails out */
+      {
+	 ret = -1;
+	 break;
+      }
       r = rand();	 /* generate fudged random number between 0 and 1 */
       r *= tempr;
 
@@ -1515,153 +1275,49 @@ static int ifs3dlong()
       }
 
       /* calculate image of last point under selected iterated function */
-      newx = multiply(localifs[k][0], orbitvect[0], bitshift) +
-	  multiply(localifs[k][1], orbitvect[1], bitshift) +
-	  multiply(localifs[k][2], orbitvect[2], bitshift) + localifs[k][9];
-      newy = multiply(localifs[k][3], orbitvect[0], bitshift) +
-	  multiply(localifs[k][4], orbitvect[1], bitshift) +
-	  multiply(localifs[k][5], orbitvect[2], bitshift) + localifs[k][10];
-      newz = multiply(localifs[k][6], orbitvect[0], bitshift) +
-	  multiply(localifs[k][7], orbitvect[1], bitshift) +
-	  multiply(localifs[k][8], orbitvect[2], bitshift) + localifs[k][11];
+      newx = multiply(localifs[k][0], inf.orbit[0], bitshift) +
+	  multiply(localifs[k][1], inf.orbit[1], bitshift) +
+	  multiply(localifs[k][2], inf.orbit[2], bitshift) + localifs[k][9];
+      newy = multiply(localifs[k][3], inf.orbit[0], bitshift) +
+	  multiply(localifs[k][4], inf.orbit[1], bitshift) +
+	  multiply(localifs[k][5], inf.orbit[2], bitshift) + localifs[k][10];
+      newz = multiply(localifs[k][6], inf.orbit[0], bitshift) +
+	  multiply(localifs[k][7], inf.orbit[1], bitshift) +
+	  multiply(localifs[k][8], inf.orbit[2], bitshift) + localifs[k][11];
 
-      orbitvect[0] = newx;
-      orbitvect[1] = newy;
-      orbitvect[2] = newz;
+      inf.orbit[0] = newx;
+      inf.orbit[1] = newy;
+      inf.orbit[2] = newz;
+      if(fp)
+	 fprintf(fp,orbitsave_format,(double)newx/fudge,(double)newy/fudge,(double)newz/fudge);
 
-      /* 3D VIEWING TRANSFORM */
-      longvmult(orbitvect,longmat,viewvect, bitshift);
-      if(realtime)
-	 longvmult(orbitvect,longmat1,viewvect1, bitshift);
-
-      if(ct <= waste) /* waste this many points to find minz and maxz */
+      if (long3dviewtransf(&inf))
       {
-	 /* find minz and maxz */
-	 for(i=0;i<3;i++)
-	    if ((tmp = viewvect[i]) < minvals[i])
-	       minvals[i] = tmp;
-	    else if (tmp > maxvals[i])
-	       maxvals[i] = tmp;
-	 if(ct == waste)
-	 {
-	    iview[0] = iview[1] = 0L; /* center viewer on origin */
-
-	    /* z value of user's eye - should be more negative than extreme
-			   negative part of image */
-	    iview[2] = (long)((minvals[2]-maxvals[2])*(double)ZVIEWER/100.0);
-
-	    /* center image on origin */
-	    tmpx = (-minvals[0]-maxvals[0])/(2.0*fudge); /* center x */
-	    tmpy = (-minvals[1]-maxvals[1])/(2.0*fudge); /* center y */
-
-	    /* apply perspective shift */
-	    tmpx += ((double)xshift*(xxmax-xxmin))/(xdots)  ;
-	    tmpy += ((double)yshift*(yymax-yymin))/(ydots);
-	    tmpz = -((double)maxvals[2]);
-	    tmpz /= fudge;
-	    trans(tmpx,tmpy,tmpz,doublemat);
-
-	    if(realtime)
-	    {
-	       /* center image on origin */
-	       tmpx = (-minvals[0]-maxvals[0])/(2.0*fudge); /* center x */
-	       tmpy = (-minvals[1]-maxvals[1])/(2.0*fudge); /* center y */
-
-	       tmpx += ((double)xshift1*(xxmax-xxmin))/(xdots);
-	       tmpy += ((double)yshift1*(yymax-yymin))/(ydots);
-	       tmpz = -((double)maxvals[2]);
-	       tmpz /= fudge;
-	       trans(tmpx,tmpy,tmpz,doublemat1);
-	    }
-
-	    for(i=0;i<3;i++)
-	    {
-	       view[i] = iview[i];
-	       view[i] /= fudge;
-	    }
-
-	    /* copy xform matrix to long for for fixed point math */
-	    for (i = 0; i < 4; i++)
-	       for (j = 0; j < 4; j++)
-	       {
-		  longmat[i][j] = doublemat[i][j] * fudge;
-		  if(realtime)
-		     longmat1[i][j] = doublemat1[i][j] * fudge;
-	       }
-	 }
-      }
-      if(ct > waste)
-      {
-	 /* apply perspective if requested */
-	 if(ZVIEWER && ct > waste)
-	 {
-	    if(debugflag==22 || ZVIEWER < 100) /* use float for small persp */
-	    {
-	       /* use float perspective calc */
-	       VECTOR tmpv;
-	       for(i=0;i<3;i++)
-	       {
-		  tmpv[i] = viewvect[i];
-		  tmpv[i] /= fudge;
-	       }
-	       perspective(tmpv);
-	       for(i=0;i<3;i++)
-		  viewvect[i] = tmpv[i]*fudge;
-	       if(realtime)
-	       {
-		  for(i=0;i<3;i++)
-		  {
-		     tmpv[i] = viewvect1[i];
-		     tmpv[i] /= fudge;
-		  }
-		  perspective(tmpv);
-		  for(i=0;i<3;i++)
-		     viewvect1[i] = tmpv[i]*fudge;
-	       }
-	    }
-	    else
-	    {
-	       longpersp(viewvect,iview,bitshift);
-	       if(realtime)
-		  longpersp(viewvect1,iview,bitshift);
-	    }
-	 }
-	 if(realtime)
-	 whichimage=1;
 	 /* plot if inside window */
-	 col = (multiply(a,viewvect[0],bitshift)+
-		multiply(b,viewvect[1],bitshift)+e) >> bitshift;
-	 row = (multiply(c,viewvect[0],bitshift)+
-		multiply(d,viewvect[1],bitshift)+f) >> bitshift;
-	 col += xxadjust;
-	 row += yyadjust;
-
-	 if ( 0 <= col && col < xdots && 0 <= row && row < ydots)
+	 if (inf.col >= 0)
 	 {
-	    color = getcolor(col,row)+1;
+	    if(realtime)
+	       whichimage=1;
+	    color = getcolor(inf.col,inf.row)+1;
 	    if( color < colors ) /* color sticks on last value */
-	       (*plot)(col,row,color);
+	       (*plot)(inf.col,inf.row,color);
 	 }
 	 if(realtime)
 	 {
 	    whichimage=2;
 	    /* plot if inside window */
-	    col = (multiply(a,viewvect1[0],bitshift)+
-		   multiply(b,viewvect1[1],bitshift)+e) >> bitshift;
-	    row = (multiply(c,viewvect1[0],bitshift)+
-		   multiply(d,viewvect1[1],bitshift)+f) >> bitshift;
-	    col += xxadjust1;
-	    row += yyadjust1;
-	    if ( 0 <= col && col < xdots && 0 <= row && row < ydots)
+	    if (inf.col1 >= 0)
 	    {
-	       color = getcolor(col,row)+1;
+	       color = getcolor(inf.col1,inf.row1)+1;
 	       if( color < colors ) /* color sticks on last value */
-		  (*plot)(col,row,color);
+		  (*plot)(inf.col1,inf.row1,color);
 	    }
 	 }
       }
    }
-   return(0);
+   if(fp)
+      fclose(fp);
+   return(ret);
 }
 
 static void setupmatrix(MATRIX doublemat)
@@ -1688,6 +1344,7 @@ int orbit3dfloat()
       realtime = 0;
    return(funny_glasses_call(orbit3dfloatcalc));
 }
+
 int orbit3dlong()
 {
    display3d = -1;
@@ -1712,3 +1369,245 @@ int ifs3d()
       return(funny_glasses_call(ifs3dlong));  /* long version of ifs3d	 */
 }
 
+
+
+static int long3dviewtransf(struct long3dvtinf *inf)
+{
+   int i,j;
+   double tmpx, tmpy, tmpz;
+   long tmp;
+
+   if (inf->ct == 1)	/* initialize on first call */
+   {
+      for(i=0;i<3;i++)
+      {
+	 inf->minvals[i] =  1L << 30;
+	 inf->maxvals[i] = -inf->minvals[i];
+      }
+      setupmatrix(inf->doublemat);
+      if(realtime)
+	 setupmatrix(inf->doublemat1);
+      /* copy xform matrix to long for for fixed point math */
+      for (i = 0; i < 4; i++)
+	 for (j = 0; j < 4; j++)
+	 {
+	    inf->longmat[i][j] = inf->doublemat[i][j] * fudge;
+	    if(realtime)
+	       inf->longmat1[i][j] = inf->doublemat1[i][j] * fudge;
+	 }
+   }
+
+   /* 3D VIEWING TRANSFORM */
+   longvmult(inf->orbit,inf->longmat,inf->viewvect,bitshift);
+   if(realtime)
+      longvmult(inf->orbit,inf->longmat1,inf->viewvect1,bitshift);
+
+   if(inf->ct <= waste) /* waste this many points to find minz and maxz */
+   {
+      /* find minz and maxz */
+      for(i=0;i<3;i++)
+	 if ((tmp = inf->viewvect[i]) < inf->minvals[i])
+	    inf->minvals[i] = tmp;
+	 else if (tmp > inf->maxvals[i])
+	    inf->maxvals[i] = tmp;
+
+      if(inf->ct == waste) /* time to work it out */
+      {
+	 inf->iview[0] = inf->iview[1] = 0L; /* center viewer on origin */
+
+	 /* z value of user's eye - should be more negative than extreme
+			negative part of image */
+	 inf->iview[2] = (long)((inf->minvals[2]-inf->maxvals[2])*(double)ZVIEWER/100.0);
+
+	 /* center image on origin */
+	 tmpx = (-inf->minvals[0]-inf->maxvals[0])/(2.0*fudge); /* center x */
+	 tmpy = (-inf->minvals[1]-inf->maxvals[1])/(2.0*fudge); /* center y */
+
+	 /* apply perspective shift */
+	 tmpx += ((double)xshift*(xxmax-xxmin))/(xdots);
+	 tmpy += ((double)yshift*(yymax-yymin))/(ydots);
+	 tmpz = -((double)inf->maxvals[2]) / fudge;
+	 trans(tmpx,tmpy,tmpz,inf->doublemat);
+
+	 if(realtime)
+	 {
+	    /* center image on origin */
+	    tmpx = (-inf->minvals[0]-inf->maxvals[0])/(2.0*fudge); /* center x */
+	    tmpy = (-inf->minvals[1]-inf->maxvals[1])/(2.0*fudge); /* center y */
+
+	    tmpx += ((double)xshift1*(xxmax-xxmin))/(xdots);
+	    tmpy += ((double)yshift1*(yymax-yymin))/(ydots);
+	    tmpz = -((double)inf->maxvals[2]) / fudge;
+	    trans(tmpx,tmpy,tmpz,inf->doublemat1);
+	 }
+	 for(i=0;i<3;i++)
+	    view[i] = (double)inf->iview[i] / fudge;
+
+	 /* copy xform matrix to long for for fixed point math */
+	 for (i = 0; i < 4; i++)
+	    for (j = 0; j < 4; j++)
+	    {
+	       inf->longmat[i][j] = inf->doublemat[i][j] * fudge;
+	       if(realtime)
+		  inf->longmat1[i][j] = inf->doublemat1[i][j] * fudge;
+	    }
+      }
+      return(0);
+   }
+
+   /* inf->ct > waste */
+   /* apply perspective if requested */
+   if(ZVIEWER)
+   {
+      if(debugflag==22 || ZVIEWER < 100) /* use float for small persp */
+      {
+	 /* use float perspective calc */
+	 VECTOR tmpv;
+	 for(i=0;i<3;i++)
+	    tmpv[i] = (double)inf->viewvect[i] / fudge;
+	 perspective(tmpv);
+	 for(i=0;i<3;i++)
+	    inf->viewvect[i] = tmpv[i]*fudge;
+	 if(realtime)
+	 {
+	    for(i=0;i<3;i++)
+	       tmpv[i] = (double)inf->viewvect1[i] / fudge;
+	    perspective(tmpv);
+	    for(i=0;i<3;i++)
+	       inf->viewvect1[i] = tmpv[i]*fudge;
+	 }
+      }
+      else
+      {
+	 longpersp(inf->viewvect,inf->iview,bitshift);
+	 if(realtime)
+	    longpersp(inf->viewvect1,inf->iview,bitshift);
+      }
+   }
+
+   /* work out the screen positions */
+   inf->row = ((multiply(inf->cvt.c,inf->viewvect[0],bitshift) +
+		multiply(inf->cvt.d,inf->viewvect[1],bitshift) + inf->cvt.f)
+		>> bitshift)
+	      + yyadjust;
+   inf->col = ((multiply(inf->cvt.a,inf->viewvect[0],bitshift) +
+		multiply(inf->cvt.b,inf->viewvect[1],bitshift) + inf->cvt.e)
+		>> bitshift)
+	      + xxadjust;
+   if (inf->col < 0 || inf->col >= xdots || inf->row < 0 || inf->row >= ydots)
+      inf->col = inf->row = -1;
+   if(realtime)
+   {
+      inf->row1 = ((multiply(inf->cvt.c,inf->viewvect1[0],bitshift) +
+		    multiply(inf->cvt.d,inf->viewvect1[1],bitshift) +
+		    inf->cvt.f) >> bitshift)
+		  + yyadjust1;
+      inf->col1 = ((multiply(inf->cvt.a,inf->viewvect1[0],bitshift) +
+		    multiply(inf->cvt.b,inf->viewvect1[1],bitshift) +
+		    inf->cvt.e) >> bitshift)
+		  + xxadjust1;
+      if (inf->col1 < 0 || inf->col1 >= xdots || inf->row1 < 0 || inf->row1 >= ydots)
+	 inf->col1 = inf->row1 = -1;
+   }
+   return(1);
+}
+
+static int float3dviewtransf(struct float3dvtinf *inf)
+{
+   int i,j;
+   double tmpx, tmpy, tmpz;
+   double tmp;
+
+   if (inf->ct == 1)	/* initialize on first call */
+   {
+      for(i=0;i<3;i++)
+      {
+	 inf->minvals[i] =  100000.0; /* impossible value */
+	 inf->maxvals[i] = -100000.0;
+      }
+      setupmatrix(inf->doublemat);
+      if(realtime)
+	 setupmatrix(inf->doublemat1);
+   }
+
+   /* 3D VIEWING TRANSFORM */
+   vmult(inf->orbit,inf->doublemat,inf->viewvect );
+   if(realtime)
+      vmult(inf->orbit,inf->doublemat1,inf->viewvect1);
+
+   if(inf->ct <= waste) /* waste this many points to find minz and maxz */
+   {
+      /* find minz and maxz */
+      for(i=0;i<3;i++)
+	 if ((tmp = inf->viewvect[i]) < inf->minvals[i])
+	    inf->minvals[i] = tmp;
+	 else if (tmp > inf->maxvals[i])
+	    inf->maxvals[i] = tmp;
+      if(inf->ct == waste) /* time to work it out */
+      {
+	 view[0] = view[1] = 0; /* center on origin */
+	 /* z value of user's eye - should be more negative than extreme
+			   negative part of image */
+	 view[2] = (inf->minvals[2]-inf->maxvals[2])*(double)ZVIEWER/100.0;
+
+	 /* center image on origin */
+	 tmpx = (-inf->minvals[0]-inf->maxvals[0])/(2.0); /* center x */
+	 tmpy = (-inf->minvals[1]-inf->maxvals[1])/(2.0); /* center y */
+
+	 /* apply perspective shift */
+	 tmpx += ((double)xshift*(xxmax-xxmin))/(xdots);
+	 tmpy += ((double)yshift*(yymax-yymin))/(ydots);
+	 tmpz = -(inf->maxvals[2]);
+	 trans(tmpx,tmpy,tmpz,inf->doublemat);
+
+	 if(realtime)
+	 {
+	    /* center image on origin */
+	    tmpx = (-inf->minvals[0]-inf->maxvals[0])/(2.0); /* center x */
+	    tmpy = (-inf->minvals[1]-inf->maxvals[1])/(2.0); /* center y */
+
+	    tmpx += ((double)xshift1*(xxmax-xxmin))/(xdots);
+	    tmpy += ((double)yshift1*(yymax-yymin))/(ydots);
+	    tmpz = -(inf->maxvals[2]);
+	    trans(tmpx,tmpy,tmpz,inf->doublemat1);
+	    }
+	 }
+      return(0);
+      }
+
+   /* inf->ct > waste */
+   /* apply perspective if requested */
+   if(ZVIEWER)
+   {
+      perspective(inf->viewvect);
+      if(realtime)
+	 perspective(inf->viewvect1);
+   }
+   inf->row = inf->cvt.c*inf->viewvect[0] + inf->cvt.d*inf->viewvect[1]
+	    + inf->cvt.f + yyadjust;
+   inf->col = inf->cvt.a*inf->viewvect[0] + inf->cvt.b*inf->viewvect[1]
+	    + inf->cvt.e + xxadjust;
+   if (inf->col < 0 || inf->col >= xdots || inf->row < 0 || inf->row >= ydots)
+      inf->col = inf->row = -1;
+   if(realtime)
+   {
+      inf->row1 = inf->cvt.c*inf->viewvect1[0] + inf->cvt.d*inf->viewvect1[1]
+		+ inf->cvt.f + yyadjust1;
+      inf->col1 = inf->cvt.a*inf->viewvect1[0] + inf->cvt.b*inf->viewvect1[1]
+		+ inf->cvt.e + xxadjust1;
+      if (inf->col1 < 0 || inf->col1 >= xdots || inf->row1 < 0 || inf->row1 >= ydots)
+	 inf->col1 = inf->row1 = -1;
+   }
+   return(1);
+}
+
+static FILE *open_orbitsave()
+{
+   FILE *fp;
+   if (orbitsave && (fp = fopen(orbitsavename,"w")))
+   {
+      fprintf(fp,"pointlist x y z color\n");
+      return fp;
+   }
+   return NULL;
+}

@@ -6,12 +6,12 @@ IFDEF ??version
 	QUIRKS
 ENDIF
 
-	.MODEL  medium,c
+	.MODEL	medium,c
 
 	.8086
 .data
 
-HGCBase		equ	0B000h		;segment for HGC regen buffer page 0
+HGCBase 	equ	0B000h		;segment for HGC regen buffer page 0
 
 herc_index	equ	03B4h
 herc_cntrl	equ	03B8h
@@ -21,25 +21,25 @@ herc_config	equ	03BFh
 
 ; Hercules control/configuration register settings
 
-scrn_on	equ	08h
+scrn_on equ	08h
 grph	equ	02h
 text	equ	20h
-enable  equ     03h
+enable	equ	03h
 
 .code
 
 ;
 ;
 ; inithgc -  Initialize the HGC in graphics mode.
-;           Code mostly from the Hercules Graphics Card Owner's Manual.
+;	    Code mostly from the Hercules Graphics Card Owner's Manual.
 ;
-inithgc	PROC USES DI SI
+inithgc PROC USES DI SI
 
 	mov	al,enable		; enable mode changes
 	mov	dx,herc_config		; same as HGC FULL command
 	out	dx,al
 
-	mov	al,grph			; set graphic mode
+	mov	al,grph 		; set graphic mode
 	lea	si,gtable		; address of graphic parameters
 	mov	bx,0
 	mov	cx,4000h
@@ -47,15 +47,15 @@ inithgc	PROC USES DI SI
 
 	ret
 
-inithgc	ENDP
+inithgc ENDP
 
 ;
 ; termhgc -  Restore the Hercules Graphics Card to text mode.
-;           Code mostly from the Hercules Graphics Card Owner's Manual.
+;	    Code mostly from the Hercules Graphics Card Owner's Manual.
 ;
-termhgc	PROC USES DI SI
+termhgc PROC USES DI SI
 
-	mov	al,text			; set text mode
+	mov	al,text 		; set text mode
 	lea	si,ttable		; get address of text parameters
 	mov	bx,720h
 	mov	cx,2000
@@ -63,15 +63,15 @@ termhgc	PROC USES DI SI
 
 	ret
 
-termhgc	ENDP
+termhgc ENDP
 
 ;
 ; setmd - sets mode to graphic or text depending on al
-;         si = address of parameter table
-;         cx = number of words to be cleared
-;         bx = blank value
+;	  si = address of parameter table
+;	  cx = number of words to be cleared
+;	  bx = blank value
 ;
-;         from Hercules Graphics Card Owner's Manual
+;	  from Hercules Graphics Card Owner's Manual
 ;
 setmd	PROC NEAR
 ;
@@ -81,36 +81,36 @@ setmd	PROC NEAR
 	push	bx
 	push	cx
 
-;    change mode, but without screen on   
+;    change mode, but without screen on
 	mov	dx,herc_cntrl		; get address of control register
-	out	dx,al                   ; al has the mode byte
+	out	dx,al			; al has the mode byte
 
 ;    initialize the 6845
 	mov	ax,ds
 	mov	es,ax			; also point es:si to parameter table
 
-	mov	dx,herc_index           ; get index register address
-	mov	cx,12                   ; 12 parameters to be output
-	xor	ah,ah                   ; starting from register 0
+	mov	dx,herc_index		; get index register address
+	mov	cx,12			; 12 parameters to be output
+	xor	ah,ah			; starting from register 0
 
 parms:	mov	al,ah			; first output register number
 	out	dx,al
 
 	inc	dx			; get data register address
-	lodsb                           ; get next byte from param. table
-	out	dx,al                   ; output parameter data
+	lodsb				; get next byte from param. table
+	out	dx,al			; output parameter data
 
-	inc	ah                      ; increment register number
-	dec	dx                      ; restore index register address
-	loop	parms                   ; go do another one
+	inc	ah			; increment register number
+	dec	dx			; restore index register address
+	loop	parms			; go do another one
 
 ;    now go clear the buffer
 	pop	cx			; get number of words to clear
-	mov	ax,HGCBase              ; get address off video buffer
-	cld 				; set auto increment
-	mov	es,ax                   ; set segment for string move
-	xor	di,di                   ; start at offset 0
-	pop	ax                      ; get blank value
+	mov	ax,HGCBase		; get address off video buffer
+	cld				; set auto increment
+	mov	es,ax			; set segment for string move
+	xor	di,di			; start at offset 0
+	pop	ax			; get blank value
 	rep	stosw			; repeat store string
 
 ;   turn screen on with page 0 active
@@ -175,7 +175,7 @@ writehgc	ENDP
 ;
 ;  dot value is to be returned in AX
 ;
-readhgc	PROC USES DI SI, x,y
+readhgc PROC USES DI SI, x,y
 
 	lea	bx,HGCRegen		;set up offset of regen scan line table
 	mov	ax,HGCBase		;segment for regen buffer
@@ -206,175 +206,8 @@ readhgc020:
 readhgc030:
 	ret
 
-readhgc	ENDP
-;
-;   linehgc (x1,y1, x2,y2, c)  - x1,y1 to x2,y2 in color c
-;   x1 = x1 coordinate
-;   y1 = y1 coordinate
-;   x2 = x2 coordinate
-;   y2 = y2 coordinate
-;   c  = color
-;
+readhgc ENDP
 
-linehgc	PROC USES DI SI, x1,y1,x2,y2,c
-
-	lea	bx,HGCRegen		;set up offset of regen scan line table
-	mov	ax,HGCBase		;regen buffer segment
-	mov	es,ax
-
-; calculate scan line address in regen buffer for y1
-	mov	ax,y1		;get y1 coordinate
-	shl	ax,1		;mult by 2 to get offset of entry in table
-	add	bx,ax		;add to table beginning offset
-; set increment for x and y
-	mov	ds:XStep[di],1	;default to forward
-	mov	ds:YStep[di],1
-	xor	dx,dx		;direction = 0
-	mov	ax,x2		;get x2
-	sub	ax,x1		;get delta x (x2 - x1)
-	jns	DrLine020	;branch if result is positive
-	neg	ax		;else take absolute value
-	mov	ds:XStep[di],-1	;and remember to step backwards
-	jmp	short DrLine030
-DrLine020:
-	jnz	DrLine030	;jump if delta x is not zero
-	mov	dx,-1		;set direction = -1 if delta x = 0
-DrLine030:
-	mov	ds:DeltaX[di],ax
-	mov	ax,y2		;get y2
-	sub	ax,y1		;get delta y (y2 - y1)
-	jns	DrLine040	;branch if result is positive
-	neg	ax		;else take absolute value
-	mov	ds:YStep[di],-1	;and remember to step backwards
-DrLine040:
-	mov	ds:DeltaY[di],ax
-	mov	ax,x1		;get x1
-	mov	cx,y1		;get y1
-;;;
-;;;  ax = x
-;;;  bx = y (encoded as address in the Scan Line Table)
-;;;  cx = y
-;;;  dx = direction
-;;;
-	cmp	word ptr c,0 ;set to background color?
-	je	DrLine080
-DrLine050:
-; loop drawing the points of the line
-	cmp	ax,x2		;x = x2?
-	jne	DrLine060	;no: continue with loop
-	cmp	cx,y2		;y = y2?
-	je	DrLineRet	;yes: finished!!!
-DrLine060:
-; draw a point at (x,y)
-	push	cx		;save regs used
-	push	ax
-	mov	cl,3
-	shr	ax,cl		;adjust ax for byte offset
-	mov	si,ds:[bx]	;get scan line address
-	add	si,ax		;get byte address in regen buffer
-	pop	cx		;restore x value
-	push	cx
-	and	cx,0007h	;build bit mask
-	mov	ah,80h
-	shr	ah,cl
-	xor	es:[si],ah	;turn on the bit
-	pop	ax		;restore regs used
-	pop	cx
-; adjust for the next point
-	cmp	dx,0		;direction less than zero?
-	jge	DrLine070	;no: jump
-	add	cx,ds:YStep[di]
-	add	bx,ds:YStep[di]
-	add	bx,ds:YStep[di]
-	add	dx,ds:DeltaX[di]
-	jmp	DrLine050
-DrLine070:
-	add	ax,ds:XStep[di]
-	sub	dx,ds:DeltaY[di]
-	jmp	DrLine050
-
-DrLineRet:
-	ret
-
-DrLine080:
-; loop setting points of the line to the background color
-	cmp	ax,x2		;x = x2?
-	jne	DrLine090	;no: continue with loop
-	cmp	cx,y2		;y = y2?
-	je	DrLineRet	;yes: finished!!!
-DrLine090:
-; draw a point at (x,y)
-	push	cx		;save regs used
-	push	ax
-	mov	cl,3
-	shr	ax,cl		;adjust ax for byte offset
-	mov	si,ds:[bx]	;get scan line address
-	add	si,ax		;get byte address in regen buffer
-	pop	cx		;restore x value
-	push	cx
-	and	cx,0007h	;build bit mask
-	mov	ah,80h
-	shr	ah,cl
-	xor	ah,0FFh
-	and	es:[si],ah	;turn off the bit
-	pop	ax		;restore regs used
-	pop	cx
-; adjust for the next point
-	cmp	dx,0		;direction less than zero?
-	jge	DrLine100	;no: jump
-	add	cx,ds:YStep[di]
-	add	bx,ds:YStep[di]
-	add	bx,ds:YStep[di]
-	add	dx,ds:DeltaX[di]
-	jmp	DrLine080
-DrLine100:
-	add	ax,ds:XStep[di]
-	sub	dx,ds:DeltaY[di]
-	jmp	DrLine080
-
-linehgc	ENDP
-;
-;   charhgc (x,y,c)  - draw char  c at x,y
-;	x = x coordinate
-;	y = y coordinate
-;	c = character to draw
-;
-charhgc	PROC USES DI SI, x,y,c
-
-	lea	bx,HGCRegen		;set up offset of regen scan line table
-	mov	ax,HGCBase		;regen buffer segment
-	mov	es,ax
-
-; determine offset to character in character table
-	mov	si,c		;get character
-	and	si,007Fh	;strip invalid bits
-	mov	cl,3		;mult by 8 to get offset into table
-	shl	si,cl		;ds:si is addr of character in table
-	lea	di,Crt_Char	;add in table base offset
-	add	si,di
-
-; adjust x coordinate for byte offset into regen buffer
-	mov	dx,x		;get x coordinate
-	add	dx,7		;adjust to next byte boundary if reqd
-	mov	cl,3
-	shr	dx,cl		;adjust for byte displacement into buffer
-; get address in Regen Scan Line Table based on y coordinate
-	mov	ax,y		;get y coordinate
-	shl	ax,1		;mult by 2 for offset into scan line table
-	add	bx,ax		;add to offset of table to get entry address
-; loop 8 times to draw the character
-	mov	cx,8
-charhgc020:
-	lodsb			;al = byte from DS:SI; incr SI
-	mov	di,[bx]		;get offset into regen buffer
-	add	di,dx		;adjust for x coordinate
-	mov	es:[di],al	;store 8 pixels of char into regen buffer
-	inc	bx		;incr for next scan line
-	inc	bx
-	loop	charhgc020
-	ret
-
-charhgc	ENDP
 
 .data
 
@@ -385,140 +218,6 @@ gtable	db	35h,2dh,2eh,07h
 ttable	db	61h,50h,52h,0fh
 	db	19h,06h,19h,19h
 	db	02h,0dh,0bh,0ch
-
-XStep	dw	0
-YStep	dw	0
-DeltaX	dw	0
-DeltaY	dw	0
-
-Crt_Char	db	000h,000h,000h,000h,000h,000h,000h,000h	; #0
-		db	07Eh,081h,0A5h,081h,0BDh,099h,081h,07Eh	; #1
-		db	07Eh,0FFh,0DBh,0FFh,0C3h,0E7h,0FFh,07Eh	; #2
-		db	06Ch,0FEh,0FEh,0FEh,07Ch,038h,010h,000h	; #3
-		db	010h,038h,07Ch,0FEh,07Ch,038h,010h,000h	; #4
-		db	038h,07Ch,038h,0FEh,0FEh,07Ch,038h,07Ch	; #5
-		db	010h,010h,038h,07Ch,0FEh,07Ch,038h,07Ch	; #6
-		db	000h,000h,018h,03Ch,03Ch,018h,000h,000h	; #7
-		db	0FFh,0FFh,0E7h,0C3h,0C3h,0E7h,0FFh,0FFh	; #8
-		db	000h,03Ch,066h,042h,042h,066h,03Ch,000h	; #9
-		db	0FFh,0C3h,099h,0BDh,0BDh,099h,0C3h,0FFh	; #10
-		db	00Fh,007h,00Fh,07Dh,0CCh,0CCh,0CCh,078h	; #11
-		db	03Ch,066h,066h,066h,03Ch,018h,07Eh,018h	; #12
-		db	03Fh,033h,03Fh,030h,030h,070h,0F0h,0E0h	; #13
-		db	07Fh,063h,07Fh,063h,063h,067h,0E6h,0C0h	; #14
-		db	099h,05Ah,03Ch,0E7h,0E7h,03Ch,05Ah,099h	; #15
-		db	080h,0E0h,0F8h,0FEh,0F8h,0E0h,080h,000h	; #16
-		db	002h,00Eh,03Eh,0FEh,03Eh,00Eh,002h,000h	; #17
-		db	018h,03Ch,07Eh,018h,018h,07Eh,03Ch,018h	; #18
-		db	066h,066h,066h,066h,066h,000h,066h,000h	; #19
-		db	07Fh,0dbh,0dbh,07Bh,01Bh,01Bh,01Bh,000h	; #20
-		db	03Eh,063h,038h,06Ch,06Ch,038h,0CCh,078h	; #21
-		db	000h,000h,000h,000h,07Eh,07Eh,07Eh,000h	; #22
-		db	018h,03Ch,07Eh,018h,07Eh,03Ch,018h,0FFh	; #23
-		db	018h,03Ch,07Eh,018h,018h,018h,018h,000h	; #24
-		db	018h,018h,018h,018h,07Eh,03Ch,018h,000h	; #25
-		db	000h,018h,00Ch,0FEh,00Ch,018h,000h,000h	; #26
-		db	000h,030h,060h,0FEh,060h,030h,000h,000h	; #27
-		db	000h,000h,0C0h,0C0h,0C0h,0FEh,000h,000h	; #28
-		db	000h,024h,066h,0FFh,066h,024h,000h,000h	; #29
-		db	000h,018h,03Ch,07Eh,0FFh,0FFh,000h,000h	; #30
-		db	000h,0FFh,0FFh,07Eh,03Ch,018h,000h,000h	; #31
-		db	000h,000h,000h,000h,000h,000h,000h,000h	; #32 ' '
-		db	030h,078h,078h,030h,030h,000h,030h,000h	; #33 '!'
-		db	06Ch,06Ch,06Ch,000h,000h,000h,000h,000h	; #34 '"'
-		db	06Ch,06Ch,0FEh,06Ch,0FEh,06Ch,06Ch,000h	; #35 '#'
-		db	030h,07Ch,0C0h,078h,00Ch,0F8h,030h,000h	; #36 '$'
-		db	000h,0C6h,0CCh,018h,030h,066h,0C6h,000h	; #37 '%'
-		db	038h,06Ch,038h,076h,0DCh,0CCh,076h,000h	; #38 '&'
-		db	060h,060h,0C0h,000h,000h,000h,000h,000h	; #39 '''
-		db	018h,030h,060h,060h,060h,030h,018h,000h	; #40 '('
-		db	060h,030h,018h,018h,018h,030h,060h,000h	; #41 ')'
-		db	000h,066h,03Ch,0FFh,03Ch,066h,000h,000h	; #42 '*'
-		db	000h,030h,030h,0FCh,030h,030h,000h,000h	; #43 '+'
-		db	000h,000h,000h,000h,000h,030h,030h,060h	; #44 ','
-		db	000h,000h,000h,0FCh,000h,000h,000h,000h	; #45 '-'
-		db	000h,000h,000h,000h,000h,030h,030h,000h	; #46 '.'
-		db	006h,00Ch,018h,030h,060h,0C0h,080h,000h	; #47 '/'
-		db	07Ch,0C6h,0CEh,0DEh,0F6h,0E6h,07Ch,000h	; #48 '0'
-		db	030h,070h,030h,030h,030h,030h,0FCh,000h	; #49 '1'
-		db	078h,0CCh,00Ch,038h,060h,0CCh,0FCh,000h	; #50 '2'
-		db	078h,0CCh,00Ch,038h,00Ch,0CCh,078h,000h	; #51 '3'
-		db	01Ch,03Ch,06Ch,0CCh,0FEh,00Ch,01Eh,000h	; #52 '4'
-		db	0FCh,0C0h,0F8h,00Ch,00Ch,0CCh,078h,000h	; #53 '5'
-		db	038h,060h,0C0h,0F8h,0CCh,0CCh,078h,000h	; #54 '6'
-		db	0FCh,0CCh,00Ch,018h,030h,030h,030h,000h	; #55 '7'
-		db	078h,0CCh,0CCh,078h,0CCh,0CCh,078h,000h	; #56 '8'
-		db	078h,0CCh,0CCh,07Ch,00Ch,018h,070h,000h	; #57 '9'
-		db	000h,030h,030h,000h,000h,030h,030h,000h	; #58 ':'
-		db	000h,030h,030h,000h,000h,030h,030h,060h	; #59 ';'
-		db	018h,030h,060h,0C0h,060h,030h,018h,000h	; #60 '<'
-		db	000h,000h,0FCh,000h,000h,0FCh,000h,000h	; #61 '='
-		db	060h,030h,018h,00Ch,018h,030h,060h,000h	; #62 '>'
-		db	078h,0CCh,00Ch,018h,030h,000h,030h,000h	; #63 '?'
-		db	07Ch,0C6h,0DEh,0DEh,0DEh,0C0h,078h,000h	; #64 '@'
-		db	030h,078h,0CCh,0CCh,0FCh,0CCh,0CCh,000h	; #65 'A'
-		db	0FCh,066h,066h,07Ch,066h,066h,0FCh,000h	; #66 'B'
-		db	03Ch,066h,0C0h,0C0h,0C0h,066h,03Ch,000h	; #67 'C'
-		db	0F8h,06Ch,066h,066h,066h,06Ch,0F8h,000h	; #68 'D'
-		db	0FEh,062h,068h,078h,068h,062h,0FEh,000h	; #69 'E'
-		db	0FEh,062h,068h,078h,068h,060h,0F0h,000h	; #70 'F'
-		db	03Ch,066h,0C0h,0C0h,0CEh,066h,03Eh,000h	; #71 'G'
-		db	0CCh,0CCh,0CCh,0FCh,0CCh,0CCh,0CCh,000h	; #72 'H'
-		db	078h,030h,030h,030h,030h,030h,078h,000h	; #73 'I'
-		db	01Eh,00Ch,00Ch,00Ch,0CCh,0CCh,078h,000h	; #74 'J'
-		db	0E6h,066h,06Ch,078h,06Ch,066h,0E6h,000h	; #75 'K'
-		db	0F0h,060h,060h,060h,062h,066h,0FEh,000h	; #76 'L'
-		db	0C6h,0EEh,0FEh,0FEh,0D6h,0C6h,0C6h,000h	; #77 'M'
-		db	0C6h,0E6h,0F6h,0DEh,0CEh,0C6h,0C6h,000h	; #78 'N'
-		db	038h,06Ch,0C6h,0C6h,0C6h,06Ch,038h,000h	; #79 'O'
-		db	0FCh,066h,066h,07Ch,060h,060h,0F0h,000h	; #80 'P'
-		db	078h,0CCh,0CCh,0CCh,0DCh,078h,01Ch,000h	; #81 'Q'
-		db	0FCh,066h,066h,07Ch,06Ch,066h,0E6h,000h	; #82 'R'
-		db	078h,0CCh,0E0h,070h,01Ch,0CCh,078h,000h	; #83 'S'
-		db	0FCh,0B4h,030h,030h,030h,030h,078h,000h	; #84 'T'
-		db	0CCh,0CCh,0CCh,0CCh,0CCh,0CCh,0FCh,000h	; #85 'U'
-		db	0CCh,0CCh,0CCh,0CCh,0CCh,078h,030h,000h	; #86 'V'
-		db	0C6h,0C6h,0C6h,0D6h,0FEh,0EEh,0C6h,000h	; #87 'W'
-		db	0C6h,0C6h,06Ch,038h,038h,06Ch,0C6h,000h	; #88 'X'
-		db	0CCh,0CCh,0CCh,078h,030h,030h,078h,000h	; #89 'Y'
-		db	0FEh,0C6h,08Ch,018h,032h,066h,0FEh,000h	; #90 'Z'
-		db	078h,060h,060h,060h,060h,060h,078h,000h	; #91 '['
-		db	0C0h,060h,030h,018h,00Ch,006h,002h,000h	; #92 '\'
-		db	078h,018h,018h,018h,018h,018h,078h,000h	; #93 ']'
-		db	010h,038h,06Ch,0C6h,000h,000h,000h,000h	; #94 '^'
-		db	000h,000h,000h,000h,000h,000h,000h,0FFh	; #95 '_'
-		db	030h,030h,018h,000h,000h,000h,000h,000h	; #96 '`'
-		db	000h,000h,078h,00Ch,07Ch,0CCh,076h,000h	; #97 'a'
-		db	0E0h,060h,060h,07Ch,066h,066h,0DCh,000h	; #98 'b'
-		db	000h,000h,078h,0CCh,0C0h,0CCh,078h,000h	; #99 'c'
-		db	01Ch,00Ch,00Ch,07Ch,0CCh,0CCh,076h,000h	; #100 'd'
-		db	000h,000h,078h,0CCh,0FCh,0C0h,078h,000h	; #101 'e'
-		db	038h,06Ch,060h,0F0h,060h,060h,0F0h,000h	; #102 'f'
-		db	000h,000h,076h,0CCh,0CCh,07Ch,00Ch,0F8h	; #103 'g'
-		db	0E0h,060h,06Ch,076h,066h,066h,0E6h,000h	; #104 'h'
-		db	030h,000h,070h,030h,030h,030h,078h,000h	; #105 'i'
-		db	00Ch,000h,00Ch,00Ch,00Ch,0CCh,0CCh,078h	; #106 'j'
-		db	0E0h,060h,066h,06Ch,078h,06Ch,0E6h,000h	; #107 'k'
-		db	070h,030h,030h,030h,030h,030h,078h,000h	; #108 'l'
-		db	000h,000h,0CCh,0FEh,0FEh,0D6h,0C6h,000h	; #109 'm'
-		db	000h,000h,0F8h,0CCh,0CCh,0CCh,0CCh,000h	; #110 'n'
-		db	000h,000h,078h,0CCh,0CCh,0CCh,078h,000h	; #111 'o'
-		db	000h,000h,0DCh,066h,066h,07Ch,060h,0F0h	; #112 'p'
-		db	000h,000h,076h,0CCh,0CCh,07Ch,00Ch,01Eh	; #113 'q'
-		db	000h,000h,0DCh,076h,066h,060h,0F0h,000h	; #114 'r'
-		db	000h,000h,07Ch,0C0h,078h,00Ch,0F8h,000h	; #115 's'
-		db	010h,030h,07Ch,030h,030h,034h,018h,000h	; #116 't'
-		db	000h,000h,0CCh,0CCh,0CCh,0CCh,076h,000h	; #117 'u'
-		db	000h,000h,0CCh,0CCh,0CCh,078h,030h,000h	; #118 'v'
-		db	000h,000h,0C6h,0D6h,0FEh,0FEh,06Ch,000h	; #119 'w'
-		db	000h,000h,0C6h,06Ch,038h,06Ch,0C6h,000h	; #120 'x'
-		db	000h,000h,0CCh,0CCh,0CCh,07Ch,00Ch,0F8h	; #121 'y'
-		db	000h,000h,0FCh,098h,030h,064h,0FCh,000h	; #122 'z'
-		db	01Ch,030h,030h,0E0h,030h,030h,01Ch,000h	; #123 '{'
-		db	018h,018h,018h,000h,018h,018h,018h,000h	; #124 '|'
-		db	0E0h,030h,030h,01Ch,030h,030h,0E0h,000h	; #125 '}'
-		db	076h,0DCh,000h,000h,000h,000h,000h,000h	; #126 '~'
-		db	000h,010h,038h,06Ch,0C6h,0C6h,0FEh,000h	; #127
 
 		;offsets into HGC regen buffer for each scan line
 HGCRegen	dw	0,8192,16384,24576,90,8282,16474,24666
@@ -562,7 +261,7 @@ HGCRegen	dw	0,8192,16384,24576,90,8282,16474,24666
 		dw	6840,15032,23224,31416,6930,15122,23314,31506
 		dw	7020,15212,23404,31596,7110,15302,23494,31686
 		dw	7200,15392,23584,31776,7290,15482,23674,31866
-		dw	7380,15572,23764,31956,7470,15662,23854,32046	
+		dw	7380,15572,23764,31956,7470,15662,23854,32046
 		dw	7560,15752,23944,32136,7650,15842,24034,32226
 		dw	7740,15932,24124,32316
 

@@ -8,8 +8,10 @@
 #include <sys\types.h>
 #include <sys\stat.h>
 #include <fcntl.h>
+#include <math.h>
 #include "fractint.h"
 #include "fractype.h"
+#include "helpdefs.h"
 
 /* routines in this module	*/
 
@@ -26,8 +28,7 @@ void discardscreen(void);
 int  fullscreen_choice(
 	     int options, char *hdg, char *hdg2, char *instr, int numchoices,
 	     char **choices, int *attributes, int boxwidth, int boxdepth,
-	     int colwidth, int current,
-	     void (*formatitem)(), int (*showdetail)(),
+	     int colwidth, int current, void (*formatitem)(),
 	     char *speedstring, int (*speedprompt)(), int (*checkkey)());
 int  strncasecmp(char *s,char *t,int ct);
 int  main_menu(int fullmenu);
@@ -37,32 +38,16 @@ int  thinking(int options, char *msg);
 void clear_screen(void);
 int  savegraphics(void);
 void restoregraphics(void),discardgraphics(void);
+int load_fractint_cfg(int options);
+void bad_fractint_cfg_msg(void);
+void load_videotable(int options);
+int check_vidmode_key(int option,int k);
+int check_vidmode_keyname(char *kname);
+void vidmode_keyname(int k,char *buf);
 
-static int menu_checkkey(int curkey);
+static int menu_checkkey(int curkey,int choice);
 
-int release=1530; /* this has 2 implied decimals; increment it every synch */
-
-/* Define command keys */
-#define   PAGE_UP	 1073
-#define   PAGE_DOWN	 1081
-#define   CTL_HOME	 1119
-#define   CTL_END	 1117
-#define   LEFT_ARROW	 1075
-#define   RIGHT_ARROW	 1077
-#define   UP_ARROW	 1072
-#define   DOWN_ARROW	 1080
-#define   LEFT_ARROW_2	 1115
-#define   RIGHT_ARROW_2  1116
-#define   UP_ARROW_2	 1141
-#define   DOWN_ARROW_2	 1145
-#define   HOME		 1071
-#define   END		 1079
-#define   ENTER 	 13
-#define   ENTER_2	 1013
-#define   ESC		 27
-#define   F1		 1059
-#define   F2		 1060
-#define   F5		 1063
+int release=1630; /* this has 2 implied decimals; increment it every synch */
 
 /* fullscreen_choice options */
 #define CHOICERETURNKEY 1
@@ -79,13 +64,14 @@ extern int  debugflag;
 extern int  fractype;
 extern int  calc_status;
 extern double param[];
-extern int  kbdkeys[];
 extern int  tabmode;
 extern int  color_dark,color_medium,color_bright;
 extern int  lookatmouse;
-extern unsigned char dacbox[256][3];
+extern int  gotrealdac;
 extern int  reallyega;
 extern int  extraseg;
+extern int  active_system;
+extern int  first_init;
 
 
 /* int stopmsg(flags,message) displays message and waits for a key:
@@ -106,6 +92,15 @@ extern int  extraseg;
 int stopmsg (int flags, unsigned char far *msg)
 {
    int ret,toprow,color,savelookatmouse;
+   if (active_system == 0 /* DOS */
+     && first_init) {	  /* & cmdfiles hasn't finished 1st try */
+      setvideotext();
+      buzzer(2);
+      putstring(0,0,15,"*** Error during startup:");
+      putstring(2,0,15,msg);
+      movecursor(8,0);
+      exit(1);
+      }
    ret = 0;
    savelookatmouse = lookatmouse;
    lookatmouse = -13;
@@ -130,7 +125,7 @@ int stopmsg (int flags, unsigned char far *msg)
       buzzer((flags & 16) ? 0 : 2);
    while (keypressed()) /* flush any keyahead */
       getakey();
-   if (getakey() == 27)
+   if (getakeynohelp() == ESC)
       ret = -1;
    if ((flags & 1))
       blankrows(toprow,10,7);
@@ -274,6 +269,7 @@ void helptitle()
       strcat(msg,buf);
       }
    putstringcenter(0,0,80,C_TITLE,msg);
+   if (debugflag == 3002) return;
    putstring(0,3,C_TITLE_DEV, "Customized Version");
    putstring(0,53,C_TITLE_DEV,"Not for Public Release");
 }
@@ -316,21 +312,15 @@ void stackscreen()
    char buf[100];
    saverc[screenctr+1] = textrow*80 + textcol;
    if (++screenctr) { /* already have some stacked */
+	 static char far msg[]={"stackscreen overflow"};
       if ((i = screenctr - 1) >= MAXSCREENS) { /* bug, missing unstack? */
-	 stopmsg(1,"stackscreen overflow");
+	 stopmsg(1,msg);
 	 exit(1);
 	 }
-#ifdef __TURBOC__
       vidmem = MK_FP(textaddr,0);
-#else
-      FP_SEG(vidmem)=textaddr;
-      FP_OFF(vidmem)=0;
-#endif
       savebytes = (text_type == 0) ? 4000 : 16384;
-      if ((ptr = savescreen[i] = farmemalloc((long)savebytes))) {
-	 while (--savebytes >= 0)
-	    *(ptr++) = *(vidmem++);
-	 }
+      if ((ptr = savescreen[i] = farmemalloc((long)savebytes)))
+	 far_memcpy(ptr,vidmem,savebytes);
       else {
 	 if (savescf == NULL) { /* create file just once */
 	    if ((savescf = fopen(scsvfile,"wb")) == NULL)
@@ -339,7 +329,8 @@ void stackscreen()
 	       goto fileproblem;
 	    fclose(savescf);
 	    if ((savescf = fopen(scsvfile,"r+b")) == NULL) {
-fileproblem:   stopmsg(1,"insufficient memory, aborting");
+	    static char far msg[]={"insufficient memory, aborting"};
+fileproblem:   stopmsg(1,msg);
 	       exit(1);
 	       }
 	    }
@@ -361,17 +352,11 @@ void unstackscreen()
    textrow = saverc[screenctr] / 80;
    textcol = saverc[screenctr] % 80;
    if (--screenctr >= 0) { /* unstack */
-#ifdef __TURBOC__
       vidmem = MK_FP(textaddr,0);
-#else
-      FP_SEG(vidmem)=textaddr;
-      FP_OFF(vidmem)=0;
-#endif
       savebytes = (text_type == 0) ? 4000 : 16384;
       if ((ptr = savescreen[screenctr])) {
-	 while (--savebytes >= 0)
-	    *(vidmem++) = *(ptr++);
-	 farmemfree(savescreen[screenctr]);
+	 far_memcpy(vidmem,ptr,savebytes);
+	 farmemfree(ptr);
 	 }
       else {
 	 fseek(savescf,(long)(savebytes*screenctr),SEEK_SET);
@@ -402,6 +387,7 @@ char speed_prompt[]="Speed key string";
 int fullscreen_choice(
 	int options,	     /* &2 use menu coloring scheme	       */
 			     /* &4 include F1 for help in instructions */
+			     /* &8 add caller's instr after normal set */
 	char *hdg,	     /* heading info, \n delimited	       */
 	char *hdg2,	     /* column heading or NULL		       */
 	char *instr,	     /* instructions, \n delimited, or NULL    */
@@ -414,14 +400,13 @@ int fullscreen_choice(
 	int colwidth,	     /* data width of a column, 0 for calc     */
 	int current,	     /* start with this item		       */
 	void (*formatitem)(),/* routine to display an item or NULL     */
-	int (*showdetail)(), /* routine to display details or NULL     */
 	char *speedstring,   /* returned speed key value, or NULL >[30]*/
 	int (*speedprompt)(),/* routine to display prompt or NULL      */
 	int (*checkkey)()    /* routine to check keystroke or NULL     */
 )
    /* return is: n>=0 for choice n selected,
 		 -1 for escape
-		  k for checkkey routine nonzero return value k
+		  k for checkkey routine return value k (if not 0 nor -1)
       speedstring[0] != 0 on return if string is present
       */
 {
@@ -430,8 +415,6 @@ static char far choiceinstr1b[]="Use the cursor keys or type a value to make a s
 static char far choiceinstr2a[]="Press ENTER for highlighted choice, or ESCAPE to back out";
 static char far choiceinstr2b[]="Press ENTER for highlighted choice, ESCAPE to back out, or F1 for help";
 static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for help";
-static char far choiceinstr3a[]="  Press F2 to show description of each item   ";
-static char far choiceinstr3b[]="Press F2 to show choices only (no description)";
 
    int titlelines,titlewidth;
    int reqdrows;
@@ -503,10 +486,11 @@ static char far choiceinstr3b[]="Press F2 to show choices only (no description)"
       while (*charptr)
 	 if (*(charptr++) == '\n')
 	    ++reqdrows;
+      if ((options & 8))	  /* show std instr too */
+	 reqdrows += 2;
       }
    else
       reqdrows += 2;		  /* standard instructions */
-   if (showdetail) ++reqdrows;	  /* a row for extra instruction line */
    if (speedstring) ++reqdrows;   /* a row for speedkey prompt */
    if (boxdepth > (i = 25 - reqdrows)) /* limit the depth to max */
       boxdepth = i;
@@ -557,7 +541,7 @@ static char far choiceinstr3b[]="Press F2 to show choices only (no description)"
    if (hdg2)				   /* display 2nd heading */
       putstring(topleftrow-1,topleftcol,C_PROMPT_MED,hdg2);
    i = topleftrow + boxdepth + 1;
-   if (instr == NULL) { 	      /* display default instructions */
+   if (instr == NULL || (options & 8)) {   /* display default instructions */
       if (i < 20) ++i;
       if (speedstring) {
 	 speedrow = i;
@@ -569,10 +553,8 @@ static char far choiceinstr3b[]="Press F2 to show choices only (no description)"
       putstringcenter(i++,0,80,C_PROMPT_BKGRD,
 	    (options&CHOICEMENU) ? choiceinstr2c
 	    : ((options&CHOICEHELP) ? choiceinstr2b : choiceinstr2a));
-      if (showdetail)
-	 putstringcenter((f2instrow=i),0,80,C_PROMPT_BKGRD,choiceinstr3a);
       }
-   else {				   /* display caller's instructions */
+   if (instr) { 			   /* display caller's instructions */
       charptr = instr;
       j = -1;
       while ((buf[++j] = *(charptr++)))
@@ -663,7 +645,7 @@ static char far choiceinstr3b[]="Press F2 to show choices only (no description)"
       else
 	 movecursor(25,80);
 
-      while (!keypressed()) { }
+      while (!keypressed()) { } /* enables help */
       curkey = getakey();
 
       i = current - topleftchoice;	     /* unhighlight current choice */
@@ -726,13 +708,13 @@ static char far choiceinstr3b[]="Press F2 to show choices only (no description)"
 	    current = numchoices;
 	    increment = rev_increment = -1;
 	    break;
-	 case F2:
-	    /***
-	    ... if detail toggle avail, do it, incl changing instr at bottom
-	    ***/
 	 default:
-	    if (checkkey && (ret = (*checkkey)(curkey)))
-	       goto fs_choice_end;
+	    if (checkkey) {
+	       if ((ret = (*checkkey)(curkey,current)) < -1 || ret > 0)
+		  goto fs_choice_end;
+	       if (ret == -1)
+		  redisplay = -1;
+	       }
 	    ret = -1;
 	    if (speedstring) {
 	       i = strlen(speedstring);
@@ -821,7 +803,7 @@ top:
       attributes[i] = 256;
       choices[i] = "";
       choicekey[i] = -1;
-   }
+      }
    nextleft = -2;
    nextright = -1;
 
@@ -841,27 +823,27 @@ top:
       attributes[nextleft] = MENU_ITEM;
       choices[nextleft] = "zoom box functions...";
       nextleft+=2;
-   }
+      }
    choices[nextleft+=2] = "      NEW IMAGE";
    attributes[nextleft] = 256+MENU_HDG;
-   choicekey[nextleft+=2] = -11;
+   choicekey[nextleft+=2] = DELETE;
    attributes[nextleft] = MENU_ITEM;
-   choices[nextleft] = "select video mode...";
+   choices[nextleft] = "select video mode...  <del>";
    choicekey[nextleft+=2] = 't';
    attributes[nextleft] = MENU_ITEM;
    choices[nextleft] = "select fractal type    <t>";
    if (fullmenu) {
-      if ((fractalspecific[fractype].tojulia != NOFRACTAL
+      if ((curfractalspecific->tojulia != NOFRACTAL
 	  && param[0] == 0.0 && param[1] == 0.0)
-	  || fractalspecific[fractype].tomandel != NOFRACTAL) {
+	  || curfractalspecific->tomandel != NOFRACTAL) {
 	 choicekey[nextleft+=2] = ' ';
 	 attributes[nextleft] = MENU_ITEM;
 	 choices[nextleft] = "toggle to/from julia <space>";
-      }
+	 }
       choicekey[nextleft+=2] = '\\';
       attributes[nextleft] = MENU_ITEM;
       choices[nextleft] = "return to prior image  <\\>";
-   }
+      }
    nextleft += 2;
    choices[nextleft+=2] = "      OPTIONS";
    attributes[nextleft] = 256+MENU_HDG;
@@ -871,20 +853,26 @@ top:
    choicekey[nextleft+=2] = 'y';
    attributes[nextleft] = MENU_ITEM;
    choices[nextleft] = "extended doodads...    <y>";
+   choicekey[nextleft+=2] = 'z';
+   attributes[nextleft] = MENU_ITEM;
+   choices[nextleft] = "type-specific parms... <z>";
    choicekey[nextleft+=2] = 'v';
    attributes[nextleft] = MENU_ITEM;
    choices[nextleft] = "view window options... <v>";
    choicekey[nextleft+=2] = 'i';
    attributes[nextleft] = MENU_ITEM;
-   choices[nextleft] = "IFS and 3D parameters  <i>";
+   choices[nextleft] = "fractal 3D parms...    <i>";
 
    choices[nextright+=2] = "        FILE";
    attributes[nextright] = 256+MENU_HDG;
+   choicekey[nextright+=2] = '@';
+   attributes[nextright] = MENU_ITEM;
+   choices[nextright] = "run saved command set... <@>";
    if (fullmenu) {
       choicekey[nextright+=2] = 's';
       attributes[nextright] = MENU_ITEM;
       choices[nextright] = "save image to file       <s>";
-   }
+      }
    choicekey[nextright+=2] = 'r';
    attributes[nextright] = MENU_ITEM;
    choices[nextright] = "load image from file...  <r>";
@@ -897,21 +885,21 @@ top:
       choices[nextright] = "3d overlay from file...  <o>";
       choicekey[nextright+=2] = 'b';
       attributes[nextright] = MENU_ITEM;
-      choices[nextright] = "write batch parameters   <b>";
+      choices[nextright] = "save current parameters..<b>";
       choicekey[nextright+=2] = 'p';
       attributes[nextright] = MENU_ITEM;
       choices[nextright] = "print image              <p>";
-   }
+      }
    choicekey[nextright+=2] = 'd';
    attributes[nextright] = MENU_ITEM;
    choices[nextright] = "shell to dos             <d>";
-   choicekey[nextright+=2] = 27;
+   choicekey[nextright+=2] = ESC;
    attributes[nextright] = MENU_ITEM;
    choices[nextright] = "quit Fractint           <esc>";
    choicekey[nextright+=2] = 1082;
    attributes[nextright] = MENU_ITEM;
    choices[nextright] = "restart Fractint        <ins>";
-   if (fullmenu && dacbox[0][0] != 255 && colors >= 16) {
+   if (fullmenu && gotrealdac && colors >= 16) {
       nextright += 2;
       choices[nextright+=2] = "       COLORS";
       attributes[nextright] = 256+MENU_HDG;
@@ -932,24 +920,24 @@ top:
 	    choicekey[nextright+=2] = 'e';
 	    attributes[nextright] = MENU_ITEM;
 	    choices[nextright] = "palette editing mode     <e>";
-	 }
+	    }
 	 choicekey[nextright+=2] = 'a';
 	 attributes[nextright] = MENU_ITEM;
 	 choices[nextright] = "make starfield           <a>";
+	 }
       }
-   }
 
    i = (keypressed()) ? getakey() : 0;
-   if (menu_checkkey(i) == 0) {
+   if (menu_checkkey(i,0) == 0) {
       helpmode = HELPMAIN;	   /* switch help modes */
       if ((nextleft += 2) < nextright)
 	 nextleft = nextright + 1;
       i = fullscreen_choice(CHOICEMENU,"          MAIN MENU\n"
 				       "(<Esc> returns here from image)",
       NULL,NULL,nextleft,choices,attributes,
-	  2,nextleft/2,29,0,NULL,NULL,NULL,NULL,menu_checkkey);
+	  2,nextleft/2,29,0,NULL,NULL,NULL,menu_checkkey);
       if (i == -1)     /* escape */
-	 i = 27;
+	 i = ESC;
       else if (i < 0)
 	 i = 0 - i;
       else {			  /* user selected a choice */
@@ -957,59 +945,53 @@ top:
 	 switch (i) {		  /* check for special cases */
 	    case -10:		  /* zoombox functions */
 	       helpmode = HELPZOOM;
-	       help();
+	       help(0);
 	       i = 0;
 	       break;
-	    case -11:		  /* select a video mode */
-	       i = select_video_mode();
-	       break;
 	    }
 	 }
-      if (i == 27) {		  /* escape from menu exits Fractint */
-	 static char far s[] = "Exit from Fractint (y/n)? y";
-	 helptitle();
-	 setattr(1,0,C_GENERAL_MED,24*80);
-	 for (i = 9; i <= 11; ++i)
-	   setattr(i,18,C_GENERAL_INPUT,40);
-	 putstringcenter(10,18,40,C_GENERAL_INPUT,s);
-	 movecursor(25,80);
-	 while ((i = getakey()) != 'y' && i != 'Y' && i != 13) {
-	    if (i == 'n' || i == 'N')
-	       goto top;
-	    }
-	 goodbye();
+      }
+   if (i == ESC) {	       /* escape from menu exits Fractint */
+      static char far s[] = "Exit from Fractint (y/n)? y";
+      helptitle();
+      setattr(1,0,C_GENERAL_MED,24*80);
+      for (i = 9; i <= 11; ++i)
+	 setattr(i,18,C_GENERAL_INPUT,40);
+      putstringcenter(10,18,40,C_GENERAL_INPUT,s);
+      movecursor(25,80);
+      while ((i = getakey()) != 'y' && i != 'Y' && i != 13) {
+	 if (i == 'n' || i == 'N')
+	    goto top;
 	 }
-   }
-   if (i == 27) 		  /* escape from menu exits Fractint */
       goodbye();
-   if (i == 9) {
+      }
+   if (i == TAB) {
       tab_display();
       i = 0;
-   }
-   if (i == 13 || i == 1013)
+      }
+   if (i == ENTER || i == ENTER_2)
       i = 0;		     /* don't trigger new calc */
    tabmode = oldtabmode;
    helpmode = oldhelpmode;
    return(i);
 }
 
-static int menu_checkkey(int curkey)
+static int menu_checkkey(int curkey,int choice)
 {
    int testkey, k;
    testkey = (curkey>='A' && curkey<='Z') ? curkey+('a'-'A') : curkey;
-   if (strchr("txyvir3d",testkey) || testkey == 1082)
+   if (strchr("@txyzvir3d",testkey) || testkey == INSERT
+     || testkey == ESC || testkey == DELETE)
       return(0-testkey);
-   if (testkey == 27)
-      return(-27);
    if (menutype) {
       if (strchr("\\sobp",testkey) || testkey == 9)
 	 return(0-testkey);
       if (testkey == ' ')
-	 if ((fractalspecific[fractype].tojulia != NOFRACTAL
+	 if ((curfractalspecific->tojulia != NOFRACTAL
 	      && param[0] == 0.0 && param[1] == 0.0)
-	   || fractalspecific[fractype].tomandel != NOFRACTAL)
+	   || curfractalspecific->tomandel != NOFRACTAL)
 	 return(0-testkey);
-      if (dacbox[0][0] != 255 && colors >= 16) {
+      if (gotrealdac && colors >= 16) {
 	 if (strchr("c+-",testkey))
 	    return(0-testkey);
 	 if (colors > 16
@@ -1017,15 +999,14 @@ static int menu_checkkey(int curkey)
 	    return(0-testkey);
 	 }
       }
-   for (k = 0; k < maxvideomode; k++) /* search for an adapter */
-      if (testkey == kbdkeys[k])
-	 return(0-testkey);
+   if (check_vidmode_key(0,testkey) >= 0)
+      return(0-testkey);
    return(0);
 }
 
 
 int input_field(
-	int options,	      /* &1 numeric value */
+	int options,	      /* &1 numeric, &2 integer, &4 double */
 	int attr,	      /* display attribute */
 	char *fld,	      /* the field itself */
 	int len,	      /* field length (declare as 1 larger for \0) */
@@ -1084,15 +1065,15 @@ int input_field(
 	 case 8:
 	 case 127:				/* backspace */
 	    if (offset > 0) {
-	       j = strlen(buf);
+	       j = strlen(fld);
 	       for (i = offset-1; i < j; ++i)
 		  fld[i] = fld[i+1];
 	       --offset;
 	       }
 	    started = display = 1;
 	    break;
-	 case 1083:				/* delete */
-	    j = strlen(buf);
+	 case DELETE:				/* delete */
+	    j = strlen(fld);
 	    for (i = offset; i < j; ++i)
 	       fld[i] = fld[i+1];
 	    started = display = 1;
@@ -1107,29 +1088,61 @@ int input_field(
 	    display = 1;
 	    break;
 	 default:
-	    if ( offset < len
-	      && (insert == 0 || strlen(fld) < len || started == 0)
-	      && (   ((options&1) == 0 && curkey >= 32 && curkey < 127)
-		  || ((options&1) != 0
-		      && (curkey == '-' || curkey == '+' || curkey == '.'
-			  || (curkey >= '0' && curkey <= '9'))))
-	      ) {
-	       if (started == 0) /* first char is data, zap field */
-		  fld[0] = 0;
-	       if (insert) {
-		  j = strlen(fld);
-		  while (j >= offset) {
-		     fld[j+1] = fld[j];
-		     --j;
-		     }
-		  }
-	       if (offset >= strlen(fld))
-		  fld[offset+1] = 0;
-	       fld[offset++] = curkey;
-	       started = display = 1;
+	    if (curkey < 32 || curkey >= 127) {
+	       if (checkkey && (ret = (*checkkey)(curkey)))
+		  goto inpfld_end;
+	       break;				     /* non alphanum char */
 	       }
-	    else if (checkkey && (ret = (*checkkey)(curkey)))
-	       goto inpfld_end;
+	    if (offset >= len) break;		     /* at end of field */
+	    if (insert && started && strlen(fld) >= len)
+	       break;				     /* insert & full */
+	    if ((options & 1)
+	      && (curkey < '0' || curkey > '9')
+	      && curkey != '+' && curkey != '-') {
+	       if ((options & 2))
+		  break;
+	       /* allow scientific notation, and specials "e" and "p" */
+	       if ( ((curkey != 'e' && curkey != 'E') || offset >= 18)
+		 && ((curkey != 'p' && curkey != 'P') || offset != 0 )
+		 && curkey != '.')
+		  break;
+	       }
+	    if (started == 0) /* first char is data, zap field */
+	       fld[0] = 0;
+	    if (insert) {
+	       j = strlen(fld);
+	       while (j >= offset) {
+		  fld[j+1] = fld[j];
+		  --j;
+		  }
+	       }
+	    if (offset >= strlen(fld))
+	       fld[offset+1] = 0;
+	    fld[offset++] = curkey;
+	    /* if "e" or "p" in first col make number e or pi */
+	    if ((options & 3) == 1) { /* floating point */
+	       double tmpd;
+	       int specialv;
+	       char tmpfld[30];
+	       specialv = 0;
+	       if (*fld == 'e' || *fld == 'E') {
+		  tmpd = exp(1.0);
+		  specialv = 1;
+		  }
+	       if (*fld == 'p' || *fld == 'P') {
+		  tmpd = atan(1.0) * 4;
+		  specialv = 1;
+		  }
+	       if (specialv) {
+		  if ((options & 4) == 0)
+		     roundfloatd(&tmpd);
+		  sprintf(tmpfld,"%.15g",tmpd);
+		  tmpfld[len-1] = 0; /* safety, field should be long enough */
+		  strcpy(fld,tmpfld);
+		  offset = 0;
+		  }
+	       }
+	    started = display = 1;
 	 }
       }
 inpfld_end:
@@ -1138,7 +1151,7 @@ inpfld_end:
 }
 
 int field_prompt(
-	int options,	    /* &1 numeric value */
+	int options,	    /* &1 numeric value, &2 integer */
 	char *hdg,	    /* heading, \n delimited lines */
 	char *instr,	    /* additional instructions or NULL */
 	char *fld,	    /* the field itself */
@@ -1286,13 +1299,15 @@ int savegraphics()
    swapoffset = 0;
    if (debugflag != 420 && debugflag != 422 /* 422=xmm test, 420=disk test */
      && (swapsavebuf = emmquery()) != NULL
-     && (memhandle = emmallocate((swaptotlen + 16383) >> 14)) != 0) {
+     && (memhandle = emmallocate((unsigned int)((swaptotlen + 16383) >> 14)))
+	 != 0) {
       swaptype = 0; /* use expanded memory */
       swapblklen = 16384;
       }
    else if (debugflag != 420
      && xmmquery() !=0
-     && (memhandle = xmmallocate((swaptotlen + 1023) >> 10)) != 0) {
+     && (memhandle = xmmallocate((unsigned int)((swaptotlen + 1023) >> 10)))
+	 != 0) {
       swaptype = 1; /* use extended memory */
       swapblklen = 16384;
       }
@@ -1302,7 +1317,7 @@ int savegraphics()
       if ((memhandle = open("FRACTINT.DSK",O_CREAT|O_WRONLY|O_BINARY,S_IWRITE))
 	 == -1) {
 dskfile_error:
-	 setvideomode(3,0,0,0); /* text mode */
+	 setvideotext(); /* text mode */
 	 setclear();
 	 printf("!!! error in temp file FRACTINT.DSK (disk full?) - aborted\n\n");
 	 exit(1);
@@ -1318,7 +1333,7 @@ dskfile_error:
       (*swapsetup)(); /* swapoffset,swaplength -> sets swapvidbuf,swaplength */
       switch(swaptype) {
 	 case 0:
-	    emmgetpage(swapoffset>>14,memhandle);
+	    emmgetpage((unsigned int)(swapoffset>>14),memhandle);
 	    movewords(swaplength>>1,swapvidbuf,
 		      swapsavebuf+(swapoffset&(swapblklen-1)));
 	    break;
@@ -1354,12 +1369,7 @@ void restoregraphics()
    swapoffset = 0;
    if (swaptype == 2)
       memhandle = open("FRACTINT.DSK",O_RDONLY|O_BINARY,S_IREAD);
-#ifdef __TURBOC__
    swapvidbuf = MK_FP(extraseg+0x1000,0); /* for swapnormwrite case */
-#else
-   FP_SEG(swapvidbuf)=extraseg+0x1000;
-   FP_OFF(swapvidbuf)=0;
-#endif
    while (swapoffset < swaptotlen) {
       swaplength = swapblklen;
       if ((swapoffset & (swapblklen-1)) != 0)
@@ -1370,7 +1380,7 @@ void restoregraphics()
 	 (*swapsetup)(); /* swapoffset,swaplength -> sets swapvidbuf,swaplength */
       switch(swaptype) {
 	 case 0:
-	    emmgetpage(swapoffset>>14,memhandle);
+	    emmgetpage((unsigned int)(swapoffset>>14),memhandle);
 	    movewords(swaplength>>1,swapsavebuf+(swapoffset&(swapblklen-1)),
 		      swapvidbuf);
 	    break;
@@ -1406,4 +1416,233 @@ void discardgraphics() /* release expanded/extended memory if any in use */
       }
    swaptype = -1;
    }
+
+
+extern int extraseg;
+extern int badconfig;
+extern struct videoinfo far videotable[];
+struct videoinfo far *vidtbl;  /* temporarily loaded fractint.cfg info */
+int vidtbllen;		       /* number of entries in above	       */
+
+int load_fractint_cfg(int options)
+{
+   /* Reads fractint.cfg, loading videoinfo entries into extraseg. */
+   /* Sets vidtbl pointing to the loaded table, and returns the    */
+   /* number of entries (also sets vidtbllen to this).		   */
+   /* Past vidtbl, cfglinenums are stored for update_fractint_cfg. */
+   /* If fractint.cfg is not found or invalid, issues a message    */
+   /* (first time the problem occurs only, and only if options is  */
+   /* zero) and uses the hard-coded table.			   */
+
+   FILE *cfgfile;
+   struct videoinfo far *vident;
+   int far *cfglinenums;
+   int linenum;
+   int i, j, keynum, ax, bx, cx, dx, dotmode, xdots, ydots, colors;
+   int commas[10];
+   int textsafe2;
+   char tempstring[150];
+   char *ptr;
+
+   vidtbl = MK_FP(extraseg,0);
+   cfglinenums = (int far *)(&vidtbl[MAXVIDEOMODES]);
+
+   if (badconfig)  /* fractint.cfg already known to be missing or bad */
+      goto use_resident_table;
+
+   findpath("fractint.cfg",tempstring);
+   if (tempstring[0] == 0			     /* can't find the file */
+     || (cfgfile = fopen(tempstring,"r")) == NULL)   /* can't open it */
+      goto bad_fractint_cfg;
+
+   vidtbllen = 0;
+   linenum = 0;
+   vident = vidtbl;
+   while (vidtbllen < MAXVIDEOMODES
+     && fgets(tempstring, 120, cfgfile)) {
+      ++linenum;
+      if (tempstring[0] == ';') continue;   /* comment line */
+      tempstring[120] = 0;
+      tempstring[strlen(tempstring)-1] = 0; /* zap trailing \n */
+      memset(commas,0,20);
+      i = j = -1;
+      while (1) {
+	 if (tempstring[++i] < ' ') {
+	    if (tempstring[i] == 0) break;
+	    tempstring[i] = ' '; /* convert tab (or whatever) to blank */
+	    }
+	 else if (tempstring[i] == ',' && ++j < 10) {
+	    commas[j] = i + 1;	 /* remember start of next field */
+	    tempstring[i] = 0;	 /* make field a separate string */
+	    }
+	 }
+      keynum = check_vidmode_keyname(tempstring);
+      sscanf(&tempstring[commas[1]],"%x",&ax);
+      sscanf(&tempstring[commas[2]],"%x",&bx);
+      sscanf(&tempstring[commas[3]],"%x",&cx);
+      sscanf(&tempstring[commas[4]],"%x",&dx);
+      dotmode	  = atoi(&tempstring[commas[5]]);
+      xdots	  = atoi(&tempstring[commas[6]]);
+      ydots	  = atoi(&tempstring[commas[7]]);
+      colors	  = atoi(&tempstring[commas[8]]);
+      textsafe2   = dotmode / 100;
+      dotmode	 %= 100;
+      if (j != 9 ||
+	    keynum < 0 ||
+	    dotmode < 0 || dotmode > 30 ||
+	    textsafe2 < 0 || textsafe2 > 4 ||
+	    xdots < 160 || xdots > 2048 ||
+	    ydots < 160 || ydots > 2048 ||
+	    (colors != 0 && colors != 2 && colors != 4 && colors != 16 &&
+	     colors != 256)
+	   )
+	 goto bad_fractint_cfg;
+      cfglinenums[vidtbllen] = linenum; /* for update_fractint_cfg */
+      far_memcpy(vident->name,	 (char far *)&tempstring[commas[0]],25);
+      far_memcpy(vident->comment,(char far *)&tempstring[commas[9]],25);
+      vident->name[25] = vident->comment[25] = 0;
+      vident->keynum	  = keynum;
+      vident->videomodeax = ax;
+      vident->videomodebx = bx;
+      vident->videomodecx = cx;
+      vident->videomodedx = dx;
+      vident->dotmode	  = textsafe2 * 100 + dotmode;
+      vident->xdots	  = xdots;
+      vident->ydots	  = ydots;
+      vident->colors	  = colors;
+      ++vident;
+      ++vidtbllen;
+      }
+   fclose(cfgfile);
+   return (vidtbllen);
+
+bad_fractint_cfg:
+   badconfig = -1; /* bad, no message issued yet */
+   if (options == 0)
+      bad_fractint_cfg_msg();
+
+use_resident_table:
+   vidtbllen = 0;
+   vident = vidtbl;
+   for (i = 0; i < 40; ++i) {
+      if (videotable[i].xdots) {
+	 far_memcpy((char far *)vident,(char far *)&videotable[i],
+		    sizeof(*vident));
+	 ++vident;
+	 ++vidtbllen;
+	 }
+      }
+   return (vidtbllen);
+
+}
+
+void bad_fractint_cfg_msg()
+{
+static char far badcfgmsg[]={"\
+File FRACTINT.CFG is missing or invalid.\n\
+See Hardware Support and Video Modes in the full documentation for help.\n\
+I will continue with only the built-in video modes available."};
+   stopmsg(0,badcfgmsg);
+   badconfig = 1; /* bad, message issued */
+}
+
+void load_videotable(int options)
+{
+   /* Loads fractint.cfg and copies the video modes which are */
+   /* assigned to function keys into videotable.	      */
+   int keyents,i;
+   load_fractint_cfg(options); /* load fractint.cfg to extraseg */
+   keyents = 0;
+   far_memset((char far *)videotable,0,sizeof(*vidtbl)*MAXVIDEOTABLE);
+   for (i = 0; i < vidtbllen; ++i) {
+      if (vidtbl[i].keynum > 0) {
+	 far_memcpy((char far *)&videotable[keyents],(char far *)&vidtbl[i],
+		    sizeof(*vidtbl));
+	 if (++keyents >= MAXVIDEOTABLE)
+	    break;
+	 }
+      }
+}
+
+int check_vidmode_key(int option,int k)
+{
+   int i;
+   /* returns videotable entry number if the passed keystroke is a  */
+   /* function key currently assigned to a video mode, -1 otherwise */
+   if (k == 1400)	       /* special value from select_vid_mode  */
+      return(MAXVIDEOTABLE-1); /* for last entry with no key assigned */
+   if (k != 0)
+      if (option == 0) { /* check resident video mode table */
+	 for (i = 0; i < MAXVIDEOTABLE; ++i) {
+	    if (videotable[i].keynum == k)
+	       return(i);
+	    }
+	 }
+      else { /* check full vidtbl */
+	 for (i = 0; i < vidtbllen; ++i) {
+	    if (vidtbl[i].keynum == k)
+	       return(i);
+	    }
+	 }
+   return(-1);
+}
+
+int check_vidmode_keyname(char *kname)
+{
+   /* returns key number for the passed keyname, 0 if not a keyname */
+   int i,keyset;
+   keyset = 1058;
+   if (*kname == 'S' || *kname == 's') {
+      keyset = 1083;
+      ++kname;
+      }
+   else if (*kname == 'C' || *kname == 'c') {
+      keyset = 1093;
+      ++kname;
+      }
+   else if (*kname == 'A' || *kname == 'a') {
+      keyset = 1103;
+      ++kname;
+      }
+   if (*kname != 'F' && *kname != 'f')
+      return(0);
+   if (*++kname < '1' || *kname > '9')
+      return(0);
+   i = *kname - '0';
+   if (*++kname != 0 && *kname != ' ') {
+      if (*kname != '0' || i != 1)
+	 return(0);
+      i = 10;
+      ++kname;
+      }
+   while (*kname)
+      if (*(kname++) != ' ')
+	 return(0);
+   if ((i += keyset) < 2)
+      i = 0;
+   return(i);
+}
+
+void vidmode_keyname(int k,char *buf)
+{
+   /* set buffer to name of passed key number */
+   *buf = 0;
+   if (k > 0) {
+      if (k > 1103) {
+	 *(buf++) = 'A';
+	 k -= 1103;
+	 }
+      else if (k > 1093) {
+	 *(buf++) = 'C';
+	 k -= 1093;
+	 }
+      else if (k > 1083) {
+	 *(buf++) = 'S';
+	 k -= 1083;
+	 }
+      else
+	 k -= 1058;
+      sprintf(buf,"F%d",k);
+      }
+}
 

@@ -8,45 +8,45 @@
 #include <string.h>
 #include <ctype.h>
 #include <dos.h>
-#ifndef __TURBOC__
 #include <malloc.h>
-#endif
 #include "fractint.h"
 #include "fractype.h"
-
-struct fullscreenvalues
-{
-   int type;   /* 'd' for decimal, 's' for string, '*' for comment */
-   union
-   {
-      double dval;
-      char   sval[16];
-   } uval;
-};
+#include "helpdefs.h"
 
 /* Routines in this module	*/
 
-extern	int fullscreen_prompt(char *hdg,int numprompts,char * far *prompts,struct fullscreenvalues values[],int options,int fkeymask);
+extern	int fullscreen_prompt(char *hdg,int numprompts,
+	       char * far *prompts,struct fullscreenvalues values[],
+	       int options,int fkeymask,char far *extrainfo);
 extern	void prompts_overlay(void );
 extern	int get_fracttype(void );
+extern	int get_fract_params(int);
 extern	int get_3d_params(void );
-extern	int get_ifs_params(void );
+extern	int get_fract3d_params(void );
 extern	int get_toggles(void );
 extern	int get_toggles2(void );
 extern	int get_view_params(void );
 extern	int get_starfield_params(void );
 extern	void goodbye(void );
 extern	int getafilename(char *hdg,char *template,char *flname);
-extern	int select_video_mode(void);
+extern	int get_commands(void);
 
+static	int prompt_valuestring(char *buf,struct fullscreenvalues *val);
 static	int prompt_checkkey(int curkey);
+static	int input_field_list(int attr,char *fld,int vlen,char **list,int llen,
+			     int row,int col,int (*checkkey)(int));
 static	int compare(void const *i,void const *j);
 static	void clear_line(int row,int start,int stop,int color);
 static	int select_fracttype(int t);
-static	int get_fract_params(int newfractype,int oldfractype);
-static	int get_lsys_name(void );
-static	int get_formula_name(void );
-static	int get_ifs3d_params(void );
+static	int sel_fractype_help(int curkey, int choice);
+static	int edit_ifs_params(void );
+static	int select_type_params(int newfractype,int oldfractype);
+static	void set_default_parms(void);
+static	long get_file_entry(int,char *,char *,char *,char *);
+static	long gfe_choose_entry(int,char *,char *,char *);
+static	int check_gfe_key(int curkey,int choice);
+static	void load_entry_text(FILE *entfile,char far *buf,int maxlines);
+static	void format_parmfile_line(int,char *);
 static	int get_light_params(void );
 static	int check_mapfile(void );
 static	int get_funny_glasses_params(void );
@@ -59,28 +59,25 @@ static	void fix_dirname(char *dirname);
 static	int expand_dirname(char *dirname,char *drive);
 static	int filename_speedstr(int, int, int, char *, int);
 static	int isadirectory(char *s);
-static	void format_item(int choice,char *buf);
-static	int check_modekey(int curkey);
-
 
 extern char *strig[];
+extern int numtrigfn;
 extern int bailout;
 extern int dotmode;
 
 extern int fullscreen_choice(
 	     int options, char *hdg, char *hdg2, char *instr, int numchoices,
 	     char **choices, int *attributes, int boxwidth, int boxdepth,
-	     int colwidth, int current,
-	     void (*formatitem)(), int (*showdetail)(),
+	     int colwidth, int current, void (*formatitem)(),
 	     char *speedstring, int (*speedprompt)(), int (*checkkey)());
 extern int strncasecmp(char *s,char *t,int ct);
+extern int field_prompt(int options, char *hdg, char *instr, char *fld,
+	     int len, int (*checkkey)() );
 extern int input_field(int options, int attr, char *fld,
 	     int len, int row, int col, int (*checkkey)(int) );
+extern int read_help_topic(int label_num, int off, int len, void far *buf);
 
-/* options for fullscreen_prompt: */
-#define PROMPTHELP 1
-
-char funnyglasses_map_name[80];
+static char funnyglasses_map_name[16];
 extern char temp[], temp1[256];   /* temporary strings	      */
 extern int mapset;
 extern int previewfactor;
@@ -90,13 +87,13 @@ extern int blue_crop_left, blue_crop_right;
 extern int red_bright, blue_bright;
 extern char showbox; /* flag to show box and vector in preview */
 extern int debugflag;
+extern int extraseg;
 extern int whichimage;
 extern int xadjust;
 extern int eyeseparation;
 extern int glassestype;
 extern findpath();
 char   MAP_name[80] = "";
-extern ValidateLuts();	/* read the palette file */
 int    mapset = 0;
 extern	int	overlay3d;	    /* 3D overlay flag: 0 = OFF */
 extern	int	lookatmouse;
@@ -105,6 +102,9 @@ extern	int haze;
 extern	int RANDOMIZE;
 extern	char light_name[];
 extern	int Ambient;
+extern	int RAY;
+extern	int BRIEF;
+extern	char ray_name[];
 
 extern	int	init3d[20];	/* '3d=nn/nn/nn/...' values */
 extern	double	xxmin,xxmax;	/* initial corner values    */
@@ -130,12 +130,13 @@ extern	char	ifs3dfilename[80];  /* IFS 3D code file */
 extern	char	preview;	/* 3D preview mode flag */
 extern	int	decomp[];	/* decomposition parameters */
 extern	int	usr_distest;	/* distance estimator option */
+extern	int	distestwidth;
 extern	int	transparent[];	/* transparency values */
 extern	char	usr_stdcalcmode; /* '1', '2', 'g', 'b' */
 extern	char overwrite; 	/* overwrite= flag */
 extern	int	soundflag;	/* sound option */
 extern	int	LogFlag;	/* non-zero if logarithmic palettes */
-extern	int	biomorph;	/* Biomorph flag */
+extern	int	usr_biomorph;	/* Biomorph flag */
 extern	long	xmin, xmax, ymin, ymax; /* screen corner values */
 extern	int	calc_status;	/* calc status: complete, resumable, ... */
 extern	int	xdots, ydots;	/* coordinates of dots on the screen  */
@@ -150,42 +151,27 @@ extern	void	aspectratio_crop(float,float);
 extern	int	textcbase;
 extern	int	textrow,textcol;
 extern	int	resave_flag;	/* resaving after a timed save */
+extern	int	started_resaves;
 extern	char	boxy[];
 extern	char	*fkeys[];
 extern	int	kbdkeys[];
 extern	int	video_type;
 extern	int	adapter;
+extern	int	rotate_lo,rotate_hi;
+extern	int	display3d;
+extern	int	rangeslen;
 
-/* Define command keys */
-
-#define   PAGE_UP	 1073
-#define   PAGE_DOWN	 1081
-#define   CTL_HOME	 1119
-#define   CTL_END	 1117
-#define   LEFT_ARROW	 1075
-#define   RIGHT_ARROW	 1077
-#define   UP_ARROW	 1072
-#define   DOWN_ARROW	 1080
-#define   LEFT_ARROW_2	 1115
-#define   RIGHT_ARROW_2  1116
-#define   UP_ARROW_2	 1141
-#define   DOWN_ARROW_2	 1145
-#define   HOME		 1071
-#define   END		 1079
-#define   ENTER 	 13
-#define   ENTER_2	 1013
-#define   ESC		 27
-#define   SPACE 	 32
-#define   F1		 1059
-#define   F2		 1060
-#define   F3		 1061
-#define   F4		 1062
-#define   F5		 1063
-#define   F6		 1064
-#define   F7		 1065
-#define   F8		 1066
-#define   F9		 1067
-#define   F10		 1068
+extern char LFileName[];	/* file to find the formulas in */
+extern char LName[];		/* Name of the Formula (if not null) */
+extern char FormFileName[];
+extern char FormName[];
+extern char IFSFileName[];
+extern char IFSName[];
+extern char CommandFile[];
+extern char CommandName[];
+extern float far *ifs_defn;
+extern int ifs_type;
+extern int ifs_changed;
 
 /* fullscreen_choice options */
 #define CHOICERETURNKEY 1
@@ -213,13 +199,18 @@ struct				   /* Allocate DTA and define structure */
      char filename[13]; 		/* Filename and extension */
 } DTA;				   /* Disk Transfer Area */
 
+#define GETFORMULA 0
+#define GETLSYS    1
+#define GETIFS	   2
+#define GETPARM    3
+
 /* --------------------------------------------------------------------- */
 
-char ifsmask[13]   = {"*.ifs"};
-char ifs3dmask[13] = {"*.ifs"};
-char gifmask[13]   = {""};
-char formmask[13]  = {"*.frm"};
-char lsysmask[13]  = {"*.l"};
+extern char gifmask[];
+char ifsmask[13]     = {"*.ifs"};
+char formmask[13]    = {"*.frm"};
+char lsysmask[13]    = {"*.l"};
+char commandmask[13] = {"*.par"};
 
 static crtcols = 80;		/* constant for now */
 
@@ -235,22 +226,27 @@ int fullscreen_prompt(	/* full-screen prompting routine */
 	int numprompts, 	/* there are this many prompts (max) */
 	char * far *prompts,	/* array of prompting pointers */
 	struct fullscreenvalues values[], /* array of values */
-	int options,		/* help available, more bits for future */
-	int fkeymask		/* bit n on if Fn to cause return */
+	int options,		/* for future */
+	int fkeymask,		/* bit n on if Fn to cause return */
+	char far *extrainfo	/* extra info box to display, \n separated */
 	)
 {
-   char temp2[24][16];		/* string value of answers go here */
-   char *hdgscan;
+   char far *hdgscan;
    int titlelines,titlewidth,titlerow;
-   int promptwidth;
+   int maxpromptwidth,maxfldwidth,maxcomment;
    int boxrow,boxlines;
    int boxcol,boxwidth;
+   int extralines,extrawidth,extrarow;
+   int instrrow;
    int promptrow,promptcol,valuecol;
    int curchoice;
    int done, i, j;
    int savelookatmouse;
-static char far instr1[]  = {"Use the cursor keys to select values to change"};
-static char far instr2[]  = {"Type in any replacement values you wish to use"};
+   int curtype, curlen;
+   char buf[81];
+static char far instr1[]  = {"Use \x18 and \x19 to select values to change"};
+static char far instr2a[]  = {"Type in replacement value for selected field"};
+static char far instr2b[]  = {"Use \x1B or \x1A to change value of selected field"};
 static char far instr3a[] = {"Press ENTER when finished (or ESCAPE to back out)"};
 static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or F1 for help"};
 
@@ -278,10 +274,29 @@ static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or 
       if (++i > titlewidth)
 	 titlewidth = i;
       }
+   extralines = extrawidth = i = 0;
+   if ((hdgscan = extrainfo))
+      if (*hdgscan == 0)
+	 extrainfo = NULL;
+      else { /* count extra lines, find widest */
+	 extralines = 3;
+	 while (*hdgscan) {
+	    if (*(hdgscan++) == '\n') {
+	       if (extralines + numprompts + titlelines >= 20) {
+		   *hdgscan = 0; /* full screen, cut off here */
+		   break;
+		   }
+	       ++extralines;
+	       i = -1;
+	       }
+	    if (++i > extrawidth)
+	       extrawidth = i;
+	    }
+	 }
 
-   i = numprompts + titlelines + 3;    /* total number of rows required */
+   /* work out vertical positioning */
+   i = numprompts + titlelines + extralines + 3; /* total rows required */
    j = (25 - i) / 2;		       /* top row of it all when centered */
-   if (i == 22) j = 2;		       /* adjust this particular case */
    j -= j / 4;			       /* higher is better if lots extra */
    boxlines = numprompts;
    titlerow = 1 + j;
@@ -291,74 +306,157 @@ static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or 
       --boxrow;
       ++boxlines;
       }
-   if (boxrow + boxlines < 22)	       /* room for blank at bottom of box? */
-      ++boxlines;
-
-   promptwidth = 0;		       /* find the widest prompt */
-   for (i = 0; i < numprompts; i++) {
-      if (promptwidth < strlen(prompts[i]))
-	 promptwidth = strlen(prompts[i]);
+   instrrow = boxrow+boxlines;
+   if (instrrow + 3 + extralines < 25) {
+      ++boxlines;    /* blank at bottom of box */
+      ++instrrow;
+      if (instrrow + 3 + extralines < 25)
+	 ++instrrow; /* blank before instructions */
       }
-   if ((boxwidth = 2 + promptwidth + 4 + 15 + 2) > 80)
-      boxwidth = 80;
+   extrarow = instrrow + 2;
+   if (numprompts > 1) /* 3 instructions lines */
+      ++extrarow;
+   if (extrarow + extralines < 25)
+      ++extrarow;
+
+   /* work out horizontal positioning */
+   maxfldwidth = maxpromptwidth = maxcomment = 0;
+   for (i = 0; i < numprompts; i++) {
+      if (values[i].type == 'y') {
+	 static char *noyes[2] = {"no","yes"};
+	 values[i].type = 'l';
+	 values[i].uval.ch.vlen = 3;
+	 values[i].uval.ch.list = noyes;
+	 values[i].uval.ch.llen = 2;
+	 }
+      j = strlen(prompts[i]);
+      if (values[i].type == '*') {
+	 if (j > maxcomment)	 maxcomment = j;
+	 }
+      else {
+	 if (j > maxpromptwidth) maxpromptwidth = j;
+	 j = prompt_valuestring(buf,&values[i]);
+	 if (j > maxfldwidth)	 maxfldwidth = j;
+	 }
+      }
+   boxwidth = maxpromptwidth + maxfldwidth + 2;
+   if (maxcomment > boxwidth) boxwidth = maxcomment;
+   if ((boxwidth += 4) > 80) boxwidth = 80;
    boxcol = (80 - boxwidth) / 2;       /* center the box */
-   boxcol -= (90 - boxwidth) / 20;
    promptcol = boxcol + 2;
-   valuecol = boxcol + boxwidth - 17;
+   valuecol = boxcol + boxwidth - maxfldwidth - 2;
    if (boxwidth <= 76) {	       /* make margin a bit wider if we can */
       boxwidth += 2;
       --boxcol;
       }
-   if ((i = titlewidth + 2 - boxwidth) > 0) { /* expand box for title */
+   if ((j = titlewidth) < extrawidth)
+      j = extrawidth;
+   if ((i = j + 4 - boxwidth) > 0) {   /* expand box for title/extra */
       if (boxwidth + i > 80)
 	 i = 80 - boxwidth;
       boxwidth += i;
       boxcol -= i / 2;
       }
+   i = (90 - boxwidth) / 20;
+   boxcol    -= i;
+   promptcol -= i;
+   valuecol  -= i;
 
-   for (i = titlerow; i < boxrow; ++i) /* display the heading */
+   /* display box heading */
+   for (i = titlerow; i < boxrow; ++i)
       setattr(i,boxcol,C_PROMPT_HI,boxwidth);
-   textcbase = (80 - titlewidth) / 2;  /* set left margin for putstring */
-   textcbase -= (90 - titlewidth) / 20;
+   textcbase = boxcol + (boxwidth - titlewidth) / 2;
    putstring(titlerow,0,C_PROMPT_HI,hdg);
+
+   /* display extra info */
+   if (extrainfo) {
+      memset(buf,'\xC4',80); buf[boxwidth-2] = 0;
+      textcbase = boxcol + 1;
+      putstring(extrarow,0,C_PROMPT_BKGRD,buf);
+      putstring(extrarow+extralines-1,0,C_PROMPT_BKGRD,buf);
+      --textcbase;
+      putstring(extrarow,0,C_PROMPT_BKGRD,"\xDA");
+      putstring(extrarow+extralines-1,0,C_PROMPT_BKGRD,"\xC0");
+      textcbase += boxwidth - 1;
+      putstring(extrarow,0,C_PROMPT_BKGRD,"\xBF");
+      putstring(extrarow+extralines-1,0,C_PROMPT_BKGRD,"\xD9");
+      textcbase = boxcol;
+      for (i = 1; i < extralines-1; ++i) {
+	 putstring(extrarow+i,0,C_PROMPT_BKGRD,"\xB3");
+	 putstring(extrarow+i,boxwidth-1,C_PROMPT_BKGRD,"\xB3");
+	 }
+      textcbase += (boxwidth - extrawidth) / 2;
+      putstring(extrarow+1,0,C_PROMPT_TEXT,extrainfo);
+      }
    textcbase = 0;
 
-   i = boxrow + boxlines;	       /* display the footing */
-   if (i < 22) ++i;
-   if (numprompts > 1)
-      putstringcenter(i++,0,80,C_PROMPT_BKGRD,instr1);
-   putstringcenter(i++,0,80,C_PROMPT_BKGRD,instr2);
-   putstringcenter(i,  0,80,C_PROMPT_BKGRD,
-	 (options & PROMPTHELP) ? instr3b : instr3a);
-
-   for (i = 0; i < boxlines; ++i)      /* display empty box */
+   /* display empty box */
+   for (i = 0; i < boxlines; ++i)
       setattr(boxrow+i,boxcol,C_PROMPT_LO,boxwidth);
-   for (i = 0; i < numprompts; i++) {  /* display initial values */
+
+   /* display initial values */
+   for (i = 0; i < numprompts; i++) {
       putstring(promptrow+i, promptcol, C_PROMPT_LO, prompts[i]);
-      if (values[i].type      == 'd')
-	 sprintf(temp2[i], "%-10g", values[i].uval.dval);
-      else if (values[i].type == '*')
-	 temp2[i][0] = 0;
-      else		   /* == 's' */
-	 sprintf(temp2[i], "%-10s",  values[i].uval.sval);
-      putstring(promptrow+i, valuecol, C_PROMPT_LO, temp2[i]);
+      prompt_valuestring(buf,&values[i]);
+      putstring(promptrow+i, valuecol, C_PROMPT_LO, buf);
       }
+
+   /* display footing */
+   if (numprompts > 1)
+      putstringcenter(instrrow++,0,80,C_PROMPT_BKGRD,instr1);
+   putstringcenter(instrrow+1,0,80,C_PROMPT_BKGRD,
+	 (helpmode > 0) ? instr3b : instr3a);
 
    curchoice = done = 0;
    while (values[curchoice].type == '*') ++curchoice;
 
    while (!done) {
 
-      putstring(promptrow+curchoice, promptcol, C_PROMPT_HI, prompts[curchoice]);
-      putstring(promptrow+curchoice, valuecol, C_PROMPT_INPUT, "               ");
+      curtype = values[curchoice].type;
+      curlen = prompt_valuestring(buf,&values[curchoice]);
+      putstringcenter(instrrow,0,80,C_PROMPT_BKGRD,
+		      (curtype == 'l') ? instr2b : instr2a);
+      putstring(promptrow+curchoice,promptcol,C_PROMPT_HI,prompts[curchoice]);
 
-      i = input_field( (values[curchoice].type == 'd') ? 1 : 0,
-	     C_PROMPT_INPUT, temp2[curchoice], 15,
-	     promptrow+curchoice,valuecol,prompt_checkkey);
+      if (curtype == 'l') {
+	 i = input_field_list(
+		C_PROMPT_CHOOSE, buf, curlen,
+		values[curchoice].uval.ch.list, values[curchoice].uval.ch.llen,
+		promptrow+curchoice,valuecol, prompt_checkkey);
+	 for (j = 0; j < values[curchoice].uval.ch.llen; ++j)
+	    if (strcmp(buf,values[curchoice].uval.ch.list[j]) == 0) break;
+	 values[curchoice].uval.ch.val = j;
+	 }
+      else {
+	 j = 0;
+	 if (curtype == 'i') j = 3;
+	 if (curtype == 'd') j = 5;
+	 if (curtype == 'f') j = 1;
+	 i = input_field(j, C_PROMPT_INPUT, buf, curlen,
+		promptrow+curchoice,valuecol,prompt_checkkey);
+	 switch (values[curchoice].type) {
+	    case 'd':
+	       values[curchoice].uval.dval = atof(buf);
+	       break;
+	    case 'f':
+	       values[curchoice].uval.dval = atof(buf);
+	       roundfloatd(&values[curchoice].uval.dval);
+	       break;
+	    case 'i':
+	       values[curchoice].uval.ival = atoi(buf);
+	       break;
+	    case 's':
+	       strncpy(values[curchoice].uval.sval,buf,16);
+	       break;
+	    default: /* assume 0x100+n */
+	       strcpy(values[curchoice].uval.sbuf,buf);
+	    }
+	 }
 
-      putstring(promptrow+curchoice, promptcol, C_PROMPT_LO, prompts[curchoice]);
-      putstring(promptrow+curchoice, valuecol, C_PROMPT_LO,  "               ");
-      putstring(promptrow+curchoice, valuecol, C_PROMPT_LO,  temp2[curchoice]);
+      putstring(promptrow+curchoice,promptcol,C_PROMPT_LO,prompts[curchoice]);
+      j = strlen(buf);
+      memset(&buf[j],' ',80-j); buf[curlen] = 0;
+      putstring(promptrow+curchoice, valuecol, C_PROMPT_LO,  buf);
 
       switch(i) {
 	 case 0:  /* enter  */
@@ -395,17 +493,50 @@ static char far instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or 
 	 }
       }
 
-   if (done >= 0)
-      for (i = 0; i < numprompts; i++) {	/* fill in the results */
-	 if (values[i].type == 'd')
-	    values[i].uval.dval = atof(temp2[i]);
-	 else
-	   strncpy(values[i].uval.sval,temp2[i],16);
-	 }
    movecursor(25,80);
    lookatmouse = savelookatmouse;
    EXIT_OVLY;
    return(done);
+}
+
+static int prompt_valuestring(char *buf,struct fullscreenvalues *val)
+{  /* format value into buf, return field width */
+   int i,ret;
+   switch (val->type) {
+      case 'd':
+	 ret = 20;
+	 i = 15;
+	 while (1) {
+	    sprintf(buf,"%.*g",i,val->uval.dval);
+	    if (strlen(buf) <= ret) break;
+	    --i;
+	    }
+	 break;
+      case 'f':
+	 sprintf(buf,"%.7g",val->uval.dval);
+	 ret = 14;
+	 break;
+      case 'i':
+	 sprintf(buf,"%d",val->uval.ival);
+	 ret = 6;
+	 break;
+      case '*':
+	 *buf = ret = 0;
+	 break;
+      case 's':
+	 strncpy(buf,val->uval.sval,16);
+	 buf[15] = 0;
+	 ret = 15;
+	 break;
+      case 'l':
+	 strcpy(buf,val->uval.ch.list[val->uval.ch.val]);
+	 ret = val->uval.ch.vlen;
+	 break;
+      default: /* assume 0x100+n */
+	 strcpy(buf,val->uval.sbuf);
+	 ret = val->type & 0xff;
+      }
+   return ret;
 }
 
 static int prompt_checkkey(int curkey)
@@ -431,6 +562,80 @@ static int prompt_checkkey(int curkey)
 	    return(curkey);
       }
    return(0);
+}
+
+static int input_field_list(
+	int attr,	      /* display attribute */
+	char *fld,	      /* display form field value */
+	int vlen,	      /* field length */
+	char **list,	      /* list of values */
+	int llen,	      /* number of entries in list */
+	int row,	      /* display row */
+	int col,	      /* display column */
+	int (*checkkey)(int)  /* routine to check non data keys, or NULL */
+	)
+{
+   int initval,curval;
+   char buf[81];
+   int curkey;
+   int i, j;
+   int ret,savelookatmouse;
+   savelookatmouse = lookatmouse;
+   lookatmouse = 0;
+   for (initval = 0; initval < llen; ++initval)
+      if (strcmp(fld,list[initval]) == 0) break;
+   if (initval >= llen) initval = 0;
+   curval = initval;
+   ret = -1;
+   while (1) {
+      strcpy(buf,list[curval]);
+      i = strlen(buf);
+      while (i < vlen)
+	 buf[i++] = ' ';
+      buf[vlen] = 0;
+      putstring(row,col,attr,buf);
+      curkey = keycursor(row,col); /* get a keystroke */
+      switch (curkey) {
+	 case ENTER:
+	 case ENTER_2:
+	    ret = 0;
+	    goto inpfldl_end;
+	 case ESC:
+	    goto inpfldl_end;
+	 case RIGHT_ARROW:
+	 case RIGHT_ARROW_2:
+	    if (++curval >= llen)
+	       curval = 0;
+	    break;
+	 case LEFT_ARROW:
+	 case LEFT_ARROW_2:
+	    if (--curval < 0)
+	       curval = llen - 1;
+	    break;
+	 case F5:
+	    curval = initval;
+	    break;
+	 default:
+	    if (curkey < 32 || curkey >= 127) {
+	       if (checkkey && (ret = (*checkkey)(curkey)))
+		  goto inpfldl_end;
+	       break;				     /* non alphanum char */
+	       }
+	    j = curval;
+	    for (i = 0; i < llen; ++i) {
+	       if (++j >= llen)
+		  j = 0;
+	       if ((*list[j] & 0xdf) == (curkey & 0xdf)) {
+		  curval = j;
+		  break;
+		  }
+	       }
+	 }
+      }
+inpfldl_end:
+   strcpy(fld,list[curval]);
+   lookatmouse = savelookatmouse;
+   return(ret);
 }
 
 
@@ -463,7 +668,7 @@ int get_fracttype()		/* prompt for and select fractal type */
    while (1) {
       if ((t = select_fracttype(fractype)) < 0)
 	 break;
-      if ((i = get_fract_params(t, fractype)) == 0) { /* ok, all done */
+      if ((i = select_type_params(t, fractype)) == 0) { /* ok, all done */
 	 done = 0;
 	 break;
 	 }
@@ -472,9 +677,16 @@ int get_fracttype()		/* prompt for and select fractal type */
       }
    if (done < 0)
       fractype = oldfractype;
+   curfractalspecific = &fractalspecific[fractype];
    EXIT_OVLY;
    return(done);
 }
+
+struct FT_CHOICE {
+      char name[15];
+      int  num;
+      };
+static struct FT_CHOICE **ft_choices; /* for sel_fractype_help subrtn */
 
 static int select_fracttype(int t) /* subrtn of get_fracttype, separated */
 				   /* so that storage gets freed up	 */
@@ -484,24 +696,23 @@ static int select_fracttype(int t) /* subrtn of get_fracttype, separated */
    int i, j;
 #define MAXFTYPES 200
    char tname[40];
-   struct CHOICE {
-      char name[15];
-      int  num;
-      }  *choices[MAXFTYPES];
+   struct FT_CHOICE *choices[MAXFTYPES];
    int attributes[MAXFTYPES];
 
    /* steal existing array for "choices" */
-   choices[0] = (struct CHOICE *)boxy;
+   choices[0] = (struct FT_CHOICE *)boxy;
    attributes[0] = 1;
    for (i = 1; i < MAXFTYPES; ++i) {
       choices[i] = choices[i-1] + 1;
       attributes[i] = 1;
       }
+   ft_choices = &choices[0];
 
    /* setup context sensitive help */
    oldhelpmode = helpmode;
    helpmode = HELPFRACTALS;
 
+   if (t == IFS3D) t = IFS;
    i = j = -1;
    while(fractalspecific[++i].name) {
       if (fractalspecific[i].name[0] == '*')
@@ -518,262 +729,526 @@ static int select_fracttype(int t) /* subrtn of get_fracttype, separated */
 	 j = i;
 
    tname[0] = 0;
-   done = fullscreen_choice(CHOICEHELP,"Select a Fractal Type",NULL,NULL,
+   done = fullscreen_choice(CHOICEHELP+8,"Select a Fractal Type",NULL,
+			    "Press F2 for a description of the highlighted type",
 			    numtypes,(char **)choices,attributes,0,0,0,j,
-			    NULL,NULL,tname,NULL,NULL);
+			    NULL,tname,NULL,sel_fractype_help);
    if (done >= 0)
       done = choices[done]->num;
    helpmode = oldhelpmode;
    return(done);
 }
 
-extern char LFileName[];	/* file to find the formulas in */
-extern char LName[];		/* Name of the Formula (if not null) */
-extern char FormFileName[];	/* file to find the formulas in */
-extern char FormName[]; 	/* Name of the Formula (if not null) */
+static int sel_fractype_help(int curkey,int choice)
+{
+   int oldhelpmode;
+   if (curkey == F2) {
+      oldhelpmode = helpmode;
+      helpmode = fractalspecific[(*(ft_choices+choice))->num].helptext;
+      help(0);
+      helpmode = oldhelpmode;
+      }
+   return(0);
+}
 
-static int get_fract_params(	/* prompt for fractal parameters */
+static int select_type_params(	/* prompt for new fractal type parameters */
 	int newfractype,	/* new fractal type */
 	int oldfractype 	/* previous fractal type */
 	)
 {
-int numparams,numtrig;
-int i,ret;
-struct fullscreenvalues paramvalues[10];
-char *choices[10];
-int oldbailout;
-int promptnum;
-char msg[81];
+   int ret,oldhelpmode;
 
-static char *trg[] = {"First Function","Second Function",
-		      "Third Function","Fourth Function"};
+   oldhelpmode = helpmode;
+   ret = 0;
+   fractype = newfractype;
+   curfractalspecific = &fractalspecific[fractype];
 
-fractype = newfractype;
-ret = -1;
+   if (fractype == LSYSTEM) {
+      helpmode = HT_LSYS;
+      if (get_file_entry(GETLSYS,"L-System",lsysmask,LFileName,LName) < 0) {
+	 ret = 1;
+	 goto sel_type_exit;
+	 }
+      }
+   if (fractype == FORMULA || fractype == FFORMULA) {
+      helpmode = HT_FORMULA;
+      if (get_file_entry(GETFORMULA,"Formula",formmask,FormFileName,FormName) < 0) {
+	 ret = 1;
+	 goto sel_type_exit;
+	 }
+      }
+   if (fractype == IFS || fractype == IFS3D) {
+static char far ifsmsg[] = {"\
+Current IFS parameters have been edited but not saved.\n\
+Continue to replace them with new selection, cancel to keep them."};
+      helpmode = HT_IFS;
+      if (!ifs_defn || !ifs_changed || !stopmsg(22,ifsmsg))
+	 if (get_file_entry(GETIFS,"IFS",ifsmask,IFSFileName,IFSName) < 0) {
+	    ret = 1;
+	    goto sel_type_exit;
+	    }
+      }
 
-if (fractype == LSYSTEM) {
-   ret = 1; /* about to pass point of no return to prior image */
-   if (getafilename("Select L-System File",lsysmask,LFileName) < 0
-     || get_lsys_name() < 0)
-      return(1);
-   }
+   set_default_parms();
 
-if (fractype == FORMULA || fractype == FFORMULA) {
-   ret = 1; /* about to pass point of no return to prior image */
-   if (getafilename("Select Formula File",formmask,FormFileName) < 0
-     || get_formula_name() < 0)
-      return(1);
-   }
-
- for ( i = 0; i < 4; i++)
- {
-	 paramvalues[i].type = 'd';
-	 paramvalues[i].uval.dval = fractalspecific[fractype].paramvalue[i];
- }
-for (numparams = 0; numparams < 4; numparams++) {
-	if (fractalspecific[fractype].param[numparams][0] == 0) break;
-	choices[numparams] = fractalspecific[fractype].param[numparams];
-	}
- numtrig = (fractalspecific[fractype].flags >> 6) & 7;
-
-  for(i=0; i<numtrig; i++)
-  {
-    paramvalues[i+numparams].type = 's';
-    strcpy(paramvalues[i+numparams].uval.sval,trigfn[trigndx[i]].name);
-    choices[i+numparams] = trg[i];
-  }
-  if(fabs(potparam[2]) == 0.0
-   && fractalspecific[fractype].orbit_bailout)
-  {
-     promptnum = numparams+numtrig+1;
-     choices[numparams+numtrig] = "Bailout value (0 means use default)";
-     paramvalues[numparams+numtrig].type = 'd';
-     paramvalues[numparams+numtrig].uval.dval = oldbailout = bailout;
-  }
-  else	/* under these conditions bailout is ignored, so why ask for it? */
-     promptnum = numparams+numtrig;
-
- sprintf(msg,"Options for fractal type %s",
-	     (fractalspecific[fractype].name[0] != '*')
-	      ? fractalspecific[fractype].name
-	      : &fractalspecific[fractype].name[1] );
- if (fullscreen_prompt(msg,promptnum,choices,paramvalues,0,0) < 0)
-    return(ret);
-
- for ( i = 0; i < 4; i++)
-	 param[i] = fractalspecific[fractype].paramvalue[i];
- for ( i = 0; i < numparams; i++)
-	 param[i] = paramvalues[i].uval.dval;
- for ( i = 0; i < numtrig; i++)
- {
-    paramvalues[i+numparams].uval.sval[4] = 0;
-    if(paramvalues[i+numparams].uval.sval[3]==32)
-	paramvalues[i+numparams].uval.sval[3] = 0;
-    set_trig_array(i, paramvalues[i+numparams].uval.sval);
- }
-
-  if ((potparam[0] == 0.0 || potparam[2] == 0.0)
-   && fractalspecific[fractype].orbit_bailout)
-  {
-     bailout = paramvalues[numparams+numtrig].uval.dval;
-
-     if (bailout != 0 && (bailout < 4 || bailout > 32000))
-	bailout = oldbailout;
-  }
-
- if (newfractype != oldfractype) {
+   if (get_fract_params(0) < 0)
+      ret = 1;
+   else {
+      if (newfractype != oldfractype) {
 	 invert = 0;
 	 inversion[0] = inversion[1] = inversion[2] = 0;
 	 }
+      }
 
-xxmin = fractalspecific[fractype].xmin;
-xxmax = fractalspecific[fractype].xmax;
-yymin = fractalspecific[fractype].ymin;
-yymax = fractalspecific[fractype].ymax;
-xx3rd = xxmin;
-yy3rd = yymin;
-for ( i = 0; i < 4; i++)
-   fractalspecific[newfractype].paramvalue[i] = param[i];
-if (viewcrop && finalaspectratio != SCREENASPECT)
-   aspectratio_crop(SCREENASPECT,finalaspectratio);
-
-return(0);
+sel_type_exit:
+   helpmode = oldhelpmode;
+   return(ret);
 
 }
 
-/* --------------------------------------------------------------------- */
-
-static int get_lsys_name()	/* get the Lsystem formula name */
+static void set_default_parms()
 {
-   int Litem;
-#define MAXLSYS 100
-   int numformulas, i;
-   FILE *File;
-   char *choices[MAXLSYS];
-   int attributes[MAXLSYS];
-   char buf[201];
-
-   choices[0] = boxy;
-   attributes[0] = 1;
-   for (i = 1; i < MAXLSYS; i++) {
-      attributes[i] = 1;
-      choices[i] = choices[i-1]+21;
+   int i;
+   xxmin = curfractalspecific->xmin;
+   xxmax = curfractalspecific->xmax;
+   yymin = curfractalspecific->ymin;
+   yymax = curfractalspecific->ymax;
+   xx3rd = xxmin;
+   yy3rd = yymin;
+   if (viewcrop && finalaspectratio != SCREENASPECT)
+      aspectratio_crop(SCREENASPECT,finalaspectratio);
+   for (i = 0; i < 4; i++) {
+      param[i] = curfractalspecific->paramvalue[i];
+      roundfloatd(&param[i]);
       }
-
-   if ((File = fopen(LFileName, "rt")) == NULL) {
-      sprintf(buf,"I Can't find %s", LFileName);
-      stopmsg(1,buf);
-      LName[0] = 0;
-      return(-1);
-      }
-
-   numformulas = 0;
-   while (1) {
-      int c;
-      *choices[numformulas] = 0;
-      if (fscanf(File, " %20[^ \n\t({]", choices[numformulas]) == EOF)
-	 break;
-      while(c = getc(File)) {
-	 if(c == EOF || c == '{' || c == '\n')
-	    break;
-	 }
-      if(c == EOF)
-	 break;
-      else if(c != '\n') {
-skipcomments:
-	 if(fscanf(File, "%200[^}]", buf) == EOF) break;
-	 if (getc(File) != '}') goto skipcomments;
-	 if (stricmp(choices[numformulas],"") != 0 &&
-	     stricmp(choices[numformulas],"comment") != 0)
-		 if (++numformulas >= MAXLSYS) break;
-	 }
-      }
-   fclose(File);
-
-   qsort(choices,numformulas,sizeof(char *),lccompare); /* sort type list */
-   do {
-      strcpy(buf,LName); /* preset to last choice made */
-      if ((Litem = fullscreen_choice(0,"L-System Formula Selection",NULL,NULL,
-				  numformulas,choices,attributes,
-				  0,0,0,0,NULL,NULL,buf,NULL,NULL)) < 0)
-	 return(-1);
-      strcpy(LName, choices[Litem]);
-      } while (LLoad());
-   return(0);
 }
+
 
 /* --------------------------------------------------------------------- */
 
-/*
-  Read a formula file, picking off the formula names.
-  Formulas use the format "  name = { ... }  name = { ... } "
-*/
-
-static int get_formula_name()	 /* get the fractal formula name */
+int get_fract_params(int caller)	/* prompt for type-specific parms */
 {
-#define MAXFORMULA 100
-   int numformulas, i;
-   FILE *File;
-   char *choices[MAXFORMULA];
-   int attributes[MAXFORMULA];
-   char buf[201];
+   int i,j,k;
+   int curtype,numparams,numtrig;
+   struct fullscreenvalues paramvalues[12];
+   char *choices[12];
+   int oldbailout;
+   int promptnum;
+   char msg[81];
+   char *typename, *tmpptr;
+   char bailoutmsg[50];
+   int ret = 0;
+   int oldhelpmode;
+   static char *trg[] = {"First Function","Second Function",
+			 "Third Function","Fourth Function"};
+   extern char dstack[4096];
+   char *filename,*entryname;
+   FILE *entryfile;
+   char *trignameptr[25];
 
-   choices[0] = boxy;
-   attributes[0] = 1;
-   for (i = 1; i < MAXFORMULA; i++) {
-      attributes[i] = 1;
-      choices[i] = choices[i-1]+21;
+   ENTER_OVLY(OVLY_PROMPTS);
+
+   if (fractalspecific[curtype=fractype].name[0] == '*'
+     && (i = fractalspecific[curtype].tofloat) != NOFRACTAL
+     && fractalspecific[i].name[0] != '*')
+      curtype = i;
+
+   if (curtype == IFS || curtype == IFS3D)
+      return ((caller) ? edit_ifs_params() : 0);
+
+   if (*(typename = fractalspecific[curtype].name) == '*')
+      ++typename;
+
+   for (numparams = 0; numparams < 4; numparams++) {
+      if (fractalspecific[curtype].param[numparams][0] == 0) break;
+      choices[numparams] = fractalspecific[curtype].param[numparams];
+      paramvalues[numparams].type = 'd';
+      paramvalues[numparams].uval.dval = param[numparams];
       }
 
-   if ((File = fopen(FormFileName, "rt")) == NULL) {
-      sprintf(buf,"I Can't find %s", FormFileName);
-      stopmsg(1,buf);
-      FormName[0] = 0;
+   numtrig = (fractalspecific[curtype].flags >> 6) & 7;
+   if(curtype==FORMULA || curtype==FFORMULA )
+   {
+      extern char maxfn;
+      numtrig = maxfn;
+   }
+   promptnum = numparams;
+
+   if ((i = numtrigfn) > 25) i = 25;
+   while (--i >= 0)
+      trignameptr[i] = trigfn[i].name;
+   for (i = 0; i < numtrig; i++) {
+      paramvalues[promptnum].type = 'l';
+      paramvalues[promptnum].uval.ch.val  = trigndx[i];
+      paramvalues[promptnum].uval.ch.llen = numtrigfn;
+      paramvalues[promptnum].uval.ch.vlen = 6;
+      paramvalues[promptnum].uval.ch.list = trignameptr;
+      choices[promptnum] = trg[i];
+      ++promptnum;
+      }
+
+   if (fractalspecific[curtype].orbit_bailout)
+      if (potparam[0] != 0.0 && potparam[2] != 0.0) {
+	 paramvalues[promptnum].type = '*';
+	 choices[promptnum] = "Bailout: continuous potential (Y screen) value in use";
+	 ++promptnum;
+	 }
+      else {
+	 choices[promptnum] = "Bailout value (0 means use default)";
+	 paramvalues[promptnum].type = 'i';
+	 paramvalues[promptnum].uval.ival = oldbailout = bailout;
+	 ++promptnum;
+	 paramvalues[promptnum].type = '*';
+	 i = fractalspecific[curtype].orbit_bailout;
+	 tmpptr = typename;
+	 if (usr_biomorph != -1) {
+	    i = 100;
+	    tmpptr = "biomorph";
+	    }
+	 sprintf(bailoutmsg,"    (%s default is %d)",tmpptr,i);
+	 choices[promptnum] = bailoutmsg;
+	 ++promptnum;
+	 }
+
+   if (caller				/* <z> command ? */
+      && (display3d > 0 || promptnum == 0)) {
+       static char far msg[]={"Current type has no type-specific parameters"};
+       stopmsg(20,msg);
+       return(0);
+       }
+
+   /* note: max of 9 prompt lines now, plus hdgs & instr of course */
+
+   dstack[0] = 0;
+   if ((i = fractalspecific[curtype].helpformula) < -1) {
+      if (i == -2) { /* special for formula */
+	 filename = FormFileName;
+	 entryname = FormName;
+	 }
+      else {	 /* -3, special for lsystem */
+	 filename = LFileName;
+	 entryname = LName;
+	 }
+      if (find_file_item(filename,entryname,&entryfile) == 0) {
+	 load_entry_text(entryfile,dstack,16);
+	 fclose(entryfile);
+	 }
+      }
+   else if (i >= 0) {
+      int c,lines;
+      if (i = read_help_topic(i,0,2000,dstack) > 0) i = 0;
+      dstack[2000-i] = 0;
+      i = j = lines = 0; k = 1;
+      while ((c = dstack[i++])) {
+	 /* stop at ctl, blank, or line with col 1 nonblank, max 16 lines */
+	 if (k && c == ' ' && ++k <= 5) { } /* skip 4 blanks at start of line */
+	 else {
+	    if (c == '\n') {
+	       if (k) break; /* blank line */
+	       if (++lines >= 16) break;
+	       k = 1;
+	       }
+	    else if (c < 16) /* a special help format control char */
+	       break;
+	    else {
+	       if (k == 1) /* line starts in column 1 */
+		  break;
+	       k = 0;
+	       }
+	    dstack[j++] = c;
+	    }
+	 }
+      while (--j >= 0 && dstack[j] == '\n') { }
+      dstack[j+1] = 0;
+      }
+
+   sprintf(msg,"Options for fractal type %s",typename);
+   oldhelpmode = helpmode;
+   helpmode = fractalspecific[curtype].helptext;
+   i = fullscreen_prompt(msg,promptnum,choices,paramvalues,0,0,dstack);
+   helpmode = oldhelpmode;
+   if (i < 0)
       return(-1);
-   }
 
-   numformulas = 0;
-   while (1) {
-      int c;
-      *choices[numformulas] = 0;
-      if (fscanf(File, " %20[^ \n\t({]", choices[numformulas]) == EOF)
-	 break;
-      while(c = getc(File)) {
-	 if(c == EOF || c == '{' || c == '\n')
-	    break;
+   for ( i = 0; i < numparams; i++) {
+      if (param[i] != paramvalues[i].uval.dval) {
+	 param[i] = paramvalues[i].uval.dval;
+	 ret = 1;
+	 }
       }
-      if(c == EOF)
-	 break;
-      else if(c != '\n'){
-skipcomments:
-	 if(fscanf(File, "%200[^}]", buf) == EOF) break;
-	 if (getc(File) != '}') goto skipcomments;
-	 if (stricmp(choices[numformulas],"") != 0 &&
-	     stricmp(choices[numformulas],"comment") != 0)
-		 if (++numformulas >= MAXFORMULA) break;
+
+   for ( i = 0; i < numtrig; i++) {
+      j = numparams + i;
+      if (paramvalues[j].uval.ch.val != trigndx[i]) {
+	 set_trig_array(i,trigfn[paramvalues[j].uval.ch.val].name);
+	 ret = 1;
+	 }
       }
-   }
-   fclose(File);
 
-   qsort(choices,numformulas,sizeof(char *),lccompare); /* sort type list */
-   do {
-      strcpy(buf,FormName); /* preset to last choice made */
-      if ((i = fullscreen_choice(0,"Formula Selection",NULL,NULL,
-			      numformulas,choices,attributes,
-			      0,0,0,0,NULL,NULL,buf,NULL,NULL)) < 0)
-	 return(-1);
-      strcpy(FormName, choices[i]);
-      } while (RunForm(FormName));
+   if ((potparam[0] == 0.0 || potparam[2] == 0.0)
+     && fractalspecific[curtype].orbit_bailout) {
+      bailout = paramvalues[numparams+numtrig].uval.ival;
+      if (bailout != 0 && (bailout < 4 || bailout > 32000))
+	 bailout = oldbailout;
+      if (bailout != oldbailout)
+	 ret = 1;
+      }
 
-return(0);
+   EXIT_OVLY;
+   return(ret);
 }
 
 /* --------------------------------------------------------------------- */
 
-static int get_ifs3d_params()	/* prompt for 3D IFS parameters */
+   static FILE *gfe_file;
+
+static long get_file_entry(int type,char *title,char *fmask,
+			  char *filename,char *entryname)
+{
+   /* Formula, LSystem, etc type structure, select from file */
+   /* containing definitions in the form    name { ... }     */
+   int newfile,firsttry;
+   long entry_pointer;
+   extern char dstack[4096];
+   newfile = 0;
+   while (1) {
+      firsttry = 0;
+      /* pb: binary mode used here - it is more work, but much faster, */
+      /*     especially when ftell or fgetpos is used		       */
+      while (newfile || (gfe_file = fopen(filename, "rb")) == NULL) {
+	 char buf[60];
+	 newfile = 0;
+	 if (firsttry) {
+	    sprintf(temp1,"I Can't find %s", filename);
+	    stopmsg(0,temp1);
+	    }
+	 sprintf(buf,"Select %s File",title);
+	 if (getafilename(buf,fmask,filename) < 0)
+	    return -1;
+	 firsttry = 1; /* if around open loop again it is an error */
+	 }
+      setvbuf(gfe_file,dstack,_IOFBF,4096); /* improves speed when file is big */
+      newfile = 0;
+      if ((entry_pointer = gfe_choose_entry(type,title,filename,entryname)) == -2) {
+	 newfile = 1; /* go to file list, */
+	 continue;    /* back to getafilename */
+	 }
+      if (entry_pointer == -1)
+	 return -1;
+      switch (type) {
+	 case GETFORMULA:
+	    if (RunForm(entryname) == 0) return 0;
+	    break;
+	 case GETLSYS:
+	    if (LLoad() == 0) return 0;
+	    break;
+	 case GETIFS:
+	    if (ifsload() == 0) {
+	       fractype = (ifs_type == 0) ? IFS : IFS3D;
+	       curfractalspecific = &fractalspecific[fractype];
+	       set_default_parms(); /* to correct them if 3d */
+	       return 0;
+	       }
+	    break;
+	 case GETPARM:
+	    return entry_pointer;
+	 }
+      }
+}
+
+   struct entryinfo {
+      char name[ITEMNAMELEN+1];
+      long point; /* points to the ( or the { following the name */
+      };
+   static struct entryinfo **gfe_choices; /* for format_getparm_line */
+   static char *gfe_title;
+
+static long gfe_choose_entry(int type,char *title,char *filename,char *entryname)
+/* subrtn of get_file_entry, separated so that storage gets freed up */
+{
+#define MAXENTRIES 200
+   int numentries, i;
+   char buf[101];
+   struct entryinfo *choices[MAXENTRIES];
+   int attributes[MAXENTRIES];
+   void (*formatitem)();
+   int boxwidth,boxdepth,colwidth;
+   long file_offset,name_offset;
+   extern struct entryinfo boxx[MAXENTRIES];
+
+   gfe_choices = &choices[0];
+   gfe_title = title;
+   for (i = 0; i < MAXENTRIES; i++) {
+      attributes[i] = 1;
+      choices[i] = &boxx[i];
+      }
+   numentries = 0;
+   file_offset = -1;
+
+   helptitle(); /* to display a clue when file big and next is slow */
+
+   while (1) { /* scan the file for entry names */
+      int c,len;
+      do {
+	 ++file_offset;
+	 c = getc(gfe_file);
+	 } while (c == ' ' /* skip white space */
+	       || c == '\t' || c == '\n' || c == '\r');
+      if (c == ';') {
+	 do {
+	    ++file_offset;
+	    c = getc(gfe_file);
+	    } while (c != '\n' && c != EOF && c != '\x1a');
+	 if (c == EOF || c == '\x1a') break;
+	 continue;
+	 }
+      name_offset = file_offset;
+      len = 0; /* next equiv roughly to fscanf(..,"%40[^ \n\r\t({\x1a]",buf) */
+      while (c != ' ' && c != '\t' && c != '('
+	&& c != '{' && c != '\n' && c != '\r' && c != EOF && c != '\x1a') {
+	 if (len < 40) buf[len++] = c;
+	 c = getc(gfe_file);
+	 ++file_offset;
+	 }
+      buf[len] = 0;
+      while (c != '{' && c != '\n' && c != '\r' && c != EOF && c != '\x1a') {
+	 c = getc(gfe_file);
+	 ++file_offset;
+	 }
+      if (c == '{') {
+	 while (c != '}' && c != EOF && c != '\x1a') {
+	    c = getc(gfe_file);
+	    ++file_offset;
+	    }
+	 if (c != '}') break;
+	 buf[ITEMNAMELEN] = 0;
+	 if (buf[0] != 0 && stricmp(buf,"comment") != 0) {
+	    strcpy(boxx[numentries].name,buf);
+	    boxx[numentries].point = name_offset;
+	    if (++numentries >= MAXENTRIES) {
+	       sprintf(buf,"Too many entries in file, first %d used",MAXENTRIES);
+	       stopmsg(0,buf);
+	       break;
+	       }
+	    }
+	 }
+      else
+	 if (c == EOF || c == '\x1a') break;
+      }
+
+   if (numentries == 0) {
+      static char far msg[]={"File doesn't contain any valid entries"};
+      stopmsg(0,msg);
+      fclose(gfe_file);
+      return -2; /* back to file list */
+      }
+
+   qsort((char **)choices,numentries,sizeof(char *),lccompare);
+
+   strcpy(buf,entryname); /* preset to last choice made */
+   sprintf(temp1,"%s Selection\nFile: %s",title,filename);
+   formatitem = NULL;
+   boxwidth = colwidth = boxdepth = 0;
+   if (type == GETPARM) {
+      formatitem = format_parmfile_line;
+      boxwidth = 1;
+      boxdepth = 16;
+      colwidth = 76;
+      }
+   i = fullscreen_choice(8,temp1,NULL,
+      "Press F6 to select different file, F2 for details of highlighted choice",
+			   numentries,(char **)choices,attributes,
+			   boxwidth,boxdepth,colwidth,0,
+			   formatitem,buf,NULL,check_gfe_key);
+   fclose(gfe_file);
+   if (i < 0) {
+      if (i == 0-F6)
+	 return -2; /* go back to file list */
+      return -1;    /* cancel */
+      }
+   strcpy(entryname, choices[i]->name);
+   return(choices[i]->point);
+}
+
+static int check_gfe_key(int curkey,int choice)
+{
+   char infhdg[60];
+   char far *infbuf, far *infptr;
+   int linect,linelen,c;
+   if (curkey == F6)
+      return 0-F6;
+   if (curkey == F2) {
+      infbuf = MK_FP(extraseg,0);
+      fseek(gfe_file,gfe_choices[choice]->point,SEEK_SET);
+      load_entry_text(gfe_file,infbuf,16);
+      strcpy(infhdg,gfe_title);
+      strcat(infhdg," file entry:\n\n");
+ /* ... instead, call help with buffer?  heading added */
+      stackscreen();
+      helptitle();
+      setattr(1,0,C_GENERAL_MED,24*80);
+      putstring(2,1,C_GENERAL_HI,infhdg);
+      textcbase = 2; /* left margin is 2 */
+      putstring(-1,0,C_GENERAL_MED,infbuf);
+      putstring(-1,0,C_GENERAL_LO,"\n\n\nPress any key to return to selection list");
+      textcbase = 0;
+      movecursor(25,80);
+      getakeynohelp();
+      unstackscreen();
+      }
+   return 0;
+}
+
+static void load_entry_text(FILE *entfile,char far *buf,int maxlines)
+{
+   int linect,linelen,c;
+   linect = linelen = 0;
+   while ((c = fgetc(entfile)) != EOF && c != '\x1a') {
+      if (c != '\r') {
+	 if (c == '\t') {
+	    while ((linelen % 8) != 7 && linelen < 75) { /* 76 wide max */
+	       *(buf++) = ' ';
+	       ++linelen;
+	       }
+	    c = ' ';
+	    }
+	 if (c == '\n') {
+	    if (++linect > maxlines) break;
+	    linelen = -1;
+	    }
+	 if (++linelen > 75) {
+	    if (linelen == 76) *(buf++) = '\x11';
+	    }
+	 else
+	    *(buf++) = c;
+	 if (c == '}') break;
+	 }
+      }
+   *buf = 0;
+}
+
+static void format_parmfile_line(int choice,char *buf)
+{
+   int c,i;
+   char line[80];
+   fseek(gfe_file,gfe_choices[choice]->point,SEEK_SET);
+   while (getc(gfe_file) != '{') { }
+   while ((c = getc(gfe_file)) == ' ' || c == '\t' || c == ';') { }
+   i = 0;
+   while (i < 56 && c != '\n' && c != '\r' && c != EOF && c != '\x1a') {
+      line[i++] = (c == '\t') ? ' ' : c;
+      c = getc(gfe_file);
+      }
+   line[i] = 0;
+   sprintf(buf,"%-20s%-56s",gfe_choices[choice]->name,line);
+}
+
+/* --------------------------------------------------------------------- */
+
+int get_fract3d_params() /* prompt for 3D fractal parameters */
 {
    char *s;
-int k;
+   int i,k,ret,oldhelpmode;
 static char *ifs3d_prompts[] = {
    "X-axis rotation in degrees",
    "Y-axis rotation in degrees",
@@ -786,36 +1261,51 @@ static char *ifs3d_prompts[] = {
    };
    struct fullscreenvalues uvalues[20];
 
-   k = 0;
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = XROT;
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = YROT;
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = ZROT;
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = ZVIEWER;
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = XSHIFT;
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = YSHIFT;
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = glassestype;
+   ENTER_OVLY(OVLY_PROMPTS);
+   stackscreen();
 
-   if (fullscreen_prompt("3D Parameters",k,ifs3d_prompts,uvalues,0,0) < 0)
-      return(-1);
    k = 0;
-   XROT    =  uvalues[k++].uval.dval;
-   YROT    =  uvalues[k++].uval.dval;
-   ZROT    =  uvalues[k++].uval.dval;
-   ZVIEWER =  uvalues[k++].uval.dval;
-   XSHIFT  =  uvalues[k++].uval.dval;
-   YSHIFT  =  uvalues[k++].uval.dval;
-   glassestype = uvalues[k++].uval.dval;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = XROT;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = YROT;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = ZROT;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = ZVIEWER;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = XSHIFT;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = YSHIFT;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = glassestype;
+
+   oldhelpmode = helpmode;
+   helpmode = HELP3DFRACT;
+   i = fullscreen_prompt("3D Parameters",k,ifs3d_prompts,uvalues,0,0,NULL);
+   helpmode = oldhelpmode;
+   if (i < 0) {
+      ret = -1;
+      goto get_f3d_exit;
+      }
+
+   ret = k = 0;
+   XROT    =  uvalues[k++].uval.ival;
+   YROT    =  uvalues[k++].uval.ival;
+   ZROT    =  uvalues[k++].uval.ival;
+   ZVIEWER =  uvalues[k++].uval.ival;
+   XSHIFT  =  uvalues[k++].uval.ival;
+   YSHIFT  =  uvalues[k++].uval.ival;
+   glassestype = uvalues[k++].uval.ival;
+   if (glassestype < 0 || glassestype > 3) glassestype = 0;
    if (glassestype)
       if (get_funny_glasses_params() || check_mapfile())
-	 return(-1);
-   return(0);
+	 ret = -1;
+
+get_f3d_exit:
+   unstackscreen();
+   EXIT_OVLY;
+   return(ret);
 }
 
 /* --------------------------------------------------------------------- */
@@ -823,14 +1313,15 @@ static char *ifs3d_prompts[] = {
 int get_3d_params()	/* prompt for 3D parameters */
 {
    char *choices[10];
-   int attributes[10];
+   int attributes[21];
    char c;
    int numprompts;
-   int sphere,filltype;
+   int sphere;
    char *s;
-   char *prompts3d[25];
-   struct fullscreenvalues uvalues[25];
+   char *prompts3d[21];
+   struct fullscreenvalues uvalues[21];
    int i, j, k;
+   int oldhelpmode;
 
    ENTER_OVLY(OVLY_PROMPTS);
 
@@ -838,71 +1329,75 @@ restart_1:
 
    k=-1;
 
-   prompts3d[++k]= "Preview Mode?                        (yes or no)";
-   uvalues[k].type = 's';
-   if(preview)
-      strcpy(uvalues[k].uval.sval,"yes");
-   else
-      strcpy(uvalues[k].uval.sval,"no");
+   prompts3d[++k]= "Preview Mode?";
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = preview;
 
-   prompts3d[++k]= "    Show Box?                        (yes or no)";
-   uvalues[k].type = 's';
-   if(showbox)
-      strcpy(uvalues[k].uval.sval,"yes");
-   else
-      strcpy(uvalues[k].uval.sval,"no");
+   prompts3d[++k]= "    Show Box?";
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = showbox;
 
-   prompts3d[++k]= "Coarseness, preview/grid (in y dir)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = previewfactor;
+   prompts3d[++k]= "Coarseness, preview/grid/ray (in y dir)";
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = previewfactor;
 
-   prompts3d[++k]= "Spherical Projection?                (yes or no)";
-   uvalues[k].type = 's';
-   if(sphere = SPHERE)
-      strcpy(uvalues[k].uval.sval,"yes");
-   else
-      strcpy(uvalues[k].uval.sval,"no");
+   prompts3d[++k]= "Spherical Projection?";
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = sphere = SPHERE;
 
    prompts3d[++k]= "Stereo (R/B 3D)? (0=no,1=alternate,2=superimpose,3=photo)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = glassestype;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = glassestype;
 
-   if (fullscreen_prompt("3D Mode Selection",k+1,prompts3d,uvalues,0,0) < 0) {
+   prompts3d[++k]= "Ray trace out? (0=No, 1=DKB/STAR, 2=VIVID, 3=RAW,";
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = RAY;
+   prompts3d[++k]= "                4=MTV, 5=RAYSHADE, 6=ACROSPIN)";
+   uvalues[k].type = '*';
+
+   prompts3d[++k]= "    Brief output?";
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = BRIEF;
+
+   check_writefile(ray_name,".ray");
+   prompts3d[++k]= "    Output File Name";
+   uvalues[k].type = 's';
+   strcpy(uvalues[k].uval.sval,ray_name);
+
+   oldhelpmode = helpmode;
+   helpmode = HELP3DMODE;
+
+   k = fullscreen_prompt("3D Mode Selection",k+1,prompts3d,uvalues,0,0,NULL);
+   helpmode = oldhelpmode;
+   if (k < 0) {
       EXIT_OVLY;
       return(-1);
       }
 
    k=0;
 
-   if((c = *(uvalues[k++].uval.sval))=='y' || c == 'Y')
-      preview = 1;
-   else
-      preview = 0;
+   preview = uvalues[k++].uval.ch.val;
 
-   if((c = *(uvalues[k++].uval.sval))=='y' || c == 'Y')
-      showbox = 1;
-   else
-      showbox = 0;
+   showbox = uvalues[k++].uval.ch.val;
 
-   previewfactor  = uvalues[k++].uval.dval;
+   previewfactor  = uvalues[k++].uval.ival;
 
-   if((c = *(uvalues[k++].uval.sval))=='y' || c == 'Y')
-      sphere = 1;
-   else
-      sphere = 0;
+   sphere = uvalues[k++].uval.ch.val;
 
-   glassestype = uvalues[k++].uval.dval;
+   glassestype = uvalues[k++].uval.ival;
+
+   RAY = uvalues[k++].uval.ival;
+   k++;
+
+   BRIEF = uvalues[k++].uval.ch.val;
+
+   strcpy(ray_name,uvalues[k++].uval.sval);
 
    /* check ranges */
-   if(preview)
-      preview = 1;
-   else
-      preview = 0;
-
-   if(previewfactor < 8)
-      previewfactor = 8;
-   else if(previewfactor > 128)
-      previewfactor = 128;
+   if(previewfactor < 2)
+      previewfactor = 2;
+   if(previewfactor > 2000)
+      previewfactor = 2000;
 
    if(sphere && !SPHERE)
    {
@@ -917,42 +1412,53 @@ restart_1:
 
    if(glassestype < 0)
       glassestype = 0;
-   else if(glassestype > 3)
+   if(glassestype > 3)
       glassestype = 3;
    if(glassestype)
       whichimage = 1;
 
-   k=0;
-   choices[k++] = "make a surface grid";
-   choices[k++] = "just draw the points";
-   choices[k++] = "connect the dots (wire frame)";
-   choices[k++] = "surface fill (colors interpolated)";
-   choices[k++] = "surface fill (colors not interpolated)";
-   choices[k++] = "solid fill (bars up from \"ground\")";
-   if(SPHERE)
-      choices[k++] = "light source";
-   else
-   {
-      choices[k++] = "light source before transformation";
-      choices[k++] = "light source after transformation";
-   }
+   if (RAY < 0)
+      RAY = 0;
+   if (RAY > 6)
+      RAY = 6;
 
-   for (i = 0; i < k; ++i)
-      attributes[i] = 1;
-   if ((i = fullscreen_choice(0,"Select 3D Fill Type",NULL,NULL,
+   if (!RAY)
+   {
+      k=0;
+      choices[k++] = "make a surface grid";
+      choices[k++] = "just draw the points";
+      choices[k++] = "connect the dots (wire frame)";
+      choices[k++] = "surface fill (colors interpolated)";
+      choices[k++] = "surface fill (colors not interpolated)";
+      choices[k++] = "solid fill (bars up from \"ground\")";
+      if(SPHERE)
+	 choices[k++] = "light source";
+      else
+      {
+	 choices[k++] = "light source before transformation";
+	 choices[k++] = "light source after transformation";
+      }
+
+      for (i = 0; i < k; ++i)
+	 attributes[i] = 1;
+      helpmode = HELP3DFILL;
+      i = fullscreen_choice(CHOICEHELP,"Select 3D Fill Type",NULL,NULL,
 			      k,choices,attributes,
-			      0,0,0,FILLTYPE+1,NULL,NULL,NULL,NULL,NULL)) < 0)
-      goto restart_1;
-   FILLTYPE = i-1;
+			      0,0,0,FILLTYPE+1,NULL,NULL,NULL,NULL);
+      helpmode = oldhelpmode;
+      if (i < 0)
+	 goto restart_1;
+      FILLTYPE = i-1;
 
-   if(glassestype)
-   {
-      if(get_funny_glasses_params())
+      if(glassestype)
+      {
+	 if(get_funny_glasses_params())
+	    goto restart_1;
+      }
+
+      if (check_mapfile())
 	 goto restart_1;
    }
-
-   if (check_mapfile())
-      goto restart_1;
 
 restart_3:
 
@@ -966,68 +1472,78 @@ restart_3:
    }
    else
    {
-      prompts3d[0] = "X-axis rotation in degrees";
-      prompts3d[1] = "Y-axis rotation in degrees";
-      prompts3d[2] = "Z-axis rotation in degrees";
-      prompts3d[3] = "X-axis scaling factor in pct";
-      prompts3d[4] = "Y-axis scaling factor in pct";
+      i = 0;
+      if (!RAY)
+      {
+	 prompts3d[i++] = "X-axis rotation in degrees";
+	 prompts3d[i++] = "Y-axis rotation in degrees";
+	 prompts3d[i++] = "Z-axis rotation in degrees";
+      }
+      prompts3d[i++] = "X-axis scaling factor in pct";
+      prompts3d[i++] = "Y-axis scaling factor in pct";
    }
-   uvalues[0].uval.dval   = XROT      ;
-   uvalues[0].type = 'd';
-   uvalues[1].uval.dval   = YROT      ;
-   uvalues[1].type = 'd';
-   uvalues[2].uval.dval   = ZROT      ;
-   uvalues[2].type = 'd';
-   uvalues[3].uval.dval   = XSCALE    ;
-   uvalues[3].type = 'd';
-   uvalues[4].uval.dval   = YSCALE    ;
-   uvalues[4].type = 'd';
-   k = 5;
+   k = 0;
+   if (!RAY)
+   {
+      uvalues[k].uval.ival   = XROT	 ;
+      uvalues[k++].type = 'i';
+      uvalues[k].uval.ival   = YROT	 ;
+      uvalues[k++].type = 'i';
+      uvalues[k].uval.ival   = ZROT	 ;
+      uvalues[k++].type = 'i';
+   }
+   uvalues[k].uval.ival   = XSCALE    ;
+   uvalues[k++].type = 'i';
+   uvalues[k].uval.ival   = YSCALE    ;
+   uvalues[k++].type = 'i';
    prompts3d[k] = "Surface Roughness scaling factor in pct";
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = ROUGH     ;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = ROUGH     ;
 
    prompts3d[k]= "'Water Level' (minimum color value)";
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = WATERLINE ;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = WATERLINE ;
 
-   prompts3d[k]= "Perspective distance [1 - 999, 0 for no persp]";
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = ZVIEWER   ;
+   if(!RAY)
+   {
+      prompts3d[k]= "Perspective distance [1 - 999, 0 for no persp]";
+      uvalues[k].type = 'i';
+      uvalues[k++].uval.ival = ZVIEWER	 ;
 
    prompts3d[k]= "X shift with perspective (positive = right)";
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = XSHIFT    ;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = XSHIFT    ;
 
    prompts3d[k]= "Y shift with perspective (positive = up   )";
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = YSHIFT    ;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = YSHIFT    ;
 
    prompts3d[k]= "Image non-perspective X adjust (positive = right)";
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = xtrans    ;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = xtrans    ;
 
    prompts3d[k]= "Image non-perspective Y adjust (positive = up)";
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = ytrans    ;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = ytrans    ;
 
    prompts3d[k]= "First transparent color";
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = transparent[0];
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = transparent[0];
 
    prompts3d[k]= "Last transparent color";
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = transparent[1];
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = transparent[1];
+   }
 
    prompts3d[k]= "Randomize Colors      (0 - 7, '0' disables)";
-   uvalues[k].type = 'd';
-   uvalues[k++].uval.dval = RANDOMIZE;
+   uvalues[k].type = 'i';
+   uvalues[k++].uval.ival = RANDOMIZE;
 
-   if (ILLUMINE)
+   if (ILLUMINE && !RAY)
    {
 	prompts3d[k]= "Color/Mono Images With Light Source   (1 = Color)";
-	uvalues[k].type = 'd';
-	uvalues[k++].uval.dval = full_color;
+	uvalues[k].type = 'i';
+	uvalues[k++].uval.ival = full_color;
    }
 
    if (SPHERE)
@@ -1039,31 +1555,40 @@ Long. 180 is top, 0 is bottom; Lat. -90 is left, 90 is right";
 Pre-rotation X axis is screen top; Y axis is left side\n\
 Pre-rotation Z axis is coming at you out of the screen!";
 
-   if (fullscreen_prompt(s,k,prompts3d,uvalues,0,0) < 0)
+   helpmode = HELP3DPARMS;
+   k = fullscreen_prompt(s,k,prompts3d,uvalues,0,0,NULL);
+   helpmode = oldhelpmode;
+   if (k < 0)
       goto restart_1;
 
    k = 0;
-   XROT       = uvalues[k++].uval.dval;
-   YROT       = uvalues[k++].uval.dval;
-   ZROT       = uvalues[k++].uval.dval;
-   XSCALE     = uvalues[k++].uval.dval;
-   YSCALE     = uvalues[k++].uval.dval;
-   ROUGH      = uvalues[k++].uval.dval;
-   WATERLINE  = uvalues[k++].uval.dval;
-   ZVIEWER    = uvalues[k++].uval.dval;
-   XSHIFT     = uvalues[k++].uval.dval;
-   YSHIFT     = uvalues[k++].uval.dval;
-   xtrans     = uvalues[k++].uval.dval;
-   ytrans     = uvalues[k++].uval.dval;
-   transparent[0] = uvalues[k++].uval.dval;
-   transparent[1] = uvalues[k++].uval.dval;
-   RANDOMIZE  = uvalues[k++].uval.dval;
+   if (!RAY)
+   {
+      XROT    = uvalues[k++].uval.ival;
+      YROT    = uvalues[k++].uval.ival;
+      ZROT    = uvalues[k++].uval.ival;
+   }
+   XSCALE     = uvalues[k++].uval.ival;
+   YSCALE     = uvalues[k++].uval.ival;
+   ROUGH      = uvalues[k++].uval.ival;
+   WATERLINE  = uvalues[k++].uval.ival;
+   if (!RAY)
+   {
+      ZVIEWER = uvalues[k++].uval.ival;
+   XSHIFT     = uvalues[k++].uval.ival;
+   YSHIFT     = uvalues[k++].uval.ival;
+   xtrans     = uvalues[k++].uval.ival;
+   ytrans     = uvalues[k++].uval.ival;
+   transparent[0] = uvalues[k++].uval.ival;
+   transparent[1] = uvalues[k++].uval.ival;
+   }
+   RANDOMIZE  = uvalues[k++].uval.ival;
    if (RANDOMIZE >= 7) RANDOMIZE = 7;
    if (RANDOMIZE <= 0) RANDOMIZE = 0;
 
-   if (ILLUMINE)
+   if (ILLUMINE && !RAY)
    {
-	full_color = uvalues[k++].uval.dval;
+	full_color = uvalues[k++].uval.ival;
 	if(get_light_params())
 	    goto restart_3;
    }
@@ -1080,58 +1605,64 @@ static int get_light_params()
    struct fullscreenvalues uvalues[10];
    char *s;
    int k;
+   int oldhelpmode;
 
    /* defaults go here */
 
+/* MRR */
    k = -1;
    prompts3d[++k]= "X value light vector";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = XLIGHT    ;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = XLIGHT    ;
 
    prompts3d[++k]= "Y value light vector";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = YLIGHT    ;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = YLIGHT    ;
 
    prompts3d[++k]= "Z value light vector";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = ZLIGHT    ;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = ZLIGHT    ;
 
    prompts3d[++k]= "Light Source Smoothing Factor";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = LIGHTAVG  ;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = LIGHTAVG  ;
 
    prompts3d[++k]= "Ambient Light      (0 - 100, '0' = 'Black' shadows";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = Ambient;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = Ambient;
 
    if (full_color)
    {
 	prompts3d[++k]	= "Haze Factor        (0 - 100, '0' disables)";
-	uvalues[k].type = 'd';
-	uvalues[k].uval.dval= haze;
+	uvalues[k].type = 'i';
+	uvalues[k].uval.ival= haze;
 
-	prompts3d[++k]= "Full Color Light File Name (if not light001.tga)";
+	check_writefile(light_name,".tga");
+	prompts3d[++k]= "Full Color Light File Name";
 	uvalues[k].type = 's';
 	strcpy(uvalues[k].uval.sval,light_name);
    }
 
    prompts3d[++k]= "";
 
-   if (fullscreen_prompt("Light Source Parameters",
-			 k,prompts3d,uvalues,0,0) < 0)
+   oldhelpmode = helpmode;
+   helpmode = HELP3DLIGHT;
+   k = fullscreen_prompt("Light Source Parameters",k,prompts3d,uvalues,0,0,NULL);
+   helpmode = oldhelpmode;
+   if (k < 0)
       return(-1);
 
    k = 0;
-      XLIGHT   = uvalues[k++].uval.dval;
-      YLIGHT   = uvalues[k++].uval.dval;
-      ZLIGHT   = uvalues[k++].uval.dval;
-      LIGHTAVG = uvalues[k++].uval.dval;
-      Ambient  = uvalues[k++].uval.dval;
+      XLIGHT   = uvalues[k++].uval.ival;
+      YLIGHT   = uvalues[k++].uval.ival;
+      ZLIGHT   = uvalues[k++].uval.ival;
+      LIGHTAVG = uvalues[k++].uval.ival;
+      Ambient  = uvalues[k++].uval.ival;
       if (Ambient >= 100) Ambient = 100;
       if (Ambient <= 0) Ambient = 0;
    if (full_color)
    {
-	haze  =  uvalues[k++].uval.dval;
+	haze  =  uvalues[k++].uval.ival;
 	if (haze >= 100) haze = 100;
 	if (haze <= 0) haze = 0;
 	strcpy(light_name,uvalues[k].uval.sval);
@@ -1144,43 +1675,46 @@ static int get_light_params()
 
 static int check_mapfile()
 {
-    char msg[81];
-    strcpy(temp1,"*");
-    if (mapset)
-       strcpy(temp1,MAP_name);
-    while ((FILLTYPE >= 5) || overlay3d || (mapset == 1) || glassestype) {
-       if (glassestype == 0 || glassestype == 3) {
-	  if (field_prompt(0,"\
+   extern unsigned char dacbox[256][3];
+   extern unsigned char olddacbox[256][3];
+   char msg[81];
+   int askflag = 0;
+   int i,oldhelpmode;
+   strcpy(temp1,"*");
+   if (mapset)
+      strcpy(temp1,MAP_name);
+   if (glassestype == 0 || glassestype == 3)
+      askflag = 1;
+   else
+      strcpy(temp1,funnyglasses_map_name);
+   while ((FILLTYPE >= 5) || overlay3d || (mapset == 1) || glassestype) {
+      if (askflag) {
+	 oldhelpmode = helpmode;
+	 helpmode = -1;
+	 i = field_prompt(0,"\
 Enter name of .MAP file to use,\n\
 or '*' to use palette from the image about to be loaded.",
-		  NULL,temp1,60,NULL) < 0)
-	     return(-1);
-	  if (temp1[0] == '*') {
-	     mapset = 0;
-	     break;
-	     }
-	  }
-       else
-	  strcpy(temp1,funnyglasses_map_name);
-       if (ValidateLuts(temp1) != 0) { /* Oops, somethings wrong */
-	  if (glassestype == 2) {
-	     mapset = 2; /* Need to generate glasses2.map */
-	     break;
-	     }
-	  if (glassestype == 1) {
-	     mapset = 3; /* Need to generate glasses1.map */
-	     break; /* compute palette on the fly goes here */
-	     }
-	  sprintf (msg,"Sorry, cannot open %s", temp1);
-	  stopmsg(1,msg);
-	  continue;
-	  }
-       /* File OK */
-       mapset = 1;
-       strcpy (MAP_name,temp1);
-       break; /* Done */
-       }
-    return(0);
+		 NULL,temp1,60,NULL);
+	 helpmode = oldhelpmode;
+	 if (i < 0)
+	    return(-1);
+	 if (temp1[0] == '*') {
+	    mapset = 0;
+	    break;
+	    }
+	 }
+      memcpy(olddacbox,dacbox,256*3); /* save the DAC */
+      i = ValidateLuts(temp1);
+      memcpy(dacbox,olddacbox,256*3); /* restore the DAC */
+      if (i != 0) { /* Oops, somethings wrong */
+	 askflag = 1;
+	 continue;
+	 }
+      mapset = 1;
+      strcpy (MAP_name,temp1);
+      break;
+      }
+   return(0);
 }
 
 static int get_funny_glasses_params()
@@ -1190,6 +1724,7 @@ static int get_funny_glasses_params()
    struct fullscreenvalues uvalues[10];
    char *s;
    int k;
+   int oldhelpmode;
 
    /* defaults */
    if(ZVIEWER == 0)
@@ -1220,135 +1755,85 @@ static int get_funny_glasses_params()
 
    k = -1;
    prompts3d[++k]  = "Interocular distance (as % of screen)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval= eyeseparation;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival= eyeseparation;
 
    prompts3d[++k]= "Convergence adjust (positive = spread greater)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = xadjust;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = xadjust;
 
    prompts3d[++k]= "Left  red image crop (% of screen)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = red_crop_left;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = red_crop_left;
 
    prompts3d[++k]= "Right red image crop (% of screen)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = red_crop_right;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = red_crop_right;
 
    prompts3d[++k]= "Left  blue image crop (% of screen)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = blue_crop_left;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = blue_crop_left;
 
    prompts3d[++k]= "Right blue image crop (% of screen)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = blue_crop_right;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = blue_crop_right;
 
    prompts3d[++k]= "Red brightness factor (%)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = red_bright;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = red_bright;
 
    prompts3d[++k]= "Blue brightness factor (%)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = blue_bright;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = blue_bright;
 
-   if(glassestype != 3)
+   if(glassestype == 1 || glassestype == 2)
    {
-      prompts3d[++k]= "Map File name (if not default)";
+      prompts3d[++k]= "Map File name";
       uvalues[k].type = 's';
       strcpy(uvalues[k].uval.sval,funnyglasses_map_name);
    }
 
-   if (fullscreen_prompt("Funny Glasses Parameters",
-			 k+1,prompts3d,uvalues,0,0) < 0)
+   oldhelpmode = helpmode;
+   helpmode = HELP3DGLASSES;
+   k = fullscreen_prompt("Funny Glasses Parameters",k+1,prompts3d,uvalues,0,0,NULL);
+   helpmode = oldhelpmode;
+   if (k < 0)
       return(-1);
 
    k = 0;
-   eyeseparation   =  uvalues[k++].uval.dval;
-   xadjust	   =  uvalues[k++].uval.dval;
-   red_crop_left   =  uvalues[k++].uval.dval;
-   red_crop_right  =  uvalues[k++].uval.dval;
-   blue_crop_left  =  uvalues[k++].uval.dval;
-   blue_crop_right =  uvalues[k++].uval.dval;
-   red_bright	   =  uvalues[k++].uval.dval;
-   blue_bright	   =  uvalues[k++].uval.dval;
+   eyeseparation   =  uvalues[k++].uval.ival;
+   xadjust	   =  uvalues[k++].uval.ival;
+   red_crop_left   =  uvalues[k++].uval.ival;
+   red_crop_right  =  uvalues[k++].uval.ival;
+   blue_crop_left  =  uvalues[k++].uval.ival;
+   blue_crop_right =  uvalues[k++].uval.ival;
+   red_bright	   =  uvalues[k++].uval.ival;
+   blue_bright	   =  uvalues[k++].uval.ival;
 
-   if(glassestype != 3)
+   if(glassestype == 1 || glassestype == 2)
       strcpy(funnyglasses_map_name,uvalues[k].uval.sval);
    return(0);
 }
 
 /* --------------------------------------------------------------------- */
 
-int get_ifs_params()		/* prompt for IFS params */
+static int edit_ifs_params()	/* prompt for IFS params */
 {
-   char *choices[6];
-   int attributes[6];
-   char *filename;
-   char *maskname;
-   float far *initarray;
-   char ifstype;
-   int totrows, totcols;
-   int i, j, k, numlines;
+   int totcols;
+   int i, j, k, numlines, ret;
    FILE *tempfile;
    char msg[81];
+   char filename[81];
+   float ftemp;
    int oldhelpmode;
-   int ret;
 
-   ENTER_OVLY(OVLY_PROMPTS);
+   if (!ifs_defn && !ifsload())
+      return(-1);
 
+   totcols = (ifs_type == 0) ? IFSPARM : IFS3DPARM;
    ret = 0;
-   stackscreen();		/* switch to text mode */
    oldhelpmode = helpmode;
-   helpmode = -1;
-
- /* PB, removed next 2 to retain modified values
-   ifsgetfile();
-   ifs3dgetfile();
-  */
-
-   choices[0] = "2D IFS Codes";
-   choices[1] = "3D IFS Codes";
-   choices[2] = "3D Transform Parameters";
-   for (i = 0; i < 3; ++i) attributes[i] = 0;
-   if(fractype == IFS)
-      j = 0;
-   else if (fractype == IFS3D)
-      j = 1;
-   else
-      j = 2;
-
-   i = fullscreen_choice(0,"IFS and 3D Parameters",NULL,NULL,3,choices,attributes,
-			 0,0,0,j,NULL,NULL,NULL,NULL,NULL);
-   switch(i) {
-      case 0:
-	 ifstype = '2';
-	 filename = ifsfilename;
-	 maskname = ifsmask;
-	 initarray = &initifs[0][0];
-	 totrows = NUMIFS;
-	 totcols = IFSPARM;
-	 break;
-      case 1:
-	 ifstype = '3';
-	 maskname = ifs3dmask;
-	 filename = ifs3dfilename;
-	 initarray = &initifs3d[0][0];
-	 totrows = NUMIFS;
-	 totcols = IFS3DPARM;
-	 break;
-      case 2:
-	 ret = get_ifs3d_params();
-	 goto get_ifs_exit;
-      default:
-	 ret = -1;
-	 goto get_ifs_exit;
-      }
-
-   /* edit table */
-
-   if (fractype != IFS && fractype != IFS3D)
-      ret = -1; /* PB: this is ugly, I haven't really made this whole   */
-		/*     routine smart enough, but it works out tolerably */
+   helpmode = HT_IFS;
 
    for ( ;; ) {
 static char far ifshdg2[]={"2D IFS Parameters"};
@@ -1356,20 +1841,19 @@ static char far ifshdg3[]={"3D IFS Parameters"};
 static char far ifsparmmsg1[]={"#    a     b     c     d     e     f"};
 static char far ifsparmmsg2[]={"     g     h     i     j     k     l"};
 static char far ifsprompt[]={"\
-Enter the number of the line you want to edit\n\
-or R to start from another (.IFS) file, or S to\n\
-save your edits in a file, or ENTER to end ==>"};
+Enter the number of the line you want to edit,\n\
+S to save your edits in a file, or ENTER to end ==>"};
       int leftcol,promptrow,promptcol;
 
-      for (numlines = 0; numlines < totrows; numlines++) /* find the first zero entry */
-	 if (initarray[(numlines * totcols) + totcols - 1] <= 0.0001) break;
+      for (numlines = 0; numlines < NUMIFS; numlines++) /* find the first zero entry */
+	 if (ifs_defn[(numlines * totcols) + totcols - 1] <= 0.0001) break;
 
       helptitle();
       setattr(1,0,C_PROMPT_BKGRD,24*80); /* init rest of screen to background */
-      putstringcenter(2,0,80,C_GENERAL_HI,(ifstype == '2') ? ifshdg2 : ifshdg3);
-      leftcol = (ifstype == '2') ? 15 : 0;
+      putstringcenter(2,0,80,C_GENERAL_HI,(ifs_type == 0) ? ifshdg2 : ifshdg3);
+      leftcol = (ifs_type == 0) ? 15 : 0;
       putstring(4,leftcol+1,C_GENERAL_HI,ifsparmmsg1);
-      if (ifstype == '3')
+      if (ifs_type != 0)
 	 putstring(-1,-1,C_GENERAL_HI,ifsparmmsg2);
       putstring(-1,-1,C_GENERAL_HI,"   prob \n\n");
 
@@ -1378,7 +1862,7 @@ save your edits in a file, or ENTER to end ==>"};
 	 sprintf(msg,"%2d", i+1);
 	 putstring(5+i,leftcol,C_GENERAL_HI,msg);
 	 for (j = 0; j < totcols; j++) {
-	    sprintf(msg,"%6.2f", (float )initarray[(i*totcols)+j]);
+	    sprintf(msg,"%6.2f",ifs_defn[(i*totcols)+j]);
 	    putstring(-1,-1,C_GENERAL_MED,msg);
 	    }
 	 }
@@ -1404,47 +1888,42 @@ save your edits in a file, or ENTER to end ==>"};
 	    if ((tempfile=fopen(filename,"w")) != NULL) {
 	       for (i = 0; i < numlines; i++) {
 		  for (j = 0; j < totcols; j++)
-		     fprintf(tempfile, "%6.2f", (float)initarray[(i*totcols)+j]);
+		     fprintf(tempfile, "%6.2f", (float)ifs_defn[(i*totcols)+j]);
 		  fprintf(tempfile, "\n");
 		  }
 	       fclose(tempfile);
+	       ifs_changed = 0;
 	       }
-	    else
-	       stopmsg(0,"Could not create file");
+	    else {
+	       static char far msg[]={"Could not create file"};
+	       stopmsg(0,msg);
+	       }
 	    }
-	 continue;
-	 }
-      if (temp1[0] == 'r' || temp1[0] == 'R') {
-	 if (getafilename("Select IFS File to Edit",maskname,filename) >= 0)
-	    if (ifstype == '3')
-	       ifs3dgetfile();
-	    else
-	       ifsgetfile();
 	 continue;
 	 }
       i = atoi(temp1) - 1;
       if (i >= 0 && i <= numlines) {
 	 for (j = 0; j < totcols; j++) {
-	    if(j < totcols-1)
-		    sprintf(msg,"Parameter %c",'a'+j);
+	    if (j < totcols-1)
+	       sprintf(msg,"Parameter %c",'a'+j);
 	    else
-		    sprintf(msg,"Probability");
+	       sprintf(msg,"Probability");
 	    putstring(promptrow+2,25,C_GENERAL_HI,msg);
-	    sprintf(temp1,"%6.2f",(float)initarray[(i*totcols)+j]);
+	    sprintf(temp1,"%6.2f",(float)ifs_defn[k=(i*totcols)+j]);
 	    if (input_field(1,C_GENERAL_INPUT,temp1,6,
 			    textrow,textcol+1,NULL) < 0)
 	       break;
-	    initarray[(i*totcols)+j] = atof(temp1);
+	    if (ifs_defn[k] != (ftemp = atof(temp1))) {
+	       ifs_defn[k] = ftemp;
+	       ret = ifs_changed = 1;
+	       }
 	    }
 	 memset(msg,' ',80); msg[81] = 0;
 	 putstring(promptrow+2,0,C_PROMPT_BKGRD,msg);
 	 }
       }
 
-get_ifs_exit:
-   unstackscreen();
    helpmode = oldhelpmode;
-   EXIT_OVLY;
    return(ret);
 }
 
@@ -1456,12 +1935,10 @@ get_ifs_exit:
 	to the calling routine:
 
 	-1  routine was ESCAPEd - no need to re-generate the image.
-	 0  minor variable changed (such as "overwrite=").  No need to
-	    re-generate the image.
+	 0  nothing changed, or minor variable such as "overwrite=".
+	    No need to re-generate the image.
 	 1  major variable changed (such as "inside=").  Re-generate
 	    the image.
-	 2  Floating-point toggle changed.  FRACTINT.C takes special
-	    actions in this instance, as the algorithm itself changes.
 
 	Finally, remember to insert variables in the list *and* check
 	for them in the same order!!!
@@ -1479,37 +1956,40 @@ int get_toggles()
    int oldhelpmode;
    char prevsavename[81];
 
-   double values[25], oldvalues[25];
-
    struct fullscreenvalues uvalues[25];
    int i, j, k;
 
+   char old_usr_stdcalcmode;
+   int old_maxit,old_inside,old_outside,old_soundflag;
+   int old_logflag,old_biomorph,old_decomp;
+
+   static char *calcmodes[4] ={"1","2","g","b"};
+   static char *soundmodes[5]={"yes","no","x","y","z"};
+
    ENTER_OVLY(OVLY_PROMPTS);
 
-   /* fill up the choices (and previous values) arrays */
    k = -1;
 
    k++;
    choices[k] =  "Passes (1, 2, g[uessing], or b[oundary trace])";
-   uvalues[k].type = 's';
-   oldvalues[k] = usr_stdcalcmode;
-   uvalues[k].uval.sval[0] = usr_stdcalcmode;
-   uvalues[k].uval.sval[1] = 0;
+   uvalues[k].type = 'l';
+   uvalues[k].uval.ch.vlen = 3;
+   uvalues[k].uval.ch.llen = 4;
+   uvalues[k].uval.ch.list = calcmodes;
+   uvalues[k].uval.ch.val = (usr_stdcalcmode == '1') ? 0
+			  : (usr_stdcalcmode == '2') ? 1
+			  : (usr_stdcalcmode == 'g') ? 2 : 3;
+   old_usr_stdcalcmode = usr_stdcalcmode;
 
    k++;
    choices[k] =  "Floating Point Algorithm";
-   uvalues[k].type = 's';
-   oldvalues[k] = usr_floatflag;
-   if (usr_floatflag)
-      strcpy(uvalues[k].uval.sval,"yes");
-   else
-      strcpy(uvalues[k].uval.sval,"no");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = usr_floatflag;
 
    k++;
    choices[k] = "Maximum Iterations (2 to 32767)";
-   uvalues[k].type = 'd';
-   oldvalues[k] = maxit;
-   uvalues[k].uval.dval = oldvalues[k];
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_maxit = maxit;
 
    k++;
    choices[k] = "Inside Color (<nnn>, maxiter, bof60, bof61)";
@@ -1522,72 +2002,59 @@ int get_toggles()
       strcpy(uvalues[k].uval.sval,"maxiter");
    else
       sprintf(uvalues[k].uval.sval,"%d",inside);
-   oldvalues[k] = inside;
+   old_inside = inside;
 
    k++;
    choices[k] = "Outside Color (-1 means none)";
-   uvalues[k].type = 'd';
-   oldvalues[k] = outside;
-   uvalues[k].uval.dval = oldvalues[k];
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_outside = outside;
 
    k++;
    choices[k] = "Savename (.GIF implied)";
    uvalues[k].type = 's';
-   oldvalues[k] = 0;
    strcpy(prevsavename,savename);
    strcpy(uvalues[k].uval.sval,savename);
 
    k++;
    choices[k] = "File Overwrite ('overwrite=')";
-   uvalues[k].type = 's';
-   oldvalues[k] = overwrite;
-   if (overwrite)
-      strcpy(uvalues[k].uval.sval,"yes");
-   else
-      strcpy(uvalues[k].uval.sval,"no");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = overwrite;
 
    k++;
    choices[k] = "Sound (no, yes, x, y, z)";
-   uvalues[k].type = 's';
-   oldvalues[k] = soundflag;
-   strcpy(uvalues[k].uval.sval,"no");
-   if (soundflag == -1)
-      strcpy(uvalues[k].uval.sval,"yes");
-   if (soundflag == 1)
-      strcpy(uvalues[k].uval.sval,"x");
-   if (soundflag == 2)
-      strcpy(uvalues[k].uval.sval,"y");
-   if (soundflag == 3)
-      strcpy(uvalues[k].uval.sval,"z");
+   uvalues[k].type = 'l';
+   uvalues[k].uval.ch.vlen = 3;
+   uvalues[k].uval.ch.llen = 5;
+   uvalues[k].uval.ch.list = soundmodes;
+   uvalues[k].uval.ch.val = 1 + (old_soundflag = soundflag);
 
    k++;
-   choices[k] = "Log Palette (0=no,1=yes,-1=old,+n=cmprsd,-n=sqrt)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = oldvalues[k] = LogFlag;
-
-   k++;
-   choices[k] = "Distance Estimator Method (0 means off):";
-   uvalues[k].type = 'd';
-   oldvalues[k] = usr_distest;
-   uvalues[k].uval.dval = oldvalues[k];
-
-   k++;
-   choices[k] = "Decomp Option (2,4,8,..,256, 0=OFF)";
-   uvalues[k].type = 'd';
-   oldvalues[k] = decomp[0];
-   uvalues[k].uval.dval = oldvalues[k];
+   if (rangeslen == 0) {
+      choices[k] = "Log Palette (0=no,1=yes,-1=old,+n=cmprsd,-n=sqrt)";
+      uvalues[k].type = 'i';
+      }
+   else {
+      choices[k] = "Log Palette (n/a, ranges= parameter is in effect)";
+      uvalues[k].type = '*';
+      }
+   uvalues[k].uval.ival = old_logflag = LogFlag;
 
    k++;
    choices[k] = "Biomorph Color (-1 means OFF)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = oldvalues[k] = biomorph;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_biomorph = usr_biomorph;
 
-   oldhelpmode = helpmode;     /* this prevents HELP from activating */
-   helpmode = -1;
+   k++;
+   choices[k] = "Decomp Option (2,4,8,..,256, 0=OFF)";
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_decomp = decomp[0];
+
+   oldhelpmode = helpmode;
+   helpmode = HELPXOPTS;
    i = fullscreen_prompt("        Basic Options\n"
 			 "(not all combinations make sense)",
-	 k+1,choices,uvalues,0,0);
-   helpmode = oldhelpmode;     /* re-enable HELP */
+	 k+1,choices,uvalues,0,0,NULL);
+   helpmode = oldhelpmode;
    if (i < 0) {
       EXIT_OVLY;
       return(-1);
@@ -1597,24 +2064,19 @@ int get_toggles()
    k = -1;
    j = 0;   /* return code */
 
-   c = uvalues[++k].uval.sval[0];
-   if (c == 'B') c = 'b';
-   if (c == 'G') c = 'g';
-   if (c == '1' || c == '2' || c == 'g' || c == 'b')
-      usr_stdcalcmode = c;
-   if (oldvalues[k] != usr_stdcalcmode && j < 1) j = 1;
+   usr_stdcalcmode = calcmodes[uvalues[++k].uval.ch.val][0];
+   if (old_usr_stdcalcmode != usr_stdcalcmode) j = 1;
 
-   if (uvalues[++k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
-      usr_floatflag = 1;
-   else
-      usr_floatflag = 0;
-   if (usr_floatflag != oldvalues[k]) j = 2;
+   if (uvalues[++k].uval.ch.val != usr_floatflag) {
+      usr_floatflag = uvalues[k].uval.ch.val;
+      j = 1;
+      }
 
    ++k;
-   maxit = uvalues[k].uval.dval;
-   if (uvalues[k].uval.dval < 2) maxit = 2;
-   if (uvalues[k].uval.dval > 32767) maxit = 32767;
-   if (maxit != oldvalues[k] && j < 1) j = 1;
+   maxit = uvalues[k].uval.ival;
+   if (maxit < 2) maxit = 2;
+   if (maxit > 32767) maxit = 32767;
+   if (maxit != old_maxit) j = 1;
 
    if(strncmp(strlwr(uvalues[++k].uval.sval),"bof60",5)==0)
       inside = -60;
@@ -1624,47 +2086,29 @@ int get_toggles()
       inside = -1;
    else
       inside = atoi(uvalues[k].uval.sval);
-   if (inside != oldvalues[k] && j < 1) j = 1;
+   if (inside != old_inside) j = 1;
 
-   outside = uvalues[++k].uval.dval;
-   if (outside != oldvalues[k] && j < 1) j = 1;
+   outside = uvalues[++k].uval.ival;
+   if (outside != old_outside) j = 1;
 
    strcpy(savename,uvalues[++k].uval.sval);
    if (strcmp(savename,prevsavename))
-      resave_flag = 0; /* forget pending increment if there is one */
+      resave_flag = started_resaves = 0; /* forget pending increment */
 
-   if (uvalues[++k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
-      overwrite = 1;
-   else if (uvalues[k].uval.sval[0] == 'n' || uvalues[k].uval.sval[0] == 'N')
-      overwrite = 0;
+   overwrite = uvalues[++k].uval.ch.val;
 
-   if (strnicmp(uvalues[++k].uval.sval,"yes",2) == 0) {
-      soundflag = -1;
-      uvalues[k].uval.sval[0] = 'q';
-      }
-   else
-      soundflag = 0;
-   if (uvalues[k].uval.sval[0] == 'x' || uvalues[k].uval.sval[0] == 'X')
-      soundflag = 1;
-   if (uvalues[k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
-      soundflag = 2;
-   if (uvalues[k].uval.sval[0] == 'z' || uvalues[k].uval.sval[0] == 'Z')
-      soundflag = 3;
-   if (soundflag != oldvalues[k] && (soundflag > 1 || oldvalues[k] > 1) &&
-      j < 1) j = 1;
+   soundflag = uvalues[++k].uval.ch.val - 1;
+   if (soundflag != old_soundflag && (soundflag > 1 || old_soundflag > 1))
+      j = 1;
 
-   LogFlag = uvalues[++k].uval.dval;
-   if (LogFlag != oldvalues[k] && j < 1) j = 1;
+   LogFlag = uvalues[++k].uval.ival;
+   if (LogFlag != old_logflag) j = 1;
 
-   ++k;
-   usr_distest = (uvalues[k].uval.dval > 32000) ? 32000 : uvalues[k].uval.dval;
-   if (usr_distest != oldvalues[k]) j = 2;
+   usr_biomorph = uvalues[++k].uval.ival;
+   if (usr_biomorph != old_biomorph) j = 1;
 
-   decomp[0] = uvalues[++k].uval.dval;
-   if (decomp[0] != oldvalues[k] && j < 1) j = 1;
-
-   biomorph = uvalues[++k].uval.dval;
-   if (biomorph != oldvalues[k] && j < 1) j = 1;
+   decomp[0] = uvalues[++k].uval.ival;
+   if (decomp[0] != old_decomp) j = 1;
 
    EXIT_OVLY;
    return(j);
@@ -1684,12 +2128,13 @@ int get_toggles2()
    int numprompts;
    char *s;
    int oldhelpmode;
-   char prevsavename[81];
-
-   double values[25], oldvalues[25];
 
    struct fullscreenvalues uvalues[25];
    int i, j, k;
+
+   int old_rotate_lo,old_rotate_hi;
+   int old_usr_distest,old_distestwidth;
+   double old_potparam[3],old_inversion[3];
 
    ENTER_OVLY(OVLY_PROMPTS);
 
@@ -1698,44 +2143,44 @@ int get_toggles2()
 
    k++;
    choices[k] = "Look for finite attractor";
-   uvalues[k].type = 's';
-   oldvalues[k] = finattract;
-   if (finattract)
-      strcpy(uvalues[k].uval.sval,"yes");
-   else
-      strcpy(uvalues[k].uval.sval,"no");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = finattract;
 
    k++;
    choices[k] = "Potential Max Color (0 means off)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = oldvalues[k] = potparam[0];
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_potparam[0] = potparam[0];
 
    k++;
    choices[k] = "          Slope";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = oldvalues[k] = potparam[1];
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_potparam[1] = potparam[1];
 
    k++;
    choices[k] = "          Bailout";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = oldvalues[k] = potparam[2];
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_potparam[2] = potparam[2];
 
    k++;
    choices[k] = "          16 bit values";
-   uvalues[k].type = 's';
-   oldvalues[k] = pot16bit;
-   if (pot16bit)
-      strcpy(uvalues[k].uval.sval,"yes");
-   else
-      strcpy(uvalues[k].uval.sval,"no");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = pot16bit;
+
+   k++;
+   choices[k] = "Distance Estimator (0=off, <0=edge, >0=on):";
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_usr_distest = usr_distest;
+   k++;
+   choices[k] = "          width factor:";
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_distestwidth = distestwidth;
 
    choices[k+1] = "Inversion radius or \"auto\" (0 means off)";
    choices[k+2] = "          center X coordinate or \"auto\"";
    choices[k+3] = "          center Y coordinate or \"auto\"";
    for (i = 0; i < 3; i++) {
       uvalues[++k].type = 's';
-      oldvalues[k] = inversion[i];
-      if (inversion[i] == AUTOINVERT)
+      if ((old_inversion[i] = inversion[i]) == AUTOINVERT)
 	 sprintf(uvalues[k].uval.sval,"auto");
       else
 	 sprintf(uvalues[k].uval.sval,"%g",inversion[i]);
@@ -1744,12 +2189,21 @@ int get_toggles2()
    choices[k] = "  (use fixed radius & center when zooming)",
    uvalues[k].type = '*';
 
-   oldhelpmode = helpmode;     /* this prevents HELP from activating */
-   helpmode = -1;
+   k++;
+   choices[k] = "Color cycling from color (0 ... 254)";
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_rotate_lo = rotate_lo;
+   k++;
+   choices[k] = "              to   color (1 ... 255)";
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = old_rotate_hi = rotate_hi;
+
+   oldhelpmode = helpmode;
+   helpmode = HELPYOPTS;
    i = fullscreen_prompt("       Extended Doodads\n"
 			 "(not all combinations make sense)",
-	 k+1,choices,uvalues,0,0);
-   helpmode = oldhelpmode;     /* re-enable HELP */
+	 k+1,choices,uvalues,0,0,NULL);
+   helpmode = oldhelpmode;
    if (i < 0) {
       EXIT_OVLY;
       return(-1);
@@ -1759,45 +2213,57 @@ int get_toggles2()
    k = -1;
    j = 0;   /* return code */
 
-   if (uvalues[++k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
-      finattract = 1;
-   else
-      finattract = 0;
-   if (finattract != oldvalues[k]) j = 2;
+   if (uvalues[++k].uval.ch.val != finattract) {
+      finattract = uvalues[k].uval.ch.val;
+      j = 1;
+      }
 
-   potparam[0] = uvalues[++k].uval.dval;
-   if (potparam[0] != oldvalues[k] && j < 1) j = 1;
+   potparam[0] = uvalues[++k].uval.ival;
+   if (potparam[0] != old_potparam[0]) j = 1;
 
-   potparam[1] = uvalues[++k].uval.dval;
-   if (potparam[0] != 0.0 && potparam[1] != oldvalues[k] && j < 1) j = 1;
+   potparam[1] = uvalues[++k].uval.ival;
+   if (potparam[0] != 0.0 && potparam[1] != old_potparam[1]) j = 1;
 
-   potparam[2] = uvalues[++k].uval.dval;
-   if (potparam[0] != 0.0 && potparam[2] != oldvalues[k] && j < 1) j = 1;
+   potparam[2] = uvalues[++k].uval.ival;
+   if (potparam[0] != 0.0 && potparam[2] != old_potparam[2]) j = 1;
 
-   if (uvalues[++k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
-      pot16bit = 1;
-   else
-      pot16bit = 0;
-   if (pot16bit != oldvalues[k])
+   if (uvalues[++k].uval.ch.val != pot16bit) {
+      pot16bit = uvalues[k].uval.ch.val;
       if (pot16bit) { /* turned it on */
-	 if (potparam[0] != 0.0) j = 2;
+	 if (potparam[0] != 0.0) j = 1;
 	 }
       else /* turned it off */
 	 if (dotmode != 11) /* ditch the disk video */
 	    enddisk();
 	 else /* keep disk video, but ditch the fraction part at end */
 	    disk16bit = 0;
+      }
+
+   ++k;
+   usr_distest = (uvalues[k].uval.ival > 32000) ? 32000 : uvalues[k].uval.ival;
+   if (usr_distest != old_usr_distest) j = 1;
+   ++k;
+   distestwidth = uvalues[k].uval.ival;
+   if (usr_distest && distestwidth != old_distestwidth) j = 1;
 
    for (i = 0; i < 3; i++) {
       if (uvalues[++k].uval.sval[0] == 'a' || uvalues[k].uval.sval[0] == 'A')
 	 inversion[i] = AUTOINVERT;
       else
 	 inversion[i] = atof(uvalues[k].uval.sval);
-      if (oldvalues[k] != inversion[i]
+      if (old_inversion[i] != inversion[i]
 	&& (i == 0 || inversion[0] != 0.0))
 	 j = 1;
       }
    invert = (inversion[0] == 0.0) ? 0 : 3;
+   ++k;
+
+   rotate_lo = uvalues[++k].uval.ival;
+   rotate_hi = uvalues[++k].uval.ival;
+   if (rotate_lo < 0 || rotate_hi > 255 || rotate_lo > rotate_hi) {
+      rotate_lo = old_rotate_lo;
+      rotate_hi = old_rotate_hi;
+      }
 
    EXIT_OVLY;
    return(j);
@@ -1816,13 +2282,20 @@ int get_view_params()
 {
    char *choices[20];
    int oldhelpmode;
-   double values[25], oldvalues[25];
    struct fullscreenvalues uvalues[25];
-   int i, j, k;
-   float oldaspectratio;
+   int i, k;
+   float old_viewreduction,old_aspectratio;
+   int old_viewwindow,old_viewcrop,old_viewxdots,old_viewydots;
 
    ENTER_OVLY(OVLY_PROMPTS);
    stackscreen();
+
+   old_viewwindow    = viewwindow;
+   old_viewcrop      = viewcrop;
+   old_viewreduction = viewreduction;
+   old_aspectratio   = finalaspectratio;
+   old_viewxdots     = viewxdots;
+   old_viewydots     = viewydots;
 
 get_view_restart:
    /* fill up the choices (and previous values) arrays */
@@ -1830,40 +2303,32 @@ get_view_restart:
 
    k++;
    choices[k] = "Preview display? (no for full screen)";
-   uvalues[k].type = 's';
-   oldvalues[k] = viewwindow;
-   if (viewwindow)
-      strcpy(uvalues[k].uval.sval,"yes");
-   else
-      strcpy(uvalues[k].uval.sval,"no");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = viewwindow;
 
    k++;
    choices[k] = "Auto window size reduction factor";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = oldvalues[k] = viewreduction;
+   uvalues[k].type = 'f';
+   uvalues[k].uval.dval = viewreduction;
 
    k++;
    choices[k] = "Final media overall aspect ratio, y/x";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = oldvalues[k] = oldaspectratio = finalaspectratio;
+   uvalues[k].type = 'f';
+   uvalues[k].uval.dval = finalaspectratio;
 
    k++;
    choices[k] = "Crop starting coordinates to new aspect ratio?";
-   uvalues[k].type = 's';
-   oldvalues[k] = viewcrop;
-   if (viewcrop)
-      strcpy(uvalues[k].uval.sval,"yes");
-   else
-      strcpy(uvalues[k].uval.sval,"no");
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = viewcrop;
 
    k++;
    choices[k] = "explicit size x pixels (0 for auto size)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = oldvalues[k] = viewxdots;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = viewxdots;
    k++;
    choices[k] = "              y pixels (0 to base on aspect ratio)";
-   uvalues[k].type = 'd';
-   uvalues[k].uval.dval = oldvalues[k] = viewydots;
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = viewydots;
 
    k++;
    choices[k] = "";
@@ -1874,14 +2339,20 @@ get_view_restart:
 
    oldhelpmode = helpmode;     /* this prevents HELP from activating */
    helpmode = HELPVIEW;
-   i = fullscreen_prompt("View Window Options",k+1,choices,uvalues,
-			 PROMPTHELP,16);
+   i = fullscreen_prompt("View Window Options",k+1,choices,uvalues,0,16,NULL);
    helpmode = oldhelpmode;     /* re-enable HELP */
    if (i < 0) {
+      viewwindow    = old_viewwindow;
+      viewcrop	    = old_viewcrop;
+      viewreduction = old_viewreduction;
+      finalaspectratio = old_aspectratio;
+      viewxdots     = old_viewxdots;
+      viewydots     = old_viewydots;
       unstackscreen();
       EXIT_OVLY;
       return(-1);
       }
+
    if (i == F4) {
       viewwindow = viewxdots = viewydots = 0;
       viewreduction = 4.2;
@@ -1892,37 +2363,34 @@ get_view_restart:
 
    /* now check out the results (*hopefully* in the same order <grin>) */
    k = -1;
-   j = 0;   /* return code */
 
-   if (uvalues[++k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
-      viewwindow = 1;
-   else
-      viewwindow = 0;
-   if (viewwindow != oldvalues[k]) j = 1;
+   viewwindow = uvalues[++k].uval.ch.val;
 
    viewreduction = uvalues[++k].uval.dval;
-   if (viewreduction != oldvalues[k] && viewwindow) j = 1;
 
    if ((finalaspectratio = uvalues[++k].uval.dval) == 0)
       finalaspectratio = SCREENASPECT;
-   if (finalaspectratio != oldvalues[k] && viewwindow) j = 1;
 
-   if (uvalues[++k].uval.sval[0] == 'y' || uvalues[k].uval.sval[0] == 'Y')
-      viewcrop = 1;
-   else
-      viewcrop = 0;
+   viewcrop = uvalues[++k].uval.ch.val;
 
-   viewxdots = uvalues[++k].uval.dval;
-   if (viewxdots != oldvalues[k] && viewwindow) j = 1;
-   viewydots = uvalues[++k].uval.dval;
-   if (viewydots != oldvalues[k] && viewwindow && viewxdots) j = 1;
+   viewxdots = uvalues[++k].uval.ival;
+   viewydots = uvalues[++k].uval.ival;
 
-   if (finalaspectratio != oldaspectratio && viewcrop)
-      aspectratio_crop(oldaspectratio,finalaspectratio);
+   if (finalaspectratio != old_aspectratio && viewcrop)
+      aspectratio_crop(old_aspectratio,finalaspectratio);
+
+   i = 0;
+   if (viewwindow != old_viewwindow
+      || (viewwindow
+	 && (  viewreduction != old_viewreduction
+	    || finalaspectratio != old_aspectratio
+	    || viewxdots != old_viewxdots
+	    || (viewydots != old_viewydots && viewxdots) ) ) )
+      i = 1;
 
    unstackscreen();
    EXIT_OVLY;
-   return(j);
+   return(i);
 }
 
 
@@ -1945,21 +2413,27 @@ int get_starfield_params(void) {
    static char StarMap[] = "altern.map";
    int i, c;
    struct fullscreenvalues uvalues[3];
+   int oldhelpmode;
 
    ENTER_OVLY(OVLY_PROMPTS);
 
    if(colors < 255) {
-      stopmsg(0,"starfield requires 256 color mode");
+      static char far msg[]={"starfield requires 256 color mode"};
+      stopmsg(0,msg);
       EXIT_OVLY;
       return(-1);
    }
    for (i = 0; i < 3; i++) {
       uvalues[i].uval.dval = starfield_values[i];
-      uvalues[i].type = 'd';
+      uvalues[i].type = 'f';
    }
    stackscreen();
-   if (fullscreen_prompt("Starfield Parameters",
-			 3,starfield_prompts,uvalues,0,0) < 0) {
+   oldhelpmode = helpmode;
+   helpmode = HELPSTARFLD;
+   i = fullscreen_prompt("Starfield Parameters",
+			 3,starfield_prompts,uvalues,0,0,NULL);
+   helpmode = oldhelpmode;
+   if (i < 0) {
       unstackscreen();
       EXIT_OVLY;
       return(-1);
@@ -1980,10 +2454,7 @@ int get_starfield_params(void) {
    con	= (long)(((starfield_values[1]) / 100.0) * (1L << 16));
    Slope = (int)(starfield_values[2]);
 
-   if(ValidateLuts(StarMap) != 0) {
-      char msg[200];
-      sprintf(msg,"Could not load color map %s",StarMap);
-      stopmsg(0,msg);
+   if (ValidateLuts(StarMap) != 0) {
       EXIT_OVLY;
       return(-1);
       }
@@ -2007,22 +2478,47 @@ int get_starfield_params(void) {
 
 /* --------------------------------------------------------------------- */
 
+int get_commands()		/* execute commands from file */
+{
+   int ret;
+   FILE *parmfile;
+   long point;
+   int oldhelpmode;
+   ENTER_OVLY(OVLY_PROMPTS);
+   ret = 0;
+   oldhelpmode = helpmode;
+   helpmode = HELPPARMFILE;
+   if ((point = get_file_entry(GETPARM,"Parameter Set",
+			       commandmask,CommandFile,CommandName)) >= 0
+     && (parmfile = fopen(CommandFile,"rb"))) {
+      fseek(parmfile,point,SEEK_SET);
+      ret = load_commands(parmfile);
+      }
+   helpmode = oldhelpmode;
+   EXIT_OVLY;
+   return(ret);
+}
+
+/* --------------------------------------------------------------------- */
+
 void goodbye()			/* we done.  Bail out */
 {
    extern unsigned char exitmode;
    extern int mode7text;
    extern int made_dsktemp;
    union REGS r;
-   static char goodbyemessage[]={"   Thank You for using FRACTINT"};
-   setvideomode(3,0,0,0);
+   static char far goodbyemessage[]={"   Thank You for using FRACTINT"};
+   setvideotext();
    r.h.al = (mode7text == 0) ? exitmode : 7;
    r.h.ah = 0;
    int86(0x10, &r, &r);
-   printf("\n\n\n%s\n",goodbyemessage); /* printf takes far pointer */
+   printf("\n\n\n%Fs\n",goodbyemessage); /* printf takes far pointer */
    movecursor(6,0);
    discardgraphics(); /* if any emm/xmm tied up there, release it */
+   stopslideshow();
    if (made_dsktemp)
       remove("FRACTINT.DSK");
+   end_help();
    exit(0);
 }
 
@@ -2070,7 +2566,6 @@ int getafilename(char *hdg,char *template,char *flname)
    int masklen;
    char filename[13];
    char speedstr[81];
-   char buf[120];
    char tmpmask[FILE_MAX_PATH];   /* used to locate next file in list */
    static int numtemplates = 1;
    int i,j;
@@ -2194,11 +2689,9 @@ retry_dir:
    }
    if(numtemplates > 1)
       strcat(tmpmask," *.pot");
-   strcpy(buf,hdg);
-   strcat(buf,"\nTemplate: ");
-   strcat(buf,tmpmask);
-/**if(filecount - dircount == 0)   PB removed this, makes max size too big
-      strcat(buf,"  No files found, please re-enter"); **/
+   strcpy(temp1,hdg);
+   strcat(temp1,"\nTemplate: ");
+   strcat(temp1,tmpmask);
    strcpy(speedstr,filename);
    if (speedstr[0] == 0)
    {
@@ -2208,9 +2701,9 @@ retry_dir:
       if (i >= filecount)
 	 i = 0;
    }
-   i = fullscreen_choice(0,buf,NULL,NULL,
+   i = fullscreen_choice(0,temp1,NULL,NULL,
 			 filecount,(char **)choices,attributes,5,99,12,
-			 i,NULL,NULL,speedstr,filename_speedstr,NULL);
+			 i,NULL,speedstr,filename_speedstr,NULL);
    if (i < 0)
    {
       EXIT_OVLY;
@@ -2276,8 +2769,8 @@ retry_dir:
       else /* speedstate == SEARCHPATH */
       {
 	 char fullpath[80];
-	 if (strchr(speedstr,'.') == NULL)
-	    strcat(speedstr,".gif");
+      /* if (strchr(speedstr,'.') == NULL)
+	    strcat(speedstr,".gif"); */
 	 findpath(speedstr,fullpath);
 	 if(fullpath[0])
 	    strcpy(flname,fullpath);
@@ -2478,59 +2971,6 @@ static int expand_dirname(char *dirname,char *drive)
       strcat(dirname,curdir);
       strcat(dirname,buf);
       }
-   return(0);
-}
-
-
-int select_video_mode()
-{
-   int	attributes[MAXVIDEOMODES];
-   int oldhelpmode;
-   int i;
-   ENTER_OVLY(OVLY_PROMPTS);
-   oldhelpmode = helpmode;
-   helpmode = -1; /* disable help */
-   for (i = 0; i < MAXVIDEOMODES; ++i)
-      attributes[i] = 1;
-   if (adapter < 0) {
-      switch (video_type) { /* set up a reasonable default (we hope) */
-	 case 2:  i = 3; break;  /* cga */
-	 case 3:  i = 0; break;  /* ega */
-	 default: i = 1; break;  /* mcga/vga? */
-	 }
-      }
-   else
-      i = adapter;
-   if ((i = fullscreen_choice(0,"Select Video Mode",
- "key...name......................xdot.ydot.clr.comment..................",
-		  NULL,maxvideomode,NULL,attributes,
-		  1,16,71,i,format_item,NULL,NULL,NULL,check_modekey)) == -1)
-      return(-1);
-   if (i < 0) /* returned key value */
-      i = -100 - i;
-   else
-      i = kbdkeys[i];
-   if (adapter >= 0) /* reset to real current table entry */
-      fromvideotable(adapter);
-   helpmode = oldhelpmode;
-   EXIT_OVLY;
-   return(i);
-}
-
-static void format_item(int choice,char *buf)
-{
-   fromvideotable(choice);
-   sprintf(buf,"%-5s %-25s %4d %4d %3d %-25s",  /* 71 chars */
-	   fkeys[choice], videoentry.name, videoentry.xdots, videoentry.ydots,
-	   videoentry.colors, videoentry.comment);
-}
-
-static int check_modekey(int curkey)
-{
-   int i;
-   for (i = 0; i < maxvideomode; ++i)
-      if (curkey == kbdkeys[i])
-	 return(-100-curkey);
    return(0);
 }
 

@@ -1,24 +1,16 @@
+#include <stdlib.h>
 #include "fractint.h"
 #include "mpmath.h"
+#include "helpdefs.h"
 
-struct fullscreenvalues
-{
-   int type;   /* 'd' for decimal, 's' for string, '*' for comment */
-   union
-   {
-      double dval;
-      char   sval[16];
-   } uval;
-};
-
-extern void (*plot)(int, int, int);
 extern  int fullscreen_prompt(char *hdg,int numprompts,char * far *prompts,
-               struct fullscreenvalues values[],int options,int fkeymask);
+               struct fullscreenvalues values[],int options,int fkeymask,
+               char far *extrainfo);
 void stackscreen(void);
 void unstackscreen(void);
 
 extern int row, col, xdots, ydots, bitshift, fractype;
-extern int ixstart, ixstop, iystart, iystop, colors;
+extern int ixstart, ixstop, iystart, iystop, colors, helpmode;
 extern double param[], xxmin, xxmax, yymin, yymax;
 extern long delx, dely, ltempsqrx, ltempsqry, far *lx0, far *ly0;
 extern struct lcomplex lold, lnew, *longparm;
@@ -52,6 +44,7 @@ static long
 
 int JulibrotSetup(void) {
         int r;
+        int oldhelpmode;
    struct fullscreenvalues d[NUM_VAR];
    static char StereoFile[] = "glasses1.map";
    static char GreyFile[] = "altern.map";
@@ -77,7 +70,9 @@ int JulibrotSetup(void) {
    };
 
    if(colors < 255) {
-      stopmsg(0,"Sorry, but Julibrots require a 256-color video mode");
+      static char far msg[]=
+          {"Sorry, but Julibrots require a 256-color video mode"};
+      stopmsg(0,msg);
       return(0);
    }
 
@@ -85,7 +80,7 @@ int JulibrotSetup(void) {
    fg16 = (double)(1L << 16);
 
    for (r = 0; r < NUM_VAR; ++r)
-      d[r].type = 'd';
+      d[r].type = 'f';
 
         jxmax = (long)((d[0].uval.dval = xxmax) * fg);
         jxmin = (long)((d[1].uval.dval = xxmin) * fg);
@@ -106,8 +101,10 @@ int JulibrotSetup(void) {
    d[16].uval.dval = (double)brratio / fg16;
 
    stackscreen();
+   oldhelpmode = helpmode;
+   helpmode = HT_JULIBROT;
    if((r = fullscreen_prompt("Julibrot Parameters",
-                              NUM_VAR, v, d, 0, 0)) >= 0) {
+                              NUM_VAR, v, d, 0, 0, 0)) >= 0) {
       jxmin = (long)((xxmax = d[0].uval.dval) * fg);
       jxmax = (long)((xxmin = d[1].uval.dval) * fg);
       xoffset = (jxmax + jxmin) / 2;       /* Calculate average */
@@ -143,18 +140,15 @@ int JulibrotSetup(void) {
       bbase = (int)(128.0 * d[16].uval.dval);
    }
 
+   helpmode = oldhelpmode;
    unstackscreen();
 
    if(d[16].uval.dval == 0.0)
       mapname = GreyFile;
    else
       mapname = StereoFile;
-   if (ValidateLuts(mapname) != 0) {
-      char msg[200];
-      sprintf(msg,"Could not load color map %s",mapname);
-      stopmsg(0,msg);
+   if (ValidateLuts(mapname) != 0)
       return(0);
-   }
    spindac(0,1);                 /* load it, but don't spin */
 
    return(r >= 0);
@@ -191,7 +185,7 @@ int zline(long x, long y) {
       Per = &LeftEye;
    else
       Per = &RightEye;
-   fractalspecific[fractype].per_pixel();
+   curfractalspecific->per_pixel();
    for(zpixel = 0; zpixel < zdots; zpixel++) {
       lold.x = jx;
       lold.y = jy;
@@ -202,7 +196,7 @@ int zline(long x, long y) {
       ltempsqrx = multiply(lold.x, lold.x, bitshift);
       ltempsqry = multiply(lold.y, lold.y, bitshift);
       for(n = 0; n < shell; n++) {
-         if(fractalspecific[fractype].orbitcalc())
+         if(curfractalspecific->orbitcalc())
             break;
       }
       if(n == shell) {

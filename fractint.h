@@ -1,12 +1,27 @@
-
 /* FRACTINT.H - common structures and values for the FRACTINT routines */
 
-#define MAXPIXELS 2049		/* Maximum pixel count across/down the screen */
+
+#ifndef C6
+#define _fastcall	/* _fastcall is a Microsoft C6.00 extension */
+#endif
+
+#ifdef __TURBOC__
+#   define _bios_printer(a,b,c)   biosprint((a),(c),(b))
+#   define _bios_serialcom(a,b,c) bioscom((a),(c),(b))
+#else
+#   define MK_FP(seg,off) (void far *)( (((long)(seg))<<16) | \
+					((unsigned)(off)) )
+#endif
+
+
+#define MAXPIXELS 2048		/* Maximum pixel count across/down the screen */
 #define SCREENASPECT 0.75	/* Assumed overall screen dimensions, y/x     */
 
 struct videoinfo {		/* All we need to know about a Video Adapter */
 	char	name[26];	/* Adapter name (IBM EGA, etc)		*/
 	char	comment[26];	/* Comments (UNTESTED, etc)		*/
+	int	keynum; 	/* key number used to invoked this mode */
+				/* 2-10 = F2-10, 11-40 = S,C,A{F1-F10}	*/
 	int	videomodeax;	/* begin with INT 10H, AX=(this)	*/
 	int	videomodebx;	/*		...and BX=(this)	*/
 	int	videomodecx;	/*		...and CX=(this)	*/
@@ -34,20 +49,6 @@ struct videoinfo {		/* All we need to know about a Video Adapter */
 	int	colors; 	/* number of colors available		*/
 	};
 
-/* NOTE:  if videomode[abc]x == 0, 'setvideomode' assumes it has an IBM (or
-	register compatible) adapter and tweaks the registers directly
-	to get one of the following modes (based on the value of videomodedx):
-
-		1		704 x 528 x 16
-		2		720 x 540 x 16
-		3		736 x 552 x 16
-		4		752 x 564 x 16
-		5		768 x 576 x 16
-		6		784 x 588 x 16
-		7		800 x 600 x 16
-		8		360 x 480 x 16
-
-*/
 
 #define INFO_ID 	"Fractal"
 #define FRACTAL_INFO   struct fractal_info
@@ -105,7 +106,7 @@ struct fractal_info			/*  for saving data in GIF file     */
     char stdcalcmode;	  /* 1/2/g/b */
     char useinitorbit;	  /* init Mandelbrot orbit flag */
     int calc_status;	  /* resumable, finished, etc */
-    long tot_extend_len;  /* total length of extension blocks in .fra file */
+    long tot_extend_len;  /* total length of extension blocks in .gif file */
     int distest;
     int floatflag;
     int bailout;
@@ -124,68 +125,34 @@ struct fractal_info			/*  for saving data in GIF file     */
     int ambient;
     int haze;
     int randomize;
-    int future[16];	  /* for stuff we haven't thought of yet */
+    /* version 6 stuff, release 15.x */
+    int rotate_lo;
+    int rotate_hi;
+    int distestwidth;
+    /* version 7 stuff, release 16 */
+    double dparm3;
+    double dparm4;
+    int future[32];	  /* for stuff we haven't thought of yet */
 };
 
-#define MAXVIDEOMODES 100	/* maximum size of the video table */
+#define MAXVIDEOMODES 300	/* maximum entries in fractint.cfg	  */
+#define MAXVIDEOTABLE 40	/* size of the resident video modes table */
 
 #if defined(PUTTHEMHERE)	/* this MUST be defined ONLY in FRACTINT.C */
 
 struct videoinfo videoentry;
 
-int	maxvideomode;		/* size of the above list */
-
-char *fkeys[] = {		/* Function Key names for display table */
-	/* "F1", Appropriated by the Help function */
-	"F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10",
-	"SF1","SF2","SF3","SF4","SF5","SF6","SF7","SF8","SF9","SF10",
-	"CF1","CF2","CF3","CF4","CF5","CF6","CF7","CF8","CF9","CF10",
-	"AF1","AF2","AF3","AF4","AF5","AF6","AF7","AF8","AF9","AF10",
-	"Alt-1","Alt-2","Alt-3","Alt-4","Alt-5",
-	"Alt-6","Alt-7","Alt-8","Alt-9","Alt-0",
-	"Alt-Q","Alt-W","Alt-E","Alt-R","Alt-T",
-	"Alt-Y","Alt-U","Alt-I","Alt-O","Alt-P",
-	"Alt-A","Alt-S","Alt-D","Alt-F","Alt-G",
-	"Alt-H","Alt-J","Alt-K","Alt-L",
-	"Alt-Z","Alt-X","Alt-C","Alt-V","Alt-B","Alt-N","Alt-M",
-	"Alt--","Alt-=",
-	"Ctl-A","Ctl-B",        "Ctl-D","Ctl-E","Ctl-F","Ctl-G",
-	"Ctl-K","Ctl-L","Ctl-N","Ctl-O","Ctl-P",        "Ctl-R",
-		"Ctl-T","Ctl-U","Ctl-V","Ctl-W","Ctl-X","Ctl-Y","Ctl-Z",
-	"F11","F12","SF11","SF12","CF11","CF12","AF11","AF12",
-	"Alt-,","Alt-.","Alt-/","Alt-;","Alt-'","Alt-[","Alt-]","Alt-\\",
-	"Alt-`","A-Tab","A-Bks","A-Esc",
-	"END"};
-
-int kbdkeys[] = {		/* Function Keystrokes for above names */
-	/* 1059,  Appropriated by the Help function */
-	1060, 1061, 1062, 1063, 1064, 1065, 1066, 1067, 1068,
-	1084, 1085, 1086, 1087, 1088, 1089, 1090, 1091, 1092, 1093,
-	1094, 1095, 1096, 1097, 1098, 1099, 1100, 1101, 1102, 1103,
-	1104, 1105, 1106, 1107, 1108, 1109, 1110, 1111, 1112, 1113,
-	1120, 1121, 1122, 1123, 1124, 1125, 1126, 1127, 1128, 1129,
-	1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025,
-	1030, 1031, 1032, 1033, 1034, 1035, 1036, 1037, 1038,
-	1044, 1045, 1046, 1047, 1048, 1049, 1050,
-	1130, 1131,
-	   1,	 2,	     4,    5,	 6,    7,
-	  11,	12,   14,   15,   16,	    18,
-		20,   21,   22,   23,	24,   25,   26,
-	1133, 1134, 1135, 1136, 1137, 1138, 1139, 1140,
-	1051, 1052, 1053, 1039, 1040, 1026, 1027, 1043,
-	1041, 1165, 1014, 1001,
-	0};
-
 #else
 
 extern struct videoinfo videoentry;
-extern int maxvideomode;
 
 #endif
 
 #define NUMIFS	  32	 /* number of ifs functions in ifs array */
 #define IFSPARM    7	 /* number of ifs parameters */
 #define IFS3DPARM 13	 /* number of ifs 3D parameters */
+
+#define ITEMNAMELEN 18	 /* max length of names in .frm/.l/.ifs/.fc */
 
 /* defines for symmetry */
 #define  NOSYM		0
@@ -216,10 +183,9 @@ extern int maxvideomode;
 #define  TRIG3	      192
 #define  TRIG4	      256
 #define  WINFRAC      512    /* supported in WinFrac		   */
+#define  PARMS3D     1024    /* uses 3d parameters		   */
 
 #define AUTOINVERT -123456.789
-extern float   far initifs[NUMIFS][IFSPARM];	      /* IFS code values */
-extern float   far initifs3d[NUMIFS][IFS3DPARM];      /* IFS 3D code values */
 
 #define N_ATTR 8			/* max number of attractors	*/
 
@@ -227,7 +193,9 @@ struct fractalspecificstuff
 {
    char  *name; 			/* name of the fractal */
    char  *param[4];			/* name of the parameters */
-   float paramvalue[4];     /* default parameter value */
+   float paramvalue[4]; 		/* default parameter values */
+   int	 helptext;			/* helpdefs.h HT_xxxx, -1 for none */
+   int	 helpformula;			/* helpdefs.h HF_xxxx, -1 for none */
    int	 flags; 			/* constraints, bits defined above */
    float xmin;				/* default XMIN corner */
    float xmax;				/* default XMAX corner */
@@ -258,24 +226,8 @@ struct fractalspecificstuff
 };
 
 extern struct fractalspecificstuff far fractalspecific[];
+extern struct fractalspecificstuff far *curfractalspecific;
 
-
-/*	help screens */
-
-#define HELPAUTHORS	1
-#define HELPMAIN	2
-#define HELPCYCLING	3
-#define HELPXHAIR	4
-#define HELPCMDLINE	5
-#define HELPFRACTALS	6
-#define HELPVIDEO	7
-#define HELPMOREINFO	8
-#define HELPMOUSE	9
-#define HELPLOADFILE	10
-#define HELPZOOM	11
-#define HELPVIEW	12
-#define HELPMENU	98
-#define HELPEXIT	99
 
 #if defined(PUTTHEMHERE)	/* this MUST be defined ONLY in FRACTINT.C */
 
@@ -399,6 +351,7 @@ struct trig_funct_lst
     char *name;
     void (*lfunct)();
     void (*dfunct)();
+    void (*mfunct)();
 } ;
 extern struct trig_funct_lst trigfn[];
 
@@ -419,18 +372,33 @@ extern	void   emmdeallocate(unsigned int);
 extern	unsigned int emmgetfree(void);
 extern	void   emmgetpage(unsigned int, unsigned int);
 extern	unsigned char far *emmquery(void);
+extern far_strlen( char far *);
 extern far_strcpy( char far *, char far *);
 extern far_strcmp( char far *, char far *);
 extern far_stricmp(char far *, char far *);
+extern far_strnicmp(char far *, char far *,int);
 extern far_strcat( char far *, char far *);
-extern far_memset( char far *, char	 , int);
-extern far_memcpy( char far *, char far *, int);
-extern far_memcmp( char far *, char far *, int);
-extern far_memicmp(char far *, char far *, int);
-extern	unsigned char far *farmemalloc(long);
-extern	void   farmemfree(unsigned char far *);
+extern far_memset( void far *, char	 , int);
+extern far_memcpy( void far *, void far *, int);
+extern far_memcmp( void far *, void far *, int);
+extern far_memicmp(void far *, void far *, int);
+extern	void far *farmemalloc(long);
+extern	void   farmemfree(void far *);
 extern	int    getakey(void);
-extern	int    getcolor(int, int);
+extern	int    _fastcall getcolor(int, int);
+extern	void   _fastcall putcolor(int, int, int);
+extern	void   (_fastcall *plot)(int, int, int);
+extern	void   _fastcall symPIplot(int,int,int);
+extern	void   _fastcall symPIplot2J(int,int,int);
+extern	void   _fastcall symPIplot4J(int,int,int);
+extern	void   _fastcall symplot2(int,int,int);
+extern	void   _fastcall symplot2Y(int,int,int);
+extern	void   _fastcall symplot2J(int,int,int);
+extern	void   _fastcall symplot4(int,int,int);
+extern	void   _fastcall symplot2basin(int,int,int);
+extern	void   _fastcall symplot4basin(int,int,int);
+extern	void   _fastcall noplot(int,int,int);
+extern	void   _fastcall draw_line(int,int,int,int,int);
 extern	int    has_8087(void );
 extern	void   putstring(int,int,int,unsigned char far *);
 extern	int    putstringcenter(int,int,int,int,char far *);
@@ -449,17 +417,21 @@ extern	long   divide(long, long, int);
 extern	int    Newton(void);
 extern	int    perspective(double *v);
 extern	void   cdecl Print_Screen(void);
-extern	void   putcolor(int, int, int);
 extern	void   scale(double, double, double, MATRIX);
 extern	void   setvideomode(int, int, int, int);
 extern	int    Sierpinski(void);
 extern	void   spindac(int, int);
-extern	void   noplot(int, int, int);
 extern	void   trans(double, double, double, MATRIX);
 extern	int    vmult(VECTOR,MATRIX,VECTOR);
 extern	void   xrot(double, MATRIX);
 extern	void   yrot(double, MATRIX);
 extern	void   zrot(double, MATRIX);
+extern	void   (_fastcall *standardplot)(int,int,int);
+extern	void   _fastcall plot3dsuperimpose16b(int,int,int);
+extern	void   _fastcall plot3dsuperimpose16(int,int,int);
+extern	void   _fastcall plot3dsuperimpose256(int,int,int);
+extern	void   _fastcall plotIFS3dsuperimpose256(int,int,int);
+extern	void   _fastcall plot3dalternate(int,int,int);
 
 /* for overlay return stack */
 
@@ -480,6 +452,40 @@ extern	void   zrot(double, MATRIX);
 #define OVLY_LINE3D    8
 #define OVLY_ENCODER   9
 #define OVLY_CALCFRAC 10
+#define OVLY_INTRO    11
+
+/* keys */
+#define   INSERT	 1082
+#define   DELETE	 1083
+#define   PAGE_UP	 1073
+#define   PAGE_DOWN	 1081
+#define   CTL_HOME	 1119
+#define   CTL_END	 1117
+#define   LEFT_ARROW	 1075
+#define   RIGHT_ARROW	 1077
+#define   UP_ARROW	 1072
+#define   DOWN_ARROW	 1080
+#define   LEFT_ARROW_2	 1115
+#define   RIGHT_ARROW_2  1116
+#define   UP_ARROW_2	 1141
+#define   DOWN_ARROW_2	 1145
+#define   HOME		 1071
+#define   END		 1079
+#define   ENTER 	 13
+#define   ENTER_2	 1013
+#define   TAB		 9
+#define   ESC		 27
+#define   SPACE 	 32
+#define   F1		 1059
+#define   F2		 1060
+#define   F3		 1061
+#define   F4		 1062
+#define   F5		 1063
+#define   F6		 1064
+#define   F7		 1065
+#define   F8		 1066
+#define   F9		 1067
+#define   F10		 1068
 
 /* text colors */
 #define BLACK	   0
@@ -502,32 +508,58 @@ extern	void   zrot(double, MATRIX);
 #define INVERSE 0x8000 /* when 640x200x2 text or mode 7, inverse */
 #define BRIGHT	0x4000 /* when mode 7, bright */
 /* and their use: */
-extern unsigned char textcolor[];
-#define C_TITLE 	  textcolor[0]+BRIGHT
-#define C_TITLE_DEV	  textcolor[1]
-#define C_HELP_HDG	  textcolor[2]+BRIGHT
-#define C_HELP_BODY	  textcolor[3]
-#define C_HELP_INSTR	  textcolor[4]
-#define C_PROMPT_BKGRD	  textcolor[5]
-#define C_PROMPT_LO	  textcolor[6]
-#define C_PROMPT_MED	  textcolor[7]
-#define C_PROMPT_HI	  textcolor[8]+BRIGHT
-#define C_PROMPT_INPUT	  textcolor[9]+INVERSE
-#define C_CHOICE_CURRENT  textcolor[10]+INVERSE
-#define C_CHOICE_SP_INSTR textcolor[11]
-#define C_CHOICE_SP_KEYIN textcolor[12]+BRIGHT
-#define C_GENERAL_HI	  textcolor[13]+BRIGHT
-#define C_GENERAL_MED	  textcolor[14]
-#define C_GENERAL_LO	  textcolor[15]
-#define C_GENERAL_INPUT   textcolor[16]+INVERSE
-#define C_DVID_BKGRD	  textcolor[17]
-#define C_DVID_HI	  textcolor[18]+BRIGHT
-#define C_DVID_LO	  textcolor[19]
-#define C_STOP_ERR	  textcolor[20]+BRIGHT
-#define C_STOP_INFO	  textcolor[21]+BRIGHT
-#define C_TITLE_LOW	  textcolor[22]
-#define C_AUTHDIV1	  textcolor[23]+INVERSE
-#define C_AUTHDIV2	  textcolor[24]+INVERSE
-#define C_PRIMARY	  textcolor[25]
-#define C_CONTRIB	  textcolor[26]
+extern unsigned char txtcolor[];
+#define C_TITLE 	  txtcolor[0]+BRIGHT
+#define C_TITLE_DEV	  txtcolor[1]
+#define C_HELP_HDG	  txtcolor[2]+BRIGHT
+#define C_HELP_BODY	  txtcolor[3]
+#define C_HELP_INSTR	  txtcolor[4]
+#define C_HELP_LINK	  txtcolor[5]+BRIGHT
+#define C_HELP_CURLINK	  txtcolor[6]+INVERSE
+#define C_PROMPT_BKGRD	  txtcolor[7]
+#define C_PROMPT_TEXT	  txtcolor[8]
+#define C_PROMPT_LO	  txtcolor[9]
+#define C_PROMPT_MED	  txtcolor[10]
+#define C_PROMPT_HI	  txtcolor[11]+BRIGHT
+#define C_PROMPT_INPUT	  txtcolor[12]+INVERSE
+#define C_PROMPT_CHOOSE   txtcolor[13]+INVERSE
+#define C_CHOICE_CURRENT  txtcolor[14]+INVERSE
+#define C_CHOICE_SP_INSTR txtcolor[15]
+#define C_CHOICE_SP_KEYIN txtcolor[16]+BRIGHT
+#define C_GENERAL_HI	  txtcolor[17]+BRIGHT
+#define C_GENERAL_MED	  txtcolor[18]
+#define C_GENERAL_LO	  txtcolor[19]
+#define C_GENERAL_INPUT   txtcolor[20]+INVERSE
+#define C_DVID_BKGRD	  txtcolor[21]
+#define C_DVID_HI	  txtcolor[22]+BRIGHT
+#define C_DVID_LO	  txtcolor[23]
+#define C_STOP_ERR	  txtcolor[24]+BRIGHT
+#define C_STOP_INFO	  txtcolor[25]+BRIGHT
+#define C_TITLE_LOW	  txtcolor[26]
+#define C_AUTHDIV1	  txtcolor[27]+INVERSE
+#define C_AUTHDIV2	  txtcolor[28]+INVERSE
+#define C_PRIMARY	  txtcolor[29]
+#define C_CONTRIB	  txtcolor[30]
+
+/* structure passed to fullscreen_prompts */
+struct fullscreenvalues
+{
+   int type;   /* 'd' for decimal, 's' for string, '*' for comment */
+	       /* 'i' for integer, 'y' for yes=1 no=0              */
+	       /* 0x100+n for string of length n		   */
+	       /* 'l' for one of a list of strings                 */
+   union
+   {
+      double dval;	/* when type 'd' or 'f'  */
+      int    ival;	/* when type is 'i'      */
+      char   sval[16];	/* when type is 's'      */
+      char  *sbuf;	/* when type is 0x100+n  */
+      struct {		/* when type is 'l'      */
+	 int  val;	/*   selected choice	 */
+	 int  vlen;	/*   char len per choice */
+	 char **list;	/*   list of values	 */
+	 int  llen;	/*   number of values	 */
+      } ch;
+   } uval;
+};
 

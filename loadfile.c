@@ -55,11 +55,13 @@ extern double potparam[3];		/* three potential parameters*/
 extern double inversion[];
 extern int    decomp[];
 extern int    usr_distest;		/* non-zero if distance estimator   */
+extern int    distestwidth;
 extern int    init3d[20];		/* '3d=nn/nn/nn/...' values */
 extern char   usr_floatflag;		/* floating-point fractals? */
-extern int    biomorph;
+extern int    usr_biomorph;
 extern char   FormName[];
 extern char   LName[];
+extern char   IFSName[];
 extern int    bailout;			/* user input bailout value */
 extern int    previewfactor;
 extern int    xtrans;
@@ -85,6 +87,10 @@ extern int    Ambient;
 extern int    RANDOMIZE;
 extern int    haze;
 extern int    transparent[2];
+extern int    rotate_lo,rotate_hi;
+extern int far *ranges;
+extern int    rangeslen;
+extern int    invert;
 
 static FILE *fp;
 
@@ -122,6 +128,7 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
 
    maxit	= read_info.iterations;
    fractype	= read_info.fractal_type;
+   curfractalspecific = &fractalspecific[fractype];
    xxmin	= read_info.xmin;
    xxmax	= read_info.xmax;
    yymin	= read_info.ymin;
@@ -130,9 +137,12 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
    param[1]	= read_info.cimag;
    save_release = 1100; /* unless we find out better later on */
 
+   invert = 0;
    if(read_info.version > 0) {
       param[2]	    = read_info.parm3;
+      roundfloatd(&param[2]);
       param[3]	    = read_info.parm4;
+      roundfloatd(&param[3]);
       potparam[0]   = read_info.potential[0];
       potparam[1]   = read_info.potential[1];
       potparam[2]   = read_info.potential[2];
@@ -144,15 +154,19 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
       inversion[0]  = read_info.invert[0];
       inversion[1]  = read_info.invert[1];
       inversion[2]  = read_info.invert[2];
+      if (inversion[0] != 0.0)
+	 invert = 3;
       decomp[0]     = read_info.decomp[0];
       decomp[1]     = read_info.decomp[1];
-      biomorph	    = read_info.biomorph;
+      usr_biomorph  = read_info.biomorph;
       forcesymmetry = read_info.symmetry;
       }
 
    if(read_info.version > 1) {
       save_release  = 1200;
-      if (!display3d) {
+      if (!display3d
+	&& (read_info.version <= 4 || read_info.flag3d > 0
+	    || (curfractalspecific->flags&PARMS3D) )) {
 	 int i;
 	 for (i = 0; i < 16; i++)
 	    init3d[i] = read_info.init3d[i];
@@ -228,11 +242,24 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
 	 }
       }
 
+   rotate_lo = 1; rotate_hi = 255;
+   distestwidth = 71;
+   if(read_info.version > 5) {
+      rotate_lo 	= read_info.rotate_lo;
+      rotate_hi 	= read_info.rotate_hi;
+      distestwidth	= read_info.distestwidth;
+      }
+
+   if(read_info.version > 6) {
+      param[2]		= read_info.dparm3;
+      param[3]		= read_info.dparm4;
+      }
+
    if(read_info.version < 4) { /* pre-version 14.0? */
       backwardscompat(&read_info); /* translate obsolete types */
       if(LogFlag)
 	 LogFlag = 2;
-      usr_floatflag = (fractalspecific[fractype].isinteger) ? 0 : 1;
+      usr_floatflag = (curfractalspecific->isinteger) ? 0 : 1;
       }
 
    if (read_info.version < 5) { /* pre-version 15.0? */
@@ -242,10 +269,6 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
 	 bailout = decomp[1];
       }
 
-   fractalspecific[fractype].paramvalue[0] = param[0];
-   fractalspecific[fractype].paramvalue[1] = param[1];
-   fractalspecific[fractype].paramvalue[2] = param[2];
-   fractalspecific[fractype].paramvalue[3] = param[3];
    set_trig_pointers(-1);
 
    if (display3d)		    /* PB - a klooge till the meaning of */
@@ -254,7 +277,8 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
    if (overlay3d) {
       initmode = adapter;	   /* use previous adapter mode for overlays */
       if (filexdots > xdots || fileydots > ydots) {
-	 stopmsg(0,"Can't overlay with a larger image");
+	 static char far msg[]={"Can't overlay with a larger image"};
+	 stopmsg(0,msg);
 	 EXIT_OVLY;
 	 initmode = -1;
 	 return(-1);
@@ -276,6 +300,7 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
    if (display3d) {
       calc_status = 0;
       fractype = PLASMA;
+      curfractalspecific = &fractalspecific[PLASMA];
       param[0] = 0;
       if (!initbatch)
 	 if (get_3d_params() < 0) {
@@ -344,6 +369,10 @@ struct fractal_info *info;
       farmemfree(resume_info);
       resume_info = NULL;
       }
+   if (rangeslen) { /* free prior ranges */
+      farmemfree((char far *)ranges);
+      rangeslen = 0;
+      }
 
    /* Format of .gif extension blocks is:
 	  1 byte    '!', extension block identifier
@@ -366,6 +395,7 @@ struct fractal_info *info;
 	fractint001	header, always present
 	fractint002	resume info for interrupted resumable image
 	fractint003	additional formula type info
+	fractint004	ranges info
    */
 
    memset(info,0,sizeof(FRACTAL_INFO));
@@ -433,13 +463,36 @@ struct fractal_info *info;
 		     }
 		  break;
 	       case 3: /* formula info */
-		  load_ext_blk(FormName,40);
-		  strcpy(LName,FormName);
+		  {
+		  char *nameptr;
+		  char tmpname[40];
+		  load_ext_blk(tmpname,40);
+		  switch (info->fractal_type) {
+		     case LSYSTEM:
+			nameptr = LName;
+			break;
+		     case IFS:
+		     case IFS3D:
+			nameptr = IFSName;
+			break;
+		     default:
+			nameptr = FormName;
+			break;
+		     }
+		  tmpname[ITEMNAMELEN] = 0;
+		  strcpy(nameptr,tmpname);
 		  /* perhaps in future add more here, check block_len for
 		     backward compatibility */
+		  }
 		  break;
-
-
+	       case 4: /* ranges info */
+		  skip_ext_blk(&block_len,&data_len); /* once to get lengths */
+		  if ((ranges = (int far *)farmemalloc((long)data_len))) {
+		     fseek(fp,(long)(0-block_len),SEEK_CUR);
+		     load_ext_blk((char far *)ranges,data_len);
+		     rangeslen = data_len/2;
+		     }
+		  break;
 	       default:
 		  skip_ext_blk(&block_len,&data_len);
 	       }
@@ -599,6 +652,5 @@ static void backwardscompat(struct fractal_info *info)
 	 useinitorbit = 2;
 	 break;
       }
+   curfractalspecific = &fractalspecific[fractype];
 }
-
-

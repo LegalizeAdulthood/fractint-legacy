@@ -22,14 +22,14 @@ extern int MPaccuracy, MPOverflow;
 
 extern int cpu;
 
-struct MP MPmul(struct MP x, struct MP y);
-struct MP MPdiv(struct MP x, struct MP y);
-struct MP MPadd(struct MP x, struct MP y);
-struct MP MPsub(struct MP x, struct MP y);
-struct MP MPabs(struct MP x);
-struct MP d2MP(double x);  /* Convert double to type MP */
+struct MP *MPmul(struct MP x, struct MP y);
+struct MP *MPdiv(struct MP x, struct MP y);
+struct MP *MPadd(struct MP x, struct MP y);
+struct MP *MPsub(struct MP x, struct MP y);
+struct MP *MPabs(struct MP x);
+struct MP *d2MP(double x);  /* Convert double to type MP */
 double *MP2d(struct MP m);  /* Convert type MP to double */
-struct MP fg2MP(long x, int fg); /* Convert fudged to type MP */
+struct MP *fg2MP(long x, int fg); /* Convert fudged to type MP */
 
 
 int MPcmp(struct MP x, struct MP y);
@@ -50,31 +50,31 @@ struct complex MPC2cmplx(struct MPC x);
 struct MPC cmplx2MPC(struct complex z);
 
 /* Prototypes for direct calling of processor specific routines */
-struct MP MPmul086(struct MP x, struct MP y);
-struct MP MPdiv086(struct MP x, struct MP y);
-struct MP MPadd086(struct MP x, struct MP y);
-struct MP MPsub086(struct MP x, struct MP y);
+struct MP *MPmul086(struct MP x, struct MP y);
+struct MP *MPdiv086(struct MP x, struct MP y);
+struct MP *MPadd086(struct MP x, struct MP y);
+struct MP *MPsub086(struct MP x, struct MP y);
 int MPcmp086(struct MP x, struct MP y);
-struct MP d2MP086(double x);
+struct MP *d2MP086(double x);
 double *MP2d086(struct MP m);
-struct MP fg2MP086(long x, int fg);
+struct MP *fg2MP086(long x, int fg);
 
-struct MP MPmul386(struct MP x, struct MP y);
-struct MP MPdiv386(struct MP x, struct MP y);
-struct MP MPadd386(struct MP x, struct MP y);
-struct MP MPsub386(struct MP x, struct MP y);
+struct MP *MPmul386(struct MP x, struct MP y);
+struct MP *MPdiv386(struct MP x, struct MP y);
+struct MP *MPadd386(struct MP x, struct MP y);
+struct MP *MPsub386(struct MP x, struct MP y);
 int MPcmp386(struct MP x, struct MP y);
 struct MP d2MP386(double x);
 double *MP2d386(struct MP m);
-struct MP fg2MP386(long x, int fg);
+struct MP *fg2MP386(long x, int fg);
 
 /* function pointer support added by Tim Wegner 12/07/89 */
 extern int        (*pMPcmp)(struct MP x, struct MP y);
-extern struct MP  (*pMPmul)(struct MP x, struct MP y);
-extern struct MP  (*pMPdiv)(struct MP x, struct MP y);
-extern struct MP  (*pMPadd)(struct MP x, struct MP y);
-extern struct MP  (*pMPsub)(struct MP x, struct MP y);
-extern struct MP  (*pd2MP)(double x)                 ;
+extern struct MP  *(*pMPmul)(struct MP x, struct MP y);
+extern struct MP  *(*pMPdiv)(struct MP x, struct MP y);
+extern struct MP  *(*pMPadd)(struct MP x, struct MP y);
+extern struct MP  *(*pMPsub)(struct MP x, struct MP y);
+extern struct MP  *(*pd2MP)(double x)                 ;
 extern double *   (*pMP2d)(struct MP m)              ;
 void setMPfunctions(void);
 

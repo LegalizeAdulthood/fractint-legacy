@@ -60,9 +60,12 @@
 ;	cputype()
 ;	fputype()
 ;
-; ---- IFS far arrays
-;	initifs
-;	initifs3d
+; ---- IIT FPU Support
+;
+;	load_mat()
+;	mult_vec_iit()
+;	IITCoPro()
+;
 
 
 ;			 required for compatibility if Turbo ASM
@@ -83,6 +86,9 @@ ENDIF
 	extrn	restore_active_ovly:far
 	extrn	edit_text_colors:far
 	extrn	adapter_init:far	; video adapter init (in video.asm)
+	extrn	slideshw:far
+	extrn	recordshw:far
+	extrn	stopslideshow:far
 
 .DATA
 
@@ -97,23 +103,23 @@ ENDIF
 	extrn	calc_status:word	; in calcfrac.c
 	extrn	got_status:word 	; in calcfrac.c
 	extrn	currow:word		; in calcfrac.c
+	extrn	slides:word		; in cmdfiles.c
 
 
 ; ************************ Public variables *****************************
 
 public		cpu			; used by 'calcmand'
 public		fpu			; will be used by somebody someday
+public		iit			; IIT fpu?
 public		lookatmouse		; used by 'calcfrac'
 public		saveticks		; set by fractint
 public		savebase		; set by fractint
 public		finishrow		; set by fractint
 public		_dataseg_xx		; used by TARGA, other Turbo Code
 
-public		extraseg		; extra 64K segment, if any
+public		extraseg		; extra 64K segment
 
 public		overflow		; Mul, Div overflow flag: 0 means none
-
-public		initifs, initifs3d
 
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
@@ -126,6 +132,20 @@ public		rlebuf				; Used ty the TARGA En/Decoder
 public		paldata, stbuff 		; 8514A arrays, (FR8514A.ASM)
 
 ; ************************* "Shared" array areas **************************
+
+; Shared near arrays are discussed below. First some comments about "extraseg".
+; It is a 96k far area permanently allocated during fractint runup.
+; The first part is used for:
+;   64k coordinate arrays during image calculation (initialized in fracsubr.c)
+;   64k create gif save file, encoder.c
+;   64k 3d transforms, line3d.c
+;   64k credits screen, intro.c
+;   22k video mode selection (for fractint.cfg, loadfdos, miscovl)
+;    2k .frm .ifs .l .par entry selection (prompts.c)
+;   ??k printing, printer.c
+;   ??k fractint.doc creation, help.c, not important cause it saves/restores
+; The high 32k is used for graphics image save during text mode; video.asm
+; and realdos.c.
 
 ; Short forms used in subsequent comments:
 ;   name........duration of use......................modules....................
@@ -146,13 +166,16 @@ suffix		dw	2048 dup(0)	; decoder(4k), vidswitch(256),
 					; savegraphics/restoregraphics(4k)
 
 teststring	label	byte		; encoder(100)
+olddacbox	label	byte		; fractint(768), prompts(768)
 dstack		dw	2048 dup(0)	; decoder(4k), solidguess(4k), btm(2k)
-					;   zoom(2k)
+					;   zoom(2k), ifsload(2k), prompts(4k)
+					;   make_batch(4k), printer(2400)
+					;   loadfdos(2000)
 
 strlocn 	label	word		; encoder(10k), editpal(10k)
 prefix		label	word		; decoder(8k), solidguess(6k)
-olddacbox	label	byte		; fractint(768)
-boxx		dw	2048 dup(0)	; zoom(4k), tgaview(4k), prompts(5k)
+boxx		dw	2048 dup(0)	; zoom(4k), tgaview(4k), prompts(9k)
+					;   make_batch(8k), parser(8k)
 boxy		dw	2048 dup(0)	; zoom(4k)
 boxvalues	label	byte		; zoom(2k)
 decoderline	db	2050 dup(0)	; decoder(2049), btm(2k)
@@ -166,6 +189,7 @@ stbuff		db	415 dup(0)	; 8514a(415)
 		align	2
 cpu		dw	0		; cpu type: 86, 186, 286, or 386
 fpu		dw	0		; fpu type: 0, 87, 287, 387
+iit		dw	0		; iit fpu:  0=no, 1=yes
 _dataseg_xx	dw	0		; our "near" data segment
 
 overflow	dw	0		; overflow flag
@@ -207,8 +231,6 @@ finishrow	dw	0		; save when this row is finished
 ; *************** Function toextra(tooffset,fromaddr, fromcount) *********
 
 toextra proc	uses es di si, tooffset:word, fromaddr:word, fromcount:word
-	cmp	extraseg,0		; IS there extra memory?
-	je	tobad			;  nope.  too bad.
 	cld				; move forward
 	mov	ax,extraseg		; load ES == extra segment
 	mov	es,ax			;  ..
@@ -216,7 +238,6 @@ toextra proc	uses es di si, tooffset:word, fromaddr:word, fromcount:word
 	mov	si,fromaddr		; load from here
 	mov	cx,fromcount		; this many bytes
 	rep	movsb			; do it.
-tobad:
 	ret				; we done.
 toextra endp
 
@@ -226,8 +247,6 @@ toextra endp
 fromextra proc	uses es di si, fromoffset:word, toaddr:word, tocount:word
 	push	ds			; save DS for a tad
 	pop	es			; restore it to ES
-	cmp	extraseg,0		; IS there extra memory?
-	je	frombad 		;  nope.  too bad.
 	cld				; move forward
 	mov	si,fromoffset		; load from here
 	mov	di,toaddr		; load to here
@@ -235,7 +254,6 @@ fromextra proc	uses es di si, fromoffset:word, toaddr:word, tocount:word
 	mov	ax,extraseg		; load DS == extra segment
 	mov	ds,ax			;  ..
 	rep	movsb			; do it.
-frombad:
 	push	es			; save ES again.
 	pop	ds			; restore DS
 	ret				; we done.
@@ -245,8 +263,6 @@ fromextra endp
 ; *************** Function cmpextra(cmpoffset,cmpaddr, cmpcount) *********
 
 cmpextra proc	uses es di si, cmpoffset:word, cmpaddr:word, cmpcount:word
-	cmp	extraseg,0		; IS there extra memory?
-	je	cmpbad			;  nope.  too bad.
 	cld				; move forward
 	mov	ax,extraseg		; load ES == extra segment
 	mov	es,ax			;  ..
@@ -255,8 +271,8 @@ cmpextra proc	uses es di si, cmpoffset:word, cmpaddr:word, cmpcount:word
 	mov	cx,cmpcount		; this many bytes
 	rep	cmpsb			; do it.
 	jnz	cmpbad			; failed.
-	mov	ax,0			; 0 == true
-	jmp	cmpend
+	sub	ax,ax			; 0 == true
+	jmp	short cmpend
 cmpbad:
 	mov	ax,1			; 1 == false
 cmpend:
@@ -667,105 +683,130 @@ divide		endp
 ;	Think of 'keypressed()' as a super-'kbhit()'.
 
 keypressed  proc
-	FRAME	<di,si,es>			; std frame, for TC++ overlays
+	call	far ptr getkeynowait		; check for key
+	jc	keypressed1			;  got a key
+	sub	ax,ax				; fast no-key return
+	ret
 keypressed1:
-	cmp	keybuffer,0			; is a keypress stacked up?
-	jne	keypressed3			;  yup. use it.
-	mov	ah,kbd_type			; get the keyboard type
-	or	ah,1				; check if a key is ready
-	int	16h				; has a key been hit?
-	jnz	keypressed2			; yes.	handle it
-	call	mouseread			; mouse activity or save time?
-	jnc	keypressed99			; nope.  return: no action.
-	mov	keybuffer,ax			; yes.	handle it.
-	jmp	short keypressed3
-keypressed2:
-	call	far ptr getakey 		; get the keypress code
-	mov	keybuffer,ax			; and save the result.
-keypressed3:
-	mov	ax,keybuffer			; return the keypress code.
-	cmp	debugflag,3000			; color play enabled?
-	jne	keypressed3b			;  nope
-	cmp	ax,'~'                          ; color play requested?
-	jne	keypressed3b			;  nope
-	mov	keybuffer,0			; discard the key
-	call	far ptr edit_text_colors	; play
-	jmp	short keypressed98		; done playing, return
-keypressed3b:
-	cmp	helpmode,0			; help disabled?
-	jl	keypressed99			;  yup.  forget help.
+	FRAME	<di,si,es>			; std frame, for TC++ overlays
+	mov	keybuffer,ax			; remember it for next time
 	cmp	ax,1059 			; help called?
-	jne	keypressed5			; no help asked for.
+	jne	keypressed2			; no help asked for.
 	mov	keybuffer,0			; say no key hit
-	mov	ax,2				; ask for general help
-	push	ax				;  ...
+	cmp	helpmode,0			; help disabled?
+	jl	keypressed1a			;  yup.  forget help.
+	xor	ax,ax
+	push	ax
 	call	far ptr help			; help!
-	mov	keybuffer,ax			; save the result
+	pop	ax
 	call	far ptr restore_active_ovly	; help might've clobbered ovly
-	pop	ax				; returned value
-	jmp	short keypressed99
-keypressed5:
+keypressed1a:
+	sub	ax,ax
+	jmp	short keypressedx
+keypressed2:
 	cmp	ax,9				; TAB key hit?
-	jne	keypressed99			;  nope.  no TAB display.
+	jne	keypressedx			;  nope.  no TAB display.
 	cmp	tabmode,0			; tab enabled?
-	je	keypressed99			;  nope
+	je	keypressedx			;  nope
 	mov	keybuffer,0			; say no key hit
 	call	far ptr tab_display		; show the TAB status
-keypressed98:
-	call	far ptr restore_active_ovly	; might've clobbered ovly
-keypressed99:
-	mov	ax,keybuffer			; return keypress, if any
+	call	far ptr restore_active_ovly	; tab might've clobbered ovly
+	sub	ax,ax
+keypressedx:
 	UNFRAME <es,si,di>			; pop frame
 	ret
 keypressed	endp
 
+getakeynohelp proc
+gknhloop:
+	call	far ptr getakey 		; get keystroke
+	cmp	ax,1059 			; help key?
+	je	gknhloop			;  ignore help, none available
+	ret
+getakeynohelp endp
+
 getakey proc
+getakeyloop:
+	call	far ptr getkeynowait		; check for keystroke
+	jnc	getakeyloop			;  no key, loop till we get one
+	ret
+getakey endp
+
+getkeynowait proc
 	FRAME	<di,si,es>			; std frame, for TC++ overlays
-getakey0:
-	mov	ax,keybuffer			; keypress may be here
-	mov	keybuffer,0			; if it was, clear it
-	cmp	ax,0				; is a keypress outstanding?
-	jne	getakey4			;  if so, we're done!
+getkeyn0:
+	cmp	keybuffer,0			; got a key buffered?
+	je	getkeynobuf			;  nope
+	mov	ax,keybuffer			; key was buffered here
+	mov	keybuffer,0			; clear buffer
+	jmp	getkeyyup			; exit with the key
+getkeynobuf:
 	call	mouseread			; mouse activity or savetime?
-	jc	getakey4			; yup, ax holds the phoney key
+	jc	getkeyn4			;  yup, ax holds the phoney key
 	mov	ah,kbd_type			; get the keyboard type
 	or	ah,1				; check if a key is ready
 	int	16h				; now check a key
-	jz	getakey0			; so check the mouse again
+	jnz	gotkeyn 			;  got one
+	cmp	slides,1			; slideshow playback active?
+	jne	getkeynope			;  nope, return no key
+	call	far ptr slideshw		; check next playback keystroke
+	cmp	ax,0				; got one?
+	jne	getkeyn5			;  yup, use it
+getkeynope:
+	clc					; return no key
+	UNFRAME <es,si,di>			; pop frame
+	ret
+gotkeyn:					; got a real keyboard keystroke
 	mov	ah,kbd_type			; get the keyboard type
 	int	16h				; now get a key
 	cmp	al,0e0h 			; check: Enhanced Keyboard key?
-	jne	short getakey1			; nope.  proceed
+	jne	short getkeyn1			; nope.  proceed
 	cmp	ah,0				; part 2 of Enhanced Key check
-	je	short getakey1			; failed.  normal key.
+	je	short getkeyn1			; failed.  normal key.
 	mov	al,0				; Turn enhanced key "normal"
-	jmp	short getakey2			; jump to common code
-getakey1:
+	jmp	short getkeyn2			; jump to common code
+getkeyn1:
 	cmp	ah,0e0h 			; check again:	Enhanced Key?
-	jne	short getakey2			;  nope.  proceed.
+	jne	short getkeyn2			;  nope.  proceed.
 	mov	ah,al				; Turn Enhanced key "normal"
 	mov	al,0				;  ...
-getakey2:
+getkeyn2:
 	cmp	al,0				; Function Key?
-	jne	short getakey3			;  nope.  proceed.
+	jne	short getkeyn3			;  nope.  proceed.
 	mov	al,ah				; klooge into ASCII Key
 	mov	ah,0				; clobber the scan code
 	add	ax,1000 			;  + 1000
-	jmp	short getakey4			; go to common return
-getakey3:
+	jmp	short getkeyn4			; go to common return
+getkeyn3:
 	mov	ah,0				; clobber the scan code
-getakey4:
+getkeyn4:					; got real key (not playback)
+	cmp	ax,9999 			; savetime from mousread?
+	je	getkeyn6			;  yup, do it and don't record
+	cmp	slides,1			; slideshow playback active?
+	jne	getkeyn5			;  nope
+	cmp	ax,1bh				; escape?
+	jne	getkeyn0			;  nope, ignore the key
+	call	far ptr stopslideshow		; terminate playback
+	jmp	short getkeyn0			; go check for another key
+getkeyn5:
+	cmp	slides,2			; slideshow record mode?
+	jne	getkeyn6			;  nope
+	push	ax
+	call	far ptr recordshw		; record the key
+	pop	ax
+getkeyn6:
 	cmp	debugflag,3000			; color play enabled?
-	jne	getakeyx			;  nope
+	jne	getkeyyup			;  nope
 	cmp	ax,'~'                          ; color play requested?
-	jne	getakeyx			;  nope
+	jne	getkeyyup			;  nope
 	call	far ptr edit_text_colors	; play
 	call	far ptr restore_active_ovly	; might've clobbered ovly
-	jmp	short getakey0			; done playing, back around
-getakeyx:
+	jmp	getkeyn0			; done playing, back around
+getkeyyup:
+	stc					; indicate we have a key
 	UNFRAME <es,si,di>			; pop frame
 	ret
-getakey endp
+getkeynowait endp
 
 ; ****************** Function buzzer(int buzzertype) *******************
 ;
@@ -1474,7 +1515,7 @@ gotone:
 	test	control, 0080h
 	jz	not87			; Got 287/387; keep testing
 	mov	ax, 87
-	jmp	short fexit
+	jmp	short freset
 not87:
 	finit
 	fld1
@@ -1488,9 +1529,12 @@ not87:
 	sahf
 	jnz	got387			; 387 will compare correctly
 	mov	ax, 287
-	jmp	short fexit
+	jmp	short freset
 got387: 				; Only one left (until 487/Weitek
 	mov	ax, 387 		;   test is added)
+freset:
+	fninit				; in case tests have had strange
+	finit				; side-effects, reset
 fexit:
 	pop	bp
 	ret
@@ -1552,15 +1596,61 @@ erasesegment	proc	uses es di si, segaddress:word, segvalue:word
 	ret				; we done
 erasesegment	endp
 
+
+farread proc uses ds, handle:word, buf:dword, len:word
+	mov	ah, 03Fh
+	mov	bx, [handle]
+	mov	cx, [len]
+	lds	dx, [buf]
+	int	21h
+	jnc	farreaddone
+	mov	ax, -1
+farreaddone:
+	ret
+farread endp
+
+
+farwrite proc uses ds, handle:word, buf:dword, len:word
+	mov	ah, 040h
+	mov	bx, [handle]
+	mov	cx, [len]
+	lds	dx, [buf]
+	int	21h
+	jnc	farwritedone
+	mov	ax, -1
+farwritedone:
+	ret
+farwrite endp
+
+
+; Convert segment:offset to equiv pointer with minimum possible offset
+normalize proc p: dword
+;	mov	ax, [word ptr p]
+;	mov	dx, [word ptr p+2]
+	les	ax, p
+	mov	dx, es
+	mov	bx, ax
+	shr	bx, 1
+	shr	bx, 1
+	shr	bx, 1
+	shr	bx, 1
+	and	ax, 0Fh
+	add	dx, bx
+	ret
+normalize endp
+
+
 ; *************** Far string/memory functions *********
-;	far_strcpy( char far *, char far *);
-;	far_strcmp( char far *, char far *);
-;	far_stricmp(char far *, char far *);
-;	far_strcat( char far *, char far *);
-;	far_memset( char far *, char far,   int);
-;	far_memcpy( char far *, char far *, int);
-;	far_memcmp( char far *, char far *, int);
-;	far_memicmp(char far *, char far *, int);
+;	far_strlen ( char far *);
+;	far_strcpy ( char far *, char far *);
+;	far_strcmp ( char far *, char far *);
+;	far_stricmp( char far *, char far *);
+;	far_strnicmp(char far *, char far *, int);
+;	far_strcat ( char far *, char far *);
+;	far_memset ( char far *, char far,   int);
+;	far_memcpy ( char far *, char far *, int);
+;	far_memcmp ( char far *, char far *, int);
+;	far_memicmp( char far *, char far *, int);
 
 ;	xxxfar_routines are called internally with:
 ;		ds:si pointing to the source
@@ -1617,6 +1707,27 @@ uneql:	mov	ax,1
 wedone: ret
 xxxfar_memicmp	endp
 
+
+far_strlen proc uses ds es di si, fromaddr:dword
+	les	di,fromaddr		; point to start-of-string
+	call	xxxfar_memlen		; find the string length
+	mov	ax,cx			; return len
+	dec	ax			; don't count null
+	ret				; we done.
+far_strlen endp
+
+far_strnicmp proc	uses ds es di si, toaddr:dword, fromaddr:dword, len:word
+	les	di,fromaddr		; point to start-of-string
+	call	xxxfar_memlen		; find the string length
+	cmp	cx,len			; source less than or equal to len?
+	jle	cxbigger		; yup - use cx
+	mov	cx,len			; nope - use len
+cxbigger:
+	les	di,toaddr		; get the dest string
+	lds	si,fromaddr		; get the source string
+	call	xxxfar_memicmp		; compare them
+	ret				; we done.
+far_strnicmp endp
 
 far_strcpy proc uses ds es di si, toaddr:dword, fromaddr:dword
 	les	di,fromaddr		; point to start-of-string
@@ -1950,24 +2061,117 @@ xmmmoveextended proc uses si, MoveStruct:word
 xmmmoveextended endp
 
 
-;	IFS fractal of a fern
-;	      a     b	  c	d     e     f	  p
+; ********************* IIT FPU Chip Support Routines ******************
+;		     for use with 2C87 and 3C87 FPU chips
+;
+; load_mat(double matrix[16])	 ; Load a 4x4 matrix of doubles into IIT
+;				 ; IIT registers
+;
+; mult_vec_iit(double vector[3]) ; Multiply matrix times vector. Routine
+;				 ; is not completely general - makes use of
+;				 ; the fact that Fractint 3D vectors always
+;				 ; have a fourth component of 1. Only three
+;				 ; array elements are actually accessed.
+;				 ; Source and target vectors are the same.
+;
+; IITCoPro()			 ; Detect IIT chip - return 1. Do not call
+;				 ; unless at least a 287 already detected.
+;
+; Code adapted by Tim Wegner from IIT documentation and detect routine
+; sent by Jonathan Osuch and modified by Charles Marsden -- 01/29/91
+;
+;
 
-initifs dd 0.00, 0.00, 0.00, 0.16, 0.00, 0.00, 0.01
-	dd 0.85, 0.04, -.04, 0.85, 0.00, 1.60, 0.85
-	dd 0.20, -.26, 0.23, 0.22, 0.00, 1.60, 0.07
-	dd -.15, 0.28, 0.26, 0.24, 0.0,  0.44, 0.07
-	dd 28*7 dup(0.0)
-	dd 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1.00
+.286
+.287
+.data
+one dq 1.0
+.code
+;
+;load_mat(double *array)
+;
+load_mat proc	array:WORD
+	finit
+	db	0DBh,0EBh	; select register set 0
+	fwait
+	mov	bx, array
+	fld	QWORD PTR [bx+64 ] ; load row 3
+	fld	QWORD PTR [bx+72 ]
+	fld	QWORD PTR [bx+80 ]
+	fld	QWORD PTR [bx+88 ]
+	fld	QWORD PTR [bx+96 ] ; load row 4
+	fld	QWORD PTR [bx+104]
+	fld	QWORD PTR [bx+112]
+	fld	QWORD PTR [bx+120]
 
-;		IFS3D fractal of a fern
-;		a     b     c	  d	e     f     g	  h	i     j     k	  l	p
-initifs3d dd  0.00, 0.00, 0.00, 0.00, 0.18, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.01
-	  dd  0.85, 0.00, 0.00, 0.00, 0.85, 0.10, 0.00,-0.10, 0.85, 0.00, 1.60, 0.00, 0.85
-	  dd  0.20,-0.20, 0.00, 0.20, 0.20, 0.00, 0.00, 0.00, 0.30, 0.00, 0.80, 0.00, 0.07
-	  dd -0.20, 0.20, 0.00, 0.20, 0.20, 0.00, 0.00, 0.00, 0.30, 0.00, 0.80, 0.00, 0.07
-	  dd  28*13 dup(0.0)
-	  dd  0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1.00
+	finit
+	db	0DBh,0EAh	; select register set 1
+	fld	QWORD PTR [bx+0 ] ; load row 1
+	fld	QWORD PTR [bx+8 ]
+	fld	QWORD PTR [bx+16]
+	fld	QWORD PTR [bx+24]
+	fld	QWORD PTR [bx+32] ; load row 2
+	fld	QWORD PTR [bx+40]
+	fld	QWORD PTR [bx+48]
+	fld	QWORD PTR [bx+56]
+
+	finit
+	db	0DBh,0E8h	; select register set 0
+	fwait
+	ret
+load_mat endp
+
+.code
+;
+;mult_vec_iit(vector)
+;
+mult_vec_iit proc uses bx, vector:WORD
+	mov	bx,vector
+	fld	one ; last component always 1 in fractint
+;	fld	QWORD PTR [bx+24 ] ; 4
+	fld	QWORD PTR [bx+16 ] ; 3
+	fld	QWORD PTR [bx+8  ] ; 2
+	fld	QWORD PTR [bx+0  ] ; 1
+
+	db	0DBh,0F1h	; multiply the column vector
+	fwait
+	fstp	QWORD PTR [bx+0  ] ; 1
+	fstp	QWORD PTR [bx+8  ] ; 2
+	fstp	QWORD PTR [bx+16 ] ; 3
+;	fstp	QWORD PTR [bx+24 ] ; 4 vectors length 3 in Fractint
+
+	fwait
+	ret
+mult_vec_iit endp
+
+;
+; IITCoPro()
+;
+; 910217 pb This routine commented out because we've discovered that IIT
+;	    matrix operations are a bad thing when multi-tasking - the
+;	    registers don't get saved/restored when task switching.  So,
+;	    IIT routines are used only if command FPU=IIT is specified.
+;
+;.data
+;testdata db 0FFh,0FFh,00h,00h,00h,00h,00h,00h,00h,00h
+;.code
+;
+;IITCoPro proc
+;	 finit
+;	 fld   tbyte ptr testdata
+;	 fstp  tbyte ptr dstack
+;	 fwait
+;	 mov   ax,word ptr dstack
+;	 or    ax,ax			 ; test for 1st word of result zero
+;	 mov   ax,1			 ; return 1 if next branch taken
+;	 jz    must_be_IIT		 ;  result was zero, is IIT
+;	 xor   ax,ax			 ; return 0
+;must_be_IIT:
+;	 ret
+;IITCoPro endp
+
+.8086
+.8087
 
 
 		end

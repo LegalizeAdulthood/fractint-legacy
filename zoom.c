@@ -38,11 +38,12 @@ struct coords {
 
 #define PIXELROUND 0.00001
 
-static void drawlines(struct coords, struct coords, int, int);
-static void addbox(struct coords);
-static void zmo_calc(double, double, double *, double *);
+static void _fastcall drawlines(struct coords, struct coords, int, int);
+static void _fastcall addbox(struct coords);
+static void _fastcall zmo_calc(double, double, double *, double *);
 static int  check_pan();
 static void fix_worklist();
+static void _fastcall move_row(int fromrow,int torow,int col);
 
 void drawbox(int drawit)
 {   struct coords tl,bl,tr,br; /* dot addr of topleft, botleft, etc */
@@ -53,12 +54,7 @@ void drawbox(int drawit)
 	if (boxcount!=0) { /* remove the old box from display */
 	    clearbox();   /* asm routine */
 	    boxcount = 0; }
-	xxmin = sxmin;	  /* set corners to full screen and return */
-	xxmax = sxmax;
-	xx3rd = sx3rd;
-	yymin = symin;
-	yymax = symax;
-	yy3rd = sy3rd;
+	reset_zoom_corners();
 	return; }
 
     ftemp1 = PI*zrotate/72; /* convert to radians */
@@ -122,7 +118,8 @@ void drawbox(int drawit)
 	}
     }
 
-static void drawlines(struct coords fr, struct coords to, int dx, int dy)
+static void _fastcall drawlines(struct coords fr, struct coords to,
+				int dx, int dy)
 {   int xincr,yincr,ctr;
     int altctr,altdec,altinc;
     struct coords tmpp,line1,line2;
@@ -178,7 +175,7 @@ static void drawlines(struct coords fr, struct coords to, int dx, int dy)
 	}
     }
 
-static void addbox(struct coords point)
+static void _fastcall addbox(struct coords point)
 {
     point.x += sxoffs;
     point.y += syoffs;
@@ -216,7 +213,7 @@ void moveboxf(double dx, double dy)
 	}
     }
 
-static void chgboxf(double dwidth, double ddepth)
+static void _fastcall chgboxf(double dwidth, double ddepth)
 {
     if (zwidth+dwidth > 1)
 	dwidth = 1.0-zwidth;
@@ -250,6 +247,10 @@ void chgboxi(int dw, int dd)
     chgboxf( (double)dw/dxsize, (double)dd/dysize );
     }
 
+#ifdef C6
+#pragma optimize("e",off)  /* MSC 6.00A messes up next rtn with "e" on */
+#endif
+
 void zoomout() /* for ctl-enter, calc corners for zooming out */
 {   double savxxmin,savyymax,ftemp;
     /* (xxmin,yymax), etc, are already set to zoombox corners;
@@ -272,7 +273,11 @@ void zoomout() /* for ctl-enter, calc corners for zooming out */
     zmo_calc(sx3rd-savxxmin,sy3rd-savyymax,&xx3rd,&yy3rd);
     }
 
-static void zmo_calc(double dx, double dy, double *newx, double *newy)
+#ifdef C6
+#pragma optimize("e",on)  /* back to normal */
+#endif
+
+static void _fastcall zmo_calc(double dx, double dy, double *newx, double *newy)
 {   double tempx,tempy;
     /* calc cur screen corner relative to zoombox, when zoombox co-ords
        are taken as (0,0) topleft thru (1,1) bottom right */
@@ -310,8 +315,8 @@ static int check_pan() /* return 0 if can't, alignment requirement if can */
 {   int i,j;
     if (calc_status != 2 && calc_status != 4)
 	return(0); /* not resumable, not complete */
-    if ( fractalspecific[fractype].calctype != StandardFractal
-      && fractalspecific[fractype].calctype != calcmand)
+    if ( curfractalspecific->calctype != StandardFractal
+      && curfractalspecific->calctype != calcmand)
 	return(0); /* not a worklist-driven type */
     if (zwidth != 1.0 || zdepth != 1.0 || zskew != 0.0 || zrotate != 0.0)
 	return(0); /* not a full size unrotated unskewed zoombox */
@@ -322,7 +327,7 @@ static int check_pan() /* return 0 if can't, alignment requirement if can */
 	return(1); /* 1 pass forced so align on any pixel */
     if (stdcalcmode == 'b')
 	return(1); /* btm, align on any pixel */
-    if (stdcalcmode != 'g' || (fractalspecific[fractype].flags&NOGUESS)) {
+    if (stdcalcmode != 'g' || (curfractalspecific->flags&NOGUESS)) {
 	if (stdcalcmode == '2') /* align on even pixel for 2pass */
 	   return(2);
 	return(1); /* assume 1pass */
@@ -341,7 +346,8 @@ static int check_pan() /* return 0 if can't, alignment requirement if can */
     return(j);
     }
 
-static void move_row(fromrow,torow,col) /* move a row on the screen */
+static void _fastcall move_row(int fromrow,int torow,int col)
+/* move a row on the screen */
 {   int startcol,endcol,tocol;
     memset(dstack,0,xdots); /* use dstack as a temp for the row; clear it */
     if (fromrow >= 0 && fromrow < ydots) {
@@ -357,7 +363,7 @@ static void move_row(fromrow,torow,col) /* move a row on the screen */
     put_line(torow,0,xdots-1,dstack);
     }
 
-init_pan_or_recalc(zoomout) /* decide to recalc, or to chg worklist & pan */
+int init_pan_or_recalc(zoomout) /* decide to recalc, or to chg worklist & pan */
 {   int i,j,row,col,y,alignmask,direction,listfull;
     if (zwidth == 0.0)
 	return(0); /* no zoombox, leave calc_status as is */
@@ -404,9 +410,10 @@ init_pan_or_recalc(zoomout) /* decide to recalc, or to chg worklist & pan */
     if (col > 0)
 	listfull |= add_worklist(xdots-col,xdots-1,i,j,i,0,0);
     if (listfull != 0) {
-	if (stopmsg(2,"\
+    static char far msg[] = {"\
 Tables full, can't pan current image.\n\
-Cancel resumes old image, continue pans and calculates a new one.")) {
+Cancel resumes old image, continue pans and calculates a new one."};
+	if (stopmsg(2,msg)) {
 	    zwidth = 0; /* cancel the zoombox */
 	    drawbox(1); }
 	else
@@ -425,7 +432,8 @@ Cancel resumes old image, continue pans and calculates a new one.")) {
     return(0);
     }
 
-static void restart_window(int wknum) /* force a worklist entry to restart */
+static void _fastcall restart_window(int wknum)
+/* force a worklist entry to restart */
 {   int i,yfrom,yto,xfrom,xto;
     if ((yfrom = worklist[wknum].yystart) < 0) yfrom = 0;
     if ((xfrom = worklist[wknum].xxstart) < 0) xfrom = 0;

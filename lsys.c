@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <malloc.h>
 #include "fractint.h"
 
 extern int xdots,ydots;
@@ -11,16 +12,15 @@ extern char LName[];
 extern double param[];
 
 int Lsystem();
-extern void draw_line (int X1, int Y1, int X2, int Y2, int color);
 extern int thinking(int,char *);
 
-static float getnumber(char far **str);
-static char far *findsize(char far *command,char far **rules,char depth);
-static void findscale(char far *command, char far **rules, char depth);
-static char far *drawLSys(char far *command, char far **rules, char depth);
-static int  readLSystemFile(char *str);
-static void free_rules_mem();
-static int  save_rule(char *rule,char far **saveptr);
+static float	  _fastcall getnumber(char far **);
+static char far * _fastcall findsize(char far *,char far **,int);
+static int	  _fastcall findscale(char far *, char far **, int);
+static char far * _fastcall drawLSys(char far *, char far **, int);
+static int	  _fastcall readLSystemFile(char *);
+static void	  _fastcall free_rules_mem(void);
+static int	  _fastcall save_rule(char *,char far **);
 
 static float aspect; /* aspect ratio of each pixel, ysize/xsize */
 
@@ -36,18 +36,16 @@ static float aspect; /* aspect ratio of each pixel, ysize/xsize */
        use far memory and to free when done
    */
 
-/* My local globals !! If global space is scarce, something can be done
-   with these */
 
 static float far sins[50];
 static float far coss[50];
 static char maxangle,curcolor;
 static float xpos,ypos,size,realangle;
-static char counter,angle,reverse;
+static char counter,angle,reverse,stackoflow;
 static float Xmin,Xmax,Ymin,Ymax;
 
 
-static float getnumber(char far **str)
+static float _fastcall getnumber(char far **str)
 {
    char numstr[30];
    float ret;
@@ -94,9 +92,16 @@ static float getnumber(char far **str)
 }
 
 
-static char far *findsize(char far *command,char far **rules,char depth)
+static char far * _fastcall findsize(char far *command,char far **rules,int depth)
 {
    char far **rulind,tran;
+
+#ifndef __TURBOC__
+   if (stackavail() < 400) { /* leave some margin for calling subrtns */
+      stackoflow = 1;
+      return NULL;
+      }
+#endif
 
    while ((*command)&&(*command!=']'))
    {
@@ -116,7 +121,8 @@ static char far *findsize(char far *command,char far **rules,char depth)
 	    if (**rulind==*command)
 	    {
 	       tran=1;
-	       findsize((*rulind)+1,rules,depth-1);
+	       if (findsize((*rulind)+1,rules,depth-1) == NULL)
+		  return(NULL);
 	    }
       }
       if (!depth || !tran)
@@ -212,7 +218,8 @@ static char far *findsize(char far *command,char far **rules,char depth)
 	       saverang=realangle;
 	       savex=xpos;
 	       savey=ypos;
-	       command=findsize(command+1,rules,depth);
+	       if ((command=findsize(command+1,rules,depth)) == NULL)
+		  return(NULL);
 	       angle=saveang;
 	       reverse=saverev;
 	       size=savesize;
@@ -228,10 +235,11 @@ static char far *findsize(char far *command,char far **rules,char depth)
 }
 
 
-static void findscale(char far *command, char far **rules, char depth)
+static int _fastcall findscale(char far *command, char far **rules, int depth)
 {
    float horiz,vert;
    int i;
+   char far *fsret;
    aspect=SCREENASPECT*xdots/ydots;
    for(i=0;i<maxangle;i++)
    {
@@ -240,7 +248,10 @@ static void findscale(char far *command, char far **rules, char depth)
    }
    xpos=ypos=Xmin=Xmax=Ymax=Ymin=angle=reverse=realangle=counter=0;
    size=1;
-   findsize(command,rules,depth);
+   fsret = findsize(command,rules,depth);
+   thinking(0,NULL); /* erase thinking message if any */
+   if (fsret == NULL)
+      return(0);
    if (Xmax==Xmin)
       horiz=1E37;
    else
@@ -258,13 +269,20 @@ static void findscale(char far *command, char far **rules, char depth)
       ypos=ydots/2;
    else
       ypos=-Ymin*(size)+3+((ydots-6)-(size)*(Ymax-Ymin))/2;
-   thinking(0,NULL); /* erase thinking message if any */
+   return(1);
 }
 
-static char far *drawLSys(char far *command,char far **rules,char depth)
+static char far * _fastcall drawLSys(char far *command,char far **rules,int depth)
 {
    char far **rulind,tran;
    int lastx,lasty;
+
+#ifndef __TURBOC__
+   if (stackavail() < 400) { /* leave some margin for calling subrtns */
+      stackoflow = 1;
+      return NULL;
+      }
+#endif
 
    while (*command&&*command!=']')
    {
@@ -283,7 +301,8 @@ static char far *drawLSys(char far *command,char far **rules,char depth)
 	    if (**rulind==*command)
 	    {
 	       tran=1;
-	       drawLSys((*rulind)+1,rules,depth-1);
+	       if (drawLSys((*rulind)+1,rules,depth-1) == NULL)
+		  return(NULL);
 	    }
       }
       if (!depth||!tran)
@@ -350,7 +369,7 @@ static char far *drawLSys(char far *command,char far **rules,char depth)
 	    lasty=ypos;
 	    xpos+=size*aspect*cos(realangle*PI/180);
 	    ypos+=size*sin(realangle*PI/180);
-	    draw_line(lastx,lasty,xpos,ypos,curcolor);
+	    draw_line(lastx,lasty,(int)xpos,(int)ypos,curcolor);
 	    break;
 	 case 'm':
 	    xpos+=size*aspect*cos(realangle*PI/180);
@@ -365,7 +384,7 @@ static char far *drawLSys(char far *command,char far **rules,char depth)
 	    lasty=ypos;
 	    xpos+=size*coss[angle];
 	    ypos+=size*sins[angle];
-	    draw_line(lastx,lasty,xpos,ypos,curcolor);
+	    draw_line(lastx,lasty,(int)xpos,(int)ypos,curcolor);
 	    break;
 	 case '[':
 	    {
@@ -379,7 +398,8 @@ static char far *drawLSys(char far *command,char far **rules,char depth)
 	       savex=xpos;
 	       savey=ypos;
 	       savecolor=curcolor;
-	       command=drawLSys(command+1,rules,depth);
+	       if ((command=drawLSys(command+1,rules,depth)) == NULL)
+		  return(NULL);
 	       angle=saveang;
 	       reverse=saverev;
 	       size=savesize;
@@ -410,94 +430,75 @@ static char far *drawLSys(char far *command,char far **rules,char depth)
 #define MAXRULES 27 /* this limits rules to 25 */
 static char far *ruleptrs[MAXRULES];
 
-static int readLSystemFile(char *str)
+static int _fastcall readLSystemFile(char *str)
 {
    int c;
    int scanrtn;
    char far **rulind;
    int err=0;
-   int linenum=0,check=0;
+   int linenum,check=0;
    char inline[161],fixed[161],*word;
    FILE *infile;
    char msgbuf[481]; /* enough for 6 full lines */
    char StrBuff[201];
 
+   if (find_file_item(LFileName,str,&infile) < 0)
+      return -1;
+   while ((c = fgetc(infile)) != '{')
+      if (c == EOF) return -1;
+
    maxangle=0;
    for(linenum=0;linenum<MAXRULES;++linenum) ruleptrs[linenum]=NULL;
-   if(infile = fopen(LFileName, "rt"))
-   {  /* BDT use variable files */
-      fscanf(infile,"%200[ \n\t]",StrBuff);
-      while(fscanf(infile, "%200[^ \n\t{]", StrBuff) != EOF)
-      {
-	 if (!stricmp(StrBuff,str))
-	 {
-	    maxangle=-1;
-	    break;
-	 }
-	 /* skip to next lsys */
-	 while((c = fgetc(infile)) != EOF)
-	    if(c == '}')
-	       break;
-	 /* skip white space */
-	 while((scanrtn=fscanf(infile,"%200[ \n\t]", StrBuff)) != EOF)
-	    if(scanrtn == 0)
-	       break;
-      }
-   }
-   if (!maxangle){
-     sprintf(inline,"L-System \"%s\" not found.\n",str);
-     stopmsg(0,inline);
-     return -1;
-   }
-
    rulind=&ruleptrs[1];
-   msgbuf[0]=0;
+   msgbuf[0]=linenum=0;
 
-   while(fgets(inline,160,infile))	      /* Max line length 160 chars */
+   while(fgets(inline,160,infile))  /* Max line length 160 chars */
    {
       linenum++;
+      if ((word = strchr(inline,';'))) /* strip comment */
+	 *word = 0;
       strlwr(inline);
 
-      word=strtok(inline," =\011\n");
-
-      if (!word || !strcmp(word,";;"));
-      else if (!strcmp(word,"axiom"))
+      if (strspn(inline," \t\n") < strlen(inline)) /* not a blank line */
       {
-	 save_rule(strtok(NULL," \011\n"),&ruleptrs[0]);
-	 check=1;
-      }
-      else if (!strcmp(word,"angle"))
-      {
-	 maxangle=atoi(strtok(NULL," \011\n"));
-	 check=1;
-      }
-      else if (!strcmp(word,"}"))
-	 break;
-      else if (strlen(word)==1)
-      {
-	 strcat(strcpy(fixed,word),strtok(NULL," \011\n"));
-	 save_rule(fixed,rulind++);
-	 check=1;
-      }
-      else
-	 if (err<6)
+	 word=strtok(inline," =\t\n");
+	 if (!strcmp(word,"axiom"))
 	 {
-	    sprintf(&msgbuf[strlen(msgbuf)],
-		    "Syntax error line %d: %s\n",linenum,word);
-	    ++err;
+	    save_rule(strtok(NULL," \t\n"),&ruleptrs[0]);
+	    check=1;
 	 }
-      if (check)
-      {
-	 check=0;
-	 if(word=strtok(NULL," \011\n"))
+	 else if (!strcmp(word,"angle"))
+	 {
+	    maxangle=atoi(strtok(NULL," \t\n"));
+	    check=1;
+	 }
+	 else if (!strcmp(word,"}"))
+	    break;
+	 else if (strlen(word)==1)
+	 {
+	    strcat(strcpy(fixed,word),strtok(NULL," \t\n"));
+	    save_rule(fixed,rulind++);
+	    check=1;
+	 }
+	 else
 	    if (err<6)
 	    {
 	       sprintf(&msgbuf[strlen(msgbuf)],
-		       "Extra text after command line %d: %s\n",linenum,word);
+		       "Syntax error line %d: %s\n",linenum,word);
 	       ++err;
 	    }
+	 if (check)
+	 {
+	    check=0;
+	    if(word=strtok(NULL," \t\n"))
+	       if (err<6)
+	       {
+		  sprintf(&msgbuf[strlen(msgbuf)],
+			 "Extra text after command line %d: %s\n",linenum,word);
+		  ++err;
+	       }
+	 }
       }
-
    }
    fclose(infile);
    if (!ruleptrs[0] && err<6)
@@ -529,14 +530,18 @@ int Lsystem()
    if ((!loaded)&&LLoad()) return (-1);
    order=param[0];
    if (order<=0) order=0;
-   findscale(ruleptrs[0],&ruleptrs[1],order);
-   realangle=angle=reverse=0;
-
+   stackoflow = 0;
+   if (findscale(ruleptrs[0],&ruleptrs[1],order)) {
+      realangle=angle=reverse=0;
 /* !! HOW ABOUT A BETTER WAY OF PICKING THE DEFAULT DRAWING COLOR */
-
-   if ((curcolor=15) > colors) curcolor=colors-1;
-
-   drawLSys(ruleptrs[0],&ruleptrs[1],order);
+      if ((curcolor=15) > colors) curcolor=colors-1;
+      drawLSys(ruleptrs[0],&ruleptrs[1],order);
+      }
+   if (stackoflow)
+   {
+      static char far msg[]={"insufficient memory, try a lower order"};
+      stopmsg(0,msg);
+   }   
    free_rules_mem();
    loaded=0;
    return 0;
@@ -561,14 +566,14 @@ int LLoad()
    return 0;
 }
 
-static void free_rules_mem()
+static void _fastcall free_rules_mem()
 {
    int i;
    for(i=0;i<MAXRULES;++i)
       if(ruleptrs[i]) farmemfree(ruleptrs[i]);
 }
 
-static int save_rule(char *rule,char far **saveptr)
+static int _fastcall save_rule(char *rule,char far **saveptr)
 {
    int i;
    char far *tmpfar;

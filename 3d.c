@@ -87,12 +87,7 @@ void mat_mul(MATRIX mat1, MATRIX mat2, MATRIX mat3)
 		     mat1[j][1]*mat2[1][i]+
 		     mat1[j][2]*mat2[2][i]+
 		     mat1[j][3]*mat2[3][i];
-
-     /* should replace this with memcpy */
-     for(i=0;i<4;i++)
-     for(j=0;j<4;j++)
-	mat3[j][i] =  new[j][i];
-
+     memcpy(mat3,new,sizeof(new));
 }
 
 /* multiply a matrix by a scalar */
@@ -174,7 +169,9 @@ int cross_product (VECTOR v, VECTOR w, VECTOR cross)
    cross[2] = tmp[2];
    return(0);
 }
+
 /* cross product integer arguments (not fudged) */
+/*** pb, unused
 int icross_product (IVECTOR v, IVECTOR w, IVECTOR cross)
 {
    IVECTOR tmp;
@@ -186,6 +183,7 @@ int icross_product (IVECTOR v, IVECTOR w, IVECTOR cross)
    cross[2] = tmp[2];
    return(0);
 }
+***/
 
 /* normalize a vector to length 1 */
 normalize_vector(VECTOR v)
@@ -223,8 +221,30 @@ MATRIX m;
       tmp[j] += m[3][j];
    }
    /* set target = tmp. Necessary to use tmp in case source = target */
-   for(i=0;i<DIM;i++)
-      t[i] = tmp[i];
+   memcpy(t,tmp,sizeof(tmp));
+   return(0);
+}
+
+/* multiply vector s by matrix m, result in s */
+/* use with a function pointer in line3d.c */
+/* must coordinate calling conventions with */
+/* mult_vec_iit in general.asm */
+int mult_vec_c(s)
+VECTOR s;
+{
+   extern MATRIX m;
+   VECTOR tmp;
+   int i,j;
+   for(j=0;j<CMAX-1;j++)
+   {
+      tmp[j] = 0.0;
+      for(i=0;i<RMAX-1;i++)
+	 tmp[j] += s[i]*m[i][j];
+      /* vector is really four dimensional with last component always 1 */
+      tmp[j] += m[3][j];
+   }
+   /* set target = tmp. Necessary to use tmp in case source = target */
+   memcpy(s,tmp,sizeof(tmp));
    return(0);
 }
 

@@ -25,22 +25,15 @@ void scrub_orbit(void);
 int  add_worklist(int,int,int,int,int,int,int);
 void tidy_worklist(void);
 int  ssg_blocksize(void);
-void symPIplot(int,int,int);
-void symPIplot2J(int,int,int);
-void symPIplot4J(int,int,int);
-void symplot2(int,int,int);
-void symplot2Y(int,int,int);
-void symplot2J(int,int,int);
-void symplot4(int,int,int);
-void symplot2basin(int,int,int);
-void symplot4basin(int,int,int);
 void get_julia_attractor(double,double);
 
-static void adjust_to_limits(double);
-static void smallest_add(double *);
-static int  ratio_bad(double,double);
-static void plotdorbit(double,double,int);
-static int  combine_worklist(void);
+static long   _fastcall fudgetolong(double d);
+static double _fastcall fudgetodouble(long l);
+static void   _fastcall adjust_to_limits(double);
+static void   _fastcall smallest_add(double *);
+static int    _fastcall ratio_bad(double,double);
+static void   _fastcall plotdorbit(double,double,int);
+static int    _fastcall combine_worklist(void);
 
 
 extern int    calc_status;		/* status of calculations */
@@ -88,7 +81,7 @@ extern double potparam[3];		/* three potential parameters*/
 extern int    distest;			/* non-zero if distance estimator */
 extern double param[4]; 		/* up to four parameters */
 extern int    invert;			/* non-zero if inversion active */
-extern int    biomorph;
+extern int    biomorph,usr_biomorph;
 extern int    debugflag; /* internal use only - you didn't see this */
 extern long   creal, cimag;		/* for calcmand */
 extern long   delx, dely;		/* screen pixel increments  */
@@ -135,29 +128,33 @@ init_restart:
    periodicitycheck = usr_periodicitycheck;
    distest	    = usr_distest;
    floatflag	    = usr_floatflag;
-
-   if (distest) /* force floating point for dist est */
-      floatflag = 1;
+   biomorph	    = usr_biomorph;
 
    potflag = 0;
    if (potparam[0] != 0.0
      && colors >= 256
-     && (fractalspecific[fractype].calctype == StandardFractal
-	 || fractalspecific[fractype].calctype == calcmand))
+     && (curfractalspecific->calctype == StandardFractal
+	 || curfractalspecific->calctype == calcmand)) {
       potflag = 1;
+      distest = 0;    /* can't do distest too */
+      }
+
+   if (distest)
+      floatflag = 1;  /* force floating point for dist est */
 
    if (floatflag) { /* ensure type matches floatflag */
-      if (fractalspecific[fractype].isinteger != 0
-	&& fractalspecific[fractype].tofloat != NOFRACTAL)
-	 fractype = fractalspecific[fractype].tofloat;
+      if (curfractalspecific->isinteger != 0
+	&& curfractalspecific->tofloat != NOFRACTAL)
+	 fractype = curfractalspecific->tofloat;
       }
    else {
-      if (fractalspecific[fractype].isinteger == 0
-	&& fractalspecific[fractype].tofloat != NOFRACTAL)
-	 fractype = fractalspecific[fractype].tofloat;
+      if (curfractalspecific->isinteger == 0
+	&& curfractalspecific->tofloat != NOFRACTAL)
+	 fractype = curfractalspecific->tofloat;
       }
+   curfractalspecific = &fractalspecific[fractype];
 
-   integerfractal = fractalspecific[fractype].isinteger;
+   integerfractal = curfractalspecific->isinteger;
 
    if (fractype == JULIBROT)
       rqlim = 4;
@@ -169,17 +166,12 @@ init_restart:
       rqlim = bailout;
    else if (biomorph != -1) /* biomorph benefits from larger bailout */
       rqlim = 100;
-   else if (distest) {
-      rqlim = 100000.0;
-      if (fractype == FPMANZTOZPLUSZPWR || fractype == FPJULZTOZPLUSZPWR)
-	 rqlim = 100; /* reduce it to avoid fp math overflow */
-      }
    else
-      rqlim = fractalspecific[fractype].orbit_bailout;
+      rqlim = curfractalspecific->orbit_bailout;
    if (integerfractal) /* the bailout limit mustn't be too high here */
       if (rqlim > 127.0) rqlim = 127.0;
 
-   if (fractalspecific[fractype].flags&NOROTATE != 0) {
+   if (curfractalspecific->flags&NOROTATE != 0) {
       /* ensure min<max and unrotated rectangle */
       if (xxmin > xxmax) { ftemp = xxmax; xxmax = xxmin; xxmin = ftemp; }
       if (yymin > yymax) { ftemp = yymax; yymax = yymin; yymin = ftemp; }
@@ -191,7 +183,7 @@ init_restart:
    if (integerfractal > 1)  /* use specific override from table */
       bitshift = integerfractal;
    if (integerfractal == 0) /* float? */
-      if ((i = fractalspecific[fractype].tofloat) != NOFRACTAL) /* -> int? */
+      if ((i = curfractalspecific->tofloat) != NOFRACTAL) /* -> int? */
 	 if (fractalspecific[i].isinteger > 1) /* specific shift? */
 	    bitshift = fractalspecific[i].isinteger;
 
@@ -219,18 +211,18 @@ init_restart:
    delxx2 = (xx3rd - xxmin) / dysize;
    delyy2 = (yy3rd - yymin) / dxsize;
 
-   creal = param[0] * fudge; /* integer equivs for it all */
-   cimag = param[1] * fudge;
-   xmin  = xxmin * fudge;
-   xmax  = xxmax * fudge;
-   x3rd  = xx3rd * fudge;
-   ymin  = yymin * fudge;
-   ymax  = yymax * fudge;
-   y3rd  = yy3rd * fudge;
-   delx  = delxx * fudge;
-   dely  = delyy * fudge;
-   delx2 = delxx2 * fudge;
-   dely2 = delyy2 * fudge;
+   creal = fudgetolong(param[0]); /* integer equivs for it all */
+   cimag = fudgetolong(param[1]);
+   xmin  = fudgetolong(xxmin);
+   xmax  = fudgetolong(xxmax);
+   x3rd  = fudgetolong(xx3rd);
+   ymin  = fudgetolong(yymin);
+   ymax  = fudgetolong(yymax);
+   y3rd  = fudgetolong(yy3rd);
+   delx  = fudgetolong(delxx);
+   dely  = fudgetolong(delyy);
+   delx2 = fudgetolong(delxx2);
+   dely2 = fudgetolong(delyy2);
 
    if (fractype != PLASMA) { /* skip this if plasma to avoid 3d problems */
       if (integerfractal && !invert) {
@@ -257,7 +249,7 @@ init_restart:
 	     || ratio_bad((double)ly1[(xdots>>1)-1],((double)ymin-y3rd)/2) ) {
 expand_retry:
 	    if (integerfractal		/* integer fractal type? */
-	      && fractalspecific[fractype].tofloat != NOFRACTAL)
+	      && curfractalspecific->tofloat != NOFRACTAL)
 	       usr_floatflag = 1;	/* switch to floating pt */
 	    else
 	       adjust_to_limits(2.0);	/* double the size */
@@ -270,12 +262,12 @@ expand_retry:
 	 ymin = ly0[ydots-1] + ly1[xdots-1];
 	 x3rd = xmin + lx1[ydots-1];
 	 y3rd = ly0[ydots-1];
-	 xxmin = (double)xmin / fudge;
-	 xxmax = (double)xmax / fudge;
-	 xx3rd = (double)x3rd / fudge;
-	 yymin = (double)ymin / fudge;
-	 yymax = (double)ymax / fudge;
-	 yy3rd = (double)y3rd / fudge;
+	 xxmin = fudgetodouble(xmin);
+	 xxmax = fudgetodouble(xmax);
+	 xx3rd = fudgetodouble(x3rd);
+	 yymin = fudgetodouble(ymin);
+	 yymax = fudgetodouble(ymax);
+	 yy3rd = fudgetodouble(y3rd);
 	 }
       else {
 	 /* set up dx0 and dy0 analogs of lx0 and ly0 */
@@ -316,7 +308,7 @@ expand_retry:
    else
       if (fabs(delyy2) < ddelmin)
 	 ddelmin = fabs(delyy2);
-   delmin = ddelmin * fudge;
+   delmin = fudgetolong(ddelmin);
 
    /* calculate factors which plot real values to screen co-ords */
    /* calcfrac.c plot_orbit routines have comments about this	 */
@@ -328,6 +320,23 @@ expand_retry:
    plotmy2 = (xxmax-xx3rd) * dysize / ftemp;
 
 }
+
+static long _fastcall fudgetolong(double d)
+{
+   if ((d *= fudge) > 0) d += 0.5;
+   else 		 d -= 0.5;
+   return (long)d;
+}
+
+static double _fastcall fudgetodouble(long l)
+{
+   char buf[30];
+   double d;
+   sprintf(buf,"%.9g",(double)l / fudge);
+   sscanf(buf,"%lg",&d);
+   return d;
+}
+
 
 void adjust_corner()
 {
@@ -348,7 +357,7 @@ void adjust_corner()
       yy3rd = yymax;
 }
 
-static void adjust_to_limits(double expand)
+static void _fastcall adjust_to_limits(double expand)
 {  double cornerx[4],cornery[4];
    double lowx,highx,lowy,highy,limit,ftemp;
    double centerx,centery,adjx,adjy;
@@ -421,12 +430,12 @@ static void adjust_to_limits(double expand)
    adjust_corner(); /* make 3rd corner exact if very near other co-ords */
 }
 
-static void smallest_add(double *num)
+static void _fastcall smallest_add(double *num)
 {
    *num += *num * 5.0e-16;
 }
 
-static int ratio_bad(double actual, double desired)
+static int _fastcall ratio_bad(double actual, double desired)
 {  double ftemp;
    if (desired != 0)
       if ((ftemp = actual / desired) < 0.95 || ftemp > 1.05)
@@ -500,17 +509,14 @@ int put_resume(int len, ...)
 {
    va_list arg_marker;	/* variable arg list */
    char *source_ptr;
-   char far *dest_ptr;
    if (resume_info == NULL)
       return(-1);
    va_start(arg_marker,len);
-   dest_ptr = resume_info + resume_len;
    while (len)
    {
       source_ptr = va_arg(arg_marker,char *);
+      far_memcpy(resume_info+resume_len,source_ptr,len);
       resume_len += len;
-      while (--len >= 0) /* gross, but memcpy is a nogo near vs far */
-	 *(dest_ptr++) = *(source_ptr++);
       len = va_arg(arg_marker,int);
    }
    return(0);
@@ -522,9 +528,10 @@ int alloc_resume(int alloclen, int version)
       farmemfree(resume_info);
    if ((resume_info = farmemalloc((long)alloclen))== NULL)
    {
-      stopmsg(0,"\
+      static char msg[] = {"\
 Warning - insufficient free memory to save status.\n\
-You will not be able to resume calculating this image.");
+You will not be able to resume calculating this image."};
+      stopmsg(0,msg);
       calc_status = 3;
       return(-1);
    }
@@ -542,13 +549,11 @@ int get_resume(int len, ...)
    if (resume_info == NULL)
       return(-1);
    va_start(arg_marker,len);
-   source_ptr = resume_info + resume_offset;
    while (len)
    {
       dest_ptr = va_arg(arg_marker,char *);
+      far_memcpy(dest_ptr,resume_info+resume_offset,len);
       resume_offset += len;
-      while (--len >= 0)
-	 *(dest_ptr++) = *(source_ptr++);
       len = va_arg(arg_marker,int);
    }
    return(0);
@@ -596,7 +601,7 @@ void end_resume()
 		      / ((0-delyy2)*W*delxx2*D-Ys*Xs)
   */
 
-static void plotdorbit(double dx, double dy, int color)
+static void _fastcall plotdorbit(double dx, double dy, int color)
 {
    int i, j, c;
    int save_sxoffs,save_syoffs;
@@ -673,7 +678,7 @@ int pass, int sym)
    return(0);
 }
 
-static int combine_worklist() /* look for 2 entries which can freely merge */
+static int _fastcall combine_worklist() /* look for 2 entries which can freely merge */
 {
    int i,j;
    for (i=0; i<num_worklist; ++i)
@@ -775,7 +780,7 @@ void get_julia_attractor (double real, double imag)
       maxit = 500;
    color = 0;
    while (++color < maxit)
-      if(fractalspecific[fractype].orbitcalc())
+      if(curfractalspecific->orbitcalc())
 	 break;
    if (color >= maxit)	    /* if orbit stays in the lake */
    {
@@ -783,7 +788,7 @@ void get_julia_attractor (double real, double imag)
 	 lresult = lnew;
       else
 	 result =  new;
-      if(!fractalspecific[fractype].orbitcalc()) /* if it stays in the lake */
+      if(!curfractalspecific->orbitcalc()) /* if it stays in the lake */
       { 		       /* and doen't move far, probably */
 	 if (integerfractal)   /*   found a finite attractor	*/
 	 {
@@ -832,7 +837,7 @@ int ssg_blocksize() /* used by solidguessing and by zoom panning */
 
 
 /* Symmetry plot for period PI */
-void symPIplot(x, y, color)
+void _fastcall symPIplot(x, y, color)
 int x, y, color ;
 {
    while(x <= xxstop)
@@ -842,7 +847,7 @@ int x, y, color ;
    }
 }
 /* Symmetry plot for period PI plus Origin Symmetry */
-void symPIplot2J(x, y, color)
+void _fastcall symPIplot2J(x, y, color)
 int x, y, color ;
 {
    int i,j;
@@ -856,7 +861,7 @@ int x, y, color ;
    }
 }
 /* Symmetry plot for period PI plus Both Axis Symmetry */
-void symPIplot4J(x, y, color)
+void _fastcall symPIplot4J(x, y, color)
 int x, y, color ;
 {
    int i,j;
@@ -877,7 +882,7 @@ int x, y, color ;
 }
 
 /* Symmetry plot for X Axis Symmetry */
-void symplot2(x, y, color)
+void _fastcall symplot2(x, y, color)
 int x, y, color ;
 {
    int i;
@@ -887,7 +892,7 @@ int x, y, color ;
 }
 
 /* Symmetry plot for Y Axis Symmetry */
-void symplot2Y(x, y, color)
+void _fastcall symplot2Y(x, y, color)
 int x, y, color ;
 {
    int i;
@@ -897,7 +902,7 @@ int x, y, color ;
 }
 
 /* Symmetry plot for Origin Symmetry */
-void symplot2J(x, y, color)
+void _fastcall symplot2J(x, y, color)
 int x, y, color ;
 {
    int i,j;
@@ -908,7 +913,7 @@ int x, y, color ;
 }
 
 /* Symmetry plot for Both Axis Symmetry */
-void symplot4(x, y, color)
+void _fastcall symplot4(x, y, color)
 int x, y, color ;
 {
    int i,j;
@@ -925,7 +930,7 @@ int x, y, color ;
 }
 
 /* Symmetry plot for X Axis Symmetry - Striped Newtbasin version */
-void symplot2basin(x, y, color)
+void _fastcall symplot2basin(x, y, color)
 int x, y, color ;
 {
    int i,stripe;
@@ -945,7 +950,7 @@ int x, y, color ;
 }
 
 /* Symmetry plot for Both Axis Symmetry  - Newtbasin version */
-void symplot4basin(x, y, color)
+void _fastcall symplot4basin(x, y, color)
 int x, y, color ;
 {
    extern int degree;
@@ -978,7 +983,7 @@ int x, y, color ;
 }
 
 /* Do nothing plot!!! */
-void noplot(int x,int y,int color)
+void _fastcall noplot(int x,int y,int color)
 {
 }
 

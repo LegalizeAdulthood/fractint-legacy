@@ -1,0 +1,105 @@
+Hypnoteyes	   { ; A julia, try color cycling and hitting F4
+		     ; from Pieter Branderhorst
+  reset type=julia corners=-0.162458/0.17487/0.734422/0.984935
+  params=0.258919/1.76951e-007 colors=@chroma.map
+  }
+
+Hypnoteyes2	   { ; Hypnoteyes with decomp, try color cycling at high speed
+		     ; from Pieter Branderhorst
+  reset type=julia corners=-0.162458/0.17487/0.734422/0.984935
+  params=0.258919/1.76951e-007 decomp=256 colors=@blues.map
+  }
+
+AtomicGlow	   { ; sqr(cosh) cont.pot, try with gamma2.map & grey.map too
+		     ; from Pieter Branderhorst
+  reset type=sqr(fn) function=cosh
+  corners=0.706238/0.321106/0.622375/0.792267/0.487701/0.915131
+  potential=255/820/20
+  colors=0000KN<26>8RL8RL8RL9RL9SL9SL<26>GYKGYKHZJIZJ<39>WjFWjFXkEYkE<25>nqIoq\
+  JoqJoqJpqJpqJ<4>roFroErnDsmC<17>sECrCCqCC<11>UCCSCDQCDOCEMCEKCFICFGCG<21>GCW\
+  FCXFCXECYECZ<20>DCrCCsCEs<12>CcsCesChtCku<4>CzzCzz
+  }
+
+Mousies 	   { ; sqr(1/cos), with maxiter just 15!
+		     ; from Pieter Branderhorst, they're like my son's "Mousie"
+  reset type=sqr(1/fn) function=cos
+  corners=-3.839996/0.692047/-1.723389/1.6745 maxiter=15 inside=0
+  colors=0000tc0e0wmVc660oQzz0Tunhzlpi`sd0L`fkkk000000000
+  }
+
+MiniMandelbrot	   { ; view window for speed (else float); try random cycling
+  reset type=mandel
+  corners=-0.74543892033/-0.74541806988/-0.11300775036/-0.1130095385/-0.745431\
+  29839/-0.11299945787 maxiter=1000 inside=0
+  colors=000000QBr<5>8Gv<11>VSGWTDXSH<8>_Oj_OmZMk<14>S0P<6>LEUKGVJHVJIW<6>GPf4\
+  zD<10>DZ_EWaEVbFTcGReQ_h`il<10>JSgHQgEJrFLnGNjEGf<2>FMZilU<5>ZhSXoaWm`Vl_hDY\
+  <5>S_k<12>e0Z<14>mDQmDQnEO<13>yR5<9>G1dzzIyzG<13>cdZbc_`ca<7>NcjMckKclJcmGhh\
+  <2>9wU<2>tsa<3>jd_ha_f_W<2>bUNaTKbXIb_H<4>7pO<14>3q1Dh9M_HZHVcIXl9du1k<7>X9q
+  }
+
+Insectarm	   { ; A barnsleyj2 with decomp
+		     ; from Pieter Branderhorst
+  reset type=barnsleyj2
+  corners=0.220596/0.3306656/0.2319299/0.2133/0.2663158/0.1675801
+  params=0.757642/1.07726 decomp=256
+  colors=A0AJ0S<13>p0u8B36B34B32B32B52B7000<100>000zzK<2>_yHRxGIwF8vD0uB<3>Usu\
+  <8>tcl<6>tlc000<96>000U0m<4>A0K
+  }
+
+Rna?		   { ; A barnsleym1
+		     ; from Pieter Branderhorst
+  reset type=barnsleym1
+  corners=1.35740495/1.36174238/-0.42260021/-0.4214974/1.3584317/-0.42392069
+  params=0.5555/0.7676 periodicity=-256
+  }
+
+Newton_6	   { ; A newton, try color cycling and F5, and try volcano.map
+		     ; from Pieter Branderhorst
+  reset type=newton corners=-0.194363/0.194333/1.21358/1.5 params=6
+  periodicity=-256
+  colors=000000<25>qqq00z<7>z0z<3>z00<3>zz0<3>0z0<3>0zz<2>0GzVVz<3>zVz<3>zVV<3\
+  >zzV<3>VzV<3>Vzz<2>Vbzhhz<3>zhz<3>zhh<3>zzh<3>hzh<3>hzz<2>hlz<46>hlz
+  }
+
+Lambdafn	   { ; lambdafn(cos) beautiful inversion (but slow without fpu)
+		     ; from Michael Coddington
+  reset type=lambdafn function=cos
+  corners=0.13159977/0.15118976/0.12827285/0.11423222/0.14539167/0.10988365
+  params=4.72675/0.00145555 float=y maxiter=900 inside=0
+  invert=0.5/0.2/0.5
+  colors=00040N91X<5>NCYB4P<18>zmn<9>ua`u`_u`_<2>u_YtZXtZXtYX<27>tOUtOUuNTuMT<\
+  9>q8Up6Vq8U<6>_9RY9QV8QS8PQ8P<2>C7IF8JI9LLAN<3>QEOSGPTGP<22>kSWlSXmTXnUYoVY<\
+  5>t_bu`bvacwbcxcd<2>zefzefydf<44>WGRVFQVFQUFQ<51>40NoEj
+  }
+
+Spiral		   { ; A julia
+		     ; from Pieter Branderhorst
+  reset type=julia
+  corners=-0.0864522/-0.1012557/0.1608274/0.1801619/-0.1012557/0.1801619
+  params=-0.204812/-0.663316 maxiter=255 inside=0
+  colors=@neon.map
+  }
+
+Spiral2 	   { ; Another julia
+		     ; from Pieter Branderhorst
+  reset type=julia corners=-1.032595/-0.907029/-0.07522/0.0185483
+  params=-0.833062/0.194798 maxiter=2000
+  colors=@royal.map
+  }
+
+Rich8z3 	   { ; Cover of Fractal Creations, slow but great
+		     ; from Lee Skinner
+  reset type=fn(z)+fn(pix) function=sin/sin
+  corners=0.58152919/0.59067959/1.17166377/1.17852657
+  maxiter=1023 inside=0 bailout=50 float=yes
+  colors=000ww3<3>zz0zz0zy0<81>z10z00z00y01<82>00z00z11y<77>vv4
+  }
+
+YinFinite	   { ; A Julia, looks like Yin-Yang symbol and infinity sign
+		     ; from Ethan Nagel
+  reset type=julia
+  corners=-0.1328505/0.1261121/-0.0104325/0.0093564/-0.0491231/-0.1220701
+  params=0.252235/0.000169836 maxiter=5000 inside=255 logmap=75
+  colors=@chroma.map
+  }
+

@@ -40,7 +40,7 @@ double initreal,initimag,parm1,parm2;
 int maxit,inside;
 {
 double oldreal, oldimag, newreal, newimag, magnitude;
-register color;
+int color;
    oldreal=parm1;
    oldimag=parm2;
    magnitude = 0.0;

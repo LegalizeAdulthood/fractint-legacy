@@ -31,9 +31,12 @@ extern int rowcount;		/* row counter for screen */
 extern char readname[]; 	/* file name		  */
 static FILE *fpin = NULL;	/* FILE pointer 	  */
 unsigned int height;
+extern	char busy;
+unsigned numcolors;
 
-extern	char MAP_name[];
-extern	int	mapset;
+extern char MAP_name[];
+extern int mapset;
+extern int colorstate;		/* comments in cmdfiles */
 
 extern int glassestype;
 extern int display3d;
@@ -51,14 +54,11 @@ int get_byte()
 }
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
-extern int reallyega;			/* "really-an-ega" flag */
-extern int paletteVGA[16];		/* VGA Palette-to-DAC registers */
 extern unsigned char decoderline[2049]; /* write-line routines use this */
 
 /* Main entry decoder */
 int gifview()
 {
-   unsigned numcolors;
    unsigned char buffer[16];
    unsigned width, finished;
    char temp1[81];
@@ -119,29 +119,25 @@ int gifview()
 
    for (i = 0; i < numcolors; i++)
    {
-      if (numcolors == 16 && !reallyega)	/* straight copy or indirect via palette? */
-	 k = paletteVGA[i];
-      else
-	 k = i;
       for (j = 0; j < 3; j++) {
-	 if ((buffer[j] = (unsigned char)get_byte()) < 0)
+	 if ((k = (unsigned char)get_byte()) < 0)
 	 {
 	    close_file();
 	    return(-1);
 	 }
-	 if (dacbox[0][0] != 255)	/* (only if we really have a DAC) */
-	    if(!display3d || (glassestype != 1 && glassestype != 2))
-	       dacbox[k][j] = buffer[j] >> 2;
+	 if(!display3d || (glassestype != 1 && glassestype != 2))
+	    dacbox[i][j] = k >> 2;
       }
    }
+   colorstate = 1; /* colors aren't default and not a known .map file */
+
    /* don't read if glasses */
    if (display3d && mapset && glassestype!=1 && glassestype != 2)
    {
        ValidateLuts(MAP_name);	/* read the palette file */
-       if (dotmode != 11)
-	  spindac(0,1); /* load it, but don't spin */
+       spindac(0,1); /* load it, but don't spin */
    }
-   if (dacbox[0][0] != 255 && dotmode != 11)
+   if (dacbox[0][0] != 255)
       spindac(0,1);	  /* update the DAC */
 
    if (dotmode == 11) /* disk-video */
@@ -193,7 +189,9 @@ int gifview()
 
 	 if (calc_status == 1) /* should never be so, but make sure */
 	    calc_status = 0;
+	 busy = 1;	/* for slideshow CALCWAIT */
 	 status = timer(1,NULL,width); /* call decoder(width) via timer */
+	 busy = 0;	/* for slideshow CALCWAIT */
 	 if (calc_status == 1) /* e.g., set by line3d */
 	 {
 	    calctime = timer_interval; /* note how long it took */

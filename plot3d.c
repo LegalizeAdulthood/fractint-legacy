@@ -28,8 +28,6 @@ extern int xdots;
 extern int ydots;
 extern int colors;
 extern unsigned char dacbox[256][3];
-extern int dotmode;
-extern void (*standardplot)();
 
 int xxadjust1;
 int yyadjust1;
@@ -50,8 +48,9 @@ int blue_crop_right = 4;
 int red_bright	    = 80;
 int blue_bright      = 100;
 
+
 /* Bresenham's algorithm for drawing line */
-void draw_line (int X1, int Y1, int X2, int Y2, int color)
+void _fastcall draw_line (int X1, int Y1, int X2, int Y2, int color)
 
 {				  /* uses Bresenham algorithm to draw a line */
   int dX, dY;						/* vector components */
@@ -62,7 +61,6 @@ void draw_line (int X1, int Y1, int X2, int Y2, int color)
       inc2;			   /* G increment when row or column changes */
   char pos_slope;
   extern int xdots,ydots;
-  extern int (*plot)();
 
   dX = X2 - X1; 				   /* find vector components */
   dY = Y2 - Y1;
@@ -159,8 +157,9 @@ void draw_line (int X1, int Y1, int X2, int Y2, int color)
   }
 }  /* draw_line */
 
+
 /* use this for continuous colors later */
-void plot3dsuperimpose16b(int x,int y,int color)
+void _fastcall plot3dsuperimpose16b(int x,int y,int color)
 {
    int tmp;
    if (color != 0)	       /* Keeps index 0 still 0 */
@@ -189,7 +188,7 @@ void plot3dsuperimpose16b(int x,int y,int color)
    }
 }
 
-void plot3dsuperimpose16(int x,int y,int color)
+void _fastcall plot3dsuperimpose16(int x,int y,int color)
 {
    int tmp;
 
@@ -215,7 +214,7 @@ void plot3dsuperimpose16(int x,int y,int color)
    }
 }
 
-void plot3dsuperimpose256(x,y,color)
+void _fastcall plot3dsuperimpose256(int x,int y,int color)
 {
    int tmp;
    if (color != 0)	       /* Keeps index 0 still 0 */
@@ -242,7 +241,7 @@ void plot3dsuperimpose256(x,y,color)
    }
 }
 
-void plotIFS3dsuperimpose256(x,y,color)
+void _fastcall plotIFS3dsuperimpose256(int x,int y,int color)
 {
    int tmp;
    if (color != 0)	       /* Keeps index 0 still 0 */
@@ -269,7 +268,7 @@ void plotIFS3dsuperimpose256(x,y,color)
    }
 }
 
-void plot3dalternate(x,y,color)
+void _fastcall plot3dalternate(int x,int y,int color)
 {
    /* lorez high color red/blue 3D plot function */
    /* if which image = 1, compresses color to lower 128 colors */
@@ -343,55 +342,8 @@ void plot_setup()
       xxadjust = (xtrans* (double)xdots)/100;
    yyadjust = -(ytrans* (double)ydots)/100;
 
-   if (mapset == 1)
+   if (mapset) {
       ValidateLuts(MAP_name);  /* read the palette file */
-   else if (mapset == 2)
-   {
-      /*
-	 Creates a palette for superimposed-pixel red/blue 3D.
-	 Top four bits is blue, bottom 4 bits is read. Since
-	 we need all combinations of red and blue for
-	 superimposition purposes, we are allowed only
-	 16 shades of red and blue.
-      */
-      if(colors == 256)
-	 for(i=0;i<256;i++)
-	 {
-	    dacbox[i][0] = (i%16) << 2;
-	    dacbox[i][1] = 0;
-	    dacbox[i][2] = (i/16) << 2;
-	 }
-      else
-	 for(i=0;i<16;i++)
-	 {
-	    dacbox[i][0] = (i%4) << 4;
-	    dacbox[i][1] = 0;
-	    dacbox[i][2] = (i/4) << 4;
-	 }
-      SetTgaColors();  /* setup Targa palette */
-   }
-   else if (mapset == 3)
-   {
-      /*
-	 Creates a continuous palette map file for alternate
-	 pixel funny glasses 3D. Colors are repeated, so we
-	 need 128 color "pseudo" red and blue sequences.
-	 Also, red seems a little brighter than the blue.
-      */
-      for(i=0;i<128;i++)
-      {
-	 dacbox[i][0] = (unsigned char)(i >> 1);
-	 dacbox[i][1] = dacbox[i][2] = 0;
-      }
-      for(i=0;i<128;i++)
-      {
-	 dacbox[i+128][2] = (unsigned char)(i >> 1);
-	 dacbox[i+128][0] = dacbox[i+128][1] = 0;
-      }
-      SetTgaColors();  /* setup Targa palette */
-   }
-   if (mapset)
-   {
       if(glassestype==1 || glassestype==2)
       {
 	 if(glassestype == 2 && colors < 256)
@@ -414,7 +366,6 @@ void plot_setup()
 	    dacbox[i][2] = dacbox[i][2] * d_blue_bright;
 	 }
       }
-      if (dotmode != 11) /* not disk video */
-	 spindac(0,1); /* load it, but don't spin */
+      spindac(0,1); /* load it, but don't spin */
    }
 }

@@ -14,6 +14,7 @@ timer.
 22	lorenz.c	force float for 3D perspective
 50	fractint.c	compare <r>estored files
 70	fractint.c	set fpu = 0
+72	fractint.c	don't use fast >= 287 fpu routines
 90	fractals.c	force "C" mandel & julia integer type (no calcmand)
 90	fractals.c	force generic code for fn+fn etc types
 200	fractint.c	time encoder
@@ -21,14 +22,20 @@ timer.
 420	realdos.c	  same for screen save (force disk)
 422	diskvid.c	don't use expanded mem (force extended or disk)
 422	realdos.c	  same for screen save (force extended or disk)
+600	printer.c	paintjet, no form feed
+602	printer.c	paintjet, flip image
 870	fractint.c	set fpu to max 87
 1010	fractals.c	force fp for newton & newtbasin (no mpc math)
 1234	fractint.c	force larger integer arithmetic bitshift value
 1946	calcfrac.c	BTM fills with color 1 (boundary only display)
 2222	line3d.c	show amount of extra seg memory used
-2870	fractint.c	set fpu to max 287
+2224	line3d.c	old just-the-dots logic, probably a temporary thing
+2870	fractint.c	set fpu to max 287 iit off
+2872	fractint.c	set fpu to max 287 iit on
 3000	general.asm	'~' goes to color play mode
 3002	realdos.c	don't show development in heading
+3870	fractint.c	set fpu to max 387 iit off
+3872	fractint.c	set fpu to max 387 iit on
 8088	general.asm	set cpu = 86, ie dont use 32 bit stuff
 8088	fractint.c	set cpu = 86, (case in general.asm is redundant?)
 9002-9100 fractint.c	reduce video_type to (debug-9000)/2 if init was higher

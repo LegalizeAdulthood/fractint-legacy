@@ -12,30 +12,42 @@
      however this is optional.
 
      Mark C. Peterson
-     253 West St., H
-     Plantsville, CT 06479
-     (203) 276-9474
+     405-C Queen St. Suite #181
+     Southington, CT 06489
+     (203) 276-9721
 */
 
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <float.h>                              /* TIW 04-22-91 */
 #include "mpmath.h"
+
+extern far_strlen( char far *);                   /* TIW 03-31-91 */
+extern far_strnicmp(char far *, char far *,int);  /* TIW 03-31-91 */
 
 void findpath(char *filename, char *fullpathname);
 void far *farmemalloc(long bytestoalloc);
 void farmemfree(void far *farptr);
 int  stopmsg(int,unsigned char far *);
 
+#ifdef WATCH_MP
+double x1, y1, x2, y2;
+#endif
+
 MATH_TYPE MathType = D_MATH;
 /* moved struct lcomplex and union ARg to mpmath.h -6-20-90 TIW */
 
+/* PB 910417 added MAX_OPS and MAX_ARGS defines */
+#define MAX_ARGS 100
 struct ConstArg {
    char *s;
    int len;
    union Arg a;
 };
 
+#define MAX_OPS 250
 struct PEND_OP {
    void (far *f)(void);
    int p;
@@ -44,8 +56,12 @@ struct PEND_OP {
 /* PB 901103 made some of the following static for safety */
 static struct PEND_OP far *o;
 
+static void parser_allocate(void);
+static void free_workarea();
+
 union Arg *Arg1, *Arg2;
-static union Arg s[20], far *a, far * far *Store, far * far *Load;
+/* PB 910417 removed unused "a" array */
+static union Arg s[20], far * far *Store, far * far *Load;
 static int StoPtr, LodPtr, OpPtr;
 
 static void (far * far *f)(void) = (void(far * far *)(void))0;
@@ -53,9 +69,9 @@ static void (far * far *f)(void) = (void(far * far *)(void))0;
 static unsigned n, ErrPtr, posp, vsp, NextOp, LastOp, InitN;
 static int paren, SyntaxErr, ExpectingArg;
 static struct ConstArg far *v = (struct ConstArg far *)0;
-static int InitLodPtr, InitStoPtr, InitOpPtr, LastInitOp, NumVar;
+static int InitLodPtr, InitStoPtr, InitOpPtr, LastInitOp;
 static int Delta16;
-static double fgLimit;
+double fgLimit;           /* TIW 05-04-91 */
 static double fg;
 static int ShiftBack;     /* TIW 06-18-90 */
 
@@ -67,6 +83,7 @@ extern int symmetry;          /* symmetry flag for calcmand()  */
 extern double param[];
 
 extern int debugflag;         /* BDT for debugging */
+extern char boxx[8192];       /* PB 4-9-91, good place for the formula string */
 extern int row, col, overflow, cpu, fpu;
 extern struct complex old, new;
 extern double far *dx0, far *dy0;
@@ -89,9 +106,11 @@ extern long far *lx0, far *ly0;     /* BDT moved these to FAR */
 extern struct lcomplex lold, lnew;
 extern char FormName[];
 
+extern void far *typespecific_workarea;
+
 #define LastSqr v[4].a
 
-static char * ErrStrings[] = {
+static char far * far ErrStrings[] = {   /* TIW 03-31-91 added far */
    "Should be an Argument",
    "Should be an Operator",
    "')' needs a matching '('",
@@ -101,6 +120,23 @@ static char * ErrStrings[] = {
    "More than one ','",
    "Table overflow"
 };
+
+unsigned SkipWhiteSpace(char *Str) {
+   unsigned n, Done;
+
+   for(Done = n = 0; !Done; n++) {
+      switch(Str[n]) {
+         case ' ':
+         case '\t':
+         case '\n':
+         case '\r':
+            break;
+         default:
+            Done = 1;
+      }
+   }
+   return(n - 1);
+}
 
 void dStkAbs(void) {
    Arg1->d.x = fabs(Arg1->d.x);
@@ -127,15 +163,17 @@ void dStkSqr(void) {
    Arg1->d.y = Arg1->d.x * Arg1->d.y * 2.0;
    Arg1->d.x = LastSqr.d.x - LastSqr.d.y;
    LastSqr.d.x += LastSqr.d.y;
+   LastSqr.d.y = 0;
 }
 
 void mStkSqr(void) {
-   LastSqr.m.x = MPmul(Arg1->m.x, Arg1->m.x);
-   LastSqr.m.y = MPmul(Arg1->m.y, Arg1->m.y);
-   Arg1->m.y = MPmul(Arg1->m.x, Arg1->m.y);
+   LastSqr.m.x = *MPmul(Arg1->m.x, Arg1->m.x);
+   LastSqr.m.y = *MPmul(Arg1->m.y, Arg1->m.y);
+   Arg1->m.y = *MPmul(Arg1->m.x, Arg1->m.y);
    Arg1->m.y.Exp++;
-   Arg1->m.x = MPsub(LastSqr.m.x, LastSqr.m.y);
-   LastSqr.m.x = MPadd(LastSqr.m.x, LastSqr.m.y);
+   Arg1->m.x = *MPsub(LastSqr.m.x, LastSqr.m.y);
+   LastSqr.m.x = *MPadd(LastSqr.m.x, LastSqr.m.y);
+   LastSqr.m.y.Mant = (long)(LastSqr.m.y.Exp = 0);
 }
 
 void lStkSqr(void) {
@@ -144,6 +182,7 @@ void lStkSqr(void) {
    Arg1->l.y = multiply(Arg1->l.x, Arg1->l.y, bitshift) << 1;
    Arg1->l.x = LastSqr.l.x - LastSqr.l.y;
    LastSqr.l.x += LastSqr.l.y;
+   LastSqr.l.y = 0L;
 }
 
 void (*StkSqr)(void) = dStkSqr;
@@ -221,15 +260,18 @@ void lStkReal(void) {
 void (*StkReal)(void) = dStkReal;
 
 void dStkImag(void) {
-   Arg1->d.x = 0.0;
+   Arg1->d.x = Arg1->d.y;
+   Arg1->d.y = 0.0;
 }
 
 void mStkImag(void) {
-   Arg1->m.x.Mant = (long)(Arg1->m.x.Exp = 0);
+   Arg1->m.x = Arg1->m.y;
+   Arg1->m.y.Mant = (long)(Arg1->m.y.Exp = 0);
 }
 
 void lStkImag(void) {
-   Arg1->l.x = 0l;
+   Arg1->l.x = Arg1->l.y;
+   Arg1->l.y = 0l;
 }
 
 void (*StkImag)(void) = dStkImag;
@@ -345,6 +387,35 @@ void StkClr(void) {
    Arg2--;
 }
 
+
+/* MCP 4-9-91, Added Flip() */
+
+void dStkFlip(void) {
+   double t;
+
+   t = Arg1->d.x;
+   Arg1->d.x = Arg1->d.y;
+   Arg1->d.y = t;
+}
+
+void mStkFlip(void) {
+   struct MP t;
+
+   t = Arg1->m.x;
+   Arg1->m.x = Arg1->m.y;
+   Arg1->m.y = t;
+}
+
+void lStkFlip(void) {
+   long t;
+
+   t = Arg1->l.x;
+   Arg1->l.x = Arg1->l.y;
+   Arg1->l.y = t;
+}
+
+void (*StkFlip)(void) = dStkFlip;
+
 void dStkSin(void) {
    double sinx, cosx, sinhy, coshy;
 
@@ -361,7 +432,6 @@ void mStkSin(void) {
 }
 
 void lStkSin(void) {
-   int f;
    long x, y, sinx, cosx, sinhy, coshy;
 
    x = Arg1->l.x >> Delta16;
@@ -373,6 +443,171 @@ void lStkSin(void) {
 }
 
 void (*StkSin)(void) = dStkSin;
+
+/* The following functions are supported by both the parser and for fn
+   variable replacement. TIW 04-22-91 */
+
+void dStkTan(void) {
+   double sinx, cosx, sinhy, coshy, denom;
+   Arg1->d.x *= 2;
+   Arg1->d.y *= 2;
+   FPUsincos(&Arg1->d.x, &sinx, &cosx);
+   FPUsinhcosh(&Arg1->d.y, &sinhy, &coshy);
+   denom = cosx + coshy;
+   if(fabs(denom) <= DBL_MIN) return;
+   Arg1->d.x = sinx/denom;
+   Arg1->d.y = sinhy/denom;
+}
+
+void mStkTan(void) {
+   Arg1->d = MPC2cmplx(Arg1->m);
+   dStkTan();
+   Arg1->m = cmplx2MPC(Arg1->d);
+}
+
+void lStkTan(void) {
+   long x, y, sinx, cosx, sinhy, coshy, denom;
+   x = Arg1->l.x >> (Delta16-1);
+   y = Arg1->l.y >> (Delta16-1);
+   SinCos086(x, &sinx, &cosx);
+   SinhCosh086(y, &sinhy, &coshy);
+   denom = cosx + coshy;
+   if(denom == 0) return;
+   Arg1->l.x = divide(sinx,denom,bitshift);
+   Arg1->l.y = divide(sinhy,denom,bitshift);
+}
+void (*StkTan)(void) = dStkTan;
+
+
+void dStkTanh(void) {
+   double siny, cosy, sinhx, coshx, denom;
+   Arg1->d.x *= 2;
+   Arg1->d.y *= 2;
+   FPUsincos(&Arg1->d.y, &siny, &cosy);
+   FPUsinhcosh(&Arg1->d.x, &sinhx, &coshx);
+   denom = coshx + cosy;
+   if(fabs(denom) <= DBL_MIN) return;
+   Arg1->d.x = sinhx/denom;
+   Arg1->d.y = siny/denom;
+}
+
+void mStkTanh(void) {
+   Arg1->d = MPC2cmplx(Arg1->m);
+   dStkTanh();
+   Arg1->m = cmplx2MPC(Arg1->d);
+}
+
+void lStkTanh(void) {
+   long x, y, siny, cosy, sinhx, coshx, denom;
+   x = Arg1->l.x >> (Delta16-1);
+   y = Arg1->l.y >> (Delta16-1);
+   SinCos086(y, &siny, &cosy);
+   SinhCosh086(x, &sinhx, &coshx);
+   denom = coshx + cosy;
+   if(denom == 0) return;
+   Arg1->l.x = divide(sinhx,denom,bitshift);
+   Arg1->l.y = divide(siny,denom,bitshift);
+}
+void (*StkTanh)(void) = dStkTanh;
+
+void dStkCoTan(void) {
+   double sinx, cosx, sinhy, coshy, denom;
+   Arg1->d.x *= 2;
+   Arg1->d.y *= 2;
+   FPUsincos(&Arg1->d.x, &sinx, &cosx);
+   FPUsinhcosh(&Arg1->d.y, &sinhy, &coshy);
+   denom = coshy - cosx;
+   if(fabs(denom) <= DBL_MIN) return;
+   Arg1->d.x = sinx/denom;
+   Arg1->d.y = -sinhy/denom;
+}
+
+void mStkCoTan(void) {
+   Arg1->d = MPC2cmplx(Arg1->m);
+   dStkCoTan();
+   Arg1->m = cmplx2MPC(Arg1->d);
+}
+
+void lStkCoTan(void) {
+   long x, y, sinx, cosx, sinhy, coshy, denom;
+   x = Arg1->l.x >> (Delta16-1);
+   y = Arg1->l.y >> (Delta16-1);
+   SinCos086(x, &sinx, &cosx);
+   SinhCosh086(y, &sinhy, &coshy);
+   denom = coshy - cosx;
+   if(denom == 0) return;
+   Arg1->l.x = divide(sinx,denom,bitshift);
+   Arg1->l.y = -divide(sinhy,denom,bitshift);
+}
+void (*StkCoTan)(void) = dStkCoTan;
+
+void dStkCoTanh(void) {
+   double siny, cosy, sinhx, coshx, denom;
+   Arg1->d.x *= 2;
+   Arg1->d.y *= 2;
+   FPUsincos(&Arg1->d.y, &siny, &cosy);
+   FPUsinhcosh(&Arg1->d.x, &sinhx, &coshx);
+   denom = coshx - cosy;
+   if(fabs(denom) <= DBL_MIN) return;
+   Arg1->d.x = sinhx/denom;
+   Arg1->d.y = -siny/denom;
+}
+
+void mStkCoTanh(void) {
+   Arg1->d = MPC2cmplx(Arg1->m);
+   dStkCoTanh();
+   Arg1->m = cmplx2MPC(Arg1->d);
+}
+
+void lStkCoTanh(void) {
+   long x, y, siny, cosy, sinhx, coshx, denom;
+   x = Arg1->l.x >> (Delta16-1);
+   y = Arg1->l.y >> (Delta16-1);
+   SinCos086(y, &siny, &cosy);
+   SinhCosh086(x, &sinhx, &coshx);
+   denom = coshx - cosy;
+   if(denom == 0) return;
+   Arg1->l.x = divide(sinhx,denom,bitshift);
+   Arg1->l.y = -divide(siny,denom,bitshift);
+}
+
+void (*StkCoTanh)(void) = dStkCoTanh;
+
+/* The following functions are not directly used by the parser - support
+   for the parser was not provided because the existing parser language
+   represents these quite easily. They are used for fn variable support
+   in miscres.c but are placed here because they follow the pattern of
+   the other parser functions. TIW 04-22-91 */
+
+void dStkRecip(void) {
+   double mod;
+   mod =Arg1->d.x * Arg1->d.x + Arg1->d.y * Arg1->d.y;
+   if(mod <= DBL_MIN) return;
+   Arg1->d.x =  Arg1->d.x/mod;
+   Arg1->d.y = -Arg1->d.y/mod;
+}
+
+void mStkRecip(void) {
+   struct MP mod;
+   mod = *MPadd(*MPmul(Arg1->m.x, Arg1->m.x),*MPmul(Arg1->m.y, Arg1->m.y));
+   if(mod.Mant <= 0L) return;
+   Arg1->m.x = *MPdiv(Arg1->m.x,mod);
+   Arg1->m.y = *MPdiv(Arg1->m.y,mod);
+   Arg1->m.y.Exp ^= 0x8000;
+}
+
+void lStkRecip(void) {
+   long mod;
+   mod = multiply(Arg1->l.x,Arg1->l.x,bitshift)
+       + multiply(Arg1->l.y,Arg1->l.y,bitshift);
+   if(mod<=0L) return;
+   Arg1->l.x =  divide(Arg1->l.x,mod,bitshift);
+   Arg1->l.y = -divide(Arg1->l.y,mod,bitshift);
+}
+
+void StkIdent(void) { /* do nothing - the function Z */
+}
+/* End TIW 04-22-91 */
 
 void dStkSinh(void) {
    double siny, cosy, sinhx, coshx;
@@ -390,7 +625,6 @@ void mStkSinh(void) {
 }
 
 void lStkSinh(void) {
-   int f;
    long x, y, sinhx, coshx, siny, cosy;
 
    x = Arg1->l.x >> Delta16;
@@ -409,7 +643,7 @@ void dStkCos(void) {
    FPUsincos(&Arg1->d.x, &sinx, &cosx);
    FPUsinhcosh(&Arg1->d.y, &sinhy, &coshy);
    Arg1->d.x = cosx*coshy;
-   Arg1->d.y = sinx*sinhy;
+   Arg1->d.y = -sinx*sinhy; /* TIW 04-25-91 sign */
 }
 
 void mStkCos(void) {
@@ -419,7 +653,6 @@ void mStkCos(void) {
 }
 
 void lStkCos(void) {
-   int f;
    long x, y, sinx, cosx, sinhy, coshy;
 
    x = Arg1->l.x >> Delta16;
@@ -427,10 +660,30 @@ void lStkCos(void) {
    SinCos086(x, &sinx, &cosx);
    SinhCosh086(y, &sinhy, &coshy);
    Arg1->l.x = multiply(cosx, coshy, ShiftBack); /* TIW 06-18-90 */
-   Arg1->l.y = multiply(sinx, sinhy, ShiftBack); /* TIW 06-18-90 */
+   Arg1->l.y = -multiply(sinx, sinhy, ShiftBack); /* TIW 04-25-91 sign */
 }
 
 void (*StkCos)(void) = dStkCos;
+
+/* Bogus version of cos, to replicate bug which was in regular cos till v16: */
+
+void dStkCosXX(void) {
+   dStkCos();
+   Arg1->d.y = -Arg1->d.y;
+}
+
+void mStkCosXX(void) {
+   Arg1->d = MPC2cmplx(Arg1->m);
+   dStkCosXX();
+   Arg1->m = cmplx2MPC(Arg1->d);
+}
+
+void lStkCosXX(void) {
+   lStkCos();
+   Arg1->l.y = -Arg1->l.y;
+}
+
+void (*StkCosXX)(void) = dStkCosXX;
 
 void dStkCosh(void) {
    double siny, cosy, sinhx, coshx;
@@ -448,7 +701,6 @@ void mStkCosh(void) {
 }
 
 void lStkCosh(void) {
-   int f;
    long x, y, sinhx, coshx, siny, cosy;
 
    x = Arg1->l.x >> Delta16;
@@ -469,7 +721,7 @@ void dStkLT(void) {
 }
 
 void mStkLT(void) {
-   Arg2->m.x = fg2MP((long)(MPcmp(Arg2->m.x, Arg1->m.x) == -1), 0);
+   Arg2->m.x = *fg2MP((long)(MPcmp(Arg2->m.x, Arg1->m.x) == -1), 0);
    Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
    Arg1--;
    Arg2--;
@@ -491,11 +743,11 @@ void dStkLTE(void) {
    Arg2--;
 }
 
-void mStkLTE(void) {
+ void mStkLTE(void) {
    int comp;
 
    comp = MPcmp(Arg2->m.x, Arg1->m.x);
-   Arg2->m.x = fg2MP((long)(comp == -1 || comp == 0), 0);
+   Arg2->m.x = *fg2MP((long)(comp == -1 || comp == 0), 0);
    Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
    Arg1--;
    Arg2--;
@@ -637,12 +889,14 @@ struct ConstArg far *isconst(char *Str, int Len) {
       }
       for(n = 1; isdigit(Str[n]) || Str[n] == '.'; n++);
       if(Str[n] == ',') {
-         j = n + strspn(&Str[n+1], " \t\r\n") + 1;
+         j = n + SkipWhiteSpace(&Str[n+1]) + 1;
          if(isdigit(Str[j]) || (Str[j] == '-' && isdigit(Str[j+1]))) {
             z.y = atof(&Str[j]);
             for(; isdigit(Str[j]) || Str[j] == '.' || Str[j] == '-'; j++);
             v[vsp].len = j;
          }
+         else
+             z.y = 0.0;
       }
       else
          z.y = 0.0;
@@ -665,36 +919,90 @@ struct ConstArg far *isconst(char *Str, int Len) {
 }
 
 struct FNCT_LIST {
-   char *s;
-   void (* *ptr)(void);
+   char far *s;              /* TIW 03-31-91 added far */
+   void (**ptr)(void);
 };
 
-struct FNCT_LIST FnctList[] = {
-   "sin", &StkSin,
+/* TIW 03-30-91 START */
+extern unsigned char trigndx[];
+extern void (*ltrig0)();
+extern void (*ltrig1)();
+extern void (*ltrig2)();
+extern void (*ltrig3)();
+extern void (*dtrig0)();
+extern void (*dtrig1)();
+extern void (*dtrig2)();
+extern void (*dtrig3)();
+extern void (*mtrig0)();
+extern void (*mtrig1)();
+extern void (*mtrig2)();
+extern void (*mtrig3)();
+
+void (*StkTrig0)() = dStkSin;
+void (*StkTrig1)() = dStkSqr;
+void (*StkTrig2)() = dStkSinh;
+void (*StkTrig3)() = dStkCosh;
+char maxfn = 0;
+/* TIW 03-30-91 STOP */
+
+struct FNCT_LIST far FnctList[] = {   /* TIW 03-31-91 added far */
+   "sin",  &StkSin,
    "sinh", &StkSinh,
-   "cos", &StkCos,
+   "cos",  &StkCos,
    "cosh", &StkCosh,
-   "sqr", &StkSqr,
-   "log", &StkLog,
-   "exp", &StkExp,
-   "abs", &StkAbs,
+   "sqr",  &StkSqr,
+   "log",  &StkLog,
+   "exp",  &StkExp,
+   "abs",  &StkAbs,
    "conj", &StkConj,
    "real", &StkReal,
    "imag", &StkImag,
+   "fn1",  &StkTrig0,   /* TIW 03-30-91 */
+   "fn2",  &StkTrig1,   /* TIW 03-30-91 */
+   "fn3",  &StkTrig2,   /* TIW 03-30-91 */
+   "fn4",  &StkTrig3,   /* TIW 03-30-91 */
+   "flip", &StkFlip,    /* MCP 4-9-91 */
+   "tan",  &StkTan,     /* TIW 04-22-91 */
+   "tanh", &StkTanh,    /* TIW 04-22-91 */
+   "cotan",  &StkCoTan, /* TIW 04-24-91 */
+   "cotanh", &StkCoTanh,/* TIW 04-24-91 */
+   "cosxx",&StkCosXX,   /* PB  04-28-91 */
 };
 
 void NotAFnct(void) { }
 void FnctNotFound(void) { }
 
+/* determine if s names a function and if so which one */
+/* TIW 04-22-91 */
+whichfn(char *s, int len)
+{
+   int out;
+   if(len != 3)
+      out = 0;
+   else if(strnicmp(s,"fn",2))
+      out = 0;
+   else
+      out = atoi(s+2);
+   if(out < 1 || out > 4)
+     out = 0;
+   return(out);
+}
+
 void (far *isfunct(char *Str, int Len))(void) {
    unsigned n;
+   int functnum;    /* TIW 04-22-91 */
 
-   n = strspn(&Str[Len], " \t\r\n");
+   n = SkipWhiteSpace(&Str[Len]);
    if(Str[Len+n] == '(') {
       for(n = 0; n < sizeof(FnctList) / sizeof(struct FNCT_LIST); n++) {
-         if(strlen(FnctList[n].s) == Len) {
-            if(!strnicmp(FnctList[n].s, Str, Len))
+         if(far_strlen(FnctList[n].s) == Len) {        /* TIW 03-31-91 added far */
+            if(!far_strnicmp(FnctList[n].s, Str, Len)) {  /* TIW 03-31-91 added far */
+               /* count function variables */
+               if(functnum = whichfn(Str, Len))      /* TIW 04-22-91 */
+                   if(functnum > maxfn)              /* TIW 04-22-91 */
+                      maxfn = functnum;              /* TIW 04-22-91 */
                return(*FnctList[n].ptr);
+            }
          }
       }
       return(FnctNotFound);
@@ -738,15 +1046,17 @@ struct SYMETRY {
 };
 
 int ParseStr(char *Str) {
-   char memstr[80];
    struct ConstArg far *c;
-   int CondFlag = 0, ModFlag = 999, Len, Equals = 0, Mod[20], mdstk = 0;
+   int ModFlag = 999, Len, Equals = 0, Mod[20], mdstk = 0;
+   int NewStatement;
    struct ERROR { int n, s; } far *e;
-   strcpy(memstr,"Insufficient memory to run fractal type 'formula'");
 
    e = (struct ERROR far *)farmemalloc(sizeof(struct ERROR) * 100L);
-   if(!e || !o || !a || !Store || !Load || !v) {
-      stopmsg(0,memstr); /* PB printf replaced by stopmsg */
+   /* PB 910417 changed "o" to be a temporary alloc, during ParseStr only */
+   o = (struct PEND_OP far *)farmemalloc(sizeof(struct PEND_OP) * (long)MAX_OPS);
+   if(!e || !o || !typespecific_workarea) {
+      static char far msg[]={"Insufficient memory to run fractal type 'formula'"};
+      stopmsg(0,msg);
       return(1);
    }
    switch(MathType) {
@@ -771,6 +1081,16 @@ int ParseStr(char *Str) {
          StkReal = dStkReal;
          StkImag = dStkImag;
          StkConj = dStkConj;
+         StkTrig0 = dtrig0;   /* TIW 03-30-91 */
+         StkTrig1 = dtrig1;   /* TIW 03-30-91 */
+         StkTrig2 = dtrig2;   /* TIW 03-30-91 */
+         StkTrig3 = dtrig3;   /* TIW 03-30-91 */
+         StkFlip = dStkFlip;
+         StkTan = dStkTan;    /* TIW 04-22-91 */
+         StkTanh = dStkTanh;  /* TIW 04-22-91 */
+         StkCoTan = dStkCoTan;    /* TIW 04-24-91 */
+         StkCoTanh = dStkCoTanh;  /* TIW 04-24-91 */
+         StkCosXX = dStkCosXX;    /* PB  04-28-91 */
          break;
       case M_MATH:
          StkAdd = mStkAdd;
@@ -793,6 +1113,16 @@ int ParseStr(char *Str) {
          StkReal = mStkReal;
          StkImag = mStkImag;
          StkConj = mStkConj;
+         StkTrig0 = mtrig0;  /* TIW 03-30-91 */
+         StkTrig1 = mtrig1;  /* TIW 03-30-91 */
+         StkTrig2 = mtrig2;  /* TIW 03-30-91 */
+         StkTrig3 = mtrig3;  /* TIW 03-30-91 */
+         StkFlip = mStkFlip;
+         StkTan  = mStkTan;  /* TIW 04-22-91 */
+         StkTanh  = mStkTanh;/* TIW 04-22-91 */
+         StkCoTan  = mStkCoTan;  /* TIW 04-24-91 */
+         StkCoTanh  = mStkCoTanh;/* TIW 04-24-91 */
+         StkCosXX = mStkCosXX;   /* PB  04-28-91 */
          break;
       case L_MATH:
          Delta16 = bitshift - 16;
@@ -817,8 +1147,19 @@ int ParseStr(char *Str) {
          StkReal = lStkReal;
          StkImag = lStkImag;
          StkConj = lStkConj;
+         StkTrig0 = ltrig0;   /* TIW 03-30-91 */
+         StkTrig1 = ltrig1;   /* TIW 03-30-91 */
+         StkTrig2 = ltrig2;   /* TIW 03-30-91 */
+         StkTrig3 = ltrig3;   /* TIW 03-30-91 */
+         StkFlip = lStkFlip;
+         StkTan  = lStkTan;   /* TIW 04-22-91 */
+         StkTanh  = lStkTanh; /* TIW 04-22-91 */
+         StkCoTan  = lStkCoTan;   /* TIW 04-24-91 */
+         StkCoTanh  = lStkCoTanh; /* TIW 04-24-91 */
+         StkCosXX = lStkCosXX;    /* PB  04-28-91 */
          break;
    }
+   maxfn = 0;   /* TIW 03-30-91 */
    for(vsp = 0; vsp < sizeof(Constants) / sizeof(char*); vsp++) {
       v[vsp].s = Constants[vsp];
       v[vsp].len = strlen(Constants[vsp]);
@@ -831,10 +1172,10 @@ int ParseStr(char *Str) {
          v[2].a.d.y = param[3];
          break;
       case M_MATH:
-         v[1].a.m.x = d2MP(param[0]);
-         v[1].a.m.y = d2MP(param[1]);
-         v[2].a.m.x = d2MP(param[2]);
-         v[2].a.m.y = d2MP(param[3]);
+         v[1].a.m.x = *d2MP(param[0]);
+         v[1].a.m.y = *d2MP(param[1]);
+         v[2].a.m.x = *d2MP(param[2]);
+         v[2].a.m.y = *d2MP(param[3]);
          break;
       case L_MATH:
          v[1].a.l.x = (long)(param[0] * fg);
@@ -845,14 +1186,19 @@ int ParseStr(char *Str) {
    }
 
    LastInitOp = ErrPtr = paren = OpPtr = LodPtr = StoPtr = posp = 0;
+   NewStatement = 1;
    SyntaxErr = -1;
    ExpectingArg = 1;
    for(n = 0; Str[n]; n++) {
-      n += strspn(&Str[n], " \t\r\n");
       if(!Str[n])
          break;
       InitN = n;
       switch(Str[n]) {
+         case ' ':
+         case '\t':
+         case '\r':
+         case '\n':
+            break;
          case '(':
             paren++;
             if(!ExpectingArg)
@@ -890,15 +1236,17 @@ int ParseStr(char *Str) {
                e[ErrPtr].n = InitN;
                e[ErrPtr++].s = 3;
             }
-            if(ExpectingArg)
-               SyntaxErr = 0;
-            else
+            if(!ExpectingArg) {
+               NewStatement = 1;
                ExpectingArg = 1;
-            o[posp].f = (void(far*)(void))0;
-            o[posp++].p = 15;
-            o[posp].f = StkClr;
-            o[posp++].p = -30000;
-            Equals = paren = 0;
+               o[posp].f = (void(far*)(void))0;
+               o[posp++].p = 15;
+               o[posp].f = StkClr;
+               o[posp++].p = -30000;
+               Equals = paren = 0;
+            }
+            else if(!NewStatement)
+               SyntaxErr = 0;
             break;
          case ':':
             if(paren) {
@@ -915,6 +1263,7 @@ int ParseStr(char *Str) {
             o[posp++].p = -30000;
             Equals = paren = 0;
             LastInitOp = 10000;
+            NewStatement = 1;
             break;
          case '+':
             if(ExpectingArg)
@@ -983,7 +1332,7 @@ int ParseStr(char *Str) {
                if(!ExpectingArg) {
                   SyntaxErr = 1;
                }
-               ExpectingArg = 0;
+               NewStatement = ExpectingArg = 0;
                Len = (n+1)-InitN;
                o[posp].f = isfunct(&Str[InitN], Len);
                if(o[posp].f != NotAFnct) {
@@ -1001,6 +1350,11 @@ int ParseStr(char *Str) {
                   o[posp].f = StkLod;
                   o[posp++].p = 1 - (paren + Equals)*15;
                   n = InitN + c->len - 1;
+                  if(vsp >= MAX_ARGS-1) { /* PB 910417 safety test */
+                     e[ErrPtr].n = InitN;
+                     e[ErrPtr++].s = 7;
+                     break;
+                  }
                }
             }
             else {
@@ -1017,11 +1371,13 @@ int ParseStr(char *Str) {
          e[ErrPtr++].s = SyntaxErr;
          SyntaxErr = -1;
       }
-      if(posp>=100-1) { /* PB 901103 added safety test here */
+      if(posp >= MAX_OPS-1) { /* PB 901103 added safety test here */
          e[ErrPtr].n = InitN;
          e[ErrPtr++].s = 7;
          break;
       }
+      if(ErrPtr > 50)         /* PB 910417 safety test */
+         break;
    }
 
    o[posp].f = (void(far*)(void))0;
@@ -1038,7 +1394,7 @@ int ParseStr(char *Str) {
       for(n = 0; n < ErrPtr && n < 3; n++) {
          if (n)
             strcat(msgbuf,"\n");
-         sprintf(&msgbuf[strlen(msgbuf)], "Error(%d):  %s\n  ", e[n].s,
+         sprintf(&msgbuf[strlen(msgbuf)], "Error(%d):  %Fs\n  ", e[n].s, /*TIW 03-31-91 added %Fs*/
                ErrStrings[e[n].s]);
          j = 24;
          if ((i = e[n].n - j) < 0) {
@@ -1073,15 +1429,6 @@ int ParseStr(char *Str) {
    if(!ErrPtr) {
       NextOp = 0;
       LastOp = posp;
-      NumVar = vsp;
-      if(f)
-         farmemfree(f);
-      f = (void(far * far *)(void))farmemalloc(sizeof(void(far * far *)(void))
-            * (long)posp);
-      if(!f) {
-         stopmsg(0,memstr); /* PB printf replaced by stopmsg */
-         return(1);
-      }
       while(NextOp < posp) {
          if(o[NextOp].f)
             RecSortPrec();
@@ -1093,14 +1440,11 @@ int ParseStr(char *Str) {
    }
    else
       posp = 0;
-   farmemfree(e);
-/*
    farmemfree(o);
-   farmemfree(a);
-   farmemfree(Store);
-   farmemfree(Load);
-   farmemfree(v);
-*/
+   farmemfree(e);
+   /* PB 910417 free all arrays if error */
+   if (ErrPtr)
+      free_workarea();
    return(ErrPtr);
 }
 
@@ -1114,8 +1458,15 @@ int Formula(void) {
    Arg1 = &s[0];
    Arg2 = Arg1;
    Arg2--;
-   while(OpPtr < LastOp)
+   while(OpPtr < LastOp) {
       f[OpPtr++]();
+#ifdef WATCH_MP
+      x1 = *MP2d(Arg1->m.x);
+      y1 = *MP2d(Arg1->m.y);
+      x2 = *MP2d(Arg2->m.x);
+      y2 = *MP2d(Arg2->m.y);
+#endif
+   }
 
    switch(MathType) {
       case D_MATH:
@@ -1134,8 +1485,6 @@ int Formula(void) {
 }
 
 int form_per_pixel(void) {
-   double x, y;
-
    if (FormName[0] == 0) return(1);
    overflow = LodPtr = StoPtr = OpPtr = 0;
    Arg1 = &s[0];
@@ -1147,8 +1496,8 @@ int form_per_pixel(void) {
          old.y = new.y = v[0].a.d.y = dy0[row]+dShifty;
          break;
       case M_MATH:
-         v[0].a.m.x = d2MP(old.x = new.x = dx0[col]+dShiftx);
-         v[0].a.m.y = d2MP(old.y = new.y = dy0[row]+dShifty);
+         v[0].a.m.x = *d2MP(old.x = new.x = dx0[col]+dShiftx);
+         v[0].a.m.y = *d2MP(old.y = new.y = dy0[row]+dShifty);
          break;
       case L_MATH:
          lold.x = lnew.x = v[0].a.l.x = lx0[col]+lShiftx;
@@ -1177,19 +1526,23 @@ extern char FormFileName[];   /* BDT file to find the formulas in */
 extern char FormName[];    /* BDT Name of the Formula (if not null) */
 
 char *FindFormula(char *Str) {
-   static char StrBuff[201];  /* PB, to match a safety fix in parser */
+   char *FormulaStr = (char *)0;
+   char StrBuff[201];      /* PB, to match a safety fix in parser */
+                           /* MCP, changed to an automatic variable */
    char fullfilename[100]; /* BDT Full file name */
-   int c, j, k, l;
+   unsigned Done;
+   int c;
    FILE *File;
 
    findpath(FormFileName, fullfilename);  /* BDT get full path name */
 
    symmetry = 0;
-   if(File = fopen(fullfilename, "rt")) { /* BDT use variable files */
-      while(fscanf(File, "%200[^ \n\t({]", StrBuff) != EOF) {
+   if((File = fopen(fullfilename, "rt")) != NULL) { /* BDT use variable files */
+      while(StrBuff[0]=0,/* TIW 04-22-91 */ fscanf(File, "%200[^ \n\t({]", StrBuff) != EOF) {
          if(!stricmp(StrBuff, Str) || !Str[0]) {
             while((c = getc(File)) != EOF) {
                if(c == '(') {
+                  StrBuff[0]=0; /* TIW 04-22-91 */
                   fscanf(File, "%200[^)]", StrBuff);
                   for(n = 0; SymStr[n].s[0]; n++) {
                      if(!stricmp(SymStr[n].s, StrBuff)) {
@@ -1201,27 +1554,63 @@ char *FindFormula(char *Str) {
                      sprintf(fullfilename,"Undefined symmetry:\n  %.76s",
                            StrBuff);
                      stopmsg(0,fullfilename); /* PB printf -> stopmsg */
+                     FormulaStr = (char *)0;  /* PB 910511 */
+Exit:
                      fclose(File);
-                     return((char*)0);
+                     return(FormulaStr);
                   }
                }
                else if(c == '{')
                   break;
             }
-            if(fscanf(File, "%200[^}]", StrBuff) != EOF) {
-               Str = &StrBuff[strspn(StrBuff, " \n\t\r")];
-               l = strlen(Str);
-               for(j = 1; isspace(Str[l-j]); j++);
-               Str[l-j+1] = 0;
-               for(n = 0; n < l-j; n++)
-                  if(isspace(Str[n]))
-                     Str[n] = ' ';
-               fclose(File);        /* BDT close the file */
-               return(StrBuff);
+
+            /* MCP 4-9-91, Strip the comments inside the formula.  Might
+                           as well allow unlimited formula lengths while
+                           we're at it.
+            */
+
+            FormulaStr = boxx;
+            n = Done = 0;
+            while(!Done) {
+               switch(c = getc(File)) {
+                     static char far msg[]={"Unexpected EOF:  missing a '}'"};
+                  case EOF:
+UnexpectedEOF:
+                     stopmsg(0, msg);
+                     FormulaStr = (char *)0;
+                     goto Exit;
+                  case '}':
+                     FormulaStr[n++] = 0;
+                     Done = 1;
+                     break;
+                  case ';':
+                     while((c = getc(File)) != '\n') {
+                        if(c == EOF)
+                           goto UnexpectedEOF;
+                     }
+                     FormulaStr[n++] = ',';
+                     break;
+                  case ' ':                     /* Also strip out the
+                                                   white spaces */
+                  case '\t':
+                     break;
+                  case '\n':
+                     FormulaStr[n++] = ',';
+                     break;
+                  default:
+                     FormulaStr[n++] = c;
+               }
+               if (n >= 8192) { /* PB 4-9-91, added safety test */
+                  static char far msg[]={"Definition too large, missing a '}'?"};
+                  stopmsg(0, msg);
+                  FormulaStr = (char *)0;
+                  goto Exit;
+               }
             }
-            else
-               break;               /* PB moved close & msg to end of while */
+            goto Exit;
          }
+
+         StrBuff[0]=0;  /* TIW 04-22-91 */
          fscanf(File, "%200[ \n\t({]", StrBuff);
          if(StrBuff[strcspn(StrBuff, "({")]) {
 skipcomments:
@@ -1229,21 +1618,20 @@ skipcomments:
             if (getc(File)!= '}') goto skipcomments;
          }
       }
-      fclose(File);                 /* BDT close the file */
       sprintf(fullfilename, "Formula \"%s\" not found", Str);
       stopmsg(0,fullfilename);      /* PB printf -> stopmsg */
+      FormulaStr = (char *)0;       /* PB 910511 */
+      goto Exit;
    }
-   else {
-      sprintf(fullfilename, "Unable to open %s", FormFileName);
-      stopmsg(0,fullfilename);      /* PB printf -> stopmsg */
-   }
-   return((char*)0);
+   sprintf(fullfilename, "Unable to open %s", FormFileName);
+   stopmsg(0,fullfilename);      /* PB printf -> stopmsg */
+   return((char *)0);            /* PB 910511 */
 }
 
 int RunForm(char *Name) {
    if (FormName[0] == 0) return(1);
    parser_allocate();
-   if(FormStr = FindFormula(Name))
+   if((FormStr = FindFormula(Name)) != NULL)
       return(ParseStr(FormStr));
    else
       return(1);                    /* PB, msg moved to FindFormula */
@@ -1284,17 +1672,33 @@ void init_misc()
    bitshiftless1 = bitshift-1;
 }
 
-static int parser_allocated = 0;
+/* PB 910417 here to end changed.
+   Allocate sub-arrays from one main farmemalloc, using global variable
+   typespecific_workarea; calcfrac.c releases this area when calculation
+   ends or is terminated.
+   Moved the "f" array to be allocated as part of this.
+   */
 
-parser_allocate()
+static void parser_allocate(void)
 {
-   if (parser_allocated) return(0);
-   parser_allocated = 1;
-
-   o = (struct PEND_OP far *)farmemalloc(sizeof(struct PEND_OP) * 100L);
-   a = (union Arg far *)farmemalloc(sizeof(union Arg) * 100L);
-   Store = (union Arg far * far *)farmemalloc(sizeof(union Arg far *) * 100L);
-   Load = (union Arg far * far *)farmemalloc(sizeof(union Arg far *) * 100L);
-   v = (struct ConstArg far *)farmemalloc(sizeof(struct ConstArg) * 100L);
-
+   unsigned int f_size,Store_size,Load_size,v_size;
+   free_workarea();
+   f_size = sizeof(void(far * far *)(void)) * MAX_OPS;
+   Store_size = sizeof(union Arg far *) * MAX_OPS;
+   Load_size = sizeof(union Arg far *) * MAX_OPS;
+   v_size = sizeof(struct ConstArg) * MAX_ARGS;
+   typespecific_workarea = farmemalloc((long)(f_size+Load_size+Store_size+v_size));
+   f = (void(far * far *)(void))typespecific_workarea;
+   Store = (union Arg far * far *)(f + MAX_OPS);
+   Load = (union Arg far * far *)(Store + MAX_OPS);
+   v = (struct ConstArg far *)(Load + MAX_OPS);
 }
+
+static void free_workarea()
+{
+   if(typespecific_workarea) {
+      farmemfree(typespecific_workarea);
+      typespecific_workarea = NULL;
+   }
+}
+

@@ -13,22 +13,25 @@
 
 void encoder_overlay(void);
 int  savetodisk(char *);
-int  encoder();
+int  encoder(void);
 
-static void setup_save_info(struct fractal_info *);
+static void _fastcall setup_save_info(struct fractal_info *);
 static void inittable(void);
-static void shftwrite();
-static void raster(unsigned int);
-static int  extend_blk_len(int datalen);
-static void put_extend_blk(int block_id,int block_len,char far *block_data);
+static void _fastcall shftwrite(unsigned char *color,int numcolors);
+static void _fastcall raster(unsigned int);
+static int  _fastcall extend_blk_len(int datalen);
+static void _fastcall put_extend_blk(int block_id,int block_len,char far *block_data);
+static int  _fastcall store_item_name(char *);
 
 extern int initbatch;
 extern char far *resume_info;		/* pointer to resume info if allocated */
 extern int  resume_len; 		/* length of resume info */
 extern char LName[];
-
-extern char FormName[40];		/* formula name */
+extern char FormName[]; 		/* formula name */
+extern char IFSName[];
 extern int  active_system;		/* 0=dos, 1=windows */
+extern int  far *ranges;
+extern int  rangeslen;
 
 extern	int	sxdots,sydots;		/* # of dots on the physical screen    */
 extern	int	sxoffs,syoffs;		/* physical top left of logical screen */
@@ -40,12 +43,13 @@ extern	int	colors; 		/* maximum colors available */
 extern	int	dotmode;		/* so we can detect disk-video */
 extern	char overwrite; 		/* overwrite on/off */
 extern	int	resave_flag;		/* resaving after a timed save */
+extern	int	started_resaves;
 extern	int	timedsave;		/* if doing an auto save */
 extern	int	disk16bit;		/* 16 bit continuous potential */
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
+extern	int	gotrealdac;		/* DAC valid? */
 extern int	daclearn, daccount;	/* used by the color-cyclers */
-extern int	reallyega;		/* "reall-an-EGA" flag */
 extern int	extraseg;		/* used by Save-to-GIF routines */
 extern int	debugflag;
 
@@ -75,9 +79,10 @@ extern double potparam[3];		/* three potential parameters*/
 extern double inversion[];
 extern int    decomp[];
 extern int    distest;			/* non-zero if distance estimator   */
+extern int    distestwidth;
 extern int    init3d[20];		/* '3d=nn/nn/nn/...' values */
 extern char   floatflag;		/* floating-point fractals? */
-extern int    biomorph;
+extern int    usr_biomorph;
 extern int    bailout;			/* user input bailout value */
 extern int    previewfactor;
 extern int    xtrans;
@@ -98,6 +103,8 @@ extern int    Ambient;
 extern int    RANDOMIZE;
 extern int    haze;
 extern int    transparent[2];
+extern int    rotate_lo,rotate_hi;
+extern char   busy;
 
 extern int    timer(int timertype,int(*subrtn)(),...);
 
@@ -173,9 +180,6 @@ static char paletteEGA[] = {			/* 16-color (EGA/CGA) pal */
 	 21, 21, 21, 21, 21, 63, 21, 63, 21, 21, 63, 63,
 	 63, 21, 21, 63, 21, 63, 63, 63, 21, 63, 63, 63,
 	};
-int paletteVGA[] = {			/* VGA palette - to DAC registers */
-	0, 1, 2, 3, 4, 5,20, 7,56,57,58,59,60,61,62,63,
-	};
 
 void encoder_overlay() { }	/* for restore_active_ovly */
 
@@ -190,11 +194,6 @@ int i, j, outcolor1, outcolor2, interrupted;
 
 ENTER_OVLY(OVLY_ENCODER);
 
-if (extraseg == 0) {			/* not enough memory for this */
-	buzzer(2);
-	EXIT_OVLY;
-	return -1;
-	}
 restart:
 
 save16bit = disk16bit;
@@ -210,7 +209,7 @@ for (i = 0; i < strlen(openfile); i++)
 		strcpy(openfiletype,&openfile[i]);
 		openfile[i] = 0;
 		}
-if (resave_flag == 0)
+if (resave_flag != 1)
 	updatesavename(filename); /* for next time */
 
 strcat(openfile,openfiletype);
@@ -219,12 +218,17 @@ strcpy(tmpfile,openfile);
 if (access(openfile,0) != 0) /* file doesn't exist */
 	newfile = 1;
 else { /* file already exists */
-	if ((overwrite==0) && resave_flag == 0)
-		goto restart;
+	if (overwrite == 0) {
+		if (resave_flag == 0)
+			goto restart;
+		if (started_resaves == 0) { /* first save of a savetime set */
+			updatesavename(filename);
+			goto restart;
+			}
+		}
 	if (access(openfile,2) != 0) {
-		buzzer(2);
-		sprintf(tmpmsg," ?? Can't write %s ",openfile);
-		texttempmsg(tmpmsg);
+		sprintf(tmpmsg,"Can't write %s",openfile);
+		stopmsg(0,tmpmsg);
 		EXIT_OVLY;
 		return -1;
 		}
@@ -234,10 +238,12 @@ else { /* file already exists */
 		tmpfile[i] = 0;
 	strcat(tmpfile,"fractint.tmp");
 	}
+started_resaves = (resave_flag == 1) ? 1 : 0;
+if (resave_flag == 2) /* final save of savetime set? */
+	resave_flag = 0;
 if ((out=fopen(tmpfile,"wb")) == NULL) {
-	buzzer(2);
-	sprintf(tmpmsg," ?? Couldn't create %s ",tmpfile);
-	texttempmsg(tmpmsg);
+	sprintf(tmpmsg,"Can't create %s ",tmpfile);
+	stopmsg(0,tmpmsg);
 	EXIT_OVLY;
 	return -1;
 	}
@@ -248,10 +254,12 @@ if (dotmode == 11) {			/* disk-video */
 	dvid_status(1,buf);
 	}
 
+busy = 1;
 if (debugflag != 200)
 	interrupted = encoder();
 else
 	interrupted = timer(2,NULL);	/* invoke encoder() via timer */
+busy = 0;
 
 fclose(out);
 
@@ -270,20 +278,8 @@ if (interrupted) {
 	}
 
 if (newfile == 0 && interrupted >= 0) { /* replace the real file */
-	if (unlink(openfile) != 0) {
-		buzzer(2);
-		sprintf(tmpmsg," ?? Can't replace %s ",openfile);
-		texttempmsg(tmpmsg);
-		EXIT_OVLY;
-		return -1;
-		}
-	if (rename(tmpfile,openfile) != 0) {
-		buzzer(2);
-		sprintf(tmpmsg," ?? Can't rename %s ",tmpfile);
-		texttempmsg(tmpmsg);
-		EXIT_OVLY;
-		return -1;
-		}
+	unlink(openfile);		/* success assumed since we checked */
+	rename(tmpfile,openfile);	/* earlier with access		    */
 	}
 
 if (dotmode != 11) {			/* supress this on disk-video */
@@ -397,8 +393,8 @@ if (gif87a_flag) i = 0;    /* for some decoders which can't handle aspect */
 fputc(i,out);				/* pixel aspect ratio */
 
 if (colors == 256) {			/* write out the 256-color palette */
-	if (dacbox[0][0] != 255)	/* got a DAC - must be a VGA */
-		shftwrite(dacbox,colors);
+	if (gotrealdac) 		/* got a DAC - must be a VGA */
+		shftwrite((unsigned char *)dacbox,colors);
 	else				/* uh oh - better fake it */
 		for (i = 0; i < 256; i += 16)
 			shftwrite(paletteEGA,16);
@@ -408,15 +404,10 @@ if (colors == 2)			/* write out the B&W palette */
 if (colors == 4)			/* write out the CGA palette */
 	shftwrite(paletteCGA,colors);
 if (colors == 16)			/* Either EGA or VGA */
-	if (dacbox[0][0] != 255) {	/* got a  DAC - must be a VGA */
-		if (reallyega)		/* well, maybe really an EGA */
-			shftwrite(dacbox,colors);
-		else
-			for (i = 0; i < colors; i++)
-				shftwrite(dacbox[paletteVGA[i]],1);
-		}
-		else			/* no DAC - must be an EGA */
-			shftwrite(paletteEGA,colors);
+	if (gotrealdac)
+		shftwrite((unsigned char *)dacbox,colors);
+	 else				/* no DAC - must be an EGA */
+		shftwrite(paletteEGA,colors);
 
 fwrite(",",1,1,out);                    /* Image Descriptor */
 i = 0;
@@ -531,15 +522,16 @@ if (gif87a_flag == 0) { /* store non-standard fractal info */
 		save_info.tot_extend_len += extend_blk_len(resume_len);
 		put_extend_blk(2,resume_len,resume_info);
 		}
-	if (save_info.fractal_type == FORMULA || save_info.fractal_type == FFORMULA) {
-		/* formula info block, 003 */
-		save_info.tot_extend_len += extend_blk_len(40);
-		put_extend_blk(3,40,FormName);
-		}
-	if (save_info.fractal_type == LSYSTEM) {
-		/* formula info block, 003 */
-		save_info.tot_extend_len += extend_blk_len(40);
-		put_extend_blk(3,40,LName);
+	if (save_info.fractal_type == FORMULA || save_info.fractal_type == FFORMULA)
+		save_info.tot_extend_len += store_item_name(FormName);
+	if (save_info.fractal_type == LSYSTEM)
+		save_info.tot_extend_len += store_item_name(LName);
+	if (save_info.fractal_type == IFS || save_info.fractal_type == IFS3D)
+		save_info.tot_extend_len += store_item_name(IFSName);
+	if (display3d <= 0 && rangeslen) {
+		/* ranges block, 004 */
+		save_info.tot_extend_len += extend_blk_len(rangeslen*2);
+		put_extend_blk(4,rangeslen*2,(char far *)ranges);
 		}
 
 	/* main and last block, 001 */
@@ -548,12 +540,12 @@ if (gif87a_flag == 0) { /* store non-standard fractal info */
 	}
 
 fwrite(";",1,1,out);                    /* GIF Terminator */
+
 return ((ydot < 9999) ? 0 : 1);
 }
 
-static void shftwrite(color,numcolors)	/* shift IBM colors to GIF format */
-unsigned char color[];
-int numcolors;
+static void _fastcall shftwrite(unsigned char *color,int numcolors)
+/* shift IBM colors to GIF */
 {
 unsigned char thiscolor;
 int i,j;
@@ -562,7 +554,6 @@ for (i = 0; i < numcolors; i++)
 		thiscolor = color[3*i+j];
 		thiscolor = thiscolor << 2;
 		thiscolor += (thiscolor >> 6);
-	    /*	fwrite(&thiscolor,1,1,out); */
 		fputc(thiscolor,out);
 		}
 }
@@ -585,7 +576,7 @@ for (i = 0; i < MAXENTRY; i++)
 
 }
 
-static void raster(code)		/* routine to block and output codes */
+static void _fastcall raster(code)	/* routine to block and output codes */
 unsigned int code;
 {
 unsigned int icode, i, j;
@@ -628,13 +619,13 @@ if (bytecount > 250 || code == endcode) {	/* time to write a block */
 }
 
 
-static int extend_blk_len(int datalen)
+static int _fastcall extend_blk_len(int datalen)
 {
    return(datalen + (datalen+254)/255 + 15);
    /*	   data   +	1.per.block   + 14 for id + 1 for null at end  */
 }
 
-static void put_extend_blk(int block_id,int block_len,char far *block_data)
+static void _fastcall put_extend_blk(int block_id,int block_len,char far *block_data)
 {
    int i,j;
    char header[15];
@@ -651,12 +642,21 @@ static void put_extend_blk(int block_id,int block_len,char far *block_data)
    fputc(0,out);
 }
 
-static void setup_save_info(struct fractal_info *save_info)
+static int _fastcall store_item_name(char *nameptr)
+{
+   char tmpname[40];
+   strcpy(tmpname,nameptr);
+   /* formula/lsys/ifs info block, 003 */
+   put_extend_blk(3,40,tmpname);
+   return(extend_blk_len(40));
+}
+
+static void _fastcall setup_save_info(struct fractal_info *save_info)
 {
    int i;
    /* set save parameters in save structure */
    strcpy(save_info->info_id, INFO_ID);
-   save_info->version	      = 5; /* file version, independant of system */
+   save_info->version	      = 7; /* file version, independant of system */
    save_info->iterations      = maxit;
    save_info->fractal_type    = fractype;
    save_info->xmin	      = xxmin;
@@ -673,8 +673,10 @@ static void setup_save_info(struct fractal_info *save_info)
    save_info->xdots	      = videoentry.xdots;
    save_info->ydots	      = videoentry.ydots;
    save_info->colors	      = videoentry.colors;
-   save_info->parm3	      = param[2];
-   save_info->parm4	      = param[3];
+   save_info->parm3	      = 0; /* pre version==7 fields */
+   save_info->parm4	      = 0;
+   save_info->dparm3	      = param[2];
+   save_info->dparm4	      = param[3];
    save_info->potential[0]    = potparam[0];
    save_info->potential[1]    = potparam[1];
    save_info->potential[2]    = potparam[2];
@@ -686,7 +688,7 @@ static void setup_save_info(struct fractal_info *save_info)
    save_info->invert[1]       = inversion[1];
    save_info->invert[2]       = inversion[2];
    save_info->decomp[0]       = decomp[0];
-   save_info->biomorph	      = biomorph;
+   save_info->biomorph	      = usr_biomorph;
    save_info->symmetry	      = forcesymmetry;
    for (i = 0; i < 16; i++)
       save_info->init3d[i] = init3d[i];
@@ -730,6 +732,9 @@ static void setup_save_info(struct fractal_info *save_info)
    save_info->haze	      = haze;
    save_info->transparent[0]  = transparent[0];
    save_info->transparent[1]  = transparent[1];
+   save_info->rotate_lo       = rotate_lo;
+   save_info->rotate_hi       = rotate_hi;
+   save_info->distestwidth    = distestwidth;
    for (i = 0; i < sizeof(save_info->future)/sizeof(int); i++)
       save_info->future[i] = 0;
 }

@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "fractint.h"
+#include "helpdefs.h"
 
 /* routines in this module	*/
 
@@ -42,14 +43,11 @@ static int    vidcompare(void const *,void const *);
 static void   format_vid_inf(int i,char *err,char *buf);
 static double vid_aspect(int tryxdots,int tryydots);
 static void   format_item(int,char *);
-static int    check_modekey(int);
+static int    check_modekey(int,int);
 
 
-extern int    kbdkeys[];
 extern int    initmode; 		/* initial video mode	    */
 extern int    askvideo;
-extern int    hasconfig;		/* = 0 if 'fractint.cfg'    */
-extern char   *fkeys[];
 extern int    initbatch;		/* 1 if batch run (no kbd)  */
 extern int    fractype; 		/* fractal type 	    */
 extern int    viewwindow;		/* 0 for full screen, 1 for window */
@@ -62,12 +60,16 @@ extern int    skipxdots,skipydots;	/* for decoder, when reducing image */
 extern char   readname[];		/* name of fractal input file */
 extern int    save_system,save_release;
 extern int    display3d;		/* 3D display flag: 0 = OFF */
+extern struct videoinfo far videotable[];
+extern struct videoinfo far *vidtbl;
+extern int    vidtbllen;
+
 int  fullscreen_choice(
 	     int options, char *hdg, char *hdg2, char *instr, int numchoices,
 	     char **choices, int *attributes, int boxwidth, int boxdepth,
-	     int colwidth, int current,
-	     void (*formatitem)(), int (*showdetail)(),
-	     char *speedstring, int (*speedprompt)(), int (*checkkey)());
+	     int colwidth, int current, void (*formatitem)(),
+	     char *speedstring, int (*speedprompt)(),
+	     int (*checkkey)());
 
 
 struct vidinf {
@@ -76,7 +78,8 @@ struct vidinf {
    };
 /* defines for flags; done this way instead of bit union to ensure ordering;
    these bits represent the sort sequence for video mode list */
-#define VI_EXACT   512	/* unless the one and only exact match */
+#define VI_EXACT 0x8000 /* unless the one and only exact match */
+#define VI_NOKEY   512	/* if no function key assigned */
 #define VI_DISK1   256	/* disk video and size not exact */
 #define VI_SSMALL  128	/* screen smaller than file's screen */
 #define VI_SBIG     64	/* screen bigger than file's screen */
@@ -93,18 +96,25 @@ static int vidcompare(void const *p1,void const *p2)
    struct vidinf *ptr1,*ptr2;
    ptr1 = (struct vidinf *)p1;
    ptr2 = (struct vidinf *)p2;
-   if (ptr1->flags < ptr2->flags
-     || (ptr1->flags == ptr2->flags && ptr1->entnum < ptr2->entnum))
-      return(-1);
+   if (ptr1->flags < ptr2->flags) return(-1);
+   if (ptr1->flags > ptr2->flags) return(1);
+   if (vidtbl[ptr1->entnum].keynum < vidtbl[ptr2->entnum].keynum) return(-1);
+   if (vidtbl[ptr1->entnum].keynum > vidtbl[ptr2->entnum].keynum) return(1);
+   if (ptr1->entnum < ptr2->entnum) return(-1);
    return(1);
 }
 
 static void format_vid_inf(int i,char *err,char *buf)
 {
-   fromvideotable(i);
+   char kname[5];
+   far_memcpy((char far *)&videoentry,(char far *)&vidtbl[i],
+	      sizeof(videoentry));
+   vidmode_keyname(videoentry.keynum,kname);
    sprintf(buf,"%-5s %-25s %-4s %4d %4d %3d %-25s",  /* 76 chars */
-	   fkeys[i], videoentry.name, err, videoentry.xdots, videoentry.ydots,
+	   kname, videoentry.name, err,
+	   videoentry.xdots, videoentry.ydots,
 	   videoentry.colors, videoentry.comment);
+   videoentry.xdots = 0; /* so tab_display knows to display nothing */
 }
 
 static double vid_aspect(int tryxdots,int tryydots)
@@ -122,49 +132,56 @@ int get_video_mode(struct fractal_info *info)
    int kbdchar;
    struct vidinf vid[MAXVIDEOMODES];
    int i,j;
+   int gotrealmode;
    double ftemp,ftemp2;
    unsigned tmpflags;
-   char hdg[360];
-   char buf[81];
    int choicerow,topsubscr,displayflag;
    int tmpxdots,tmpydots;
    float tmpreduce;
    char *nameptr;
-   int	attributes[MAXVIDEOMODES];
+   int	*attributes;
    extern char temp1[256];
+   extern char dstack[]; /* for heading, avoid a 320 byte variable here  */
+			 /* also, for attributes array, saves 600	 */
+			 /* both above necessary to avoid stack problems */
    int oldhelpmode;
+   struct videoinfo far *vident;
 
    initmode = -1;
+   load_fractint_cfg(0); /* get fractint.cfg into *vidtbl (== extraseg) */
 
    /* try to find exact match for vid mode */
-   for (i = 0; i < maxvideomode; ++i) {
-      fromvideotable(i);
-      if (info->xdots == videoentry.xdots && info->ydots == videoentry.ydots
-	&& filecolors == videoentry.colors
-	&& info->videomodeax == videoentry.videomodeax
-	&& info->videomodebx == videoentry.videomodebx
-	&& info->videomodecx == videoentry.videomodecx
-	&& info->videomodedx == videoentry.videomodedx
-	&& info->dotmode%100 == videoentry.dotmode%100) {
+   for (i = 0; i < vidtbllen; ++i) {
+      vident = &vidtbl[i];
+      if (info->xdots == vident->xdots && info->ydots == vident->ydots
+	&& filecolors == vident->colors
+	&& info->videomodeax == vident->videomodeax
+	&& info->videomodebx == vident->videomodebx
+	&& info->videomodecx == vident->videomodecx
+	&& info->videomodedx == vident->videomodedx
+	&& info->dotmode%100 == vident->dotmode%100) {
 	 initmode = i;
 	 break;
 	 }
       }
 
    if (initmode == -1) /* try to find very good match for vid mode */
-      for (i = 0; i < maxvideomode; ++i) {
-	 fromvideotable(i);
-	 if (info->xdots == videoentry.xdots && info->ydots == videoentry.ydots
-	   && filecolors == videoentry.colors) {
+      for (i = 0; i < vidtbllen; ++i) {
+	 vident = &vidtbl[i];
+	 if (info->xdots == vident->xdots && info->ydots == vident->ydots
+	   && filecolors == vident->colors) {
 	    initmode = i;
 	    break;
 	    }
 	 }
 
    /* setup table entry for each vid mode, flagged for how well it matches */
-   for (i = 0; i < maxvideomode; ++i) {
+   for (i = 0; i < vidtbllen; ++i) {
+      far_memcpy((char far *)&videoentry,(char far *)&vidtbl[i],
+		 sizeof(videoentry));
       tmpflags = VI_EXACT;
-      fromvideotable(i);
+      if (videoentry.keynum == 0)
+	 tmpflags |= VI_NOKEY;
       if (info->xdots > videoentry.xdots || info->ydots > videoentry.ydots)
 	 tmpflags |= VI_SSMALL;
       else if (info->xdots < videoentry.xdots || info->ydots < videoentry.ydots)
@@ -195,55 +212,53 @@ int get_video_mode(struct fractal_info *info)
       vid[i].flags  = tmpflags;
       }
 
+   gotrealmode = 0;
    if (initmode < 0 || (askvideo && !initbatch)) {
       /* no exact match or (askvideo=yes and batch=no), talk to user */
 
-      qsort(vid,maxvideomode,sizeof(vid[0]),vidcompare); /* sort modes */
+      qsort(vid,vidtbllen,sizeof(vid[0]),vidcompare); /* sort modes */
 
-      for (i = 0; i < maxvideomode; ++i)
+      attributes = (int *)&dstack[1000];
+      for (i = 0; i < vidtbllen; ++i)
 	 attributes[i] = 1;
       vidptr = &vid[0]; /* for format_item */
 
       /* format heading */
-      sprintf(buf,"File: %-44s  %d x %d x %d",
-	     readname,filexdots,fileydots,filecolors);
       if (info->info_id[0] == 'G')
 	 strcpy(temp1,"      Non-fractal GIF");
       else {
-	 nameptr = fractalspecific[fractype].name;
+	 nameptr = curfractalspecific->name;
 	 if (*nameptr == '*') ++nameptr;
 	 if (display3d) nameptr = "3D Transform";
 	 sprintf(temp1,"Type: %s",nameptr);
 	 }
-      sprintf(hdg,"%-76s\n%-52s",buf,temp1);
+      sprintf(dstack,"File: %-44s  %d x %d x %d\n%-52s",
+	     readname,filexdots,fileydots,filecolors,temp1);
       if (info->info_id[0] != 'G') {
 	 if (save_system)
-	    strcat(hdg,"WinFract ");
-	 sprintf(buf,"v%d.%01d",save_release/100,(save_release%100)/10);
+	    strcat(dstack,"WinFract ");
+	 sprintf(temp1,"v%d.%01d",save_release/100,(save_release%100)/10);
 	 if (save_release%100) {
-	    i = strlen(buf);
-	    buf[i] = (save_release%10) + '0';
-	    buf[i+1] = 0;
+	    i = strlen(temp1);
+	    temp1[i] = (save_release%10) + '0';
+	    temp1[i+1] = 0;
 	    }
 	 if (save_system == 0 && save_release <= 1410)
-	    strcat(buf," or earlier");
-	 strcat(hdg,buf);
+	    strcat(temp1," or earlier");
+	 strcat(dstack,temp1);
 	 }
-      strcat(hdg,"\n");
+      strcat(dstack,"\n");
       if (info->info_id[0] != 'G' && save_system == 0)
 	 if (initmode < 0)
-	    strcat(hdg,"Saved in unknown video mode.");
+	    strcat(dstack,"Saved in unknown video mode.");
 	 else {
-	    format_vid_inf(initmode,"",buf);
-	    strcat(hdg,buf);
+	    format_vid_inf(initmode,"",temp1);
+	    strcat(dstack,temp1);
 	    }
       if (fileaspectratio != 0 && fileaspectratio != SCREENASPECT)
-	 strcat(hdg,
+	 strcat(dstack,
  "\nWARNING: non-standard aspect ratio; loading will change your <v>iew settings");
-      if (hasconfig == 0)
-	 strcat(hdg,
-	  "\n   Note: fractint.cfg is present and being used for mode list.");
-      strcat(hdg,"\n");
+      strcat(dstack,"\n");
       /* set up instructions */
       strcpy(temp1,"\
 Select a video mode.  Use the cursor keypad to move the pointer.\n\
@@ -255,22 +270,36 @@ Press F1 for help, ");
 
       oldhelpmode = helpmode;
       helpmode = HELPLOADFILE;
-      i = fullscreen_choice(0,hdg,
+      i = fullscreen_choice(0,dstack,
  "key...name......................err..xdot.ydot.clr.comment..................",
-		  temp1,maxvideomode,NULL,attributes,
-		  1,12,76,0,format_item,NULL,NULL,NULL,check_modekey);
+		  temp1,vidtbllen,NULL,attributes,
+		  1,13,76,0,format_item,NULL,NULL,check_modekey);
       helpmode = oldhelpmode;
       if (i == -1)
 	 return(-1);
-      if (i < 0) /* returned -100-vidtablenum */
+      if (i < 0) { /* returned -100 - videotable entry number */
 	 initmode = -100 - i;
+	 gotrealmode = 1;
+	 }
       else
 	 initmode = vid[i].entnum;
       }
 
+   if (gotrealmode == 0) { /* translate from temp table to permanent */
+      if ((j = vidtbl[i=initmode].keynum) != 0) {
+	 for (initmode = 0; initmode < MAXVIDEOTABLE-1; ++initmode)
+	    if (videotable[initmode].keynum == j) break;
+	 if (initmode >= MAXVIDEOTABLE-1) j = 0;
+	 }
+      if (j == 0) /* mode has no key, add to reserved slot at end */
+	 far_memcpy((char far *)&videotable[initmode=MAXVIDEOTABLE-1],
+		    (char far *)&vidtbl[i],sizeof(*vidtbl));
+      }
+
    /* ok, we're going to return with a video mode */
 
-   fromvideotable(initmode);
+   far_memcpy((char far *)&videoentry,(char far *)&videotable[initmode],
+	      sizeof(videoentry));
 
    skipxdots = skipydots = 0; /* set for no reduction */
    if (videoentry.xdots < filexdots || videoentry.ydots < fileydots) {
@@ -346,9 +375,10 @@ Press F1 for help, ");
 	 viewreduction = tmpreduce; /* ok, this works */
       }
    if (finalaspectratio != SCREENASPECT || viewxdots != 0) {
-      stopmsg(4,"\
+      static char far msg[] = {"\
 Warning: <V>iew parameters are being set to non-standard values.\n\
-Remember to reset them when finished with this image.");
+Remember to reset them when finished with this image."};
+      stopmsg(4,msg);
       }
 
    return(0);
@@ -369,12 +399,9 @@ static void format_item(int choice,char *buf)
    format_vid_inf(vidptr[choice].entnum,errbuf,buf);
 }
 
-static int check_modekey(int curkey)
+static int check_modekey(int curkey,int choice)
 {
    int i;
-   for (i = 0; i < maxvideomode; ++i)
-      if (curkey == kbdkeys[i])
-	 return(-100-i);
-   return(0);
+   return (((i = check_vidmode_key(0,curkey)) >= 0) ? -100-i : 0);
 }
 
