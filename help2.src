@@ -73,27 +73,40 @@ SUMMARY OF FRACTAL TYPES
     Pictoral representation of a population growth model.
       Let P = new population, p = oldpopulation, r = growth rate
       The model is: P = p +  r*p*(1-p).
-    No parameters.
+    Two parameters: Filter Cycles and Seed Population.
 {=HT_BIF bif+sinpi}
 ~Label=HF_BIFPLUSSINPI
     Bifurcation variation: model is: P = p + r*sin(PI*p).
-    No parameters.
+    Two parameters: Filter Cycles and Seed Population.
 {=HT_BIF bif=sinpi}
 ~Label=HF_BIFEQSINPI
     Bifurcation variation: model is: P = r*sin(PI*p).
-    No parameters.
+    Two parameters: Filter Cycles and Seed Population.
 {=HT_BIF biflambda}
 ~Label=HF_BIFLAMBDA
     Bifurcation variation: model is: P = r*p*(1-p)P.
-    No parameters.
-
+    Two parameters: Filter Cycles and Seed Population.
+{=HT_BIF bifstewart}
+~Label=HF_BIFSTEWART
+    Bifurcation variation: model is: P = (r*p*p) - 1.
+    Two parameters: Filter Cycles and Seed Population.
 ~OnlineFF
+
+{=HT_CIRCLE Circle}
+~Label=HF_CIRCLE
+    Circle pattern by John Connett
+      x + iy = pixel
+      z = a*(x^2 + y^2)
+      c = integer part of z
+      color = c modulo(number of colors)
+
 {=HT_MARKS cmplxmarksjul}
 ~Label=HF_CMPLXMARKSJUL
     A generalization of the marksjulia fractal.
       z(0) = pixel;
       z(n+1) = (c^exp)*z(n) + c.
     Four parameters: real and imaginary parts of c and exp.
+
 {=HT_MARKS cmplxmarksmand}
 ~Label=HF_CMPLXMARKSMAND
     A generalization of the marksmandel fractal.
@@ -101,6 +114,7 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = (c^exp)*z(n) + c.
     Four parameters: real and imaginary parts of
     perturbation of z(0) and exp.
+~OnlineFF
 
 {=HT_NEWTCMPLX complexnewton\, complexbasin}
 ~Label=HF_COMPLEXNEWT
@@ -112,7 +126,6 @@ SUMMARY OF FRACTAL TYPES
       z(0) = pixel;
       z(n+1) = ((p - 1) * z(n)^p + r)/(p * z(n)^(p - 1)).
     Four parameters: real & imaginary parts of degree p and root r
-~OnlineFF
 
 {=HT_DIFFUS diffusion}
 ~Label=HF_DIFFUS
@@ -125,6 +138,7 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = fn1(z) + p*fn2(c)
     Six parameters: real and imaginary parts of the perturbation
     of z(0) and factor p, and the functions fn1, and fn2.
+~OnlineFF
 
 {=HT_SCOTSKIN fn(z*z)}
 ~Label=HF_FNZTIMESZ
@@ -136,7 +150,6 @@ SUMMARY OF FRACTAL TYPES
 ~Label=HF_FNTIMESFN
       z(0) = pixel; z(n+1) = fn1(n)*fn2(n)
     Two parameters: the functions fn1 and fn2.
-~OnlineFF
 
 {=HT_SCOTSKIN fn*z+z}
 ~Label=HF_FNXZPLUSZ
@@ -150,6 +163,7 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = p1*fn1(z(n))+p2*fn2(z(n))
     Six parameters: The real and imaginary components of
     p1 and p2, and the functions fn1 and fn2.
+~OnlineFF
 
 {=HT_FORMULA formula}
     Formula interpreter - write your own formulas as text files!
@@ -160,7 +174,6 @@ SUMMARY OF FRACTAL TYPES
       x(n+1) = 1 - y(n) + |x(n)|
       y(n+1) = x(n)
     Two parameters: initial values of x(0) and y(0).
-~OnlineFF
 
 {=HT_HENON henon}
 ~Label=HF_HENON
@@ -168,6 +181,15 @@ SUMMARY OF FRACTAL TYPES
       x(n+1) = 1 + y(n) - a*x(n)*x(n)
       y(n+1) = b*x(n)
     Two parameters: a and b
+
+{=HT_MARTIN Hopalong}
+~Label=HF_HOPALONG
+    Hopalong attractor by Barry Martin - orbit in two dimensions.
+      z(0) = y(0) = 0;
+      x(n+1) = y(n) - sign(x(n))*sqrt(abs(b*x(n)-c))
+      y(n+1) = a - x(n)
+    Parameters are a, b, and c.
+~OnlineFF
 
 {=HT_IFS Barnsley IFS}
     Barnsley IFS fractals.
@@ -184,13 +206,13 @@ SUMMARY OF FRACTAL TYPES
       z(0) = pixel;
       z(n+1) = fn(z(n)) + z(n)^2 + c
     Three parameters: real & imaginary parts of c, and fn
-~OnlineFF
 
 {=HT_JULIA julia}
 ~Label=HF_JULIA
     Classic Julia set fractal.
       z(0) = pixel; z(n+1) = z(n)^2 + c.
     Two parameters: real and imaginary parts of c.
+~OnlineFF
 
 {=HT_MANDJUL4 julia4}
 ~Label=HF_JULIA4
@@ -208,13 +230,13 @@ SUMMARY OF FRACTAL TYPES
       z(0) = pixel;
       z(n+1) = z(n)^m + c.
     Three parameters: real & imaginary parts of c, exponent m
-~OnlineFF
 
 {=HT_PICKMJ julzzpwr}
 ~Label=HF_JULZZPWR
       z(0) = pixel;
       z(n+1) = z(n)^z(n) + z(n)^m + c.
     Three parameters: real & imaginary parts of c, exponent m
+~OnlineFF
 
 {=HT_KAM kamtorus, kamtorus3d}
 ~Label=HF_KAM
@@ -233,17 +255,17 @@ SUMMARY OF FRACTAL TYPES
       z(0) = pixel;
       z(n+1) = lambda*z(n)*(1 - z(n)^2).
     Two parameters: real and imaginary parts of lambda.
-~OnlineFF
 
 {=HT_LAMBDAFN lambdafn}
 ~Label=HF_LAMBDAFN
       z(0) = pixel;
       z(n+1) = lambda * fn(z(n)).
     Three parameters: real, imag portions of lambda, and fn
+~OnlineFF
 
 {=HT_LORENZ lorenz, lorenz3d}
 ~Label=HF_LORENZ
-    Lorenz attractor - orbit in three dimensions.
+    Lorenz two lobe attractor - orbit in three dimensions.
     In 2d the x and y components are projected to form the image.
       z(0) = y(0) = z(0) = 1;
       x(n+1) = x(n) + (-a*x(n)*dt) + (	 a*y(n)*dt)
@@ -251,11 +273,58 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = z(n) + (-c*z(n)*dt) + (x(n)*y(n)*dt)
     Parameters are dt, a, b, and c.
 
+{=HT_LORENZ lorenz3d1}
+~Label=HF_LORENZ3D1
+    Lorenz one lobe attractor - orbit in three dimensions.
+    The original formulas were developed by Rick Miranda and Emily Stone.
+      z(0) = y(0) = z(0) = 1; norm = sqrt(x(n)^2 + y(n)^2)
+      x(n+1) = x(n) + (-a*dt-dt)*x(n) + (a*dt-b*dt)*y(n) 
+         + (dt-a*dt)*norm + y(n)*dt*z(n)
+      y(n+1) = y(n) + (b*dt-a*dt)*x(n) - (a*dt+dt)*y(n) 
+         + (b*dt+a*dt)*norm - x(n)*dt*z(n) - norm*z(n)*dt
+      z(n+1) = z(n) +(y(n)*dt/2) - c*dt*z(n)
+    Parameters are dt, a, b, and c.
+~OnlineFF
+
+{=HT_LORENZ lorenz3d3}
+~Label=HF_LORENZ3D3
+    Lorenz three lobe attractor - orbit in three dimensions.
+    The original formulas were developed by Rick Miranda and Emily Stone.
+      z(0) = y(0) = z(0) = 1; norm = sqrt(x(n)^2 + y(n)^2)
+      x(n+1) = x(n) +(-(a*dt+dt)*x(n) + (a*dt-b*dt+z(n)*dt)*y(n))/3 
+          + ((dt-a*dt)*(x(n)^2-y(n)^2) 
+          + 2*(b*dt+a*dt-z(n)*dt)*x(n)*y(n))/(3*norm)
+      y(n+1) = y(n) +((b*dt-a*dt-z(n)*dt)*x(n) - (a*dt+dt)*y(n))/3 
+          + (2*(a*dt-dt)*x(n)*y(n) 
+          + (b*dt+a*dt-z(n)*dt)*(x(n)^2-y(n)^2))/(3*norm)
+      z(n+1) = z(n) +(3*x(n)*dt*x(n)*y(n)-y(n)*dt*y(n)^2)/2 - c*dt*z(n)
+    Parameters are dt, a, b, and c.
+~OnlineFF
+
+{=HT_LORENZ lorenz3d4}
+~Label=HF_LORENZ3D4
+    Lorenz four lobe attractor - orbit in three dimensions.
+    The original formulas were developed by Rick Miranda and Emily Stone.
+      z(0) = y(0) = z(0) = 1; 
+      x(n+1) = x(n) +(-a*dt*x(n)^3 
+         + (2*a*dt+b*dt-z(n)*dt)*x(n)^2*y(n) + (a*dt-2*dt)*x(n)*y(n)^2 
+         + (z(n)*dt-b*dt)*y(n)^3) / (2 * (x(n)^2+y(n)^2))
+      y(n+1) = y(n) +((b*dt-z(n)*dt)*x(n)^3 + (a*dt-2*dt)*x(n)^2*y(n) 
+         + (-2*a*dt-b*dt+z(n)*dt)*x(n)*y(n)^2 
+         - a*dt*y(n)^3) / (2 * (x(n)^2+y(n)^2))
+      z(n+1) = z(n) +(2*x(n)*dt*x(n)^2*y(n) - 2*x(n)*dt*y(n)^3 - c*dt*z(n))
+    Parameters are dt, a, b, and c.
+~OnlineFF
+
 {=HT_LSYS lsystem}
     Using a turtle-graphics control language and starting with
     an initial axiom string, carries out string substitutions the
     specified number of times (the order), and plots the resulting.
-~OnlineFF
+
+{=HT_LYAPUNOV lyapunov}
+    Derived from the Bifurcation fractal, the Lyapunov plots the Lyapunov
+    Exponent for a population model where the Growth parameter varies between
+    two values in a periodic manner.
 
 {=HT_MAGNET magnet1j}
 ~Label=HF_MAGJ1
@@ -264,6 +333,8 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = | ---------------- | ^ 2
 		\\ 2*z(n) + (c-2) /
     Parameters: the real and imaginary parts of c
+~OnlineFF
+
 {=HT_MAGNET magnet1m}
 ~Label=HF_MAGM1
       z(0) = 0; c = pixel;
@@ -276,17 +347,16 @@ SUMMARY OF FRACTAL TYPES
       z(0) = pixel;
 		/ z(n)^3 + 3*(C-1)*z(n) + (C-1)*(C-2)	      \\
       z(n+1) = |  -------------------------------------------- | ^ 2
-		\ 3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) - 1 /
+		\\ 3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) - 1 /
     Parameters: the real and imaginary parts of c
-~OnlineFF
-
 {=HT_MAGNET magnet2m}
 ~Label=HF_MAGM2
       z(0) = 0; c = pixel;
 		/ z(n)^3 + 3*(C-1)*z(n) + (C-1)*(C-2)	      \\
       z(n+1) = |  -------------------------------------------- | ^ 2
-		\ 3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) - 1 /
+		\\ 3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) - 1 /
     Parameters: the real and imaginary parts of perturbation of z(0)
+~OnlineFF
 
 {=HT_MANDEL mandel}
 ~Label=HF_MANDEL
@@ -302,12 +372,20 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = z(n)^4 + c.
     Parameters: real & imaginary perturbations of z(0)
 
-~OnlineFF
 {=HT_MANDFN mandelfn}
 ~Label=HF_MANDFN
       z(0) = c = pixel;
       z(n+1) = c*fn(z(n)).
     Parameters: real & imaginary perturbations of z(0), and fn
+~OnlineFF
+
+{=HT_MARTIN Martin}
+~Label=HF_MARTIN
+    Attractor fractal by Barry Martin - orbit in two dimensions.
+      z(0) = y(0) = 0;
+      x(n+1) = y(n) - sin(x(n))
+      y(n+1) = a - x(n)
+    Parameter is a (try a value near pi)
 
 {=HT_MLAMBDA mandellambda}
 ~Label=HF_MLAMBDA
@@ -321,6 +399,7 @@ SUMMARY OF FRACTAL TYPES
       z(0) = c = pixel;
       z(n+1) = fn(z(n)) + e^z(n) + C.
     Parameters: real & imaginary perturbations of z(0), and fn
+~OnlineFF
 
 {=HT_PICKMJ manfn+zsqrd}
 ~Label=HF_MANDFNPLUSZSQRD
@@ -328,8 +407,6 @@ SUMMARY OF FRACTAL TYPES
       z(0) = c = pixel;
       z(n+1) = fn(z(n)) + z(n)^2 + c.
     Parameters: real & imaginary perturbations of z(0), and fn
-~OnlineFF
-
 {=HT_SCOTSKIN manowar}
 ~Label=HF_MANOWAR
       c = z1(0) = z(0) = pixel;
@@ -342,7 +419,6 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = z(n)^2 + z1(n) + c;
       z1(n+1) = z(n);
     Parameters: real & imaginary perturbations of z(0)
-
 {=HT_PICKMJ manzpower}
 ~Label=HF_MANZPOWER
     'Mandelbrot-Equivalent' for julzpower.
@@ -413,7 +489,8 @@ SUMMARY OF FRACTAL TYPES
     A recursive algorithm repeatedly subdivides the screen and
     colors pixels according to an average of surrounding pixels
     and a random color, less random as the grid size decreases.
-    One parameter: 'graininess' (.5 to 50, default = 2).
+    Three parameters: 'graininess' (.5 to 50, default = 2), old/new
+    algorithm, seed value used.
 
 {=HT_POPCORN popcorn}
 ~Label=HF_POPCORN
@@ -548,6 +625,7 @@ Select a fractal type:
 { Pickover Popcorn }
 { Peterson Variations }
 { Unity }
+{ Circle }
 { Scott Taylor / Lee Skinner Variations }
 { Kam Torus }
 { Bifurcation }
@@ -556,6 +634,7 @@ Select a fractal type:
 { Rossler Attractors }
 { Henon Attractors }
 { Pickover Attractors }
+{ Martin Attractors }
 { Gingerbreadman }
 { Test }
 { Formula }
@@ -563,6 +642,7 @@ Select a fractal type:
 { Diffusion Limited Aggregation }
 { Magnetic Fractals }
 { L-Systems }
+{ Lyapunov Fractals }
 ~EndTable
 ~Doc+
 ;
@@ -830,6 +910,25 @@ keeping us accurate!
 for a way to experiment with different orbit intializations).
 ;
 ;
+~Topic=Circle, Label=HT_CIRCLE
+(type=circle)
+
+This fractal types is from A. K. Dewdney's "Computer Recreations" column
+in "Scientific American". It is attributed to John Connett of the 
+University of Minnesota.
+
+(Don't tell anyone, but this fractal type is not really a fractal!)
+
+Fascinating Moire patterns can be formed by calculating x^2 + y^2 for
+each pixel in a piece of the complex plane. After multiplication by a 
+magnification factor (the parameter), the number is truncated to an integer 
+and mapped to a color via color = value modulo (number of colors). That is, 
+the integer is divided by the number of colors, and the remainder is the 
+color index value used.  The resulting image is not a fractal because all 
+detail is lost after zooming in too far. Try it with different resolution 
+video modes - the results may surprise you!
+;
+;
 ~Topic=Plasma Clouds, Label=HT_PLASMA
 (type=plasma)
 
@@ -853,14 +952,32 @@ user's vulnerable state; their content varies with your bank balance,
 politics, gender, accessibility to a Fractint programmer, and so on. A
 free copy of Microsoft C to the first person who spots them.
 
-This type accepts a single parameter, which determines how abruptly the
-colors change. A value of .5 yields bland clouds, while 50 yields very
-grainy ones. The default value is 2. Zooming is ignored, as each plasma-
-cloud screen is generated randomly.
+This type accepts three parameters.
+
+The first determines how abruptly the colors change. A value of .5 yields
+bland clouds, while 50 yields very grainy ones. The default value is 2.
+
+The second determines whether to use the original algorithm (0) or a
+modified one (1). The new one gives the same type of images but draws
+the dots in a different order. It will let you see
+what the final image will look like much sooner than the old one.
+It will also let you regenerate a plasma cloud at a different
+resolution if the original was done with the new algorithm.
+
+The third determines whether to use a new seed for generating the
+next plasma cloud (0) or to use the previous seed (1).
+
+With parameter two and three set to ones, the next plasma cloud
+generated will be identical to the previous but at whatever new
+resolution was desired.
+
+Zooming is ignored, as each plasma-cloud screen is generated randomly.
 
 The random number seed used for each plasma image is displayed on the
 <tab> information screen, and can be entered with the command line
-parameter "rseed=" to recreate a particular image.
+parameter "rseed=" to recreate a particular image. If parameter 2 is set 
+to 0 the image will only be recreatable at the original resolution. If
+parameter 2 is set to 1 it will be recreatable at any resolution.
 
 The algorithm is based on the Pascal program distributed by Bret Mulvey as
 PLASMA.ARC. We have ported it to C and integrated it with Fractint's
@@ -1285,10 +1402,23 @@ bands where there is a small, odd number of stable values. It turns out
 that the geometry of this branching is fractal; zoom in where changing
 pixel colors look suspicious, and see for yourself.
 
-The default display has been filtered by allowing the population to settle
-from its initial value for 5000 cycles before plotting maxiter population
-values. To override this filter value, specify a new (smaller) one as the
-first "PARAMS=" value. "PARAMS=1" produces an unfiltered map.
+Two parameters apply to bifurcations: Filter Cycles and Seed Population.
+
+Filter Cycles (default 1000) is the number of iterations to be done before
+plotting maxiter population values. This gives the iteration time to settle
+into the characteristic patterns that constitute the bifurcation diagram,
+and results in a clean-looking plot.  However, using lower values produces
+interesting results too. Set Filter Cycles to 1 for an unfiltered map.
+
+Seed Population (default 0.66) is the initial population value from which
+all others are calculated. For filtered maps the final image is independent
+of Seed Population value in the valid range (0.0 < Seed Population < 1.0).
+~OnlineFF
+
+Seed Population becomes effective in unfiltered maps - try setting Filter
+Cycles to 1 (unfiltered) and Seed Population to 0.001 ("PARAMS=1/.001" on
+the command line). This results in a map overlaid with nice curves. Each
+Seed Population value results in a different set of curves.
 
 Many formulae can be used to produce bifurcations.  Mitchel Feigenbaum
 studied lots of bifurcations in the mid-70's, using a HP-65 calculator
@@ -1326,6 +1456,7 @@ formulae, (writing P for pop[n+1] and p for pop[n]) are :
   biflambda	P =	 r*p*(1-p)	Real equivalent of Lambda Sets.\
   bif+sinpi	P =  p + r*sin(PI*p)	Population scenario based on...\
   bif=sinpi	P =	 r*sin(PI*p)	...Feigenbaum's second formula.\
+  bifstewart    P =      r*p*p - 1      Stewart Map.\
 
 It took a while for bifurcations to appear here, despite them being over a
 century old, and intimately related to chaotic systems. However, they are
@@ -1338,7 +1469,8 @@ Orbit Fractals are generated by plotting an orbit path in two or three
 dimensional space.
 
 See {Lorenz Attractors}, {Rossler Attractors},
-{Henon Attractors}, {Pickover Attractors}, and {Gingerbreadman}.
+{Henon Attractors}, {Pickover Attractors}, {Gingerbreadman},
+and {Martin Attractors}.
 
 The orbit trajectory for these types can be saved in the file ORBITS.RAW
 by invoking
@@ -1484,6 +1616,29 @@ Images", p. 149.
 The initial x and y values are set by parameters, defaults x=-.1, y = 0.
 ;
 ;
+~Topic=Martin Attractors, Label=HT_MARTIN
+(type=hopalong/martin)
+
+These fractal types are from A. K. Dewdney's "Computer Recreations" column
+in "Scientific American". They are attributed to Barry Martin of Aston 
+University in Birmingham, Alabama. 
+
+Hopalong is an "orbit" type fractal like lorenz. The image is obtained by 
+iterating this formula after setting z(0) = y(0) = 0:
+      x(n+1) = y(n) - sign(x(n))*sqrt(abs(b*x(n)-c))
+      y(n+1) = a - x(n)
+Parameters are a, b, and c. The function "sign()"  returns 1 if the argument 
+is positive, -1 if argument is negative.
+
+This fractal continues to develop in surprising ways after many iterations.
+
+Another Martin fractal is simpler. The iterated formula is:
+      x(n+1) = y(n) - sin(x(n))
+      y(n+1) = a - x(n)
+The paramneter is "a". Try values near the number pi.
+;
+;
+;
 ~Topic=Test, Label=HT_TEST
 (type=test)
 
@@ -1550,18 +1705,24 @@ complex with an imaginary value of zero.
 	  p1		 parameters 1 and 2
 	  p2		 parameters 3 and 4
 	  pixel 	 screen coordinates
+          LastSqr        Modulus from the last sqr() function
+          rand           Complex random number
 
-	  Precedence
-	  --------------------------------------------
-	  1		 sin(), cos(), sinh(), cosh(), cosxx(),
-			 tan(), cotan(), tanh(), cotanh(),
-			 sqr, log(), exp(), abs(), conj(), real(),
-			 imag(), flip(), fn1(), fn2(), fn3(), fn4()
-	  2		 - (negation), ^ (power)
-	  3		 * (multiplication), / (division)
-	  4		 + (addition), - (subtraction)
-	  5		 = (assignment)
-	  6		 < (less than), <= (less than or equal to)
+          Precedence
+          --------------------------------------------
+          1              sin(), cos(), sinh(), cosh(), cosxx(),
+                         tan(), cotan(), tanh(), cotanh(),
+                         sqr, log(), exp(), abs(), conj(), real(),
+                         imag(), flip(), fn1(), fn2(), fn3(), fn4(),
+                         srand()
+          2              - (negation), ^ (power)
+          3              * (multiplication), / (division)
+          4              + (addition), - (subtraction)
+          5              = (assignment)
+          6              < (less than), <= (less than or equal to)
+                         > (greater than), >= (greater than or equal to)
+                         == (equal to), != (not equal to)
+          7              && (logical AND), || (logical OR)
 ~Format+
 
 Precedence may be overridden by use of parenthesis.  Note the modulus
@@ -1580,6 +1741,15 @@ The formulas are performed using either integer or floating point
 mathematics depending on the <F> floating point toggle.  If you do not
 have an FPU then type MPC math is performed in lieu of traditional
 floating point.
+
+The 'rand' predefined variable is changed with each iteration to a new
+random number with the real and imaginary components containing a value
+between zero and 1. Use the srand() function to initialize the random
+numbers to a consistant random number sequence.  If a formula does not
+contain the srand() function, then the formula compiler will use the system
+time to initialize the sequence.  This could cause a different fractal to be
+generated each time the formula is used depending on how the formula is
+written.
 
 Remember that when using integer math there is a limited dynamic range, so
 what you think may be a fractal could really be just a limitation of the
@@ -1711,6 +1881,54 @@ Thanks to Adrian Mariano for providing the diffusion code and
 documentation.
 ;
 ;
+~Topic=Lyapunov Fractals, Label=HT_LYAPUNOV
+(type=lyapunov)
+
+The Bifurcation fractal illustrates what happens in a simple population
+model as the growth rate increases.  The Lyapunov fractal expands that model
+into two dimensions by letting the growth rate vary in a periodic fashion
+between two values.  Each pair of growth rates is run through a logistic
+population model and a value called the Lyapunov Exponent is calculated for
+each pair and is plotted. The Lyapunov Exponent is calculated by adding up
+log | r -2*r*x| over many cycles of the population model and dividing by the
+number of cycles. Negative Lyapunov exponents indicate a stable periodic
+behavior and are plotted in color. Positive Lyapunov exponents indicate
+chaos and are colored black.
+
+Order parameter.
+Each possible periodic sequence yields a two dimensional space to explore.
+The Order parameter selects a sequence.  The default value 0
+represents the sequence ab which alternates between the two values of the
+growth parameter.  Here is how to calculate the space parameter for any
+desired sequence.  Take your sequence of a's and b's and arrange it so that
+it starts with at least 2 a's and ends with a b. It may be necessary to
+rotate the sequence or swap a's and b's. Strike the first a and the last b
+off the list and replace each remaining a with a 1 and each remaining b with
+a zero. Interpret this as a binary number and convert it into decimal.
+
+An Example
+I like sonnets.  A sonnet is a poem with fourteen lines that has the
+following rhyming sequence: abba abba abab cc.  Ignoring the rhyming couplet
+at the end, let's calculate the Order parameter for this pattern.
+
+  abbaabbaabab         doesn't start with at least 2 a's \
+  aabbaabababb         rotate it \
+  1001101010           drop the first and last, replace with 0's and 1's \
+  512+64+32+8+2 = 618
+
+An Order parameter of 618 gives the Lyapunov equivalent of a sonnet.  "How do
+I make thee, let me count the ways..."
+
+Population Seed
+When two parts of a Lyapunov overlap, which spike overlaps which is strongly
+dependant on the initial value of the population model.  Any changes from
+using a different starting value between 0 and 1 may be subtle.
+ 
+Reference:
+
+A.K. Dewdney Mathematical Recreations Scientific American Sept. 1991
+;
+;
 ~Topic=Magnetic Fractals, Label=HT_MAGNET
 (type=magnet1m/.../magnet2j)
 
@@ -1752,16 +1970,7 @@ Mandelbrot Set, that's all.  They are :
 		   \\  3*(Z^2) + 3*(C-2)*Z + (C-1)*(C-2) - 1  /
 ~Online+,Doc-
 ; And this for online...
-		  Ú		  ¿
-		  ³  Z^2 + (C-1)  ³
-	MAGNET1 : ³ ÄÄÄÄÄÄÄÄÄÄÄÄÄ ³ ^ 2
-		  ³  2ùZ + (C-2)  ³
-		  À		  Ù
-		  Ú					    ¿
-		  ³	 Z^3 + 3ù(C-1)ùZ + (C-1)ù(C-2)	    ³
-	MAGNET2 : ³ ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ ³ ^ 2
-		  ³  3ù(Z^2) + 3ù(C-2)ùZ + (C-1)ù(C-2) - 1  ³
-		  À					    Ù
+~Include help2a.src
 ~Doc+
 ~Format+
 
@@ -1883,3 +2092,4 @@ for drawing purposes, but can be used to achieve complex translations.
 ;
 ;
 ;
+

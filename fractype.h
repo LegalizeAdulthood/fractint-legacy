@@ -148,4 +148,13 @@
 #define TIMSERROR	       115
 #define LBIFEQSINPI	       116
 #define LBIFADSINPI	       117
+#define BIFSTEWART             118
+#define LBIFSTEWART            119
+#define FPHOPALONG             120
+#define FPCIRCLE               121
+#define FPMARTIN               122
+#define LYAPUNOV               123
+#define FPLORENZ3D1            124
+#define FPLORENZ3D3            125
+#define FPLORENZ3D4            126
 

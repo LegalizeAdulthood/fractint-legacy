@@ -3,10 +3,10 @@
 	Roll-Your-Own video mode (DOTMODE 19) routines.
 
 Even if you don't have an assembler, you can add your own video-mode
-routines to FRACTINT by using the "FRACTINT BATCH=CONFIG" option to add
-a video mode of the appropriate resolution that uses dotmode 19 (which
-calls these routines to perform all the dirty work) and modifying
-these routines accordingly.  The four routines are:
+routines to FRACTINT by adding a video mode of the appropriate resolution
+to FRACTINT.CFG that uses dotmode 19 (which calls these routines to
+perform all the dirty work) and modifying these routines accordingly.
+The four routines are:
 
  startvideo()	 Do whatever you have to do to throw your adapter into
 		 the appropriate video mode (in case it can't be accomplished

@@ -15,6 +15,18 @@
 #ifndef TPLUS_H
 #define TPLUS_H
 
+#ifdef __TURBOC__
+#define		OUTPORTB	outportb
+#define		INPORTB 	inportb
+#define		OUTPORTW	outport
+#define		INPORTW 	inport
+#else
+#define		OUTPORTB	outp
+#define		INPORTB 	inp
+#define		OUTPORTW	outpw
+#define		INPORTW 	inpw
+#endif
+
 struct TPWrite {
    unsigned 
       COLOR0,  COLOR1,  COLOR2,  COLOR3,  VIDCON,  INDIRECT,   HUESAT,

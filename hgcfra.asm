@@ -125,12 +125,12 @@ parms:	mov	al,ah			; first output register number
 
 setmd	ENDP
 ;
-; writehgc (x, y, c)  - write a dot at x, y in color c
+; writehgc (x, y, c)  - write a dot at x, y in color color
 ;  x = x coordinate
 ;  y = y coordinate
-;  c = color
+;  color = color
 ;
-writehgc	PROC USES DI SI, x, y, c
+writehgc	PROC USES DI SI, x, y, color
 
 	cmp	y,348			; Clip for hardware boundaries
 	jge	WtDot030
@@ -155,7 +155,7 @@ writehgc	PROC USES DI SI, x, y, c
 	mov	al,80h		;prepare bit mask
 	shr	al,cl		;al has bit mask
 ; either turn on the bit or turn it off, depending on the color
-	cmp	word ptr c,0	;turn off bit?
+	cmp	word ptr color,0	;turn off bit?
 	je	WtDot020	;yes -- branch
 ; turn on the bit
 	or	byte ptr es:[si],al

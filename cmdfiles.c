@@ -37,6 +37,7 @@ static int  parse_printer(char *value);
 extern int  makedoc_msg_func(int,int);
 
 /* variables defined by the command line/files processor */
+int		showdot;	/* color to show crawling graphics cursor */
 char	temp1[256];		/* temporary strings	    */
 char	readname[80];		/* name of fractal input file */
 char	gifmask[13] = {""};
@@ -63,6 +64,7 @@ int	debugflag;		/* internal use only - you didn't see this */
 int	timerflag;		/* you didn't see this, either */
 int	cyclelimit;		/* color-rotator upper limit */
 int	inside; 		/* inside color: 1=blue     */
+int	fillcolor; 		/* fillcolor: -1=normal     */
 int	outside;		/* outside color    */
 int	finattract;		/* finite attractor logic */
 int	display3d;		/* 3D display flag: 0 = OFF */
@@ -85,6 +87,8 @@ int	colorstate;		/* 0, dacbox matches default (bios or map=) */
 				/* 1, dacbox matches no known defined map   */
 				/* 2, dacbox matches the colorfile map	    */
 int	colorpreloaded; 	/* if dacbox preloaded for next mode select */
+extern int Targa_Overlay;
+int Targa_Out = 0;
 char	colorfile[80];		/* from last <l> <s> or colors=@filename    */
 
 /* TARGA+ variables */
@@ -105,6 +109,7 @@ unsigned CoreRed, CoreGreen, CoreBlue, NumFrames;
 int AntiAliasing, Shadowing;
 
 int	orbitsave = 0;		/* for IFS and LORENZ to output acrospin file */
+int orbit_delay;                /* clock ticks delating orbit release */
 extern	int invert;
 extern int fractype;		/* fractal type 	    */
 extern double param[4]; 	/* initial parameters	    */
@@ -120,11 +125,11 @@ extern char color_lakes;	/* finite attractor flag */
 extern int haze;
 extern int RANDOMIZE;
 extern int Ambient;
-extern int full_color;
 extern char light_name[];
 extern int BRIEF;
 extern int RAY;
-extern char back_color[];
+
+extern unsigned char back_color[];
 extern unsigned char dacbox[256][3];
 extern struct videoinfo far videotable[];
 extern int fpu;
@@ -134,8 +139,11 @@ extern double potparam[];	/* potential parameters  */
 extern int Printer_Resolution, LPTNumber,
 	   Printer_Type, Printer_Titleblock,
 	   Printer_ColorXlat, Printer_SetScreen,
-	   Printer_SFrequency, Printer_SAngle,
-	   Printer_SStyle, EPSFileType,
+	   Printer_SFrequency, Printer_SAngle, Printer_SStyle,
+	   Printer_RFrequency, Printer_RAngle, Printer_RStyle,
+	   Printer_GFrequency, Printer_GAngle, Printer_GStyle,
+	   Printer_BFrequency, Printer_BAngle, Printer_BStyle,
+	   EPSFileType, ColorPS,
 	   Print_To_File,Printer_CRLF;		/* for printer functions */
 
 int	transparent[2]; 	/* transparency min/max values */
@@ -148,6 +156,9 @@ extern int svga_type;           /* for forcing a specific SVGA adapter */
 extern int mode7text;
 extern int textsafe;
 extern int vesa_detect;
+
+int        bios_palette;        /* set to 1 to force BIOS palette updates */
+int        escape_exit;         /* set to 1 to avoid the "are you sure?" screen */
 
 extern int   viewwindow;
 extern float viewreduction;
@@ -235,6 +246,9 @@ char s_zmag[]    = "zmag";
 char s_bof60[]   = "bof60";
 char s_bof61[]   = "bof61";
 char s_maxiter[] =  "maxiter";
+char s_epscross[] =  "epsilon cross";
+char s_startrail[] =  "star trail";
+char s_normal[] =  "normal";
 
 
 void cmdfiles_overlay() { }	/* for restore_active_ovly */
@@ -347,6 +361,7 @@ static void initvars_restart()		/* <ins> key init */
    viewcrop = 1;
    finalaspectratio = SCREENASPECT;
    viewxdots = viewydots = 0;
+   orbit_delay = 0;                     /* full speed orbits */
    debugflag = 0;			/* debugging flag(s) are off */
    timerflag = 0;			/* timer flags are off	     */
    strcpy(FormFileName,"fractint.frm"); /* default formula file      */
@@ -393,22 +408,35 @@ static void initvars_restart()		/* <ins> key init */
    Printer_Resolution = 60;		/* assume low resolution  */
    Printer_Titleblock = 0;		/* assume no title block  */
    Printer_ColorXlat = 0;		/* assume positive image  */
-   Printer_SetScreen = 0;		/* assume default screen  */
-   Printer_SFrequency = 0;		/* New screen frequency   */
-   Printer_SAngle = 0;			/* New screen angle	  */
-   Printer_SStyle = 0;			/* New screen style	  */
+   Printer_SetScreen = 0;               /* assume default screen  */
+   Printer_SFrequency = 45;             /* New screen frequency K */
+   Printer_SAngle = 45;                 /* New screen angle     K */
+   Printer_SStyle = 1;                  /* New screen style     K */
+   Printer_RFrequency = 45;             /* New screen frequency R */
+   Printer_RAngle = 75;                 /* New screen angle     R */
+   Printer_RStyle = 1;                  /* New screen style     R */
+   Printer_GFrequency = 45;             /* New screen frequency G */
+   Printer_GAngle = 15;                 /* New screen angle     G */
+   Printer_GStyle = 1;                  /* New screen style     G */
+   Printer_BFrequency = 45;             /* New screen frequency B */
+   Printer_BAngle = 0;                  /* New screen angle     B */
+   Printer_BStyle = 1;                  /* New screen style     B */
    Print_To_File = 0;			/* No print-to-file	  */
    Printer_CRLF = 0;			/* Assume CR+LF 	  */
    EPSFileType = 0;			/* Assume no save to .EPS */
    LPTNumber = 1;			/* assume LPT1 */
+   ColorPS = 0;                         /* Assume NO Color PostScr*/
 
 }
 
 static void initvars_fractal()		/* init vars affecting calculation */
 {
    int i;
+   bios_palette = 0;                    /* don't force use of a BIOS palette */
+   escape_exit = 0;                     /* don't disable the "are you sure?" screen */
    usr_periodicitycheck = 1;		/* turn on periodicity	  */
    inside = 1;				/* inside color = blue	  */
+   fillcolor = -1;			/* no special fill color */
    usr_biomorph = -1;			/* turn off biomorph flag */
    outside = -1;			/* outside color = -1 (not used) */
    maxit = 150; 			/* initial maxiter	  */
@@ -454,6 +482,8 @@ static void initvars_fractal()		/* init vars affecting calculation */
 
 static void initvars_3d()		/* init vars affecting 3d */
 {
+   RAY     = 0;
+   BRIEF   = 0;
    SPHERE = FALSE;
    preview = 0;
    showbox = 0;
@@ -737,6 +767,18 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	 return 3;
 	 }
 
+      if (strcmp(variable, "biospalette") == 0) {
+         if (yesnoval < 0) goto badarg;
+         bios_palette = yesnoval;
+         return 3;
+         }
+
+      if (strcmp(variable, "exitnoask") == 0) {
+         if (yesnoval < 0) goto badarg;
+         escape_exit = yesnoval;
+         return 3;
+         }
+
       if (strcmp(variable,"fpu") == 0) {
 	 if (strcmp(value,"iit") == 0) {
 	    fpu = 387;
@@ -921,6 +963,9 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
    if (strcmp(variable,"type") == 0 ) {         /* type=? */
       if (value[valuelen-1] == '*')
 	 value[--valuelen] = 0;
+      /* kludge because type ifs3d has an asterisk in front */
+      if(strcmp(value,"ifs3d")==0)
+         value[3]=0;
       for (k = 0; fractalspecific[k].name != NULL; k++)
 	 if (strcmp(value,fractalspecific[k].name) == 0)
 	    break;
@@ -947,12 +992,25 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 	 inside = -60;
       else if(strcmp(value,s_bof61)==0)
 	 inside = -61;
+      else if(strncmp(value,s_epscross,3)==0)
+	 inside = -100;
+      else if(strncmp(value,s_startrail,4)==0)
+	 inside = -101;
       else if(strcmp(value,s_maxiter)==0)
 	 inside = -1;
       else if(numval == NONNUMERIC)
 	 goto badarg;
       else
 	 inside = numval;
+      return 1;
+      }
+   if (strcmp(variable,"fillcolor") == 0 ) {       /* fillcolor */
+      if(strcmp(value,s_normal)==0)
+	 fillcolor = -1;
+      else if(numval == NONNUMERIC)
+	 goto badarg;
+      else
+	 fillcolor = numval;
       return 1;
       }
 
@@ -992,7 +1050,7 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       }
 
    if (strcmp(variable,s_maxiter) == 0) {       /* maxiter=? */
-      if (numval < 2 || numval > 32767) goto badarg;
+      if (numval < 2) goto badarg;
       maxit = numval;
       return 1;
       }
@@ -1002,7 +1060,8 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 
    if (strcmp(variable,"passes") == 0) {        /* passes=? */
       if ( charval != '1' && charval != '2'
-	&& charval != 'g' && charval != 'b')
+	&& charval != 'g' && charval != 'b'
+	&& charval != 't')
 	 goto badarg;
       usr_stdcalcmode = charval;
       return 1;
@@ -1212,6 +1271,11 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       return 0;
       }
 
+   if(strcmp(variable, "colorps") == 0) {
+      ColorPS = yesnoval;
+      return(0);
+      }
+
    if (strcmp(variable,"epsf") == 0) {          /* EPS type? SWT */
       Print_To_File = 1;
       EPSFileType = numval;
@@ -1244,12 +1308,30 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
    if (strcmp(variable,"halftone") == 0) {      /* New halftoning? SWT */
       if (totparms != intparms) goto badarg;
       Printer_SetScreen=1;
-      Printer_SFrequency=80;
-      Printer_SAngle=45;
-      Printer_SStyle=0;
-      if (totparms > 0) Printer_SFrequency = intval[0];
-      if (totparms > 1) Printer_SAngle	   = intval[1];
-      if (totparms > 2) Printer_SStyle	   = intval[2];
+      if ((totparms >  0) && ( intval[ 0] >= 0))
+					  Printer_SFrequency = intval[ 0];
+      if ((totparms >  1) && ( intval[ 1] >= 0))
+					  Printer_SAngle     = intval[ 1];
+      if ((totparms >  2) && ( intval[ 2] >= 0))
+					  Printer_SStyle     = intval[ 2];
+      if ((totparms >  3) && ( intval[ 3] >= 0))
+					  Printer_RFrequency = intval[ 3];
+      if ((totparms >  4) && ( intval[ 4] >= 0))
+					  Printer_RAngle     = intval[ 4];
+      if ((totparms >  5) && ( intval[ 5] >= 0))
+					  Printer_RStyle     = intval[ 5];
+      if ((totparms >  6) && ( intval[ 6] >= 0))
+					  Printer_GFrequency = intval[ 6];
+      if ((totparms >  7) && ( intval[ 7] >= 0))
+					  Printer_GAngle     = intval[ 7];
+      if ((totparms >  8) && ( intval[ 8] >= 0))
+					  Printer_GStyle     = intval[ 8];
+      if ((totparms >  9) && ( intval[ 9] >= 0))
+					  Printer_BFrequency = intval[ 9];
+      if ((totparms > 10) && ( intval[10] >= 0))
+					  Printer_BAngle     = intval[10];
+      if ((totparms > 11) && ( intval[11] >= 0))
+					  Printer_BStyle     = intval[11];
       return 0;
       }
 
@@ -1348,6 +1430,18 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
       rseed = numval;
       rflag = 1;
       return 1;
+      }
+
+   if (strcmp(variable, "orbitdelay") == 0) {
+      orbit_delay = numval;
+      return 0;
+      }
+
+   if (strcmp(variable, "showdot") == 0) {
+      showdot=numval;
+      if(showdot<0)
+         showdot=0;
+      return 0;
       }
 
    if (strcmp(variable, "decomp") == 0) {
@@ -1596,7 +1690,29 @@ static int cmdarg(char *curarg,int mode) /* process a single argument */
 
    if (strcmp(variable,"fullcolor") == 0) {     /* fullcolor=? */
       if (yesnoval < 0) goto badarg;
-      full_color = yesnoval;
+      Targa_Out = yesnoval;
+      return 2;
+      }
+   if (strcmp(variable,"targa_out") == 0) {     /* Targa Out? */
+      if (yesnoval < 0) goto badarg;
+      Targa_Out = yesnoval;
+      return 2;
+      }
+
+   if (strcmp(variable,"targa_overlay") == 0) {         /* Targa Overlay? */
+      if (yesnoval < 0) goto badarg;
+      Targa_Overlay = yesnoval;
+      return 2;
+      }
+
+   if (strcmp(variable,"background") == 0) {     /* background=?/? */
+      if (totparms != 3 || intparms != 3) goto badarg;
+                for (i=0;i<3;i++)
+                        if (intval[i] & 0xff)
+                                goto badarg;
+      back_color[0] = intval[0];
+      back_color[1] = intval[1];
+      back_color[2] = intval[2];
       return 2;
       }
 
@@ -1800,8 +1916,6 @@ Oops. I couldn't understand the argument:\n  "};
 void set_3d_defaults()
 {
    ENTER_OVLY(OVLY_CMDFILES);
-   RAY	     = 0;
-   BRIEF     = 0;
    ROUGH     = 30;
    WATERLINE = 0;
    ZVIEWER   = 0;
@@ -1813,7 +1927,6 @@ void set_3d_defaults()
    Ambient   = 20;
    RANDOMIZE = 0;
    haze      = 0;
-   full_color= 0;
    back_color[0] = 51; back_color[1] = 153; back_color[2] = 200;
    if(SPHERE) {
       PHI1	=  180;
@@ -1841,4 +1954,3 @@ void set_3d_defaults()
       }
     EXIT_OVLY;
 }
-

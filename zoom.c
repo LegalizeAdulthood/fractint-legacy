@@ -22,12 +22,13 @@ extern double plotmx1,plotmx2,plotmy1,plotmy2;
 
 extern int  calc_status;	   /* status of calculations */
 extern int  fractype;		   /* fractal type */
-extern char stdcalcmode;	   /* '1', '2', 'g', 'b' */
+extern char stdcalcmode;	   /* '1', '2', 'g', 'b', or 't' */
 extern int  num_worklist;	   /* resume worklist for standard engine */
 extern struct workliststuff worklist[MAXCALCWORK];
 extern char dstack[4096];	   /* common temp, used for get_line/put_line */
 extern int  StandardFractal();
 extern int  calcmand();
+extern int  calcmandfp();
 extern int  potflag;
 extern int  pot16bit;
 extern float finalaspectratio;
@@ -316,7 +317,8 @@ static int check_pan() /* return 0 if can't, alignment requirement if can */
     if (calc_status != 2 && calc_status != 4)
 	return(0); /* not resumable, not complete */
     if ( curfractalspecific->calctype != StandardFractal
-      && curfractalspecific->calctype != calcmand)
+      && curfractalspecific->calctype != calcmand
+      && curfractalspecific->calctype != calcmandfp)
 	return(0); /* not a worklist-driven type */
     if (zwidth != 1.0 || zdepth != 1.0 || zskew != 0.0 || zrotate != 0.0)
 	return(0); /* not a full size unrotated unskewed zoombox */
@@ -327,6 +329,8 @@ static int check_pan() /* return 0 if can't, alignment requirement if can */
 	return(1); /* 1 pass forced so align on any pixel */
     if (stdcalcmode == 'b')
 	return(1); /* btm, align on any pixel */
+    if (stdcalcmode == 't')
+	return(0); /* tesselate, can't do it */
     if (stdcalcmode != 'g' || (curfractalspecific->flags&NOGUESS)) {
 	if (stdcalcmode == '2') /* align on even pixel for 2pass */
 	   return(2);

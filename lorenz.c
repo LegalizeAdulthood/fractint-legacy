@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <float.h>
+#include <math.h>
 #include "fractint.h"
 #include "fractype.h"
 
@@ -68,6 +69,9 @@ int  orbit3dlongsetup();
 int  orbit3dfloatsetup();
 int  lorenz3dlongorbit(long *, long *, long *);
 int  lorenz3dfloatorbit(double *, double *, double *);
+int  lorenz3d1floatorbit(double *, double *, double *);
+int  lorenz3d3floatorbit(double *, double *, double *);
+int  lorenz3d4floatorbit(double *, double *, double *);
 int  henonfloatorbit(double *, double *, double *);
 int  henonlongorbit(long *, long *, long *);
 int  rosslerfloatorbit(double *, double *, double *);
@@ -133,10 +137,12 @@ extern int ifs_type;
 static int t;
 static long l_dx,l_dy,l_dz,l_dt,l_a,l_b,l_c,l_d;
 static long l_adt,l_bdt,l_cdt,l_xdt,l_ydt;
+static long l_initx,l_inity,l_initz;
 static long initorbitlong[3];
 
 static double dx,dy,dz,dt,a,b,c,d;
-static double adt,bdt,cdt,xdt,ydt;
+static double adt,bdt,cdt,xdt,ydt,zdt;
+static double initx,inity,initz;
 static double initorbit[3];
 extern int inside;
 
@@ -335,8 +341,6 @@ int orbit3dlongsetup()
    return(1);
 }
 
-
-
 int orbit3dfloatsetup()
 {
    connect = 1;
@@ -344,8 +348,12 @@ int orbit3dfloatsetup()
    projection = 2;
 
    if(fractype==FPHENON || fractype==FPPICKOVER || fractype==FPGINGERBREAD
-	    || fractype == KAMFP || fractype == KAM3DFP)
+	    || fractype == KAMFP || fractype == KAM3DFP
+	    || fractype == FPHOPALONG)
       connect=0;
+   if(fractype==FPLORENZ3D1 || fractype==FPLORENZ3D3 ||
+      fractype==FPLORENZ3D4)
+      waste = 750;
    if(fractype==FPROSSLER)
       waste = 500;
    if(fractype==FPLORENZ)
@@ -378,8 +386,18 @@ int orbit3dfloatsetup()
       cosx = cos(a);
       orbit = 0;
       initorbit[0] = initorbit[1] = initorbit[2] = 0;
-   }
-   else
+   } else if(fractype==FPHOPALONG || fractype==FPMARTIN)
+
+   {
+      initorbit[0] = 0;  /* initial conditions */
+      initorbit[1] = 0;
+      initorbit[2] = 0;
+      connect = 0;
+      a =  param[0];
+      b =  param[1];
+      c =  param[2];
+      d =  param[3];
+   } else
    {
       dt = param[0];
       a =  param[1];
@@ -413,13 +431,82 @@ int lorenz3dlongorbit(long *l_x, long *l_y, long *l_z)
       return(0);
 }
 
+int lorenz3d1floatorbit(double *x, double *y, double *z)
+{
+      double norm;
+
+      xdt = (*x)*dt;
+      ydt = (*y)*dt;
+      zdt = (*z)*dt;
+
+      /* 1-lobe Lorenz */
+      norm = sqrt((*x)*(*x)+(*y)*(*y));
+      dx   = (-adt-dt)*(*x) + (adt-bdt)*(*y) + (dt-adt)*norm + ydt*(*z);
+      dy   = (bdt-adt)*(*x) - (adt+dt)*(*y) + (bdt+adt)*norm - xdt*(*z) -
+	     norm*zdt;
+      dz   = (ydt/2) - cdt*(*z);
+
+      *x += dx;
+      *y += dy;
+      *z += dz;
+      return(0);
+}
+
 int lorenz3dfloatorbit(double *x, double *y, double *z)
 {
       xdt = (*x)*dt;
       ydt = (*y)*dt;
+      zdt = (*z)*dt;
+
+      /* 2-lobe Lorenz (the original) */
       dx  = -adt*(*x) + adt*(*y);
       dy  =  bdt*(*x) - ydt - (*z)*xdt;
       dz  = -cdt*(*z) + (*x)*ydt;
+
+      *x += dx;
+      *y += dy;
+      *z += dz;
+      return(0);
+}
+
+int lorenz3d3floatorbit(double *x, double *y, double *z)
+{
+      double norm;
+
+      xdt = (*x)*dt;
+      ydt = (*y)*dt;
+      zdt = (*z)*dt;
+
+      /* 3-lobe Lorenz */
+      norm = sqrt((*x)*(*x)+(*y)*(*y));
+      dx   = (-(adt+dt)*(*x) + (adt-bdt+zdt)*(*y)) / 3 +
+	     ((dt-adt)*((*x)*(*x)-(*y)*(*y)) +
+	     2*(bdt+adt-zdt)*(*x)*(*y))/(3*norm);
+      dy   = ((bdt-adt-zdt)*(*x) - (adt+dt)*(*y)) / 3 +
+	     (2*(adt-dt)*(*x)*(*y) +
+	     (bdt+adt-zdt)*((*x)*(*x)-(*y)*(*y)))/(3*norm);
+      dz   = (3*xdt*(*x)*(*y)-ydt*(*y)*(*y))/2 - cdt*(*z);
+
+      *x += dx;
+      *y += dy;
+      *z += dz;
+      return(0);
+}
+
+int lorenz3d4floatorbit(double *x, double *y, double *z)
+{
+      xdt = (*x)*dt;
+      ydt = (*y)*dt;
+      zdt = (*z)*dt;
+
+      /* 4-lobe Lorenz */
+      dx   = (-adt*(*x)*(*x)*(*x) + (2*adt+bdt-zdt)*(*x)*(*x)*(*y) +
+	     (adt-2*dt)*(*x)*(*y)*(*y) + (zdt-bdt)*(*y)*(*y)*(*y)) /
+	     (2 * ((*x)*(*x)+(*y)*(*y)));
+      dy   = ((bdt-zdt)*(*x)*(*x)*(*x) + (adt-2*dt)*(*x)*(*x)*(*y) +
+	     (-2*adt-bdt+zdt)*(*x)*(*y)*(*y) - adt*(*y)*(*y)*(*y)) /
+	     (2 * ((*x)*(*x)+(*y)*(*y)));
+      dz   = (2*xdt*(*x)*(*x)*(*y) - 2*xdt*(*y)*(*y)*(*y) - cdt*(*z));
 
       *x += dx;
       *y += dy;
@@ -543,7 +630,25 @@ int kamtoruslongorbit(long *r, long *s, long *z)
    (*r)=multiply((*r),l_cosx,bitshift)-multiply(srr,l_sinx,bitshift);
    return(0);
 }
+/*#define sign(x) ((x)>0?1:((x)<0?(-1):0))*/
+#define sign(x) ((x)>=0?1:-1)
+int hopalong2dfloatorbit(double *x, double *y, double *z)
+{
+   double tmp;
+   tmp = *y - sign(*x)*sqrt(fabs(b*(*x)-c));
+   *y = a - *x;
+   *x = tmp;
+   return(0);
+}
 
+int martin2dfloatorbit(double *x, double *y, double *z)
+{
+   double tmp;
+   tmp = *y - sin(*x);
+   *y = a - *x;
+   *x = tmp;
+   return(0);
+}
 
 /**********************************************************************/
 /*   Main fractal engines - put in fractalspecific[fractype].calctype */
@@ -673,7 +778,6 @@ int orbit2dlong()
    long *p0,*p1,*p2;
    struct l_affine cvt;
    int ret;
-
    fp = open_orbitsave();
 
    /* setup affine screen coord conversion */
@@ -788,7 +892,6 @@ int orbit3dlongcalc()
    struct long3dvtinf inf;
    unsigned long maxct;
    int color;
-
    int ret;
 
    /* setup affine screen coord conversion */
@@ -883,12 +986,9 @@ int orbit3dfloatcalc()
    unsigned count;
    int oldcol,oldrow;
    int oldcol1,oldrow1;
-
-
    extern int init3d[];
    unsigned long maxct;
    int color;
-
    int ret;
    struct float3dvtinf inf;
 
@@ -1145,7 +1245,6 @@ int ifs()			/* front-end for ifs2d and ifs3d */
 int ifs2d()	/* IFS logic shamelessly converted to integer math */
 {
    FILE *fp;
-
    unsigned long maxct,ct;
    int col;
    int row;
@@ -1615,3 +1714,4 @@ static FILE *open_orbitsave()
    }
    return NULL;
 }
+

@@ -40,6 +40,7 @@ extern double xxmin,xxmax;		/* corner values	    */
 extern double yymin,yymax;		/* corner values	    */
 extern double xx3rd,yy3rd;		/* corner values	    */
 extern double param[4]; 		/* parameters		    */
+extern int    fillcolor;		/* fill color: -1 = normal  */
 extern int    inside;			/* inside color: 1=blue     */
 extern int    outside;			/* outside color, if set    */
 extern int    finattract;		/* finite attractor option  */
@@ -256,6 +257,10 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
       param[3]		= read_info.dparm4;
       }
 
+   if(read_info.version > 7) {
+      fillcolor		= read_info.fillcolor;
+      }
+
    if(read_info.version < 4) { /* pre-version 14.0? */
       backwardscompat(&read_info); /* translate obsolete types */
       if(LogFlag)
@@ -269,7 +274,9 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
       if (decomp[0] > 0 && decomp[1] > 0)
 	 bailout = decomp[1];
       }
-
+   if(potflag) /* in version 15.x and 16.x logmap didn't work with pot */
+      if(read_info.version == 6 || read_info.version == 7)
+         LogFlag = 0;
    set_trig_pointers(-1);
 
    if (display3d)		    /* PB - a klooge till the meaning of */

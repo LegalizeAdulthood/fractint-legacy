@@ -132,7 +132,9 @@ struct fractal_info			/*  for saving data in GIF file     */
     /* version 7 stuff, release 16 */
     double dparm3;
     double dparm4;
-    int future[32];	  /* for stuff we haven't thought of yet */
+    /* version 8 stuff, release 17 */
+    int fillcolor;
+    int future[31];	  /* for stuff we haven't thought of yet */
 };
 
 #define MAXVIDEOMODES 300	/* maximum entries in fractint.cfg	  */
@@ -188,6 +190,9 @@ extern struct videoinfo videoentry;
 #define AUTOINVERT -123456.789
 
 #define N_ATTR 8			/* max number of attractors	*/
+
+extern	long	 l_at_rad;	/* finite attractor radius  */
+extern	double	 f_at_rad;	/* finite attractor radius  */
 
 struct fractalspecificstuff
 {
@@ -360,6 +365,7 @@ extern struct trig_funct_lst trigfn[];
 extern	void   buzzer(int);
 extern	int    calcfract(void);
 extern	int    calcmand(void);
+extern  int    calcmandfp(void);
 extern	int    check_key(void);
 extern	int    complex_mult(CMPLX, CMPLX, CMPLX *);
 extern	int    complex_div(CMPLX, CMPLX, CMPLX *);

@@ -130,6 +130,9 @@ ENDIF
 
 	extrn	rotate_lo:word, rotate_hi:word
 
+	extrn	bios_palette:word
+	extrn	paldata:byte
+
 	extrn	xdots:word
 	extrn	ydots:word
 	extrn	colors:word
@@ -177,6 +180,8 @@ public		vesa_detect		; set to 1 to disable VESA-detection
 
 ; ************************ Internal variables *****************************
 
+vxdots		dw	0		; virtual scan line length (bytes)
+
 goodmode	dw	0		; if non-zero, OK to read/write pixels
 dotwrite	dw	0		; write-a-dot routine:	mode-specific
 dotread 	dw	0		; read-a-dot routine:	mode-specific
@@ -204,6 +209,7 @@ xga_result	dw	0		; XGA_detect result code
 xga_isinmode	dw	0		; XGA is in this mode right now
 xga_iscolors	dw	0		; XGA using this many colors (0=64K)
 xga_clearvideo	db	0		; set to 80h to prevent video-clearing
+xga_loaddac	db	0		; set to 1 to load 'dacbox' on modesw
 xga_xdots	dw	0		; pixels per scan line
 
 		align	2
@@ -378,6 +384,17 @@ x320y480	db	320/8			; number of screen columns
 		db	  0h,0E7h, 006h,0E3h
 		db	0FFh
 
+; mode x from Michael Abrash
+x320y240	db	320/8			; number of screen columns
+		db	240/16			; number of screen rows
+		db	05fh, 04fh, 050h, 082h
+		db	054h, 080h, 0dh, 03eh
+		db	00h, 041h, 00h, 00h
+		db	00h, 00h, 00h, 00h
+		db	0eah, 0ach, 0dfh, 028h
+		db	00h, 0e7h, 06h, 0e3h
+		db	 0ffh
+
 x320y400	db	320/8			; number of screen columns
 		db	400/16			; number of screen rows
 		db	 5fh, 4fh, 50h, 82h	; CRTC Registers
@@ -459,6 +476,7 @@ tweaks		dw	offset x704y528 	; tweak table
 		dw	offset x752y564 	; ATI Tweak
 		dw	offset testati		; ATI 832x816 (works!)
 		dw	offset x320y480
+		dw	offset x320y240
 
 tweakflag	dw	0			; tweak mode active flag
 tweaktype	dw	0			; 8 or 9 (320x400 or 360x480)
@@ -1086,6 +1104,40 @@ whichmode2:
 	je	whichmode3
 	jmp	nope			;  nope
 whichmode3:
+
+	mov	ax,13h			; switch to 320x200x256 mode
+	call	maybeor 		; maybe or AL or (for Video-7s) BL
+	int	10h
+	push	ds			; reset ES==DS
+	pop	es
+	mov	ax,1017h		; get the DAC values
+	mov	bx,0
+	mov	cx,256
+	mov	dx,offset paldata	; a safe place when switching XGA modes
+	int	10h
+	cmp	xga_loaddac,0		; save the palette?
+	je	paskip			;  (yes, if we want to fake 'loaddac')
+	mov	si, offset paldata
+	mov	di, offset dacbox
+	mov	cx,768/2
+	rep	movsw
+	mov	xga_loaddac,0		; reset the toggle for next time
+paskip:
+	mov	bx,769			; adjust the palette
+paloop:	dec	bx
+	mov	ah,paldata[bx]
+
+	shl	ah,1
+	shl	ah,1
+	mov	paldata[bx],ah
+	cmp	bx,0
+	jne	paloop
+
+	mov	dx,xga_reg_base 	; Palette Mask
+	add	dx,0ah
+	mov	ax,00064h		; (Disable the XGA palette)
+	out	dx,ax
+
 	mov	dx,xga_swidth[bx]	; collect and save the scan-line length
 	mov	xga_xdots,dx
 	mov	dx,xga_colors[bx]	; how many colors do we have?
@@ -1155,8 +1207,15 @@ model3: mov	al,0			; zero out the...
 	jb	model3
 	dec	dx			; back to normal
 
-modsk4: mov	ax,0ff64h		; make the palette visible
+	mov	ax,0ff64h		; make the palette visible
 	out	dx,ax
+	jmp	ok
+
+modsk4:	mov	bx, offset paldata	; reset the palette
+	push	bx
+	mov	xga_isinmode,2
+	call	xga_setpalette
+	pop	bx
 	jmp	ok
 
 mode_0: 				; Set 80 column mode
@@ -1182,7 +1241,7 @@ mode_0a:
 
 	mov	dx,xga_reg_base 	; Palette Mask
 	add	dx,0ah
-	mov	ax,0ff64h		; (Disable the XGA palette)
+	mov	ax,0ff64h		; (Enable the XGA palette)
 	out	dx,ax
 
 	mov	dx,xga_reg_base 	; Enable VFB, Prepare for Reset
@@ -1313,7 +1372,7 @@ mcgaread	endp
 ;
 vgawrite	proc	near		; bank-switched EGA/VGA write mode 0
 	mov	bh,al			; save the color value for a bit
-	mov	ax,sxdots		; this many dots / line
+	mov	ax,vxdots		; this many dots / line
 	mul	dx			; times this many lines
 	add	ax,cx			; plus this many x-dots
 	adc	dx,0			; DX:AX now holds the pixel count
@@ -1348,7 +1407,7 @@ vgasame_bank:
 vgawrite	endp
 
 vgaread proc	near		; bank-switched EGA/VGA read mode 0
-	mov	ax,sxdots		; this many dots / line
+	mov	ax,vxdots		; this many dots / line
 	mul	dx			; times this many lines
 	add	ax,cx			; plus this many x-dots
 	adc	dx,0			; DX:AX now holds the pixel count
@@ -1881,9 +1940,9 @@ CONSTANT_TO_INDEXED_REGISTER	 MACRO	ADDRESS,INDEX,VALUE
 
 tweak256read	proc near uses si	; Tweaked-VGA ...x256 color mode
 
-  mov	  ax,sxdots
-  shr	  ax,1
-  shr	  ax,1			 ; now ax = sxdots/4
+  mov	  ax,vxdots
+;;  shr   ax,1
+;;  shr   ax,1			 ; now ax = vxdots/4
   mul	  dx			 ;Point to start of desired row
   push	  cx			 ;Save X coordinate for later
   shr	  cx,1			 ;There are 4 pixels at each address
@@ -1905,9 +1964,9 @@ tweak256read	endp
 
 tweak256write	proc near uses di	; Tweaked-VGA ...x256 color mode
   mov	  bl,al 		; color
-  mov	  ax,sxdots
-  shr	  ax, 1
-  shr	  ax, 1 		 ; now ax = sxdots/4
+  mov	  ax,vxdots
+;;  shr   ax, 1
+;;  shr   ax, 1 		 ; now ax = vxdots/4
   mul	  dx			;Point to start of desired row
   push	  cx			;Save X coordinate for later
   shr	  cx,1			;There are 4 pixels at each address
@@ -1984,7 +2043,7 @@ ati1024write	endp
 ati1024addr	proc	near		; modification of TIW's Super256addr
 	clc				; clear carry flag
 	push	ax			; save this for a tad
-	mov	ax,sxdots		; this many dots / line
+	mov	ax,vxdots		; this many dots / line
 	mul	dx			; times this many lines - ans in dx:ax
 	add	ax,cx			; plus this many x-dots
 	adc	dx,0			; answer in dx:ax
@@ -2020,7 +2079,7 @@ super256addr	proc near		; can be put in-line but shared by
 					; read and write routines
 	clc				; clear carry flag
 	push	ax			; save this for a tad
-	mov	ax,sxdots		; this many dots / line
+	mov	ax,vxdots		; this many dots / line
 	mul	dx			; times this many lines - ans in dx:ax
 	add	ax,cx			; plus this many x-dots
 	adc	dx,0			; answer in dx:ax - dl=bank, ax=offset
@@ -2143,7 +2202,7 @@ chips_entries	dw	0
 	dw	 640, 480,256, 079h,0
 	dw	 800, 600,256, 07bh,0
 compaq_entries	dw	0
-	dw	 640, 480,256, 02eh,0	; (?? not sure about this... Bert)
+	dw	 640, 480,256, 02eh,0fdh	; (non-standard mode flag)
 everex_entries	dw	0
 	dw	 752, 410, 16, 070h,01h
 	dw	 800, 600, 16, 070h,02h
@@ -2691,55 +2750,55 @@ whichvga proc	near
 	jne	type1_forced		;  yup - wade through the options
 	jmp	not_forced		;  nope - skip this section
 type1_forced:
-	cmp	svga_type,1		
+	cmp	svga_type,1
 	jne	type2_forced
 	bkadr	aheada,$aheada,ahead_entries
 type2_forced:
-	cmp	svga_type,2		
+	cmp	svga_type,2
 	jne	type3_forced
 	bkadr	ativga,$ativga,ati_entries
 type3_forced:
-	cmp	svga_type,3		
+	cmp	svga_type,3
 	jne	type4_forced
 	bkadr	chipstech,$chipstech,chips_entries
 type4_forced:
-	cmp	svga_type,4		
+	cmp	svga_type,4
 	jne	type5_forced
 	bkadr	everex,$everex,everex_entries
 type5_forced:
-	cmp	svga_type,5		
+	cmp	svga_type,5
 	jne	type6_forced
 	bkadr	genoa,$genoa,genoa_entries
 type6_forced:
-	cmp	svga_type,6		
+	cmp	svga_type,6
 	jne	type7_forced
 	bkadr	ncr,$ncr,ncr_entries
 type7_forced:
-	cmp	svga_type,7		
+	cmp	svga_type,7
 	jne	type8_forced
 	bkadr	oaktech,$oaktech,oaktech_entries
 type8_forced:
-	cmp	svga_type,8		
+	cmp	svga_type,8
 	jne	type9_forced
 	bkadr	paradise,$paradise,paradise_entries
 type9_forced:
-	cmp	svga_type,9		
+	cmp	svga_type,9
 	jne	type10_forced
 	bkadr	trident,$trident,trident_entries
 type10_forced:
-	cmp	svga_type,10		
+	cmp	svga_type,10
 	jne	type11_forced
 	bkadr	tseng,$tseng,tseng_entries
 type11_forced:
-	cmp	svga_type,11		
+	cmp	svga_type,11
 	jne	type12_forced
 	bkadr	tseng4,$tseng4,tseng4_entries
 type12_forced:
-	cmp	svga_type,12		
+	cmp	svga_type,12
 	jne	type13_forced
 	bkadr	video7,$video7,video7_entries
 type13_forced:
-	cmp	svga_type,13		
+	cmp	svga_type,13
 	jne	type14_forced
 	bkadr	aheadb,$aheadb,ahead_entries
 type14_forced:
@@ -2813,19 +2872,17 @@ yeste:	bkadr	trident,$trident, everex_entries	; Bert
 note:	jmp	fini
 
 noev:
-;; next commented out till we know whether mode is 640 or 1024, and
-;; if 640 just how to address it
-;;	mov	ax,0bf03h		;Test for Compaq
-;;	xor	bx,bx
-;;	mov	cx,bx
-;;	int	10h
-;;	cmp	ax,0bf03h
-;;	jnz	nocp
-;;	test	cl,40h			;is 640x480x256 available? ;(??)
-;;	jz	nocp
-;;	bkadr	compaq,$compaq,compaq_entries		; Bert
-;;	mov	[vga512],1
-;;	jmp	fini
+	mov	ax,0bf03h		;Test for Compaq
+	xor	bx,bx
+	mov	cx,bx
+	int	10h
+	cmp	ax,0bf03h
+	jnz	nocp
+	test	cl,40h			;is 640x480x256 available? ;(??)
+	jz	nocp
+	bkadr	compaq,$compaq,compaq_entries		; Bert
+	mov	[vga512],1
+	jmp	fini
 
 nocp:	mov	dx,3c4h 		;Test for NCR 77C22E
 	mov	ax,0ff05h
@@ -2964,11 +3021,11 @@ noct:	mov	ch,0
 not4:	mov	dx,3d4h 		;Test for Tseng 3000 or 4000
 	mov	ax,1f25h		;is the Overflow High register there?
 	call	$isport2
-        jnz     nots
-        mov     al,03fh                 ;bottom six bits only
-        jmp     short yes3
-yes4:   mov     al,0ffh
-yes3:   mov     dx,3cdh                 ;test bank switch register
+	jnz	nots
+	mov	al,03fh 		;bottom six bits only
+	jmp	short yes3
+yes4:	mov	al,0ffh
+yes3:	mov	dx,3cdh 		;test bank switch register
 	call	$isport1
 	jnz	nots
 	bkadr	tseng,$tseng, tseng_entries		; Bert
@@ -3659,13 +3716,17 @@ vgaline proc	near		; Bank Switch EGA/VGA line write
 	push	dx			;  ...
 
 	mov	bx,dx			; save the rowcount
-	mov	ax,sxdots		; compute # of dots / pass
+	mov	ax,vxdots		; compute # of dots / pass
 	shr	ax,1			;  (given 8 passes)
 	shr	ax,1			;  ...
 	shr	ax,1			;  ...
+	mov	di,ax
+	neg	di			; temp: to see if line will overflow
 	mul	bx			; now calc first video addr
 	cmp	dx,curbk		; see if bank changed
 	jne	bank_is_changing	; if bank change call normaline
+	cmp	ax,di
+	ja	bank_is_changing	; if bank WILL change, call normaline
 
 	mov	di,cx			; compute the starting destination
 	shr	di,1			; divide by 8
@@ -3733,7 +3794,7 @@ vgareadline	proc	near		; Bank Switch EGA/VGA line read
 	push	dx			;  ...
 
 	mov	bx,dx			; save the rowcount
-	mov	ax,sxdots		; compute # of dots / pass
+	mov	ax,vxdots		; compute # of dots / pass
 	shr	ax,1			;  (given 8 passes)
 	shr	ax,1			;  ...
 	shr	ax,1			;  ...
@@ -3801,7 +3862,7 @@ bank_is_changing:
 vgareadline	endp			;  change mid line (ok for 1024 wide)
 
 super256lineaddr    proc    near		; super VGA 256 colors
-	mov	ax,sxdots	 ; this many dots / line
+	mov	ax,vxdots	 ; this many dots / line
 	mov	bx,dx		 ; rowcount
 	mul	bx		 ; times this many lines
 	push	ax		 ; save pixel address for later
@@ -3812,7 +3873,7 @@ super256lineaddr    proc    near		; super VGA 256 colors
 	call	far ptr newbank
 bank_is_ok:
 	inc	bx		 ; next row
-	mov	ax,sxdots	 ; this many dots / line
+	mov	ax,vxdots	 ; this many dots / line
 	mul	bx		 ; times this many lines
 	sub	ax,1		 ; back up some to the last pixel of the
 	sbb	dx,0		 ; previous line
@@ -3882,9 +3943,9 @@ tweak256line	proc	near		; Normal Line:	no assumptions
 nottoosmall:				; at least four points - go for it!
 	push	bx			; save number of pixels
 	and	bx,3			;  pixels modulo 4 = no of extra pts
-	mov	ax,sxdots		; width of video row
-	shr	ax, 1
-	shr	ax, 1			; now ax = sxdots/4
+	mov	ax,vxdots		; width of video row
+;;	shr	ax, 1
+;;	shr	ax, 1			; now ax = vxdots/4
 	mul	dx			; ax points to start of desired row
 	push	cx			; Save starting column for later
 	shr	cx,1			; There are 4 pixels at each address
@@ -3946,9 +4007,9 @@ tweak256readline	proc	near		; Normal Line:	no assumptions
 nottoosmall:				; at least four points - go for it!
 	push	bx			; save number of pixels
 	and	bx,3			;  pixels modulo 4 = no of extra pts
-	mov	ax,sxdots		; width of video row
-	shr	ax, 1
-	shr	ax, 1			; now ax = sxdots/4
+	mov	ax,vxdots		; width of video row
+;;	shr	ax, 1
+;;	shr	ax, 1			; now ax = vxdots/4
 	mul	dx			; ax points to start of desired row
 	push	cx			; Save starting column for later
 	shr	cx,1			; There are 4 pixels at each address
@@ -4142,6 +4203,10 @@ setvideotext	endp
 ;	directly using the coded value in DX)
 
 setvideomode	proc	uses di si es,argax:word,argbx:word,argcx:word,argdx:word
+
+	mov	ax,sxdots		; initially, set the virtual line
+	mov	vxdots,ax		; to be the scan line length
+
 	cmp	dotmode, 29
 	jne	NotTrueColorMode
 	jmp	TrueColorAuto
@@ -4183,6 +4248,7 @@ no8514:
 noHGC:
 	mov	oktoprint,1		; say it's OK to use printf()
 	mov	goodmode,1		; assume a good video mode
+	mov	xga_loaddac,1		; tell the XGA to fake a 'loaddac'
 	mov	ax,video_bankadr	; restore the results of 'whichvga()'
 	mov	[bankadr],ax		;  ...
 	mov	ax,video_bankseg	;  ...
@@ -4352,6 +4418,9 @@ VGAauto256mode:
 	jmp	super256mode		; just like a SuperVGA
 egamode:
 vgamode:
+;;;	shr	vxdots,1		; scan line increment is in bytes...
+;;;	shr	vxdots,1
+;;;	shr	vxdots,1
 	mov	ax,offset vgawrite	; set up EGA/VGA write-a-dot routine.
 	mov	bx,offset vgaread	; set up EGA/VGA read-a-dot  routine
 	mov	cx,offset vgaline	; set up the EGA/VGA linewrite routine
@@ -4409,6 +4478,8 @@ super256mode:
 	mov	si,offset swap256	; set up the swap routine
 	jmp	videomode		; return to common code
 tweak256mode:
+	shr	vxdots,1		; scan line increment is in bytes...
+	shr	vxdots,1
 	mov	oktoprint,0		; NOT OK to printf() in this mode
 	mov	ax,offset tweak256write ; set up tweaked-256 write-a-dot
 	mov	bx,offset tweak256read	; set up tweaked-256 read-a-dot
@@ -4713,16 +4784,36 @@ setvideobios_doit2:
 	mov	es,ax			;  ...
 	mov	ax,4f01h		; ask about this video mode
 	mov	cx,bx			;  this mode
+	and	cx,07fffh		; (oops - correct for the high-bit)
 	mov	di, offset suffix	; (a safe spot for 256 bytes)
 	int	10h			; do it
-;	mov	cx, word ptr suffix	; get the attributes
-;	test	cx,1			; available video mode?
-;	jz	nogoodvesamode		; nope.  skip some code
+	cmp	ax,004fh		; did the call work?
+	jne	nogoodvesamode		;  nope
+	mov	cx, word ptr suffix	; get the attributes
+	test	cx,1			; available video mode?
+	jz	nogoodvesamode		; nope.  skip some code
 	call	set_vesa_mapping_func
 	mov	cx, word ptr suffix+12	; get the Bank-switching routine
 	mov	word ptr vesa_bankswitch, cx  ;  ...
 	mov	cx, word ptr suffix+14	;   ...
 	mov	word ptr vesa_bankswitch+2, cx	;  ...
+	mov	cx, word ptr suffix+16	; get the bytes / scan line
+	cmp	cx,0			; is this entry filled in?
+	je	skipvesafix		;  nope
+;;;	cmp	colors,256		; 256-color mode?
+;;;	jne	skipvesafix		;  nope
+	cmp	byte ptr suffix+24,1
+	jbe	store_vesa_bytes
+	shl	cx,1			; if a planar mode, bits are pixels
+	shl	cx,1			; so we multiply bytes by 8
+	shl	cx,1
+store_vesa_bytes:
+	mov	vxdots,cx		; adjust the screen width accordingly XXX
+	cmp	cx,sxdots
+	je	skipvesafix
+	mov	ax,offset swapnormread	; use the slow swap routine
+	mov	word ptr swapsetup,ax	;  ...
+skipvesafix:
 	mov	cx, word ptr suffix+4	; get the granularity
 	cmp	cl,1			; ensure the divide won't blow out
 	jb	nogoodvesamode		;  granularity == 0???
@@ -4792,6 +4883,14 @@ notatimode:
 	mov	dotmode,4
 	jmp	setvideoregs
 nottsengmode:
+	cmp	bx,0fdh 		; Compaq 640x480x256 special?
+	jne	notcompaqmode
+	mov	vxdots,1024		; (compaq uses 1024-byte scanlines)
+	mov	bx,offset swapnormread	; use the slow swap routine
+	mov	word ptr swapsetup,bx	;  ...
+	mov	bx,0
+	jmp	setvideobios
+notcompaqmode:
 	cmp	ax,4f02h		; VESA mode?
 	jne	notvesamode
 	mov	dotmode,28		; convert to VESA specs
@@ -4816,6 +4915,8 @@ setvideoregs_doit:
 	cmp	dx,9			; 320x400 tweak256mode?
 	je	isatweaktype		; yup
 	cmp	dx,18			; 320x480 tweak256mode?
+	je	isatweaktype		; yup
+	cmp	dx,19			; 320x240 tweak256mode?
 	je	isatweaktype		; yup
 	cmp	dx,10			; Tseng tweak?
 	je	tsengtweak		; yup
@@ -4929,7 +5030,10 @@ vrdly2: in	al,dx			; now loop until it's on!
 ;patch end
 	mov	cl,0E7h 		; value for misc output reg
 	cmp	dx,18			; 320x480 mode?
+	je	setmisc320		;  nope, use above value
+	cmp	dx,19			; 320x240 mode?
 	jne	setmiscoreg		;  nope, use above value
+setmisc320:
 	mov	cl,0E3h 		; value for misc output reg
 setmiscoreg:
 	mov	dx,03c4h		; Sequencer Synchronous reset
@@ -5133,7 +5237,9 @@ setforcolortext3:
 	mov	si,8000h		; from vid offset 8000h
 	mov	cx,0800h		; save 2k words
 	rep movsw			; characters and attributes
-	jmp	setfortextxxgadone
+	pop	ds			; restore ds
+	mov	orvideo,80h		; set the video to preserve memory
+	jmp	dosettext		; (else more than we saved gets cleared)
 setfortextegavga:
 	sub	ax,ax			; set bank just in case
 	call far ptr newbank
@@ -5147,32 +5253,48 @@ sftknownmode:
 	call	disablevideo		;  ...
 	mov	ax,0a000h		; video mem address
 	mov	ds,ax			; set ds to video mem
-	mov	cx,0			; set to plane 0
-	call	select_vga_plane	;  ...
-	mov	cx,0800h		; save 2k words
-	xor	si,si			; from offset 0 in vid mem
 	xor	di,di			; to offset 0 in save area
-	rep movsw			; save plane 0 2k bytes (char values)
+;;	mov	cx,0			; set to plane 0
+;;	call	select_vga_plane	;  ...
+;;	mov	cx,0800h		; save 2k words
+;;	xor	si,si			; from offset 0 in vid mem
+;;	rep movsw			; save plane 0 2k bytes (char values)
 	mov	cx,2			; set to plane 2
 	call	select_vga_plane	;  ...
 	mov	cx,1000h		; save 4k words
 	xor	si,si			; from offset 0 in vid mem
 	rep movsw			; save plane 2 8k bytes (font)
-	mov	cx,1			; set to plane 1
-	call	select_vga_plane	;  ...
-	mov	cx,0800h		; save 2k words
-	xor	si,si			; from offset 0 in vid mem
-	rep movsw			; save plane 1 2k bytes (attributes)
-	push	ds			; now zap attributes to zero to
-	pop	es			;  avoid flicker in the next stages
-	xor	di,di			;  ...
-	xor	ax,ax			;  ...
-	mov	cx,0400h		;  ...
-	rep stosw			;  ...
-setfortextxxgadone:
+;;	mov	cx,1			; set to plane 1
+;;	call	select_vga_plane	;  ...
+;;	mov	cx,0800h		; save 2k words
+;;	xor	si,si			; from offset 0 in vid mem
+;;	rep movsw			; save plane 1 2k bytes (attributes)
+;;	push	ds			; now zap attributes to zero to
+;;	pop	es			;  avoid flicker in the next stages
+;;	xor	di,di			;  ...
+;;	xor	ax,ax			;  ...
+;;	mov	cx,0400h		;  ...
+;;	rep stosw			;  ...
 	pop	ds			; restore ds
 	mov	orvideo,80h		; set the video to preserve memory
-	jmp	dosettext		; (else more than we saved gets cleared)
+	mov	ax,3			; set up the text call
+	mov	bx,0			;  ...
+	mov	cx,0			;  ...
+	mov	dx,0			;  ...
+	call	setvideo		; set the video
+	push	ds			; save ds
+	mov	ax,extraseg		; set ES == Extra Segment
+	add	ax,1000h		; (plus 64K)
+	mov	es,ax			;  ...
+	mov	ax,textaddr
+	mov	ds,ax
+	cld
+	xor	si,si
+	mov	di,2000h		; past the saved font info
+	mov	cx,0800h		; 2k words (text & attrs)
+	rep	movsw			; save them
+	pop	ds
+	jmp	setfortextreturn
 setfordummytext:			; use 640x200x2 simulated text mode
 	mov	ax,0			; disable the video (I think)
 	call	disablevideo		;  ...
@@ -5360,25 +5482,51 @@ setforgraphicsnocga3:
 	rep movsw			; characters and attributes
 	jmp	short setforgraphicsdoit
 setforgraphicsegavga:
-	mov	cx,0			; set to plane 0
-	call	select_vga_plane	;  ...
+;;	mov	cx,0			; set to plane 0
+;;	call	select_vga_plane	;  ...
+;;	mov	ax,extraseg		; set DS == Extra Segment
+;;	add	ax,1000h		; (plus 64K)
+;;	mov	ds,ax			;  ...
+;;	mov	cx,0800h		; restore 2k words
+;;	xor	si,si			; from offset 0 in save area
+;;	xor	di,di			; to offset 0 in vid mem
+;;	rep movsw			; restore plane 0 2k bytes (char values)
+	mov	ax,textaddr
+	mov	es,ax
 	mov	ax,extraseg		; set DS == Extra Segment
 	add	ax,1000h		; (plus 64K)
 	mov	ds,ax			;  ...
-	mov	cx,0800h		; restore 2k words
-	xor	si,si			; from offset 0 in save area
-	xor	di,di			; to offset 0 in vid mem
-	rep movsw			; restore plane 0 2k bytes (char values)
+	cld
+	xor	di,di
+	mov	si,2000h		; past the saved font info
+	mov	cx,0800h		; 2k words (text & attrs)
+	rep	movsw			; restore them
+	pop	ds
+	mov	ax,8eh			; switch to a mode with known mapping
+	cmp	videoax,0fh		; returning to ega 640x350x2?
+	jne	sfgnotega		;  nope
+	mov	ax,8fh			; yup, go directly to it
+sfgnotega:
+	int	10h			; set the safe mode
+	mov	ax,0			; disable the video (I think)
+	call	disablevideo		;  ...
 	mov	cx,2			; set to plane 2
 	call	select_vga_plane	;  ...
+	push	ds
+	mov	ax,0a000h		; set es to video mem
+	mov	es,ax			;  ...
+	mov	ax,extraseg		; set DS == Extra Segment
+	add	ax,1000h		; (plus 64K)
+	mov	ds,ax			;  ...
 	mov	cx,1000h		; restore 4k words
 	xor	di,di			; to offset 0 in vid mem
+	xor	si,si			; from offset 0 in extraseg
 	rep movsw			; restore plane 2 8k bytes (font)
-	mov	cx,1			; set to plane 1
-	call	select_vga_plane	;  ...
-	mov	cx,0800h		; restore 2k words
-	xor	di,di			; to offset 0 in vid mem
-	rep movsw			; restore plane 1 2k bytes (attributes)
+;;	mov	cx,1			; set to plane 1
+;;	call	select_vga_plane	;  ...
+;;	mov	cx,0800h		; restore 2k words
+;;	xor	di,di			; to offset 0 in vid mem
+;;	rep movsw			; restore plane 1 2k bytes (attributes)
 	jmp	short setforgraphicsdoit
 setfordummygraphics:
 	push	ds			; save ds
@@ -6140,7 +6288,7 @@ putcolor	endp
 ;	entire line of pixels to the screen (0 <= xdot < xdots) at a clip
 ;	Called by the GIF decoder
 
-out_line	proc	uses di si es, pixels:word, linelen:word
+out_line	proc	uses di si es, pixels:ptr byte, linelen:word
 	mov	cx,sxoffs		; start at left side of logical screen
 	mov	dx,rowcount		; sanity check: don't proceed
 	add	dx,syoffs		;  ...
@@ -6151,7 +6299,7 @@ out_line	proc	uses di si es, pixels:word, linelen:word
 	mov	ax, linelen		; last pixel column
 	add	ax, sxoffs		;  ...
 	dec	ax			;  ...
-	mov	si,offset pixels	; get the color for dot 'x'
+	mov	si,pixels		; get the color for dot 'x'
 	call	linewrite		; mode-specific linewrite routine
 	inc	rowcount		; next row
 out_lineret:
@@ -6167,7 +6315,7 @@ out_line	endp
 ;	pixel
 ;	Called by the GIF decoder
 
-get_line	proc uses di si es, row:word, startcol:word, stopcol:word, pixels:word
+get_line	proc uses di si es, row:word, startcol:word, stopcol:word, pixels:ptr byte
 	mov	cx,startcol		; sanity check: don't proceed
 	add	cx,sxoffs		;  ...
 	cmp	cx,sxdots		; beyond the right end of the screen
@@ -6178,7 +6326,7 @@ get_line	proc uses di si es, row:word, startcol:word, stopcol:word, pixels:word
 	ja	get_lineret		;  ...
 	mov	ax, stopcol		; last pixel to read
 	add	ax, sxoffs		;  ...
-	mov	di,offset pixels	; get the color for dot 'x'
+	mov	di, pixels		; get the color for dot 'x'
 	call	lineread		; mode-specific lineread routine
 get_lineret:
 	xor	ax,ax			; return 0
@@ -6192,7 +6340,7 @@ get_line	endp
 ;	pixel
 ;	Called by the GIF decoder
 
-put_line	proc uses di si es, row:word, startcol:word, stopcol:word, pixels:word
+put_line	proc uses di si es, row:word, startcol:word, stopcol:word, pixels:ptr byte
 	mov	cx,startcol		; sanity check: don't proceed
 	add	cx,sxoffs		;  ...
 	cmp	cx,sxdots		; beyond the right end of the screen
@@ -6207,7 +6355,7 @@ put_line	proc uses di si es, row:word, startcol:word, stopcol:word, pixels:word
 	add	ax, sxoffs;		;  ...
 	cmp	ax,sxdots		; beyond the right end of the screen?
 	ja	put_lineret		;  ...
-	mov	si,offset pixels	; put the color for dot 'x'
+	mov	si,pixels		; put the color for dot 'x'
 	call	linewrite		; mode-specific linewrite routine
 put_lineret:
 	xor	ax,ax			; return 0
@@ -6786,6 +6934,18 @@ xgalp2: mov	al,[si+bx]		; adjust XGA -> VGA
 	jmp	spindacreturn
 notxga:
 
+	cmp	bios_palette,0		; BIOS palette updates forced?
+	je	not_bios_palette	;  nope
+	mov	ax,1012h		; use a BIOS update
+	mov	bx,0
+	mov	cx,256
+	push	ds
+	pop	es
+	mov	dx,offset dacbox
+	int	10h
+	jmp	spindacreturn
+not_bios_palette:
+
 	cmp	f85flag, 0		; if 8514a then update pallette
 	je	spindoit
 	jmp	spin8514
@@ -6893,9 +7053,9 @@ spindone:
 donelearn:
 	sub	daccount,6		; done learning: reduce the daccount
 	mov	daclearn,1		; set flag: no more learning
-        cmp     daccount,4              ; there's a limit to how slow we go
-        jge     nolearn                 ;  ...
-        mov     daccount,4              ;  ...
+	cmp	daccount,4		; there's a limit to how slow we go
+	jge	nolearn 		;  ...
+	mov	daccount,4		;  ...
 nolearn:
 	add	bx,cx			; set up for the next batch
 	cmp	bx,256			; more to go?

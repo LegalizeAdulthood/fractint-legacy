@@ -77,6 +77,11 @@ static void	(near _fastcall *PutPixel)( int x, int y, int index );
 static unsigned (near _fastcall *GetPixel)( int x, int y );
 
 /**************************************************************************/
+#ifdef __BORLANDC__
+#if(__BORLANDC__ > 2)
+   #pragma warn -eff
+#endif
+#endif
 
 static unsigned _fastcall near Row16Calculate( unsigned line, unsigned x1 )
 {
@@ -170,6 +175,12 @@ int cnt;
 	PutPixel = DoPixel;
 	(*PutPixel)( x, y, index );
 }
+
+#ifdef __BORLANDC__
+#if(__BORLANDC__ > 2)
+   #pragma warn +eff
+#endif
+#endif
 
 /***************************************************************************/
 

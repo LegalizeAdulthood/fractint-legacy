@@ -70,8 +70,6 @@ amode		dw	18, 9 dup(?)
 
 .CODE
 
-	public
-
 
 callafi proc	near
 

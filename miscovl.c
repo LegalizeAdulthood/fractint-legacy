@@ -38,6 +38,7 @@ extern int  iit;		/* iit fpu?			*/
 extern int  video_type;
 extern int  askvideo;
 extern char overwrite;		/* 1 means ok to overwrite */
+extern int  fillcolor;		/* fill color: -1 = normal*/
 extern int  inside;		/* inside color: 1=blue     */
 extern int  outside;		/* outside color, if set    */
 extern double xxmin,xxmax,yymin,yymax,xx3rd,yy3rd; /* selected screen corners */
@@ -79,7 +80,7 @@ extern int  transparent[];
 extern char preview;		/* 3D preview mode flag */
 extern char showbox;		/* flag to show box and vector in preview */
 extern int  RANDOMIZE;		/* Color randomizing factor */
-extern int  full_color; 	/* Selects full color with light source fills */
+extern int  Targa_Out;  /* Selects full color with light source fills */
 extern int  Ambient;		/* Darkness of shadows in light source */
 extern int  haze;		/* Amount of haze to factor in in full color */
 extern char light_name[];	/* Name of full color .TGA file */
@@ -119,6 +120,12 @@ extern char far *mapdacbox;
 
 extern char dstack[4096];
 extern char boxx[8192];
+extern char s_cantopen[];
+extern char s_cantwrite[];
+extern char s_cantcreate[];
+extern char s_cantunderstand[];
+extern char s_cantfind[];
+
 
 extern int fullscreen_prompt(char *hdg,int numprompts,char * far *prompts,
 	       struct fullscreenvalues values[],int options,int fkeymask,
@@ -256,7 +263,7 @@ prompt_user:
       if (access(CommandFile,0) == 0) { /* file exists */
 	 gotinfile = 1;
 	 if (access(CommandFile,6)) {
-	    sprintf(buf,"Can't write %s",CommandFile);
+	    sprintf(buf,s_cantwrite,CommandFile);
 	    stopmsg(0,buf);
 	    continue;
 	    }
@@ -268,7 +275,7 @@ prompt_user:
 	 setvbuf(infile,dstack,_IOFBF,4096); /* improves speed */
 	 }
       if ((parmfile = fopen(outname,"wt")) == NULL) {
-	 sprintf(buf,"Can't create %s ",outname);
+	 sprintf(buf,s_cantcreate,outname);
 	 stopmsg(0,buf);
 	 if (gotinfile) fclose(infile);
 	 continue;
@@ -411,7 +418,10 @@ static void write_batch_parms(FILE *batch,char *colorinf,int maxcolor)
 
       if(bailout && (potflag == 0 || potparam[2] == 0.0))
 	 put_parm( " bailout=%d",bailout);
-
+      if(fillcolor != -1) {
+  	 put_parm(" fillcolor=");
+	put_parm( "%d",fillcolor);
+      }
       if (inside != 1) {
 	 put_parm(" inside=");
 	 if (inside == -1)
@@ -541,7 +551,8 @@ static void write_batch_parms(FILE *batch,char *colorinf,int maxcolor)
 	 }
       if (RANDOMIZE)
 	 put_parm( " randomize=%d",RANDOMIZE);
-      if (full_color)
+
+      if (Targa_Out)
 	 put_parm( " fullcolor=y");
       if (Ambient)
 	 put_parm( " ambient=%d",Ambient);
@@ -1063,7 +1074,7 @@ static void update_fractint_cfg()
 
    findpath("fractint.cfg",cfgname);
    if (access(cfgname,6)) {
-      sprintf(buf,"Can't write %s",cfgname);
+      sprintf(buf,s_cantwrite,cfgname);
       stopmsg(0,buf);
       return;
       }
@@ -1073,7 +1084,7 @@ static void update_fractint_cfg()
    outname[i] = 0;
    strcat(outname,"fractint.tmp");
    if ((outfile = fopen(outname,"w")) == NULL) {
-      sprintf(buf,"Can't create %s ",outname);
+      sprintf(buf,s_cantcreate,outname);
       stopmsg(0,buf);
       return;
       }

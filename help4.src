@@ -37,8 +37,11 @@
   makedoc=filename	   Create Fractint documentation file
 
 {Calculation Mode Parameters}
-  passes=1|2|g|b	   Select Single-Pass, Dual-Pass, Solid-Guessing
-			   or the Boundary-Tracing drawing algorithms
+  passes=1|2|g|b|t	   Select Single-Pass, Dual-Pass, Solid-Guessing,
+			   Boundary-Tracing, or the Tesseral drawing
+			   algorithms
+  fillcolor=normal|<nnn>   Sets a block fill color for use with Boundary
+      			   Tracing and Tesseral options		  
   float=yes		   For most functions changes from integer math to fp
   symmetry=xxxx 	   Force symmetry to None, Xaxis, Yaxis, XYaxis,
 			   Origin, or Pi symmetry.  Useful for debugging.
@@ -59,9 +62,10 @@
   ifs=name		   IFS name for 'type=ifs' fractals
 
 {Sound Parameters}
-  sound=off|x|y|z	   Nobody ever plays with fractals at work, do they?
-			   x|y|z can be used with attractor fractals
-  hertz=nnn		   Base frequency for attractor sound effects
+  sound=off|x|y|z          Nobody ever plays with fractals at work, do they?
+                           x|y|z can be used to add sound to attractor
+                           fractals, the orbits command, and reading GIFs.
+  hertz=nnn                Base frequency for attractor sound effects
 ~FF
 
 {Image Calculation Parameters}
@@ -76,6 +80,7 @@
 			   of the default (4.0 for most fractal types)
   initorbit=nnn/nnn	   Sets the value used to initialize Mandelbrot orbits
 			   to the given complex number (real and imag parts)
+  orbitdelay=nn		   Slows up the display of orbits (by nn/10000 sec)
   initorbit=pixel	   Sets the value used to initialize Mandelbrot orbits
 			   to the complex number corresponding to the screen
 			   pixel. This is the default for most types.
@@ -84,6 +89,7 @@
 			   of checking (default 1, higher is more stringent)
 			   'show' or a neg value colors 'caught' points white.
   rseed=nnnnn		   Random number seed, for reproducable Plasma Clouds
+  showdot=nn		   Colors the current dot being calculated color nn.
 ~FF
 {Color Parameters}
   inside=nnn		   Fractal interior color (inside=0 for black)
@@ -106,6 +112,7 @@
   potential=nn[/nn[/nn[/16bit]]]  Continuous Potential
   invert=nn/nn/nn	   Turns on inversion - turns images 'inside out'
   finattract=yes	   Look for finite attractor in julia types
+  exitnoask=yes		   bypasses the final "are you sure?" exit screen
 ~FF
 
 {File Parameters}
@@ -156,6 +163,7 @@
 			   baud=115,150,300,600,1200,2400,4800,9600
 			   options 7,8 | 1,2 | e,n,o (any order)
 			   Example: comport=1/9600/n71
+  colorps=yes|no           Enable or Disable the color postscript extensions
 ~FF
 {3D Parameters}
   preview=yes		   Turns on 3D 'preview' default mode
@@ -400,9 +408,13 @@ use "Printing Fractint Documentation" from the main help index.
 ;
 ~Topic=Calculation Mode Parameters
 
-PASSES=1|2|guess|btm\
-Selects single-pass, dual-pass, solid-Guessing mode, or the Boundary
-Tracing algorithm.  See {Drawing Method}.
+PASSES=1|2|guess|btm|tesseral\
+Selects single-pass, dual-pass, solid-Guessing mode, Boundary Tracing,
+or the Tesseral algorithm.  See {Drawing Method}.
+
+FILLCOLOR=normal|<nnn>\
+Sets a color to be used for block fill by Boundary Tracing and Tesseral
+algorithms.  See {Drawing Method}.
 
 FLOAT=yes\
 Most fractal types have both a fast integer math and a floating point
@@ -512,6 +524,16 @@ the orbit to the complex number corresponding to the screen pixel. The
 command "initorbit=nnn/nnn" uses the entered value as the initializer. See
 the discussion of the {Mandellambda Sets} for more on this topic.
 
+ORBITDELAY=<nn>\
+Slows up the display of orbits using the <o> command
+for folks with hot new computers. Units are in 1/10000 seconds per
+orbit point.  ORBITDELAY=10 therefore allows you to see each pixel's
+orbit point for about one millisecond. For best display of orbits,
+try passes=1 and a moderate resolution such as 320x200.  Note that
+the first time you press the 'o' key with the 'orbitdelay' function
+active, your computer will pause for a half-second or so to calibrate
+a high-resolution timer.        
+
 PERIODICITY=no|show|nnn\
 Controls periodicity checking (see {Periodicity Logic}).
 "no" turns it off, "show" lets
@@ -528,11 +550,15 @@ internal clock-timer. This argument forces a value (which you can see in
 the <Tab> display), and allows you to reproduce plasma clouds. A detailed
 discussion of why a TRULY random number may be impossible to define, let
 alone generate, will have to wait for "FRACTINT: The 3-MB Doc File."
+
+SHOWDOT=<nn>\
+Colors the pixel being calculated color <nn>. Useful for very slow
+fractals for showing you the calculation status.
 ;
 ;
 ~Topic=Color Parameters
 
-INSIDE=nnn|bof60|bof61|zmag|attractor\
+INSIDE=nnn|bof60|bof61|zmag|attractor|epscross|startrail\
 Set the color of the interior: for
 example, "inside=0" makes the M-set "lake" a stylish basic black. A setting of
 -1 makes inside=maxiter. Three more options reveal hidden structure inside the
@@ -545,6 +571,11 @@ maximum iterations have been reached.  The affect along the edges of the
 Mandelbrot is like thin-metal welded sculpture.
 
 The inside=attractor option uses yet another scheme - see {Finite Attractors}.
+
+Inside=epscross colors pixels green or yellow according to whether their 
+orbits swing close to the Y-axis or X-axis, respectively. Inside=starcross
+has a coloring scheme based on clusters of points in the orbits. Best with
+outside=<nnn>. For more information, see {Inside=epscross|startrail}.
 
 OUTSIDE=nnn|iter|real|imag|summ|mult\
 The classic method of coloring outside
@@ -703,6 +734,11 @@ FINATTRACT=no|yes\
 Another option to show coloring inside some Julia "lakes" to show escape
 time to finite attractors. Works with lambda, magnet types, and possibly
 others.  See {Finite Attractors} for more information.
+
+EXITNOASK=yes\
+This option forces Fractint to bypass the final "are you sure?" exit
+screen when the ESCAPE key is pressed from the main image-generation
+screen.  Added at the request of Ward Christensen.  It's his funeral <grin>.
 ;
 ;
 ~Topic=File Parameters
@@ -892,6 +928,21 @@ displaying at the moment.  At the moment, "sound=x" (or y or z) really
 doesn't work very well when using an integer algorithm - try it with the
 floating-point toggle set, instead.
 
+The scope of the sound command has been extended. You can now hear the
+sound of fractal orbits--just turn on sound from the command line or the
+<X> menu, fire up a fractal, and try the <O>rbits command. Use the
+orbitdelay=<nnn> command (also on the <X> menu) to dramatically alter
+the effect, which ranges from an unearthly scream to a series of discrete
+tones. Not recommended when people you have to live with are nearby!
+Remember, we don't promise that it will sound beautiful!
+
+You can also "hear" any image that Fractint can decode; turn on sound
+before using <R> to read in a GIF file. We have no idea if this feature
+is useful. It was inspired by the comments of an on-line friend who is
+blind. We solicit feedback and suggestions from anyone who finds these
+sound features interesting or useful. The orbitdelay command also affects
+the sound of decoding images.
+
 HERTZ=nnn\
 Adjusts the sound produced by the "sound=x/y/z" option.  Legal values are
 200 through 10000.
@@ -971,12 +1022,14 @@ settransfer and setscreen - BUT includes code that should make the code
 still work without affecting the rest of the non-EPS document. 3 is a
 free-for-all.
 
+COLORPS=YES|NO - Enable or disable the color extensions.
+
 TRANSLATE=yes|-n|n\
 Translate=yes prints the negative image of the fractal.
 Translate=n reduces the image to that many colors. A negative value causes
 a color reduction as well as a negative image.
 
-HALFTONE=frq/ang/sty\
+HALFTONE=frq/ang/sty[/f/a/s/f/a/s/f/a/s]\
 Tells the PostScript printer how to define its halftone screen. The first
 value, frequency, defines the number of halftone lines per inch. The
 second chooses the angle (in degrees) that the screen lies at. The third
@@ -985,6 +1038,15 @@ between 60 and 80; Good default angles are 45 and 0; the default style is
 0. If the halftone= option is not specified, Fractint will print using the
 printer's default halftone screen, which should have been already set to
 do a fine job on the printer.
+
+These are the only three used when colorps=no. When color PS printing is
+being used, the other nine options specify the red, green, then blue
+screens. A negative number in any of these places will cause it to use
+the previous (or default) value for that parameter. NOTE: Especially when
+using color, the built-in screens in the printer's ROM may be the best
+choice for printing. The default values are as follows:
+halftone=45/45/1/45/75/1/45/15/1/45/0/1 and these will be used
+if Fractint's halftone is chosen over the printer's built-in screen.
 ~Format-
 Current halftone styles:
     0 Dot
@@ -1005,6 +1067,15 @@ Current halftone styles:
    15 Random
    16 Line (slightly different)
 ~Format+
+
+A word from the author (Scott Taylor)\
+-------------------------------------\
+
+Color PostScript printing is new to me. I don't even have a color printer to
+test it on. (Don't want money. Want a Color PostScript printer!) The initial
+tests seem to have worked. I am still testing and don't know whether or not
+some sort of gamma correction will be needed. I'll have to wait and see about
+that one.
 ;
 ;
 ~Topic=PaintJet Parameters

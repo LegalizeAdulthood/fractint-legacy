@@ -149,15 +149,25 @@ int Printer_Resolution,        /* 75,100,150,300 for HP;		   */
     Printer_Titleblock,       /* Print info about the fractal?		   */
     Printer_ColorXlat,	      /* PostScript only - invert colors	   */
     Printer_SetScreen,	      /* PostScript only - reprogram halftone ?    */
-    Printer_SFrequency,       /* PostScript only - Halftone Frequency	   */
-    Printer_SAngle,	      /* PostScript only - Halftone angle	   */
-    Printer_SStyle,	      /* PostScript only - Halftone style	   */
+    Printer_SFrequency,       /* PostScript only - Halftone Frequency K    */
+    Printer_SAngle,           /* PostScript only - Halftone angle     K    */
+    Printer_SStyle,           /* PostScript only - Halftone style     K    */
+    Printer_RFrequency,       /* PostScript only - Halftone Frequency R    */
+    Printer_RAngle,           /* PostScript only - Halftone angle     R    */
+    Printer_RStyle,           /* PostScript only - Halftone style     R    */
+    Printer_GFrequency,       /* PostScript only - Halftone Frequency G    */
+    Printer_GAngle,           /* PostScript only - Halftone angle     G    */
+    Printer_GStyle,           /* PostScript only - Halftone style     G    */
+    Printer_BFrequency,       /* PostScript only - Halftone Frequency B    */
+    Printer_BAngle,           /* PostScript only - Halftone angle     B    */
+    Printer_BStyle,           /* PostScript only - Halftone style     B    */
     Print_To_File,	      /* Print to file toggle			   */
     EPSFileType,	      /* EPSFileType -
 					       1 = well-behaved,
 					       2 = much less behaved,
 					       3 = not well behaved	   */
-    Printer_CRLF;	      /* (0) CRLF (1) CR (2) LF 		   */
+    Printer_CRLF,             /* (0) CRLF (1) CR (2) LF                    */
+    ColorPS;                  /* (0) B&W  (1) Color                        */
 
 static int LPTn;		   /* printer number we're gonna use */
 
@@ -186,6 +196,12 @@ static char *HalfTone[TONES]=  {
 			};
 
 void printer_overlay() { }	/* for restore_active_ovly */
+
+#ifdef __BORLANDC__
+#if(__BORLANDC__ > 2)
+   #pragma warn -eff
+#endif
+#endif
 
 void Print_Screen()
 {
@@ -495,7 +511,11 @@ void Print_Screen()
 	    Printer_printf("/dopic { gsave %d %d 8 [%d 0 0 %d 0 %d]%s",
 				     xdots, ydots, xdots, -ydots, ydots,
 				     EndOfLine);
+	    if (ColorPS)
+	    Printer_printf("{ currentfile %d string readhexstring pop } false 3 colorimage grestore } def%s", xdots*3, EndOfLine);
+	    else
 	    Printer_printf("{ currentfile %d string readhexstring pop } image grestore } def%s", xdots, EndOfLine);
+
 	    if (Printer_Titleblock==1)
 		{
 		Printer_printf("/Helvetica findfont 12 scalefont setfont%s",EndOfLine);
@@ -504,12 +524,49 @@ void Print_Screen()
 		print_title(ptrid,res,EndOfLine);
 		}
 
-	    if (EPSFileType != 1) /* Cannot use on a WELL BEHAVED .EPS */
-		{
-		if (ptrid == 5)
-		    if ((EPSFileType==2)&&((Printer_ColorXlat!=0)||(Printer_SetScreen!=0)))
+	    if (EPSFileType != 1) /* Do not use on a WELL BEHAVED .EPS */
+	      {
+	      if ((ptrid == 5)&&(EPSFileType==2)&&
+		  ((Printer_ColorXlat!=0)||(Printer_SetScreen!=0)))
 			Printer_printf("%%%%BeginFeature%s",EndOfLine);
+	      if (ColorPS)
+		{
+		if (Printer_ColorXlat==1)
+		    Printer_printf("{1 exch sub} dup dup dup setcolortransfer%s",EndOfLine);
+		if (Printer_ColorXlat>1)
+		    Printer_printf("{%d mul round %d div} dup dup dup setcolortransfer%s",
+				       Printer_ColorXlat,Printer_ColorXlat,EndOfLine);
+		if (Printer_ColorXlat<-1)
+		    Printer_printf("{%d mul round %d div 1 exch sub} dup dup dup setcolortransfer",
+				       Printer_ColorXlat,Printer_ColorXlat,EndOfLine);
 
+		if (Printer_SetScreen==1)
+		    {
+		    Printer_printf("%d %d {%s}%s",
+				       Printer_RFrequency,
+				       Printer_RAngle,
+				       HalfTone[Printer_RStyle],
+				       EndOfLine);
+		    Printer_printf("%d %d {%s}%s",
+				       Printer_GFrequency,
+				       Printer_GAngle,
+				       HalfTone[Printer_GStyle],
+				       EndOfLine);
+		    Printer_printf("%d %d {%s}%s",
+				       Printer_BFrequency,
+				       Printer_BAngle,
+				       HalfTone[Printer_BStyle],
+				       EndOfLine);
+		    Printer_printf("%d %d {%s}%s",
+				       Printer_SFrequency,
+				       Printer_SAngle,
+				       HalfTone[Printer_SStyle],
+				       EndOfLine);
+		    Printer_printf("setcolorscreen%s", EndOfLine);
+		    }
+		}
+	      else
+		{
 		if (Printer_ColorXlat==1)
 		    Printer_printf("{1 exch sub} settransfer%s",EndOfLine);
 		if (Printer_ColorXlat>1)
@@ -523,9 +580,11 @@ void Print_Screen()
 		    Printer_printf("%d %d {%s} setscreen%s",
 				       Printer_SFrequency,
 				       Printer_SAngle,
-				       HalfTone[Printer_SStyle],EndOfLine);
+				       HalfTone[Printer_SStyle],
+				       EndOfLine);
+		}
 
-		if (ptrid == 5)
+	      if (ptrid == 5)
 		    {
 		    if ((EPSFileType==2)&&((Printer_ColorXlat!=0)||(Printer_SetScreen!=0)))
 			Printer_printf("%%%%EndFeature%s",EndOfLine);
@@ -547,7 +606,7 @@ void Print_Screen()
 				     ((double)xdots*(72.0/(double)res)),
 				     ((double)ydots*(72.0/(double)res)/(double)finalaspectratio));
 		Printer_printf(" scale%s",EndOfLine);
-		}
+	      }
 
 	    else if (ptrid == 5)       /* To be used on WELL-BEHAVED .EPS */
 		Printer_printf("30 %d translate %d %d scale%s",
@@ -773,7 +832,8 @@ void Print_Screen()
 	case 6: 	/***** PostScript Portrait & Landscape *****/
 	    {
 	    char convert[513];
-	    for (i=0; i<256; ++i)
+	    if (!ColorPS)
+	      for (i=0; i<256; ++i)
 		sprintf(&convert[2*i], "%02X",
 				  (int)((1.20 * (double)dacbox[i][0])+
 					(2.36 * (double)dacbox[i][1])+
@@ -784,9 +844,20 @@ void Print_Screen()
 	    {
 		for (x=0;x<xdots;x++)
 		{
-		    k=getcolor(x,y)*2;
-		    buff[i++]=convert[k];
-		    buff[i++]=convert[k+1];
+		    k=getcolor(x,y);
+		    if (ColorPS)
+		      {
+		      sprintf(&buff[i], "%02X%02X%02X", dacbox[k][0]<<2,
+							dacbox[k][1]<<2,
+							dacbox[k][2]<<2);
+		      i+=6;
+		      }
+		    else
+		      {
+		      k*=2;
+		      buff[i++]=convert[k];
+		      buff[i++]=convert[k+1];
+		      }
 		    if (i>=64)
 		    {
 			strcpy(&buff[i],"  ");
@@ -968,6 +1039,12 @@ static int _fastcall printer(int c)
     /* MCP 7-7-91, If we made it down to here, we may as well error out. */
     return(-1);
 }
+
+#ifdef __BORLANDC__
+#if(__BORLANDC__ > 2)
+   #pragma warn +eff
+#endif
+#endif
 
 static void printer_reset()
 {

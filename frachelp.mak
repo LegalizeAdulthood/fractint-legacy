@@ -8,7 +8,7 @@ hc.obj : hc.c helpcom.h
 	$(CC) /AL /W1 /FPi /c $(OptT) hc.c
 
 hc.exe : hc.obj
-	link /ST:4096 /CP:1 /EXEPACK hc;
+	$(LINKER) /ST:4096 /CP:1 /EXEPACK hc;
 
 fractint.hlp : help.src help2.src help3.src help4.src help5.src
 	 hc /c

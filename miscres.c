@@ -63,6 +63,14 @@ extern int  xxstart,xxstop,yystart,yystop;
 extern int  display3d;
 extern char overwrite;
 
+
+/* TW's static string consolidation campaign to help brain-dead compilers */
+char s_cantopen[]       = {"Can't open %s"};
+char s_cantwrite[]      = {"Can't write %s"};
+char s_cantcreate[]     = {"Can't create %s"};
+char s_cantunderstand[] = {"Can't understand %s"};
+char s_cantfind[]       = {"Can't find %s"};
+
 /* call next when returning from resident routine and unsure whether
    caller is an overlay which has been displaced */
 void restore_active_ovly()
@@ -104,9 +112,9 @@ void findpath(char *filename, char *fullpathname) /* return full pathnames */
 
 void notdiskmsg()
 {
-static char far sorrymsg[]={"\
-I'm sorry, but because of its random-screen-access algorithms, this\n\
-type cannot be created using a real-disk based 'video' mode."};
+static char far sorrymsg[]={
+"I'm sorry, but because of its random-screen-access algorithms, this\n"
+"type cannot be created using a real-disk based 'video' mode."};
    stopmsg(1,sorrymsg);
 }
 
@@ -184,7 +192,10 @@ nextname:
 	 }
    strcat(openfile,opentype);
    if (access(openfile,0) != 0) /* file doesn't exist */
+   {
+      strcpy(name,openfile);
       return 0;
+    }
    /* file already exists */
    if (overwrite == 0) {
       updatesavename(name);
@@ -479,15 +490,15 @@ int tab_display()	/* display the status of the current image */
     i = j = 0;
     if (display3d > 0) {
        if (usr_floatflag)
-          j = 1;
+	  j = 1;
        }
     else
        if (floatflag)
-          j = (usr_floatflag) ? 1 : 2;
+	  j = (usr_floatflag) ? 1 : 2;
     if (j) {
        putstring(row,45,C_GENERAL_HI,"Floating-point");
        putstring(-1,-1,C_GENERAL_HI,(j == 1) ? " flag is activated"
-                                             : " in use (required)");
+					     : " in use (required)");
       i = 1;
       }
    if (calc_status == 1 || calc_status == 2)
@@ -499,7 +510,10 @@ int tab_display()	/* display the status of the current image */
 
    if (calc_status == 1 || calc_status == 2)
       if (curfractalspecific->flags&NORESUME)
-	 putstring(row++,2,C_GENERAL_HI,"Note: can't resume this type after interrupts other than <tab> and <F1>");
+      {
+	 static char far msg[] = {"Note: can't resume this type after interrupts other than <tab> and <F1>"};
+	 putstring(row++,2,C_GENERAL_HI,msg);
+      }
    ++row;
 
    if (got_status >= 0 && (calc_status == 1 || calc_status == 2)) {
@@ -518,13 +532,16 @@ int tab_display()	/* display the status of the current image */
 	    sprintf(msg,"Processing row %d (of %d) of input image",currow,fileydots);
 	    putstring(row,2,C_GENERAL_HI,msg);
 	    break;
+	 case 4:
+	    putstring(row,2,C_GENERAL_HI,"Tesseral");
+	    break;
 	 }
       ++row;
       if (got_status != 3) {
 	 sprintf(msg,"Working on block (y,x) [%d,%d]...[%d,%d], ",
 		yystart,xxstart,yystop,xxstop);
 	 putstring(row,2,C_GENERAL_MED,msg);
-	 if (got_status == 2) { /* btm */
+	 if (got_status == 2 || got_status == 4) { /* btm or tesseral */
 	    putstring(-1,-1,C_GENERAL_MED,"at ");
 	    sprintf(msg,"[%d,%d]",currow,curcol);
 	    putstring(-1,-1,C_GENERAL_HI,msg);
@@ -716,7 +733,7 @@ int find_file_item(char *filename,char *itemname,FILE **infile)
    char buf[201];
    int c;
    if ((*infile = fopen(filename,"rt")) == NULL) {
-      sprintf(buf,"Can't open %s",filename);
+      sprintf(buf,s_cantopen,filename);
       stopmsg(0,buf);
       return(-1);
       }
@@ -768,7 +785,12 @@ int file_gets(char *buf,int maxlen,FILE *infile)
    return len;
 }
 
+#ifdef WINFRACT
+/* call this something else to dodge the QC4WIN bullet... */
+int win_matherr( struct exception *except )
+#else
 int matherr( struct exception *except )
+#endif
 {
     extern int debugflag;
     if(debugflag)

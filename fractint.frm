@@ -452,6 +452,12 @@ Jm_03 {; generalized Jm Richard-Collard type
     |z|<=t
   }
 
+Jm_03a {; generalized Jm Richard-Collard type
+  z=pixel,t=p1+4:
+   z=fn1((fn2(z)*pixel)*fn3(fn4(z)*pixel))+pixel,
+    |z|<=t
+  }
+
 Jm_04 {; generalized Jm Richard-Collard type
   z=pixel,t=p1+4:
    z=fn1((fn2(z)*pixel)*fn3(fn4(z)*pixel)),
@@ -497,6 +503,12 @@ Jm_10 {; generalized Jm Richard-Collard type
 Jm_11 {; generalized Jm Richard-Collard type
   z=pixel,t=p1+4:
    z=fn1(fn2(fn3(fn4(z)*pixel)))*pixel,
+    |z|<=t
+  }
+
+Jm_11a {; generalized Jm Richard-Collard type
+  z=pixel,t=p1+4:
+   z=fn1(fn2(fn3(fn4(z)*pixel)))+pixel,
     |z|<=t
   }
 

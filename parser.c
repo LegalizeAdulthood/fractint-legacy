@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <float.h>                              /* TIW 04-22-91 */
+#include <time.h>
 #include "mpmath.h"
 
 extern far_strlen( char far *);                   /* TIW 03-31-91 */
@@ -77,6 +78,9 @@ static int Delta16;
 double fgLimit;           /* TIW 05-04-91 */
 static double fg;
 static int ShiftBack;     /* TIW 06-18-90 */
+static int SetRandom;     /* MCP 11-21-91 */
+static int Randomized;
+static unsigned long RandNum;
 
 extern int bitshift;
 extern int bitshiftless1;
@@ -140,6 +144,101 @@ unsigned SkipWhiteSpace(char *Str) {
    }
    return(n - 1);
 }
+
+/* Random number code, MCP 11-21-91 */
+
+unsigned long NewRandNum(void)
+{
+   return(RandNum = ((RandNum << 15) + rand()) ^ RandNum);
+}
+
+void lRandom(void)
+{
+   v[7].a.l.x = NewRandNum() >> (32 - bitshift);
+   v[7].a.l.y = NewRandNum() >> (32 - bitshift);
+}
+
+void dRandom(void)
+{
+   long x, y;
+
+   /* Use the same algorithm as for fixed math so that they will generate
+      the same fractals when the srand() function is used. */
+   x = NewRandNum() >> (32 - bitshift);
+   y = NewRandNum() >> (32 - bitshift);
+   v[7].a.d.x = ((double)x / (1L << bitshift));
+   v[7].a.d.y = ((double)y / (1L << bitshift));
+}
+
+void mRandom(void)
+{
+   long x, y;
+
+   /* Use the same algorithm as for fixed math so that they will generate
+      the same fractals when the srand() function is used. */
+   x = NewRandNum() >> (32 - bitshift);
+   y = NewRandNum() >> (32 - bitshift);
+   v[7].a.m.x = *fg2MP(x, bitshift);
+   v[7].a.m.y = *fg2MP(y, bitshift);
+}
+
+void SetRandFnct(void)
+{
+   unsigned Seed;
+
+   if(!SetRandom)
+      RandNum = Arg1->l.x ^ Arg1->l.y;
+
+   Seed = (unsigned)RandNum ^ (unsigned)(RandNum >> 16);
+   srand(Seed);
+   SetRandom = 1;
+
+   /* Clear out the seed */
+   NewRandNum();
+   NewRandNum();
+   NewRandNum();
+}
+
+void RandomSeed(void)
+{
+   time_t ltime;
+
+   /* Use the current time to randomize the random number sequence. */
+   time(&ltime);
+   srand(ltime);
+
+   NewRandNum();
+   NewRandNum();
+   NewRandNum();
+   Randomized = 1;
+}
+
+void lStkSRand(void)
+{
+   SetRandFnct();
+   lRandom();
+   Arg1->l = v[7].a.l;
+}
+
+void mStkSRand(void)
+{
+   Arg1->l.x = Arg1->m.x.Mant ^ (long)Arg1->m.x.Exp;
+   Arg1->l.y = Arg1->m.y.Mant ^ (long)Arg1->m.y.Exp;
+   SetRandFnct();
+   mRandom();
+   Arg1->m = v[7].a.m;
+}
+
+void dStkSRand(void)
+{
+   Arg1->l.x = (long)(Arg1->d.x * (1L << bitshift));
+   Arg1->l.y = (long)(Arg1->d.y * (1L << bitshift));
+   SetRandFnct();
+   dRandom();
+   Arg1->d = v[7].a.d;
+}
+
+void (*StkSRand)(void) = dStkSRand;
 
 void dStkAbs(void) {
    Arg1->d.x = fabs(Arg1->d.x);
@@ -739,6 +838,29 @@ void lStkLT(void) {
 
 void (*StkLT)(void) = dStkLT;
 
+void dStkGT(void) {
+   Arg2->d.x = (double)(Arg2->d.x > Arg1->d.x);
+   Arg2->d.y = 0.0;
+   Arg1--;
+   Arg2--;
+}
+
+void mStkGT(void) {
+   Arg2->m.x = *fg2MP((long)(MPcmp(Arg2->m.x, Arg1->m.x) == 1), 0);
+   Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
+   Arg1--;
+   Arg2--;
+}
+
+void lStkGT(void) {
+   Arg2->l.x = Arg2->l.x > Arg1->l.x;
+   Arg2->l.y = 0l;
+   Arg1--;
+   Arg2--;
+}
+
+void (*StkGT)(void) = dStkGT;
+
 void dStkLTE(void) {
    Arg2->d.x = (double)(Arg2->d.x <= Arg1->d.x);
    Arg2->d.y = 0.0;
@@ -764,6 +886,130 @@ void lStkLTE(void) {
 }
 
 void (*StkLTE)(void) = dStkLTE;
+
+void dStkGTE(void) {
+   Arg2->d.x = (double)(Arg2->d.x >= Arg1->d.x);
+   Arg2->d.y = 0.0;
+   Arg1--;
+   Arg2--;
+}
+
+void mStkGTE(void) {
+   int comp;
+
+   comp = MPcmp(Arg2->m.x, Arg1->m.x);
+   Arg2->m.x = *fg2MP((long)(comp == 1 || comp == 0), 0);
+   Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
+   Arg1--;
+   Arg2--;
+}
+
+void lStkGTE(void) {
+   Arg2->l.x = Arg2->l.x >= Arg1->l.x;
+   Arg2->l.y = 0l;
+   Arg1--;
+   Arg2--;
+}
+
+void (*StkGTE)(void) = dStkGTE;
+
+void dStkEQ(void) {
+   Arg2->d.x = (double)(Arg2->d.x == Arg1->d.x);
+   Arg2->d.y = 0.0;
+   Arg1--;
+   Arg2--;
+}
+
+void mStkEQ(void) {
+   int comp;
+
+   comp = MPcmp(Arg2->m.x, Arg1->m.x);
+   Arg2->m.x = *fg2MP((long)(comp == 0), 0);
+   Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
+   Arg1--;
+   Arg2--;
+}
+
+void lStkEQ(void) {
+   Arg2->l.x = Arg2->l.x == Arg1->l.x;
+   Arg2->l.y = 0l;
+   Arg1--;
+   Arg2--;
+}
+
+void (*StkEQ)(void) = dStkEQ;
+
+void dStkNE(void) {
+   Arg2->d.x = (double)(Arg2->d.x != Arg1->d.x);
+   Arg2->d.y = 0.0;
+   Arg1--;
+   Arg2--;
+}
+
+void mStkNE(void) {
+   int comp;
+
+   comp = MPcmp(Arg2->m.x, Arg1->m.x);
+   Arg2->m.x = *fg2MP((long)(comp != 0), 0);
+   Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
+   Arg1--;
+   Arg2--;
+}
+
+void lStkNE(void) {
+   Arg2->l.x = Arg2->l.x != Arg1->l.x;
+   Arg2->l.y = 0l;
+   Arg1--;
+   Arg2--;
+}
+
+void (*StkNE)(void) = dStkNE;
+
+void dStkOR(void) {
+   Arg2->d.x = (double)(Arg2->d.x || Arg1->d.x);
+   Arg2->d.y = 0.0;
+   Arg1--;
+   Arg2--;
+}
+
+void mStkOR(void) {
+   Arg2->m.x = *fg2MP((long)(Arg2->m.x.Mant || Arg1->m.x.Mant), 0);
+   Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
+   Arg1--;
+   Arg2--;
+}
+
+void lStkOR(void) {
+   Arg2->l.x = Arg2->l.x || Arg1->l.x;
+   Arg2->l.y = 0l;
+   Arg1--;
+   Arg2--;
+}
+
+void (*StkOR)(void) = dStkOR;
+
+void dStkAND(void) {
+   Arg2->d.x = (double)(Arg2->d.x && Arg1->d.x);
+   Arg2->d.y = 0.0;
+   Arg1--;
+   Arg2--;
+}
+
+void mStkAND(void) {
+   Arg2->m.x = *fg2MP((long)(Arg2->m.x.Mant && Arg1->m.x.Mant), 0);
+   Arg2->m.y.Mant = (long)(Arg2->m.y.Exp = 0);
+   Arg1--;
+   Arg2--;
+}
+
+void lStkAND(void) {
+   Arg2->l.x = Arg2->l.x && Arg1->l.x;
+   Arg2->l.y = 0l;
+   Arg1--;
+   Arg2--;
+}
+
+void (*StkAND)(void) = dStkAND;
 
 void dStkLog(void) {
    FPUcplxlog(&Arg1->d, &Arg1->d);
@@ -878,7 +1124,11 @@ struct ConstArg far *isconst(char *Str, int Len) {
    for(n = 0; n < vsp; n++) {
       if(v[n].len == Len) {
          if(!strnicmp(v[n].s, Str, Len))
+         {
+            if(n == 7)        /* The formula uses 'rand'. */
+               RandomSeed();
             return(&v[n]);
+         }
       }
    }
    v[vsp].s = Str;
@@ -889,6 +1139,7 @@ struct ConstArg far *isconst(char *Str, int Len) {
          posp--;
          Str = Str - 1;
          InitN--;
+         v[vsp].len++;
       }
       for(n = 1; isdigit(Str[n]) || Str[n] == '.'; n++);
       if(Str[n] == ',') {
@@ -969,7 +1220,8 @@ struct FNCT_LIST far FnctList[] = {   /* TIW 03-31-91 added far */
    "tanh", &StkTanh,    /* TIW 04-22-91 */
    "cotan",  &StkCoTan, /* TIW 04-24-91 */
    "cotanh", &StkCoTanh,/* TIW 04-24-91 */
-   "cosxx",&StkCosXX,   /* PB  04-28-91 */
+   "cosxx", &StkCosXX,  /* PB  04-28-91 */
+   "srand", &StkSRand,  /* MCP 11-21-91 */
 };
 
 void NotAFnct(void) { }
@@ -1029,6 +1281,7 @@ static char *Constants[] = {
    "LastSqr",      /* v[4] */
    "xy",           /* v[5] */
    "zt",           /* v[6] */
+   "rand",         /* v[7] */
 };
 
 struct SYMETRY {
@@ -1056,6 +1309,7 @@ int ParseStr(char *Str) {
    int NewStatement;
    struct ERROR { int n, s; } far *e;
 
+   SetRandom = Randomized = 0;
    e = (struct ERROR far *)farmemalloc(sizeof(struct ERROR) * 100L);
    /* PB 910417 changed "o" to be a temporary alloc, during ParseStr only */
    o = (struct PEND_OP far *)farmemalloc(sizeof(struct PEND_OP) * (long)MAX_OPS);
@@ -1096,6 +1350,13 @@ int ParseStr(char *Str) {
          StkCoTan = dStkCoTan;    /* TIW 04-24-91 */
          StkCoTanh = dStkCoTanh;  /* TIW 04-24-91 */
          StkCosXX = dStkCosXX;    /* PB  04-28-91 */
+         StkGT  = dStkGT;         /* MCP 11-3-91 */
+         StkGTE = dStkGTE;        /* MCP 11-3-91 */
+         StkEQ  = dStkEQ;         /* MCP 11-3-91 */
+         StkNE  = dStkNE;         /* MCP 11-3-91 */
+         StkAND = dStkAND;        /* MCP 11-3-91 */
+         StkOR  = dStkOR ;        /* MCP 11-3-91 */
+         StkSRand = dStkSRand;    /* MCP 11-21-91 */
          break;
       case M_MATH:
          StkAdd = mStkAdd;
@@ -1128,6 +1389,13 @@ int ParseStr(char *Str) {
          StkCoTan  = mStkCoTan;  /* TIW 04-24-91 */
          StkCoTanh  = mStkCoTanh;/* TIW 04-24-91 */
          StkCosXX = mStkCosXX;   /* PB  04-28-91 */
+         StkGT  = mStkGT;         /* MCP 11-3-91 */
+         StkGTE = mStkGTE;        /* MCP 11-3-91 */
+         StkEQ  = mStkEQ;         /* MCP 11-3-91 */
+         StkNE  = mStkNE;         /* MCP 11-3-91 */
+         StkAND = mStkAND;        /* MCP 11-3-91 */
+         StkOR  = mStkOR ;        /* MCP 11-3-91 */
+         StkSRand = mStkSRand;    /* MCP 11-21-91 */
          break;
       case L_MATH:
          Delta16 = bitshift - 16;
@@ -1162,6 +1430,13 @@ int ParseStr(char *Str) {
          StkCoTan  = lStkCoTan;   /* TIW 04-24-91 */
          StkCoTanh  = lStkCoTanh; /* TIW 04-24-91 */
          StkCosXX = lStkCosXX;    /* PB  04-28-91 */
+         StkGT  = lStkGT;         /* MCP 11-3-91 */
+         StkGTE = lStkGTE;        /* MCP 11-3-91 */
+         StkEQ  = lStkEQ;         /* MCP 11-3-91 */
+         StkNE  = lStkNE;         /* MCP 11-3-91 */
+         StkAND = lStkAND;        /* MCP 11-3-91 */
+         StkOR  = lStkOR ;        /* MCP 11-3-91 */
+         StkSRand = lStkSRand;    /* MCP 11-21-91 */
          break;
    }
    maxfn = 0;   /* TIW 03-30-91 */
@@ -1171,6 +1446,7 @@ int ParseStr(char *Str) {
    }
 
    v[6].a.d.x = v[6].a.d.y = 0.0;
+   v[7].a = v[6].a;
 
    switch(MathType) {
       case D_MATH:
@@ -1223,7 +1499,15 @@ int ParseStr(char *Str) {
             }
             break;
          case '|':
-            if(ModFlag == paren-1) {
+            if(Str[n+1] == '|') {
+               if(ExpectingArg)
+                  SyntaxErr = 0;
+               ExpectingArg = 1;
+               n++;
+               o[posp].f = StkOR;
+               o[posp++].p = 7 - (paren + Equals)*15;
+            }
+            else if(ModFlag == paren-1) {
                if(ExpectingArg)
                   SyntaxErr = 0;
                paren--;
@@ -1291,6 +1575,30 @@ int ParseStr(char *Str) {
                ExpectingArg = 1;
             }
             break;
+         case '&':
+            if(ExpectingArg)
+               SyntaxErr = 0;
+            ExpectingArg = 1;
+            if(Str[n+1] == '&') {
+               n++;
+               o[posp].f = StkAND;
+               o[posp++].p = 7 - (paren + Equals)*15;
+            }
+            else
+               SyntaxErr = 4;
+            break;
+         case '!':
+            if(Str[n+1] == '=') {
+               if(ExpectingArg)
+                  SyntaxErr = 0;
+               ExpectingArg = 1;
+               n++;
+               o[posp].f = StkNE;
+               o[posp++].p = 6 - (paren + Equals)*15;
+            }
+            else
+               SyntaxErr = 4;
+            break;
          case '<':
             if(ExpectingArg)
                SyntaxErr = 0;
@@ -1301,6 +1609,18 @@ int ParseStr(char *Str) {
             }
             else
                o[posp].f = StkLT;
+            o[posp++].p = 6 - (paren + Equals)*15;
+            break;
+         case '>':
+            if(ExpectingArg)
+               SyntaxErr = 0;
+            ExpectingArg = 1;
+            if(Str[n+1] == '=') {
+               n++;
+               o[posp].f = StkGTE;
+            }
+            else
+               o[posp].f = StkGT;
             o[posp++].p = 6 - (paren + Equals)*15;
             break;
          case '*':
@@ -1328,10 +1648,18 @@ int ParseStr(char *Str) {
             if(ExpectingArg)
                SyntaxErr = 0;
             ExpectingArg = 1;
-            o[posp-1].f = StkSto;
-            o[posp-1].p = 5 - (paren + Equals)*15;
-            Store[StoPtr++] = Load[--LodPtr];
-            Equals++;
+            if(Str[n+1] == '=') {
+               n++;
+               o[posp].f = StkEQ;
+               o[posp++].p = 6 - (paren + Equals)*15;
+            }
+            else
+            {
+               o[posp-1].f = StkSto;
+               o[posp-1].p = 5 - (paren + Equals)*15;
+               Store[StoPtr++] = Load[--LodPtr];
+               Equals++;
+            }
             break;
          default:
             if(isalnum(Str[n]) || Str[n] == '.') {
@@ -1462,6 +1790,22 @@ int Formula(void) {
    LodPtr = InitLodPtr;
    StoPtr = InitStoPtr;
    OpPtr = InitOpPtr;
+
+   /* Set the random number, MCP 11-21-91 */
+   if(SetRandom || Randomized)
+   {
+      switch(MathType)
+      {
+         case D_MATH:
+            dRandom();
+            break;
+         case L_MATH:
+            lRandom();
+            break;
+         case M_MATH:
+            mRandom();
+      }
+   }
 
    Arg1 = &s[0];
    Arg2 = Arg1;

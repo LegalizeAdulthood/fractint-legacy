@@ -32,6 +32,8 @@ static void setup287code();
 
 int	adapter;		/* Video Adapter chosen from list in ...h */
 
+extern int soundflag;
+
 extern char gifmask[];
 extern int TPlusErr;
 
@@ -46,6 +48,7 @@ extern int gifview();
 extern void moveboxf(double,double);
 extern void chgboxi(int,int);
 extern int usr_biomorph;
+extern int escape_exit;
 extern int forcesymmetry;
 extern	char	readname[];	/* name of fractal input file */
 extern	int	showfile;	/* zero if display of file is pending */
@@ -115,6 +118,8 @@ extern int  debugflag;		/* internal use only - you didn't see this */
 	double	param[4];		/* up to four parameters    */
 	double	potparam[3];		/* three potential parameters*/
 	long	fudge;			/* 2**fudgefactor	    */
+	long	l_at_rad;		/* finite attractor radius  */
+	double	f_at_rad;		/* finite attractor radius  */
 	int	bitshift;		/* fudgefactor		    */
 
 	int	badconfig = 0;		/* 'fractint.cfg' ok?       */
@@ -164,6 +169,7 @@ extern int	out_line();		/* called in decoder */
 extern int	outlin16();		/* called in decoder */
 extern int	line3d();		/* called in decoder */
 extern int	(*outln)();		/* called in decoder */
+extern int      sound_line();		/* called in decoder */
        void	(*outln_cleanup)();
 extern int	filetype;		/* GIF or other */
 
@@ -596,7 +602,10 @@ AntiAliasError:
 	    outln = pot_line;
 	    }
 	 else				/* regular gif/fra input file */
-	    outln = out_line;
+            if(soundflag > 0)
+               outln = sound_line;      /* sound decoding */
+            else
+               outln = out_line;        /* regular decoding */
 	 if(filetype == 0)
 	 {
 	    if(iit == 2 && usr_floatflag != 0)
@@ -754,6 +763,9 @@ resumeloop:				/* return here on failed overlays */
 	       while (!keypressed()) { }  /* enables help */
 	       kbdchar = getakey();
 	       if (kbdchar == 27 || kbdchar == 'm' || kbdchar == 'M') {
+                  if (kbdchar == 27 && escape_exit != 0)
+                      /* don't ask, just get out */
+                      goodbye();
 		  stackscreen();
 		  kbdchar = main_menu(1);
 		  if (kbdchar == '\\'
@@ -952,8 +964,8 @@ resumeloop:				/* return here on failed overlays */
 	       if (axmode == 0 || axmode > 7) {
 static char far dosmsg[]={"\
 Note:  Your graphics image is still squirreled away in your video\n\
-adapter's memory.  Switching video modes (say, to get your cursor back)\n\
-will clobber part of that image.  Sorry - it's the best we could do."};
+adapter's memory.  Switching video modes will clobber part of that\n\
+image.  Sorry - it's the best we could do."};
 		  putstring(0,0,7,dosmsg);
 		  movecursor(6,0);
 		  }
@@ -1351,4 +1363,28 @@ static void setup287code()
    ORBPTR(MANDELLAMBDAFP) = ORBPTR(LAMBDAFP)	 = FLambdaFPFractal;
 }
 
-
+int sound_line(unsigned char pixels[], unsigned linelen)
+{
+   extern void sleepms(long ms);
+   extern int rowcount;
+   extern int basehertz;
+   extern int xdots;
+   extern int colors;
+   extern int orbit_delay;
+   int i,j;
+   for(i=0;i<linelen;i++)
+   {
+      putcolor(i,rowcount,pixels[i]);
+      if(orbit_delay > 0)
+         sleepms(orbit_delay);
+      snd((int)(pixels[i]*3000/colors+basehertz));
+      if(keypressed())
+      {
+        nosnd();
+        return(-1);
+      }
+   }
+   nosnd();
+   rowcount++;
+   return(0);
+}

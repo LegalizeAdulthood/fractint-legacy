@@ -9,18 +9,32 @@
 #include "fractint.h"
 #include "fractype.h"
 
+/* MCP 10-27-91 */
+#ifdef WINFRACT
+   extern int OperCancelled;
+   void OpenStatusBox(void);
+   void UpdateStatusBox(unsigned long Partial, unsigned long Total);
+   void CloseStatusBox(void);
+#endif
+
 /* routines in this module	*/
 
 void encoder_overlay(void);
 int  savetodisk(char *);
 int  encoder(void);
 
+extern char s_cantopen[];
+extern char s_cantwrite[];
+extern char s_cantcreate[];
+extern char s_cantunderstand[];
+extern char s_cantfind[];
+
 static void _fastcall setup_save_info(struct fractal_info *);
-static void inittable(void);
-static void _fastcall shftwrite(unsigned char *color,int numcolors);
-static void _fastcall raster(unsigned int);
+static int inittable(void);
+static int _fastcall shftwrite(unsigned char *color,int numcolors);
+static int _fastcall raster(unsigned int);
 static int  _fastcall extend_blk_len(int datalen);
-static void _fastcall put_extend_blk(int block_id,int block_len,char far *block_data);
+static int _fastcall put_extend_blk(int block_id,int block_len,char far *block_data);
 static int  _fastcall store_item_name(char *);
 
 extern int initbatch;
@@ -64,6 +78,7 @@ extern double yymin,yymax;
 extern double xx3rd,yy3rd;
 extern double param[4];
 extern int    maxit;			/* try this many iterations */
+extern int    fillcolor;		/* fill color: -1 = normal  */
 extern int    inside;			/* inside color: 1=blue     */
 extern int    outside;			/* outside color, if set    */
 extern int    finattract;		/* finite attractor option  */
@@ -227,7 +242,7 @@ else { /* file already exists */
 			}
 		}
 	if (access(openfile,2) != 0) {
-		sprintf(tmpmsg,"Can't write %s",openfile);
+		sprintf(tmpmsg,s_cantwrite,openfile);
 		stopmsg(0,tmpmsg);
 		EXIT_OVLY;
 		return -1;
@@ -242,7 +257,7 @@ started_resaves = (resave_flag == 1) ? 1 : 0;
 if (resave_flag == 2) /* final save of savetime set? */
 	resave_flag = 0;
 if ((out=fopen(tmpfile,"wb")) == NULL) {
-	sprintf(tmpmsg,"Can't create %s ",tmpfile);
+	sprintf(tmpmsg,s_cantcreate,tmpfile);
 	stopmsg(0,tmpmsg);
 	EXIT_OVLY;
 	return -1;
@@ -354,10 +369,11 @@ if (((++numsaves) & 1) == 0) {		    /* reverse the colors on alt saves */
 outcolor1s = outcolor1;
 outcolor2s = outcolor2;
 
-if (gif87a_flag == 1)
-	fwrite("GIF87a",1,6,out);              /* old GIF Signature */
-else
-	fwrite("GIF89a",1,6,out);              /* new GIF Signature */
+if (gif87a_flag == 1) {
+	if (fwrite("GIF87a",6,1,out) != 1) goto oops;  /* old GIF Signature */
+} else {
+	if (fwrite("GIF89a",6,1,out) != 1) goto oops;  /* new GIF Signature */
+}
 
 width = xdots;
 rowlimit = ydots;
@@ -370,11 +386,11 @@ if (save16bit) {
 	rowlimit <<= 1;
 	width <<= 1;
 	}
-fwrite(&width,2,1,out); 		/* screen descriptor */
-fwrite(&ydots,2,1,out);
+if (fwrite(&width,2,1,out) != 1) goto oops;  /* screen descriptor */
+if (fwrite(&ydots,2,1,out) != 1) goto oops;
 x = 128 + ((6-1)<<4) + (bitsperpixel-1); /* color resolution == 6 bits worth */
-fwrite(&x,1,1,out);
-fputc(0,out);				/* background color */
+if (fwrite(&x,1,1,out) != 1) goto oops;
+if (fputc(0,out) != 0) goto oops;	/* background color */
 i = 0;
 /** PB, changed to always store pixel aspect ratio, some utilities
 	have been reported to like it **/
@@ -390,43 +406,53 @@ else /* must risk loss of precision if numbers low */
 if (i < 1)   i = 1;
 if (i > 255) i = 255;
 if (gif87a_flag) i = 0;    /* for some decoders which can't handle aspect */
-fputc(i,out);				/* pixel aspect ratio */
+if (fputc(i,out) != i) goto oops;	/* pixel aspect ratio */
 
 if (colors == 256) {			/* write out the 256-color palette */
-	if (gotrealdac) 		/* got a DAC - must be a VGA */
-		shftwrite((unsigned char *)dacbox,colors);
-	else				/* uh oh - better fake it */
+	if (gotrealdac) { 		/* got a DAC - must be a VGA */
+		if (!shftwrite((unsigned char *)dacbox,colors)) goto oops;
+	 } else {			/* uh oh - better fake it */
 		for (i = 0; i < 256; i += 16)
-			shftwrite(paletteEGA,16);
+			if (!shftwrite(paletteEGA,16)) goto oops;
+		}
 	}
-if (colors == 2)			/* write out the B&W palette */
-	shftwrite(paletteBW,colors);
-if (colors == 4)			/* write out the CGA palette */
-	shftwrite(paletteCGA,colors);
-if (colors == 16)			/* Either EGA or VGA */
-	if (gotrealdac)
-		shftwrite((unsigned char *)dacbox,colors);
-	 else				/* no DAC - must be an EGA */
-		shftwrite(paletteEGA,colors);
+if (colors == 2) {			/* write out the B&W palette */
+	if (!shftwrite(paletteBW,colors)) goto oops;
+	}
+if (colors == 4) {			/* write out the CGA palette */
+	if (!shftwrite(paletteCGA,colors))goto oops;
+	}
+if (colors == 16) {			/* Either EGA or VGA */
+	if (gotrealdac) {
+		if (!shftwrite((unsigned char *)dacbox,colors))goto oops;
+		}
+	 else	{			/* no DAC - must be an EGA */
+		if (!shftwrite(paletteEGA,colors))goto oops;
+		}
+	}
 
-fwrite(",",1,1,out);                    /* Image Descriptor */
+if (fwrite(",",1,1,out) != 1) goto oops;  /* Image Descriptor */
 i = 0;
-fwrite(&i,2,1,out);
-fwrite(&i,2,1,out);
-fwrite(&width,2,1,out);
-fwrite(&ydots,2,1,out);
-fwrite(&i,1,1,out);
+if (fwrite(&i,2,1,out) != 1) goto oops;
+if (fwrite(&i,2,1,out) != 1) goto oops;
+if (fwrite(&width,2,1,out) != 1) goto oops;
+if (fwrite(&ydots,2,1,out) != 1) goto oops;
+if (fwrite(&i,1,1,out) != 1) goto oops;
 
 bitsperpixel = startbits - 1;		/* raster data starts here */
-fwrite(&bitsperpixel,1,1,out);
+if (fwrite(&bitsperpixel,1,1,out) != 1) goto oops;
 
 codebits = startbits;			/* start encoding */
 
-raster(9999);				/* initialize the raster routine */
+if (!raster(9999)) goto oops;		/* initialize the raster routine */
 
-inittable();				/* initialize the LZW tables */
+if (!inittable()) goto oops;		/* initialize the LZW tables */
 
-for (rownum = 0; rownum < ydots; rownum++) {  /* scan through the dots */
+for ( rownum = 0; rownum < ydots; rownum++
+#ifdef WINFRACT
+      , UpdateStatusBox(rownum, ydots)
+#endif
+) {  /* scan through the dots */
     for (ydot = rownum; ydot < rowlimit; ydot += ydots) {
 	for (xdot = 0; xdot < xdots; xdot++) {
 		if (save16bit == 0 || ydot < ydots)
@@ -456,7 +482,7 @@ for (rownum = 0; rownum < ydots; rownum++) {  /* scan through the dots */
 			lastentry = entrynum;
 			continue;
 			}
-		raster(lastentry);			/* write entry */
+		if (!raster(lastentry)) goto oops;	/* write entry */
 		numentries++;		/* act like you added one, anyway */
 		if (strlocn[hashentry] == 0) {	/* add new string, if any */
 			entrynum = numentries+endcode;
@@ -478,8 +504,8 @@ for (rownum = 0; rownum < ydots; rownum++) {  /* scan through the dots */
 		if ( numentries + endcode > 4093 ||	/* out of room? */
 			numrealentries > (MAXENTRY*2)/3 ||
 			nextentry > MAXSTRING-MAXTEST-5) {
-			raster(lastentry);		/* flush & restart */
-			inittable();
+			if (!raster(lastentry)) goto oops;	/* flush & restart */
+			if (!inittable()) goto oops;
 			}
 		}
 	if (dotmode != 11			/* supress this on disk-video */
@@ -501,16 +527,21 @@ for (rownum = 0; rownum < ydots; rownum++) {  /* scan through the dots */
 			}
 		last_colorbar = ydot;
 		}
-	if (kbhit())				/* keyboard hit - bail out */
+#ifdef WINFRACT
+        keypressed();
+        if (OperCancelled)
+#else
+        if (keypressed())                     /* keyboard hit - bail out */
+#endif
 		ydot = rownum = 9999;
 	}
     }
 
-raster(lastentry);			/* tidy up - dump the last code */
+if (!raster(lastentry)) goto oops;	/* tidy up - dump the last code */
 
-raster(endcode);			/* finish the map */
+if (!raster(endcode)) goto oops;	/* finish the map */
 
-fputc(0,out);				/* raster data ends here */
+if (fputc(0,out) != 0) goto oops;	/* raster data ends here */
 
 if (gif87a_flag == 0) { /* store non-standard fractal info */
 	/* loadfile.c has notes about extension block structure */
@@ -520,7 +551,7 @@ if (gif87a_flag == 0) { /* store non-standard fractal info */
 	if (resume_info != NULL && save_info.calc_status == 2) {
 		/* resume info block, 002 */
 		save_info.tot_extend_len += extend_blk_len(resume_len);
-		put_extend_blk(2,resume_len,resume_info);
+		if (!put_extend_blk(2,resume_len,resume_info))goto oops;
 		}
 	if (save_info.fractal_type == FORMULA || save_info.fractal_type == FFORMULA)
 		save_info.tot_extend_len += store_item_name(FormName);
@@ -531,20 +562,27 @@ if (gif87a_flag == 0) { /* store non-standard fractal info */
 	if (display3d <= 0 && rangeslen) {
 		/* ranges block, 004 */
 		save_info.tot_extend_len += extend_blk_len(rangeslen*2);
-		put_extend_blk(4,rangeslen*2,(char far *)ranges);
+		if (!put_extend_blk(4,rangeslen*2,(char far *)ranges))goto oops;
 		}
 
 	/* main and last block, 001 */
 	save_info.tot_extend_len += extend_blk_len(sizeof(save_info));
-	put_extend_blk(1,sizeof(save_info),(char far *)&save_info);
+	if (!put_extend_blk(1,sizeof(save_info),(char far *)&save_info))goto oops;
 	}
 
-fwrite(";",1,1,out);                    /* GIF Terminator */
+if (fwrite(";",1,1,out) != 1) goto oops;          /* GIF Terminator */
 
 return ((ydot < 9999) ? 0 : 1);
+
+oops:
+    {
+    fflush(out);
+    stopmsg(0,"Error Writing to disk (Disk full?)");
+    return 1;
+    }
 }
 
-static void _fastcall shftwrite(unsigned char *color,int numcolors)
+static int _fastcall shftwrite(unsigned char *color,int numcolors)
 /* shift IBM colors to GIF */
 {
 unsigned char thiscolor;
@@ -554,15 +592,16 @@ for (i = 0; i < numcolors; i++)
 		thiscolor = color[3*i+j];
 		thiscolor = thiscolor << 2;
 		thiscolor += (thiscolor >> 6);
-		fputc(thiscolor,out);
+		if (fputc(thiscolor,out) != thiscolor) return(0);
 		}
+return(1);
 }
 
-static void inittable() 		/* routine to init tables */
+static int inittable() 		/* routine to init tables */
 {
 int i;
 
-raster(clearcode);			/* signal that table is initialized */
+if (!raster(clearcode)) return(0);	/* signal that table is initialized */
 
 numentries = 0; 			/* initialize the table */
 numrealentries = 0;
@@ -574,9 +613,10 @@ toextra(0,"\0",1);                      /* clear the hash entries */
 for (i = 0; i < MAXENTRY; i++)
 	strlocn[i] = 0;
 
+return(1);
 }
 
-static void _fastcall raster(code)	/* routine to block and output codes */
+static int _fastcall raster(code)	/* routine to block and output codes */
 unsigned int code;
 {
 unsigned int icode, i, j;
@@ -586,7 +626,7 @@ if (code == 9999) {			/* special start-up signal */
 	bitcount = 0;
 	for (i = 0; i < 266; i++)
 		block[i] = 0;
-	return;
+	return(1);
 	}
 
 icode = code << bitcount;		/* update the bit string */
@@ -608,14 +648,15 @@ if (bytecount > 250 || code == endcode) {	/* time to write a block */
 			}
 	i = bytecount;
 	blockcount = i;
-	fwrite(&blockcount,1,1,out);		/* write the block */
-	fwrite(block,i,1,out);
+	if (fwrite(&blockcount,1,1,out) != 1) return(0); /* write the block */
+	if (fwrite(block,i,1,out) != 1) return(0);
 	bytecount = 0;				/* now re-start the block */
 	for (j = 0; j < 5; j++) 		/* (may have leftover bits) */
 		block[j] = block[j+i];
 	for (j = 5; j < 266; j++)
 		block[j] = 0;
 	}
+return(1);
 }
 
 
@@ -625,21 +666,22 @@ static int _fastcall extend_blk_len(int datalen)
    /*	   data   +	1.per.block   + 14 for id + 1 for null at end  */
 }
 
-static void _fastcall put_extend_blk(int block_id,int block_len,char far *block_data)
+static int _fastcall put_extend_blk(int block_id,int block_len,char far *block_data)
 {
    int i,j;
    char header[15];
    strcpy(header,"!\377\013fractint");
    sprintf(&header[11],"%03u",block_id);
-   fwrite(header,14,1,out);
+   if (fwrite(header,14,1,out) != 1) return(0);
    i = (block_len + 254) / 255;
    while (--i >= 0) {
       block_len -= (j = min(block_len,255));
-      fputc(j,out);
+      if (fputc(j,out) != j) return(0);
       while (--j >= 0)
 	 fputc(*(block_data++),out);
       }
-   fputc(0,out);
+   if (fputc(0,out) != 0) return(0);
+   return(1);
 }
 
 static int _fastcall store_item_name(char *nameptr)
@@ -656,7 +698,7 @@ static void _fastcall setup_save_info(struct fractal_info *save_info)
    int i;
    /* set save parameters in save structure */
    strcpy(save_info->info_id, INFO_ID);
-   save_info->version	      = 7; /* file version, independant of system */
+   save_info->version	      = 8; /* file version, independant of system */
    save_info->iterations      = maxit;
    save_info->fractal_type    = fractype;
    save_info->xmin	      = xxmin;
@@ -677,6 +719,7 @@ static void _fastcall setup_save_info(struct fractal_info *save_info)
    save_info->parm4	      = 0;
    save_info->dparm3	      = param[2];
    save_info->dparm4	      = param[3];
+   save_info->fillcolor	      = fillcolor;
    save_info->potential[0]    = potparam[0];
    save_info->potential[1]    = potparam[1];
    save_info->potential[2]    = potparam[2];

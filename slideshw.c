@@ -282,8 +282,9 @@ start:
       out = i;
    if(out == -12345)
    {
+      extern char s_cantunderstand[];
       char msg[80];
-      sprintf(msg,"Can't understand %s",buffer);
+      sprintf(msg,s_cantunderstand,buffer);
       slideshowerr(msg);
       out = 0;
    }
@@ -313,7 +314,6 @@ void recordshw(int key)
 {
    char far *mn;
    float dt;
-   int i;
    dt = ticks;	   /* save time of last call */
    ticks=clock();  /* current time */
    if(fp==NULL)

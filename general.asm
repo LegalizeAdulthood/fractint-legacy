@@ -293,8 +293,6 @@ cmpextra	endp
 ;	requires the presence of an external variable, 'cpu'.
 ;		'cpu' == 386 if a 386 is present.
 
-.MODEL	medium,c
-
 .8086
 
 .DATA
@@ -692,15 +690,14 @@ keypressed1:
 	mov	keybuffer,ax			; remember it for next time
 	cmp	ax,1059 			; help called?
 	jne	keypressed2			; no help asked for.
+	cmp	helpmode,0			; help enabled?
+	jl	keypressedx			;  nope.
 	mov	keybuffer,0			; say no key hit
-	cmp	helpmode,0			; help disabled?
-	jl	keypressed1a			;  yup.  forget help.
 	xor	ax,ax
 	push	ax
 	call	far ptr help			; help!
 	pop	ax
 	call	far ptr restore_active_ovly	; help might've clobbered ovly
-keypressed1a:
 	sub	ax,ax
 	jmp	short keypressedx
 keypressed2:
@@ -726,6 +723,9 @@ gknhloop:
 getakeynohelp endp
 
 getakey proc
+        cmp     soundflag,1                     ; is the sound on?
+        jl      getakeyloop                     ; ok, sound is off
+        call    far ptr nosnd                   ; turn off sound
 getakeyloop:
 	call	far ptr getkeynowait		; check for keystroke
 	jnc	getakeyloop			;  no key, loop till we get one
@@ -1441,7 +1441,6 @@ readticker endp
 ; Neither function takes any arguments or affects any external storage,
 ; so there should be no memory-model dependencies.
 
-.model medium, c
 .286P
 .code
 
@@ -1595,7 +1594,7 @@ erasesegment	proc	uses es di si, segaddress:word, segvalue:word
 	mov	di,0			; start at the beginning
 	mov	ax,segvalue		; use this value
 	mov	cx,8000h		; over the entire segment
-	repnz	stosw			; do it
+	rep	stosw			; do it
 	ret				; we done
 erasesegment	endp
 
@@ -1833,8 +1832,6 @@ enable	endp
 ;	emmclearpage(page, handle) ; performs an 'emmgetpage()' and then clears
 ;				; it out (quickly) to zeroes with a 'REP STOSW'
 
-.MODEL	medium,c
-
 .8086
 
 .DATA
@@ -2003,8 +2000,6 @@ emmclearpage	endp
 ;
 ; Please refer to XMS spec version 2.0 for further information.
 
-.model medium,c
-
 .data
 xmscontrol	dd dword ptr (?) ; Address of driver's control function
 
@@ -2163,9 +2158,9 @@ testdata db 0FFh,0FFh,00h,00h,00h,00h,00h,00h,00h,00h
 IITCoPro proc
 	 finit
 	 fld   tbyte ptr testdata
-	 fstp  tbyte ptr dstack
+	 fstp  tbyte ptr temp
 	 fwait
-	 mov   ax,word ptr dstack
+	 mov   ax,word ptr temp
 	 or    ax,ax			 ; test for 1st word of result zero
 	 mov   ax,1			 ; return 1 if next branch taken
 	 jz    must_be_IIT		 ;  result was zero, is IIT
@@ -2176,7 +2171,6 @@ IITCoPro endp
 
 .8086
 .8087
-.model medium,C
 
 eIIT2fService		equ	0C0h		; user services: 0C0h - 0FFh
 

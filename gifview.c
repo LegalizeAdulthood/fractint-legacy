@@ -21,6 +21,7 @@
 
 int  gifview(void);
 int  get_byte(void);		/* used only locally and by decoder.c */
+int  get_bytes(char *,int);	/* used only by decoder.c  *mg*/
 
 static void close_file(void);
 
@@ -51,6 +52,11 @@ int bad_code_count = 0; 	/* needed by decoder module */
 int get_byte()
 {
    return (getc(fpin)); /* EOF is -1, as desired */
+}
+
+int get_bytes(char *where,int how_many)
+{
+   return (fread(where,1,how_many,fpin)); /* EOF is -1, as desired */
 }
 
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
@@ -92,7 +98,10 @@ int gifview()
    /* Get the screen description */
    for (i = 0; i < 13; i++)
    {
-      if ((buffer[i] = (unsigned char)get_byte ()) < 0)
+      int tmp;
+
+      buffer[i] = tmp = get_byte();
+      if (tmp < 0)
       {
 	 close_file();
 	 return(-1);
@@ -120,7 +129,7 @@ int gifview()
    for (i = 0; i < numcolors; i++)
    {
       for (j = 0; j < 3; j++) {
-	 if ((k = (unsigned char)get_byte()) < 0)
+	 if ((k = get_byte()) < 0)
 	 {
 	    close_file();
 	    return(-1);
@@ -169,7 +178,10 @@ int gifview()
 
 	 for (i = 0; i < 9; i++)
 	 {
-	    if ((buffer[i] = (unsigned char)get_byte ()) < 0)
+            int tmp;
+
+            buffer[i] = tmp = get_byte();
+	    if (tmp < 0)
 	    {
 	       status = -1;
 	       break;

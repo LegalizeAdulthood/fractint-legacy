@@ -8,7 +8,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <dos.h>
+#ifdef __TURBOC__
+#include <alloc.h>
+#else
 #include <malloc.h>
+#endif
 #include "fractint.h"
 #include "fractype.h"
 #include "helpdefs.h"
@@ -30,6 +34,10 @@ extern	int get_starfield_params(void );
 extern	void goodbye(void );
 extern	int getafilename(char *hdg,char *template,char *flname);
 extern	int get_commands(void);
+
+extern int Targa_Overlay;
+extern int Targa_Out;
+extern unsigned char back_color[];
 
 static	int prompt_valuestring(char *buf,struct fullscreenvalues *val);
 static	int prompt_checkkey(int curkey);
@@ -63,6 +71,7 @@ extern char *strig[];
 extern int numtrigfn;
 extern int bailout;
 extern int dotmode;
+extern int orbit_delay;
 
 extern int fullscreen_choice(
 	     int options, char *hdg, char *hdg2, char *instr, int numchoices,
@@ -97,7 +106,6 @@ char   MAP_name[80] = "";
 int    mapset = 0;
 extern	int	overlay3d;	    /* 3D overlay flag: 0 = OFF */
 extern	int	lookatmouse;
-extern	int full_color;
 extern	int haze;
 extern	int RANDOMIZE;
 extern	char light_name[];
@@ -128,6 +136,7 @@ extern	int	fractype;	/* if == 0, use Mandelbrot  */
 extern	char	usr_floatflag;	/* floating-point fractals? */
 extern	int	maxit;		/* try this many iterations */
 extern	int	inside; 	/* inside color */
+extern	int	fillcolor; 	/* fill color */
 extern	int	outside;	/* outside color */
 extern	int	finattract;	/* finite attractor switch */
 extern	char	savename[80];	/* save files using this name */
@@ -220,6 +229,9 @@ extern char s_zmag[];
 extern char s_bof60[];
 extern char s_bof61[];
 extern char s_maxiter[];
+extern char s_epscross[];
+extern char s_startrail[];
+extern char s_normal[];
 
 extern char gifmask[];
 char ifsmask[13]     = {"*.ifs"};
@@ -796,9 +808,9 @@ static int select_type_params(	/* prompt for new fractal type parameters */
 	 }
       }
    if (fractype == IFS || fractype == IFS3D) {
-static char far ifsmsg[] = {"\
-Current IFS parameters have been edited but not saved.\n\
-Continue to replace them with new selection, cancel to keep them."};
+      static char far ifsmsg[] = {
+         "Current IFS parameters have been edited but not saved.\n"
+         "Continue to replace them with new selection, cancel to keep them."};
       helpmode = HT_IFS;
       if (!ifs_defn || !ifs_changed || !stopmsg(22,ifsmsg))
 	 if (get_file_entry(GETIFS,"IFS",ifsmask,IFSFileName,IFSName) < 0) {
@@ -1052,7 +1064,8 @@ static long get_file_entry(int type,char *title,char *fmask,
 	 char buf[60];
 	 newfile = 0;
 	 if (firsttry) {
-	    sprintf(temp1,"I Can't find %s", filename);
+        extern char s_cantfind[];
+	    sprintf(temp1,s_cantfind, filename);
 	    stopmsg(0,temp1);
 	    }
 	 sprintf(buf,"Select %s File",title);
@@ -1356,6 +1369,8 @@ int get_3d_params()	/* prompt for 3D parameters */
    ENTER_OVLY(OVLY_PROMPTS);
 
 restart_1:
+	if (Targa_Out && overlay3d)
+		Targa_Overlay = 1;
 
    k=-1;
 
@@ -1379,7 +1394,7 @@ restart_1:
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = glassestype;
 
-   prompts3d[++k]= "Ray trace out? (0=No, 1=DKB/STAR, 2=VIVID, 3=RAW,";
+   prompts3d[++k]= "Ray trace out? (0=No, 1=DKB/POVRay, 2=VIVID, 3=RAW,";
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = RAY;
    prompts3d[++k]= "                4=MTV, 5=RAYSHADE, 6=ACROSPIN)";
@@ -1393,6 +1408,10 @@ restart_1:
    prompts3d[++k]= "    Output File Name";
    uvalues[k].type = 's';
    strcpy(uvalues[k].uval.sval,ray_name);
+
+   prompts3d[++k]= "Targa output?";
+   uvalues[k].type = 'y';
+   uvalues[k].uval.ch.val = Targa_Out;
 
    oldhelpmode = helpmode;
    helpmode = HELP3DMODE;
@@ -1422,6 +1441,8 @@ restart_1:
    BRIEF = uvalues[k++].uval.ch.val;
 
    strcpy(ray_name,uvalues[k++].uval.sval);
+
+   Targa_Out = uvalues[k++].uval.ch.val;
 
    /* check ranges */
    if(previewfactor < 2)
@@ -1483,14 +1504,12 @@ restart_1:
       if(glassestype)
       {
 	 if(get_funny_glasses_params())
-	    goto restart_1;
+            goto restart_1;
+         }
+         if (check_mapfile())
+             goto restart_1;
       }
-
-      if (check_mapfile())
-	 goto restart_1;
-   }
-
-restart_3:
+   restart_3:
 
    if(SPHERE)
    {
@@ -1513,7 +1532,7 @@ restart_3:
       prompts3d[i++] = "Y-axis scaling factor in pct";
    }
    k = 0;
-   if (!RAY)
+   if (!(RAY && !SPHERE))
    {
       uvalues[k].uval.ival   = XROT	 ;
       uvalues[k++].type = 'i';
@@ -1569,13 +1588,6 @@ restart_3:
    uvalues[k].type = 'i';
    uvalues[k++].uval.ival = RANDOMIZE;
 
-   if (ILLUMINE && !RAY)
-   {
-	prompts3d[k]= "Color/Mono Images With Light Source   (1 = Color)";
-	uvalues[k].type = 'i';
-	uvalues[k++].uval.ival = full_color;
-   }
-
    if (SPHERE)
       s = "              Sphere 3D Parameters\n\
 Sphere is on its side; North pole to right\n\
@@ -1592,7 +1604,7 @@ Pre-rotation Z axis is coming at you out of the screen!";
       goto restart_1;
 
    k = 0;
-   if (!RAY)
+   if (!(RAY && !SPHERE))
    {
       XROT    = uvalues[k++].uval.ival;
       YROT    = uvalues[k++].uval.ival;
@@ -1616,12 +1628,9 @@ Pre-rotation Z axis is coming at you out of the screen!";
    if (RANDOMIZE >= 7) RANDOMIZE = 7;
    if (RANDOMIZE <= 0) RANDOMIZE = 0;
 
-   if (ILLUMINE && !RAY)
-   {
-	full_color = uvalues[k++].uval.ival;
+   if ((Targa_Out || ILLUMINE || RAY))
 	if(get_light_params())
 	    goto restart_3;
-   }
 
 EXIT_OVLY;
 return(0);
@@ -1630,8 +1639,8 @@ return(0);
 /* --------------------------------------------------------------------- */
 static int get_light_params()
 {
-   char *prompts3d[10];
-   struct fullscreenvalues uvalues[10];
+   char *prompts3d[13];
+   struct fullscreenvalues uvalues[13];
 
    int k;
    int oldhelpmode;
@@ -1639,6 +1648,9 @@ static int get_light_params()
    /* defaults go here */
 
    k = -1;
+
+   if (ILLUMINE || RAY)
+   {
    prompts3d[++k]= "X value light vector";
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = XLIGHT    ;
@@ -1651,24 +1663,49 @@ static int get_light_params()
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = ZLIGHT    ;
 
+		if (!RAY)
+		{
    prompts3d[++k]= "Light Source Smoothing Factor";
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = LIGHTAVG  ;
 
-   prompts3d[++k]= "Ambient Light      (0 - 100, '0' = 'Black' shadows";
+			prompts3d[++k] = "Ambient";
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = Ambient;
+		}
+   }
 
-   if (full_color)
+   if (Targa_Out && !RAY)
    {
 	prompts3d[++k]	= "Haze Factor        (0 - 100, '0' disables)";
 	uvalues[k].type = 'i';
 	uvalues[k].uval.ival= haze;
 
+		if (!Targa_Overlay)
 	check_writefile(light_name,".tga");
-	prompts3d[++k]= "Full Color Light File Name";
+      prompts3d[++k]= "Targa File Name  (Assume .tga)";
 	uvalues[k].type = 's';
 	strcpy(uvalues[k].uval.sval,light_name);
+
+      prompts3d[++k]= "Back Ground Color (0 - 255)";
+      uvalues[k].type = '*';
+
+      prompts3d[++k]= "   Red";
+      uvalues[k].type = 'i';
+      uvalues[k].uval.ival = (int)back_color[0];
+
+      prompts3d[++k]= "   Green";
+      uvalues[k].type = 'i';
+      uvalues[k].uval.ival = (int)back_color[1];
+
+      prompts3d[++k]= "   Blue";
+      uvalues[k].type = 'i';
+      uvalues[k].uval.ival = (int)back_color[2];
+
+      prompts3d[++k]= "Overlay Targa File? (Y/N)";
+      uvalues[k].type = 'y';
+      uvalues[k].uval.ch.val = Targa_Overlay;
+
    }
 
    prompts3d[++k]= "";
@@ -1681,19 +1718,33 @@ static int get_light_params()
       return(-1);
 
    k = 0;
+   if (ILLUMINE)
+   {
       XLIGHT   = uvalues[k++].uval.ival;
       YLIGHT   = uvalues[k++].uval.ival;
       ZLIGHT   = uvalues[k++].uval.ival;
+      if (!RAY)
+		{
       LIGHTAVG = uvalues[k++].uval.ival;
       Ambient  = uvalues[k++].uval.ival;
       if (Ambient >= 100) Ambient = 100;
       if (Ambient <= 0) Ambient = 0;
-   if (full_color)
+		}
+   }
+
+   if (Targa_Out && !RAY)
    {
 	haze  =  uvalues[k++].uval.ival;
 	if (haze >= 100) haze = 100;
 	if (haze <= 0) haze = 0;
-	strcpy(light_name,uvalues[k].uval.sval);
+    	strcpy(light_name,uvalues[k++].uval.sval);
+		/* In case light_name conflicts with an existing name it is checked
+			again in line3d */
+		k++;
+    	back_color[0] = (char)uvalues[k++].uval.ival % 255;
+    	back_color[1] = (char)uvalues[k++].uval.ival % 255;
+    	back_color[2] = (char)uvalues[k++].uval.ival % 255;
+    	Targa_Overlay = uvalues[k].uval.ch.val;
    }
    return(0);
 }
@@ -1710,31 +1761,31 @@ static int check_mapfile()
    strcpy(temp1,"*");
    if (mapset)
       strcpy(temp1,MAP_name);
-   if (glassestype == 0 || glassestype == 3)
+   if (!(glassestype == 1 || glassestype == 2))
       askflag = 1;
    else
       strcpy(temp1,funnyglasses_map_name);
-   while ((FILLTYPE >= 5) || overlay3d || (mapset == 1) || glassestype) {
+   while (TRUE) {
       if (askflag) {
 	 oldhelpmode = helpmode;
 	 helpmode = -1;
 	 i = field_prompt(0,"\
 Enter name of .MAP file to use,\n\
-or '*' to use palette from the image about to be loaded.",
+or '*' to use palette from the image to be loaded.",
 		 NULL,temp1,60,NULL);
 	 helpmode = oldhelpmode;
 	 if (i < 0)
 	    return(-1);
-	 if (temp1[0] == '*') {
-	    mapset = 0;
-	    break;
-	    }
-	 }
-      memcpy(olddacbox,dacbox,256*3); /* save the DAC */
+        if (temp1[0] == '*') {
+            mapset = 0;
+            break;
+            }
+        }
+        memcpy(olddacbox,dacbox,256*3); /* save the DAC */
       i = ValidateLuts(temp1);
       memcpy(dacbox,olddacbox,256*3); /* restore the DAC */
       if (i != 0) { /* Oops, somethings wrong */
-	 askflag = 1;
+         askflag = 1;
 	 continue;
 	 }
       mapset = 1;
@@ -1981,8 +2032,8 @@ int get_toggles()
    char old_usr_stdcalcmode;
    int old_maxit,old_inside,old_outside,old_soundflag;
    int old_logflag,old_biomorph,old_decomp;
-
-   static char *calcmodes[4] ={"1","2","g","b"};
+   int old_fillcolor;
+   static char *calcmodes[] ={"1","2","g","b","t"};
    static char *soundmodes[5]={"yes","no","x","y","z"};
 
    ENTER_OVLY(OVLY_PROMPTS);
@@ -1990,14 +2041,15 @@ int get_toggles()
    k = -1;
 
    k++;
-   choices[k] =  "Passes (1, 2, g[uessing], or b[oundary trace])";
+   choices[k] =  "Passes (1, 2, g[uessing], b[oundary trace], t[esseral])";
    uvalues[k].type = 'l';
    uvalues[k].uval.ch.vlen = 3;
-   uvalues[k].uval.ch.llen = 4;
+   uvalues[k].uval.ch.llen = sizeof(calcmodes)/sizeof(*calcmodes);
    uvalues[k].uval.ch.list = calcmodes;
    uvalues[k].uval.ch.val = (usr_stdcalcmode == '1') ? 0
 			  : (usr_stdcalcmode == '2') ? 1
-			  : (usr_stdcalcmode == 'g') ? 2 : 3;
+                          : (usr_stdcalcmode == 'g') ? 2
+                          : (usr_stdcalcmode == 'b') ? 3 :4 ;
    old_usr_stdcalcmode = usr_stdcalcmode;
 
    k++;
@@ -2011,7 +2063,7 @@ int get_toggles()
    uvalues[k].uval.ival = old_maxit = maxit;
 
    k++;
-   choices[k] = "Inside Color (<nnn>, maxiter, zmag, bof60, bof61)";
+   choices[k] = "Inside Color (<nnn>,maxiter,zmag,bof60,bof61,epscr,star)";
    uvalues[k].type = 's';
    if(inside == -59)
       strcpy(uvalues[k].uval.sval,s_zmag);
@@ -2019,6 +2071,10 @@ int get_toggles()
       strcpy(uvalues[k].uval.sval,s_bof60);
    else if(inside == -61)
       strcpy(uvalues[k].uval.sval,s_bof61);
+   else if(inside == -100)
+      strcpy(uvalues[k].uval.sval,s_epscross);
+   else if(inside == -101)
+      strcpy(uvalues[k].uval.sval,s_startrail);
    else if(inside == -1)
       strcpy(uvalues[k].uval.sval,s_maxiter);
    else
@@ -2083,9 +2139,25 @@ int get_toggles()
    uvalues[k].uval.ival = old_decomp = decomp[0];
 
    k++;
+   choices[k] = "Fill Color (normal,<nnn>) (works with passes=t and =b)";
+   uvalues[k].type = 's';
+   if(fillcolor < 0)
+      strcpy(uvalues[k].uval.sval,s_normal);
+   else
+      sprintf(uvalues[k].uval.sval,"%d",fillcolor);
+   old_fillcolor = fillcolor;
+ 
+   k++;
+   choices[k] = "Orbit delay (0 = none)";
+   uvalues[k].type = 'i';
+   uvalues[k].uval.ival = orbit_delay;
+
+/*
+   k++;
    choices[k] = "Antialiasing (0 to 8)";
    uvalues[k].type = 'i';
    uvalues[k].uval.ival = AntiAliasing;
+*/
 
    oldhelpmode = helpmode;
    helpmode = HELPXOPTS;
@@ -2113,7 +2185,11 @@ int get_toggles()
    ++k;
    maxit = uvalues[k].uval.ival;
    if (maxit < 2) maxit = 2;
+
+/* 'maxit' is an int so it is always <= 32767, MCP 12-3-91
    if (maxit > 32767) maxit = 32767;
+*/
+
    if (maxit != old_maxit) j = 1;
 
    if(strncmp(strlwr(uvalues[++k].uval.sval),s_zmag,4)==0)
@@ -2122,6 +2198,10 @@ int get_toggles()
       inside = -60;
    else if(strncmp(strlwr(uvalues[k].uval.sval),s_bof61,5)==0)
       inside = -61;
+   else if(strncmp(strlwr(uvalues[k].uval.sval),s_epscross,3)==0)
+      inside = -100;
+   else if(strncmp(strlwr(uvalues[k].uval.sval),s_startrail,4)==0)
+      inside = -101;
    else if(strncmp(strlwr(uvalues[k].uval.sval),s_maxiter,5)==0)
       inside = -1;
    else
@@ -2161,11 +2241,20 @@ int get_toggles()
    decomp[0] = uvalues[++k].uval.ival;
    if (decomp[0] != old_decomp) j = 1;
 
-   ++k;
-   if(AntiAliasing != uvalues[k].uval.ival) j = 1;
+   if(strncmp(strlwr(uvalues[++k].uval.sval),s_normal,4)==0)
+      fillcolor = -1;
+   else
+      fillcolor = atoi(uvalues[k].uval.sval);
+   if (fillcolor != old_fillcolor) j = 1;
+
+   orbit_delay = uvalues[++k].uval.ival;
+
+/*
+   if(AntiAliasing != uvalues[++k].uval.ival) j = 1;
    AntiAliasing = uvalues[k].uval.ival;
    if(AntiAliasing < 0) AntiAliasing = 0;
    if(AntiAliasing > 8) AntiAliasing = 8;
+*/
 
    EXIT_OVLY;
    return(j);
@@ -2732,7 +2821,7 @@ retry_dir:
       ++filecount;
    }
    qsort(choices,filecount,sizeof(char *),lccompare); /* sort type list */
-   if(notroot == 0) /* must be in root directory */
+   if(notroot == 0 && dir[0] && dir[0] != '\\') /* must be in root directory */
    {
       splitpath(tmpmask,drive,dir,fname,ext);
       strcpy(dir,"\\");
@@ -3186,7 +3275,11 @@ gc_loop:
    if (prompt_ret == F7) { /* toggle corners/center-mag mode */
       if (usemag == 0)
 	 if (cvtcentermag(&Xctr, &Yctr, &Mag) == 0)
-	    stopmsg(0,"Corners rotated or stretched, can't use center-mag");
+	 {
+	    static char far msg[] = 
+	       {"Corners rotated or stretched, can't use center-mag"};
+	    stopmsg(0,msg);
+	 }   
 	 else
 	    usemag = 1;
       else
@@ -3200,4 +3293,5 @@ gc_loop:
 	&& zzmin == ozzmin && zzmax == ozzmax
 	&& ttmin == ottmin && ttmax == ottmax) ? 0 : 1);
 }
+
 

@@ -17,7 +17,7 @@
    { Introduction }			    { Distribution of Fractint }
    { Conditions on Use }		    { Contacting the Authors }
    { Getting Started }			    { The Stone Soup Story }
-   { New Features in Version 16.12 }	    { A Word About the Authors }
+   { New Features in Version 17.10 }	    { A Word About the Authors }
 					  { A Plug for "Fractal Creations" }
    { Display Mode Commands }
    { Color Cycling Commands }		    { Using Fractint With a Mouse }
@@ -37,11 +37,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New features in Version 16.12",
-		   "Version 16.0  New Features",
-		   "Version 16.11 New Features",
-		   "Version 16.12 New Features",
-		   FF}
+{     , 0, "New Features in Version 17.10", FF}
 
 {     , 0, "Introduction", "Conditions on Use", FF}
 
@@ -68,33 +64,36 @@
 {2.5  , 1, "Complex Newton"}
 {2.6  , 1, "Lambda Sets"}
 {2.7  , 1, "Mandellambda Sets"}
-{2.8  , 1, "Plasma Clouds"}
-{2.9  , 1, "Lambdafn"}
-{2.10 , 1, "Mandelfn"}
-{2.11 , 1, "Barnsley Mandelbrot/Julia Sets"}
-{2.12 , 1, "Barnsley IFS Fractals"}
-{2.13 , 1, "Sierpinski Gasket"}
-{2.14 , 1, "Quartic Mandelbrot/Julia"}
-{2.15 , 1, "Distance Estimator"}
-{2.16 , 1, "Pickover Mandelbrot/Julia Types"}
-{2.17 , 1, "Pickover Popcorn"}
-{2.18 , 1, "Peterson Variations"}
-{2.19 , 1, "Unity"}
-{2.20 , 1, "Scott Taylor / Lee Skinner Variations"}
-{2.21 , 1, "Kam Torus"}
-{2.22 , 1, "Bifurcation"}
-{2.23 , 1, "Orbit Fractals"}
-{2.24 , 1, "Lorenz Attractors"}
-{2.25 , 1, "Rossler Attractors"}
-{2.26 , 1, "Henon Attractors"}
-{2.27 , 1, "Pickover Attractors"}
-{2.28 , 1, "Gingerbreadman"}
-{2.29 , 1, "Test"}
-{2.30 , 1, "Formula"}
-{2.31 , 1, "Julibrots"}
-{2.32 , 1, "Diffusion Limited Aggregation"}
-{2.33 , 1, "Magnetic Fractals"}
-{2.34 , 1, "L-Systems"}
+{2.8  , 1, "Circle"}
+{2.9  , 1, "Plasma Clouds"}
+{2.10 , 1, "Lambdafn"}
+{2.11 , 1, "Mandelfn"}
+{2.12 , 1, "Barnsley Mandelbrot/Julia Sets"}
+{2.13 , 1, "Barnsley IFS Fractals"}
+{2.14 , 1, "Sierpinski Gasket"}
+{2.15 , 1, "Quartic Mandelbrot/Julia"}
+{2.16 , 1, "Distance Estimator"}
+{2.17 , 1, "Pickover Mandelbrot/Julia Types"}
+{2.18 , 1, "Pickover Popcorn"}
+{2.19 , 1, "Peterson Variations"}
+{2.20 , 1, "Unity"}
+{2.21 , 1, "Scott Taylor / Lee Skinner Variations"}
+{2.22 , 1, "Kam Torus"}
+{2.23 , 1, "Bifurcation"}
+{2.24 , 1, "Orbit Fractals"}
+{2.25 , 1, "Lorenz Attractors"}
+{2.26 , 1, "Rossler Attractors"}
+{2.27 , 1, "Henon Attractors"}
+{2.28 , 1, "Pickover Attractors"}
+{2.29 , 1, "Gingerbreadman"}
+{2.30 , 1, "Martin Attractors"}
+{2.31 , 1, "Test"}
+{2.32 , 1, "Formula"}
+{2.33 , 1, "Julibrots"}
+{2.34 , 1, "Diffusion Limited Aggregation"}
+{2.35 , 1, "Magnetic Fractals"}
+{2.36 , 1, "L-Systems"}
+{2.37 , 1, "Lyapunov Fractals"}
 
 {3.   , 0, Doodads\, Bells\, and Whistles, FF}
 {3.1  , 1, "Drawing Method"}
@@ -164,6 +163,7 @@
 {Appendix A, 0, Mathematics of the Fractal Types,
 		   "Summary of Fractal Types",
 		   "Inside=bof60|bof61|zmag",
+		   "Inside=epscross|startrail",
 		   "Finite Attractors",
 		   "Trig Identities", FF}
 
@@ -181,7 +181,12 @@
 
 {Appendix F, 0, "Other Programs", FF}
 
-{Appendix G, 0, "Revision History", FF}
+{Appendix G, 0, Revision History,
+		   "Version 16",
+		   "Version 15",
+		   "Versions 12 through 14",
+		   "Versions  1 through 11",
+		   FF}
 
 {Appendix H, 0, Version13 to Version 14 Type Mapping, "Version13 to 14 Conversion", FF}
 ;
@@ -234,255 +239,137 @@ documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in Version 16.12
+~Topic=New Features in Version 17.10
 
+The 17.10 release contains fixes to the 17.0 release in the following areas:
 
-  Please select one of:
+ - fixed a bug which caused PCs with no FPU to lock up when they attempted
+   to use some fractal types.
+ - fixed a color-cycling bug which caused the palette to single-step 
+   when you pressed ESCAPE to exit color-cycling.
+ - fixed the action of the '<' and '>' keys during color-cycling.
 
-      {Version 16.0  New Features}\
+The 17.0 release contained the following enhancements:
 
-      {Version 16.11 New Features}\
+- New fractal types (but of course!): 
 
-      {Version 16.12 New Features}\
+Lyapunov Fractals from Roy Murphy (see {Lyapunov Fractals} for details)
 
-  See {Revision History} for details about earlier releases.
-;
-~Topic=Version 16.0  New Features
+'BifStewart' (Stewart Map bifurcation) fractal type and new bifurcation
+parameters (filter cycles, seed population) from Kevin Allen.
 
-New integrated online help / fractint.doc system from Ethan Nagel. There is
-  no longer a fractint.doc file included - all documentation is available
-  online.  To create a printable fractint.doc file see {Startup Parameters}.
+Lorenz3d1, Lorenz3d2, and Lorenz3d3 fractal types from Scott Taylor.
+Note that a bug in the Lorenz3d1 fractal prevents zooming-out from
+working with it at the moment.
 
-Over 350 screens of online help! Try pressing <F1> just about anywhere!
+Martin, Circle, and Hopalong (culled from Dewdney's Scientific American
+Article)
 
-New "autokey" feature supports recording and playback of keystrokes.  Type
-  "demo" to run the included demo.bat and demo.key files, which run a
-  great demonstration of Fractint using the autokey feature.
-  See {Autokey Mode} for details.
+Lots of new entries in fractint.par.
 
-New <@> command executes a saved set of commands.  The <b> command has
-  changed to write the current image's parameters as a named set of
-  commands in a structured file.  Saved sets of commands can subsequently
-  be executed with the <@> command.  See {Parameter Save/Restore Commands}.
-  A default "fractint.par" file is included with the release which has
-  parameters for some nice images, use the <@> command to explore these.
+New ".L" files (TILING.L, PENROSE.L)
 
-New <z> command allows changing fractal type-specific parameters without
-  going back through the <t> (fractal type selection) screen (and thus
-  without losing the current image location)
-~OnlineFF
+New 'rand()' function added to the 'type=formula' parser
 
-Ray tracer interface from Marc Reinig, generates 3d transform output for a
-  number of ray tracers; see {"Interfacing with Ray Tracing Programs"}
+- New fractal generation options:
 
-Selection of video modes and structure of "fractint.cfg" have changed. If
-  you have a customized fractint.cfg file, you'll have to rebuild it based
-  on this release's version. You can customize the assignment of your
-  favorite video modes to function keys, see {Video Mode Function Keys}.
-  <delete> is a new command key which goes directly to video mode selection.
+New 'Tesseral' calculation algorithm (use the 'X' option list to
+select it) from  Chris Lusby Taylor.
 
-New "cyclerange" option (command line and <y> options screen) from Hugh
-  Steele. Limits color cycling to a specified range of colors.
-  New palette editor <o> command can also be used to set the range.
+New 'Fillcolor=' option shows off Boundary Tracing and Tesseral structure
 
-Improved {Distance Estimator Method} algorithm from Phil Wilson. Just the
-  edge of the set can be displayed; the width of the "edge" can be controlled;
-  the outside points can optionally be colored with the normal color scheme
+inside=epscross and inside=startrail options taken from a paper by
+Kenneth Hooper, with credit also to Clifford Pickover
 
-New "ranges=" option from Norman Hills. This option lets you specify which
-  range of escape time iteration counts gets mapped to each color number,
-  allowing much finer tuning that the "logmap" option.
-  See {Logarithmic Palettes and Color Ranges} for details.
-~OnlineFF
+New Color Postscript Printer support from Scott Taylor.
 
-type=formula definitions can use "variable functions" to select
-  sin, cos, sinh, cosh, exp, log, etc at run time;
-  new built-ins tan, tanh, cotan, cotanh, and flip
-  are available with type=formula; see Type {Formula}
+Sound= command now works with <O>rbits and <R>ead commands.
 
-New <w> command in palette editing mode to convert image to greyscale
+New 'orbitdelay' option in X-screen and command-line interface
 
-; @@@ hotlink?
-New fractal type "fn+fn(pix)", a generalization of one of JM Richard-
-  Collard's formulas
+New "showdot=nn" command-line option that displays the pixel currently
+being worked on using the specified color value (useful for those lloooonngg
+images being calculated using solid guessing - "where is it now?").
 
-All "fn" fractal types (e.g. fn*fn) can now use new functions tan, tanh,
-  cotan, cotanh, recip, and ident; bug in prior cos function fixed, new
-  function cosxx (conjugate of cos) is the old erroneous cos calculation
-  for compatibility
+New 'exitnoask=yes' commandline/SSTOOLS.INI option to avoid the final
+"are you sure?" screen
 
-New L-Systems from Herb Savage
+New plasma-cloud options.  The interface at the moment (documented here and
+  here only because it might change later) lets you:\
+  - use an alternate drawing algorithm that gives you an earlier preview\
+    of the finished image.
+  - re-generate your favorite plasma cloud (say, at a higher resolution)
+    by forcing a re-select of the random seed.\
 
-New IFS types from Alex Matulich
+New 'N' (negative palette) option from Scott Taylor - the documentation at
+this point is:	Pressing 'N' while in the palette editor will invert
+each color. It will convert only the current color if it is in 'x' mode,
+a range if in 'y' mode, and every color if not in either the 'x' or 'y' mode.
 
-Many new formulas in fractint.frm, including a large group from
-JM Richard-Collard
+- Speedups:
 
-New color maps (neon, royal, volcano, blues, headache) from Daniel Egnor
+New, faster floating-point Mandelbrot/Julia set code from Wesley Loewer,
+Frank Fussenegger and Chris Lusby Taylor (in separate contributions).
 
-IFS type has changed to use a single file containing named entries
-  (instead of a separate xxx.ifs file per type); the <z> command brings up
-  IFS editor (used to be <i> command).	See {=HT_IFS Barnsley IFS Fractals}.
+Faster non-386 integer Mandelbrot code from Chris Lusby Taylor, Mike Gelvin
+and Bill Townsend (in separate contributions)
 
-Initial orbit parameter added to Gingerbreadman fractal type
+New integer Lsystems logic from Nicholas Wilt
 
-From Scott Taylor:\
-  Support for plotters using HP-GL; see {Plotter Parameters}\
-  Lots of new PostScript halftones; see {PostScript Parameters}\
-  "printer=PS[L]/0/..." for full page PostScript; see {PostScript Parameters}\
-  Option to drive printer ports directly (faster); see {Printer Parameters}\
-  Option to change printer end of line control chars; see {Printer Parameters}
+Finite-Attractor fixups and Lambda/mandellambda speedups from Kevin Allen.
 
-Much improved support for PaintJet printers; see {PaintJet Parameters}
+GIF Decoder speedups from Mike Gelvin
 
-Support for XGA video adapter
-~Doc-
-(see {XGA})
-~Doc+
-
-Support for Targa+ video adapter
-~Doc-
-(see {Targa+})
-~Doc+
-
-16 color VGA mode enhancements:\
-  Now use the first 16 colors of .map files to be more predictable\
-  Palette editor now works with these modes\
-  Color cycling now works properly with these modes
-
-Targa video adapter fixes; Fractint now uses (and requires) the "targa"
-  and "targaset" environment variables for Targa systems
-~Doc-
-  (see {Targa})
-~Doc+
-
-"vesadetect=no" parameter to bypass use of VESA video driver; try
-  this if you encounter video problems with a VESA driver
+- Bug-fixes and other enhancements:
 
-Upgraded video adapter detect and handling from John Bridges; autodetect
-  added for NCR, Trident 8900, Tseng 4000, Genoa (this code
-  is from a beta release of VGAKIT, we're not sure it all works yet)
+Fractint now works with 8088-based AMSTRAD computers.
 
-Zoom box is included in saved/printed images (but, is not recognized as
-  anything special when such an image is restored)
+The video logic is improved so that (we think) fewer video boards will need
+"textsafe=save" for correct operation.
 
-The colors numbers reserved by the palette editor are now selectable with
-  the new <v> palette editing mode command
-
-Option to use IIT floating point chip's special matrix arithmetic for
-  faster 3D transforms; see "fpu=" in {Startup Parameters}
-
-Disk video cache increased to 64k; disk video does less seeking when
-  running to real disk
+Fixed a bug in the VESA interface which effectively messed up adapters
+with unusual VESA-style access, such as STB's S3 chipset.
 
-Faster floating point code for 287 and higher fpus, for types mandel,
-  julia, barnsleyj1/m1/j2/m2, lambda, manowar, from Chuck Ebbert
+Fixed a color-cycling bug that would at times restore the wrong colors
+to your image if you exited out of color-cycling, displayed a 'help'
+screen, and then returned to the image.
 
-"filename=.xxx" can be used to set default <r> function file mask;
-  see "filename=" in {File Parameters}
+Fixed the XGA video logic so that its 256-color modes use the same 
+default 256 colors as the VGA adapter's 320x200x256 mode.
 
-Selection of type formula or lsys now goes directly to entry selection
-  (file selection step is now skipped); to change to a different file, use
-  <F6> from the entry selection screen
-
-Three new values have been added to the textcolors= parameter; if you use
-  this parameter you should update it by inserting values for the new 6th,
-  7th, 9th, and 13th positions; see "textcolors=" in {Color Parameters}
-
-The formula type's imag() function has changed to return the result as
-  a real number
-
-Fractal type-specific parameters (entered after selecting a new fractal
-  type with <T>) now restart at their default values each time you select
-  a new fractal type
-
-Floating point input fields can now be entered in scientific notation (e.g.
-  11.234e-20). Entering the letters "e" and "p" in the first column causes
-  the numbers e=2.71828... and pi=3.14159... to be entered.
-
-Generalized type manzpwr to take a complex exponent per Lee Skinner's
-   request.
-
-New option "orbitsave=yes" to create files for the Acrospin program for
-   some types (see {Barnsley IFS Fractals}, {Orbit Fractals},
-   {=@ACROSPIN Acrospin})
-
-Bug fixes:\
-  Problem with Hercules adapter auto-detection repaired.\
-  Problems with VESA video adapters repaired (we're not sure we've got them
-    all yet...)\
-  3D transforms fixed to work at high resolutions (> 1000 dots).\
-  3D parameters no longer clobbered when restoring non-3D images.\
-  L-Systems fixed to not crash when order too high for available memory.\
-  PostScript EPS file fixes.\
-  Bad leftmost pixels with floating point at 2048 dot resolution fixed.\
-  3D transforms fixed to use current <x> screen float/integer setting.\
-  Restore of images using inversion fixed.\
-  Error in "cos" function (used with "fn" type fractals) fixed; prior
-    incorrect function still available as "cosxx" for compatibility
-
-The old 3D=nn/nn/nn/... form of specifying 3D transform parameters is no
-  longer supported.
-
-The Fractint source code is now Microsoft C6.00A compatible.
-;
-~Topic=Version 16.11 New Features
-
-AARRGGHH!! Version 16.11 was released 24 hours after version 16.1 because
-  of a couple of buglets we inadvertantly introduced in 16.1.
-
-Older Tseng-3000-based Video adapters should correctly be auto-detected
-  again.  But, if they (or your other SuperVGA Video adapters) aren't
-  correctly auto-detected, cheer up because there are...
-
-New "adapter=" options to force the selection of specific SuperVGA adapter
-  types when Fractint's internal SuperVGA Auto-detection logic fails.
-  See {Video Parameters} for details.
-
-If the floating-point math option has not been selected, but floating-point
-  math has been automatically set because of deep zooming, integer math is
-  now re-selected again when a new fractal type is selected or the
-  current fractal type is un-zoomed back to the point where integer math
-  is again possible.
-
-The Acrospin interface has been fixed to eliminate the creation of line
-  descriptions when no points for them were defined. Acrospin complained
-  about these and the line definitions had to be edited out.
-
-~onlineFF
-
-The 3D "Light Source before Transfomation" fill type, which was handled
-  incorrectly up through version 16.0, has been fixed. The documentation
-  for both light source fill options has been corrected.
-
-Fractint now survives being modified by McAfee's "SCAN /AV" option.
-
-The <Z> fractal type parameters screen now has a sub-screen which can be
-  used to directly enter image coordinates.  Use <F6> from the <Z> screen
-  to get the new corners screen.
-
-New "inside=zmag" option, which colors inside pixels according to the
-  magnititude of the orbit point when maxiter was reached.
-
-New "outside=real|imag|mult|summ" options provide variations of coloring
-  depending on the real and imaginary components of the last orbit value.
-  The older (default) "Outside=-1" value has been replaced with the more
-  meaningful phrase "outside=iter", which does the same thing.
-
-The GIF Decoder now survives reading GIF files with a local color map
-  (although it cheerfully ignores that local color map).
-
-~onlineFF
-
-Improved IIT support.  Fractint now detects the IIT FPU automatically.
-  If this happens, and the IIT 'f4x4int.com' TSR is loaded, Fractint
-  now uses the extra capabilities of that chip automatically.  If Fractint
-  detects the IIT FPU but IIT's TSR is not loaded, you can still force
-  Fractint to use the extra features of that FPU with the "fpu=iit" option.
-
-New '>' and '<' command-keys in color-cycling mode force a cycling pause,
-  disable random colorizing, and single-step one color rotation, so you
-  can fine-tune your image colors.
+Fixed the 3D bug that caused bright spots on surfaces
+to show as black blotches of color 0 when using a light source.
+
+Fixed an image-generation bug that sometimes caused image regeneration
+to restart even if not required if the image had been zoomed in
+to the point that floating-point had been automatically activated.
+
+Added autodetection and 640x480x256 support for the Compaq Advanced VGA
+Systems board - I wonder if it works?
+
+Added VGA register-compatible 320x240x256 video mode.
+
+Fixed the "logmap=yes" option to (again) take effect for continuous potential
+images.  This was broken in version 15.x.
+
+The colors for the floating-point algorithm of the Julia fractal
+now match the colors for the integer algorithm.
+
+If the GIF Encoder (the "Save" command) runs out of disk space, it now
+tells you about it.
+
+If you select both the boundary-tracing algorithm and either "inside=0"
+or "outside=0", the algorithm will now give you an error message instead
+of silently failing.
+
+Updated 3D logic from Marc Reinig.
+
+Minor changes to permit IFS3D fractal types to be handled properly
+using the "B" command.
+
+Minor changes to the "Obtaining the latest Source" section to refer
+to BBS access (Peter Longo's) and mailed diskettes (the Public (Software)
+Library).
 
 ;Transparent 3D and Antialiasing stuff, not documented yet, some initial
 ;notes:
@@ -495,14 +382,6 @@ New '>' and '<' command-keys in color-cycling mode force a cycling pause,
 ;    numframes=nnn		 1\
 ;  antialiasing can be modified on X screen
 ;  new keywords "xy" and "dt" in formulas
-;
-~Topic=Version 16.12 New Features
-
-Version 16.12 is the same as 16.11 except that we've added a fix
-which we *hope* will cure some video problems reported with Amstrad
-8088/8086-based PCs.  None of the authors has such a machine so
-we don't know yet whether the problems are really cured.
-;
 ;
 ~Topic=Introduction
 
@@ -568,15 +447,13 @@ your own ideas and code.
 
 Fractint is freeware. The copyright is retained by the Stone Soup Group.
 
-Fractint may be freely copied and distributed but may
-not be sold. It may be used personally or in a business - if you can do
-your job better by using Fractint, or use images from it, that's great! It
-may be given away with commercial products under the following conditions:
- o It must be clearly stated that Fractint does not belong to the vendor
-   and is included as a free give-away.
- o It must be a complete unmodified release of Fractint, with
-   documentation, unless other arrangements are made with the Stone Soup
-   Group
+Fractint may be freely copied and distributed in unmodified form but may
+not be sold. (A nominal distribution fee may be charged for media and
+handling by freeware and shareware distributors.) Fractint may be used
+personally or in a business - if you can do your job better by using
+Fractint, or using images from it, that's great! It may not be given away
+with commercial products without explicit permission from the Stone Soup
+Group.
 
 There is no warranty of Fractint's suitability for any purpose, nor any
 acceptance of liability, express or implied.
@@ -789,12 +666,13 @@ options, any of which you can change at will.  These options are:\
   Floating point toggle - see <F> key description below\
   "maxiter=" - see {Image Calculation Parameters}\
   "inside=" and "outside=" - see {Color Parameters}\
+  "savename=" filename - see {File Parameters}\
+  "overwrite=" option - see {File Parameters}\
+  "sound=" option - see {Sound Parameters}\
   "logmap=" - see {Logarithmic Palettes and Color Ranges}\
   "biomorph=" - see {Biomorphs}\
   "decomp=" - see {Decomposition}\
-  "sound=" option - see {Sound Parameters}\
-  "overwrite=" option - see {File Parameters}\
-  "savename=" filename - see {File Parameters}\
+  "fillcolor=" - see {Drawing Method}\
 
 <F>\
 Toggles the use of floating-point algorithms
@@ -1115,6 +993,7 @@ After you press <B>, Fractint prompts for:
 ; This topic is online context-sensitive only.
 
    Passes - see {Drawing Method}\
+   Fillcolor - see {Drawing Method}\
    Floating Point Algorithm - see notes below\
    Maximum Iterations - see {Image Calculation Parameters}\
    Inside and Outside colors - see {Color Parameters}\
@@ -1123,7 +1002,6 @@ After you press <B>, Fractint prompts for:
    Log Palette - see {Logarithmic Palettes and Color Ranges}\
    Biomorph Color - see {Biomorphs}\
    Decomp Option - see {Decomposition}\
-   Antialiasing - this option is not complete yet, not documented\
 
 You can toggle the use of floating-point algorithms on this screen (see
 {"Limitations of Integer Math (And How We Cope)"}).  Whether floating

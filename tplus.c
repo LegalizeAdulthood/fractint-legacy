@@ -36,39 +36,39 @@ struct _BOARD far TPlus;
 int TPlusErr = 0;
 
 void WriteTPWord(unsigned Register, unsigned Number) {
-   outp(TPlus.Write.INDIRECT, Register);
-   outpw(TPlus.Write.WBL, Number);
+   OUTPORTB(TPlus.Write.INDIRECT, Register);
+   OUTPORTW(TPlus.Write.WBL, Number);
 }
 
 void WriteTPByte(unsigned Register, unsigned Number) {
-   outp(TPlus.Write.INDIRECT, Register);
-   outp(TPlus.Write.WBL, Number);
+   OUTPORTB(TPlus.Write.INDIRECT, Register);
+   OUTPORTB(TPlus.Write.WBL, Number);
 }
 
 unsigned ReadTPWord(unsigned Register) {
-   outp(TPlus.Write.INDIRECT, Register);
-   return(inpw(TPlus.Read.RBL));
+   OUTPORTB(TPlus.Write.INDIRECT, Register);
+   return(INPORTW(TPlus.Read.RBL));
 }
 
 unsigned char ReadTPByte(unsigned Register) {
-   outp(TPlus.Write.INDIRECT, Register);
-   return((unsigned char)inp(TPlus.Read.RBL));
+   OUTPORTB(TPlus.Write.INDIRECT, Register);
+   return((unsigned char)INPORTB(TPlus.Read.RBL));
 }
 
 void DisableMemory(void) {
    unsigned Mode1;
 
-   Mode1 = inp(TPlus.Read.MODE1);
+   Mode1 = INPORTB(TPlus.Read.MODE1);
    Mode1 &= 0xfe;
-   outp(TPlus.Write.MODE1, Mode1);
+   OUTPORTB(TPlus.Write.MODE1, Mode1);
 }
 
 void EnableMemory(void) {
    unsigned Mode1;
 
-   Mode1 = inp(TPlus.Read.MODE1);
+   Mode1 = INPORTB(TPlus.Read.MODE1);
    Mode1 |= 1;
-   outp(TPlus.Write.MODE1, Mode1);
+   OUTPORTB(TPlus.Write.MODE1, Mode1);
 }
 
 struct TPLUS_IO {
@@ -386,9 +386,9 @@ int FillTPlusRegion(unsigned x, unsigned y, unsigned xdots, unsigned ydots,
 void BlankScreen(unsigned long Color) {
    unsigned BufferPort;
 
-   outpw(TPlus.Write.COLOR0, ((unsigned*)&Color)[0]);
-   outp(TPlus.Write.COLOR2, ((unsigned*)&Color)[1]);
-   outp(TPlus.Write.COLOR3, 0xff);
+   OUTPORTW(TPlus.Write.COLOR0, ((unsigned*)&Color)[0]);
+   OUTPORTB(TPlus.Write.COLOR2, ((unsigned*)&Color)[1]);
+   OUTPORTB(TPlus.Write.COLOR3, 0xff);
    BufferPort = ReadTPByte(0xe9);
    BufferPort |= 3;
    WriteTPByte(0xe9, BufferPort);
@@ -405,19 +405,19 @@ void UnBlankScreen(void) {
 void EnableOverlayCapture(void) {
    unsigned Mode2;
 
-   Mode2 = inp(TPlus.Read.MODE2);
+   Mode2 = INPORTB(TPlus.Read.MODE2);
    Mode2 |= (1 << 6);
    Mode2 &= (0xff ^ (3 << 4));
    Mode2 |= (1 << 5);
-   outp(TPlus.Write.MODE2, Mode2);
+   OUTPORTB(TPlus.Write.MODE2, Mode2);
 }
 
 void DisableOverlayCapture(void) {
    unsigned Mode2;
 
-   Mode2 = inp(TPlus.Read.MODE2);
+   Mode2 = INPORTB(TPlus.Read.MODE2);
    Mode2 &= (0xff ^ (7 << 4));
-   outp(TPlus.Write.MODE2, Mode2);
+   OUTPORTB(TPlus.Write.MODE2, Mode2);
 }
 
 void ClearTPlusScreen(void) {
@@ -490,8 +490,8 @@ void TPlusZoom(int Zoom) {
    unsigned Mode2;
 
    Zoom &= 3;
-   Mode2 = inp(TPlus.Read.MODE2);
+   Mode2 = INPORTB(TPlus.Read.MODE2);
    Mode2 &= (0xff ^ (3 << 2));
    Mode2 |= (Zoom << 2);
-   outp(TPlus.Write.MODE2, Mode2);
+   OUTPORTB(TPlus.Write.MODE2, Mode2);
 }

@@ -92,7 +92,9 @@ BOARD	 STRUC
       wWBH	dw    ?
 BOARD	 ENDS
 
-extrn TPlus:FAR
+.FARDATA
+
+extrn TPlus:WORD
 
 .CODE
 

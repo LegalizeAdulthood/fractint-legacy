@@ -6,6 +6,8 @@ FRACTALS.C, i.e. which are non-fractal-specific fractal engine subroutines.
 #include <stdio.h>
 #include <stdarg.h>
 #include <float.h>
+#include <sys\types.h>
+#include <sys\timeb.h>
 #include "fractint.h"
 #include "fractype.h"
 #include "mpmath.h"
@@ -42,6 +44,7 @@ extern char far *resume_info;		/* pointer to resume info if allocated */
 static int    resume_offset;		/* offset in resume info gets */
 extern double plotmx1,plotmx2,plotmy1,plotmy2; /* real->screen conversion */
 extern int    orbit_ptr;		/* pointer into save_orbit array */
+extern int orbit_delay; 		/* orbit delay value */
 extern int far *save_orbit;		/* array to save orbit values */
 extern int    orbit_color;		/* XOR color */
 extern int    num_worklist;		/* resume worklist for standard engine */
@@ -56,6 +59,8 @@ extern int    xdots, ydots;		/* # of dots on the logical screen     */
 extern int    colors;			/* maximum colors available */
 extern long   fudge;			/* fudge factor (2**n) */
 extern int    bitshift; 		/* bit shift for fudge */
+extern int    inside;			/* inside color: 1=blue     */
+extern int    outside;			/* outside color    */
 extern double xxmin,xxmax,yymin,yymax,xx3rd,yy3rd; /* corners */
 extern long   xmin, xmax, ymin, ymax, x3rd, y3rd;  /* integer equivs */
 extern int    maxit;			/* try this many iterations */
@@ -94,6 +99,8 @@ extern int    potflag;			/* continuous potential flag */
 extern int    bailout;
 extern double rqlim;
 extern double  dxsize, dysize;		/* xdots-1, ydots-1	    */
+extern int soundflag;
+extern int basehertz;
 
 extern long   far *lx0, far *ly0;	/* x, y grid		    */
 extern long   far *lx1, far *ly1;	/* adjustment for rotate    */
@@ -109,6 +116,7 @@ extern int    usr_distest;
 
 extern int StandardFractal(void);
 extern int calcmand(void);
+extern int calcmandfp(void);
 
 #define FUDGEFACTOR	29	/* fudge all values up by 2**this */
 #define FUDGEFACTOR2	24	/* (or maybe this)		  */
@@ -119,7 +127,12 @@ void calcfracinit() /* initialize a *pile* of stuff for fractal calculation */
    int i;
    double ftemp;
 
-   floatflag	    = usr_floatflag;
+   floatflag = usr_floatflag;
+   if (calc_status == 2) /* on resume, ensure floatflag correct */
+      if (curfractalspecific->isinteger)
+	 floatflag = 0;
+      else
+	 floatflag = 1;
 
 init_restart:
 
@@ -135,7 +148,8 @@ init_restart:
    if (potparam[0] != 0.0
      && colors >= 256
      && (curfractalspecific->calctype == StandardFractal
-	 || curfractalspecific->calctype == calcmand)) {
+	 || curfractalspecific->calctype == calcmand
+	 || curfractalspecific->calctype == calcmandfp)) {
       potflag = 1;
       distest = 0;    /* can't do distest too */
       }
@@ -172,7 +186,7 @@ init_restart:
    if (integerfractal) /* the bailout limit mustn't be too high here */
       if (rqlim > 127.0) rqlim = 127.0;
 
-   if (curfractalspecific->flags&NOROTATE != 0) {
+   if ((curfractalspecific->flags&NOROTATE) != 0) {
       /* ensure min<max and unrotated rectangle */
       if (xxmin > xxmax) { ftemp = xxmax; xxmax = xxmin; xxmin = ftemp; }
       if (yymin > yymax) { ftemp = yymax; yymax = yymin; yymin = ftemp; }
@@ -195,6 +209,7 @@ init_restart:
 	&& !invert				  /* and not inverting */
 	&& biomorph == -1			  /* and not biomorphing */
 	&& rqlim <= 4.0 			  /* and bailout not too high */
+	&& (outside > -2 || outside < -5)	  /* and no funny outside stuff */
 	&& debugflag != 1234)			  /* and not debugging */
 	 bitshift = FUDGEFACTOR;		  /* use the larger bitshift */
       if (param[0] < -1.99 || param[0] > 1.99) param[0] = 1.99;
@@ -202,6 +217,9 @@ init_restart:
       }
 
    fudge = 1L << bitshift;
+
+   l_at_rad = fudge/32768L;
+   f_at_rad = 1.0/32768L;
 
    /* now setup arrays of real coordinates corresponding to each pixel */
 
@@ -545,7 +563,6 @@ You will not be able to resume calculating this image."};
 int get_resume(int len, ...)
 {
    va_list arg_marker;	/* variable arg list */
-   char far *source_ptr;
    char *dest_ptr;
    if (resume_info == NULL)
       return(-1);
@@ -602,6 +619,84 @@ void end_resume()
 		      / ((0-delyy2)*W*delxx2*D-Ys*Xs)
   */
 
+/* sleep N * a tenth of a millisecond */
+
+void sleepms(long ms)
+{
+    extern int tabmode;
+    static long scalems=0L;
+    int savehelpmode,savetabmode;
+    struct timeb t1,t2;
+#define SLEEPINIT 250 /* milliseconds for calibration */
+    savetabmode  = tabmode;
+    savehelpmode = helpmode;
+    tabmode  = 0;
+    helpmode = -1;
+    if(scalems==0L) /* calibrate */
+    {
+	/* selects a value of scalems that makes the units
+	   10000 per sec independent of CPU speed */
+	char msg[80];
+	long millisecs;
+	int i,elapsed;
+
+	scalems = 1L;
+	if(keypressed()) /* check at start, hope to get start of timeslice */
+	   goto sleepexit;
+	/* calibrate, assume slow computer first */
+	do
+	{
+	   scalems *= 2;
+	   ftime(&t2);
+	   do { /* wait for the start of a new tick */
+	      ftime(&t1);
+	    }
+	    while (t2.time == t1.time && t2.millitm == t1.millitm);
+	   sleepms(10L * SLEEPINIT); /* about 1/4 sec */
+	   ftime(&t2);
+	   if(keypressed()) {
+	      scalems = 0L;
+	      goto sleepexit;
+	   }
+	 }
+	 while ((elapsed = (int)(t2.time-t1.time)*1000 + t2.millitm-t1.millitm)
+		< SLEEPINIT);
+	/* once more to see if faster (eg multi-tasking) */
+	do { /* wait for the start of a new tick */
+	   ftime(&t1);
+	   }
+	 while (t2.time == t1.time && t2.millitm == t1.millitm);
+	sleepms(10L * SLEEPINIT);
+	ftime(&t2);
+	if ((i = (int)(t2.time-t1.time)*1000 + t2.millitm-t1.millitm) < elapsed)
+	   elapsed = (i == 0) ? 1 : i;
+	scalems = (float)SLEEPINIT/(float)(elapsed) * scalems;
+	if (debugflag == 700) {
+	   sprintf(msg,"scale factor=%ld",scalems);
+	   stopmsg(0,msg);
+	}
+    }
+    if(ms > 10L * SLEEPINIT) { /* using ftime is probably more accurate */
+	ms /= 10;
+	ftime(&t1);
+	while(1) {
+	   if(keypressed()) break;
+	   ftime(&t2);
+	   if ((t2.time-t1.time)*1000 + t2.millitm-t1.millitm >= ms) break;
+	}
+    }
+    else
+	if(!keypressed()) {
+	   ms *= scalems;
+	   while(ms-- >= 0);
+	}
+sleepexit:
+    tabmode  = savetabmode;
+    helpmode = savehelpmode;
+}
+
+
+
 static void _fastcall plotdorbit(double dx, double dy, int color)
 {
    int i, j, c;
@@ -626,6 +721,13 @@ static void _fastcall plotdorbit(double dx, double dy, int color)
       putcolor(i,j,color);
    sxoffs = save_sxoffs;
    syoffs = save_syoffs;
+   if(orbit_delay > 0)
+      sleepms(orbit_delay);
+   if(soundflag==1)
+	   snd((int)(i*1000/xdots+basehertz));
+   else if(soundflag > 1)
+	   snd((int)(j*1000/ydots+basehertz));
+   /* placing sleepms here delays each dot */
 }
 
 void iplot_orbit(ix, iy, color)
@@ -644,6 +746,7 @@ int color;
 
 void scrub_orbit()
 {
+   static long oldtime = 0;
    int i,j,c;
    int save_sxoffs,save_syoffs;
    save_sxoffs = sxoffs;
@@ -658,13 +761,13 @@ void scrub_orbit()
    }
    sxoffs = save_sxoffs;
    syoffs = save_syoffs;
+   nosnd();
 }
 
 
 int add_worklist(int xfrom, int xto, int yfrom, int yto, int ybegin,
 int pass, int sym)
 {
-   int i;
    if (num_worklist >= MAXCALCWORK)
       return(-1);
    worklist[num_worklist].xxstart = xfrom;

@@ -76,6 +76,11 @@
  *		        16-255 have a dot over them and are editable but not
  *		        visible (like the two reserved colors).
  *
+ *   09-08-91 SWT     Added 'n' command to make a negative color palette:
+ *                      will convert only current color if in 'x' mode or
+ *                      range between editors in 'y' mode or entire palette
+ *                      if in "normal" mode.
+ *
  */
 
 
@@ -404,7 +409,7 @@ static void mkpalrange(PALENTRY *p1, PALENTRY *p2, PALENTRY pal[], int num, int 
 
 static void palrangetogrey(PALENTRY pal[], int first, int how_many)
    {
-   PALENTRY	 *curr;
+   PALENTRY      *curr;
    unsigned char  val;
 
 
@@ -412,6 +417,23 @@ static void palrangetogrey(PALENTRY pal[], int first, int how_many)
       {
       val = (unsigned char) ( ((int)curr->red*30 + (int)curr->green*59 + (int)curr->blue*11) / 100 );
       curr->red = curr->green = curr->blue = (unsigned char)val;
+      }
+   }
+
+/*
+ * convert a range of colors to their inverse
+ */
+
+
+static void palrangetonegative(PALENTRY pal[], int first, int how_many)
+   {
+   PALENTRY      *curr;
+
+   for (curr = &pal[first]; how_many>0; how_many--, curr++)
+      {
+      curr->red   = 63 - curr->red;
+      curr->green = 63 - curr->green;
+      curr->blue  = 63 - curr->blue;
       }
    }
 
@@ -2475,11 +2497,11 @@ static void PalTable__other_key(int key, RGBEditor *rgb, void *info)
 	    {
 	    switch ( this->exclude )
 	       {
-	       case 0:	 /* normal mode.  convert all colors to grey scale */
+	       case 0:   /* normal mode.  convert all colors to grey scale */
 		  palrangetogrey(this->pal, 0, 256);
 		  break;
 
-	       case 1:	 /* 'x' mode. convert current color to grey scale.  */
+	       case 1:   /* 'x' mode. convert current color to grey scale.  */
 		  palrangetogrey(this->pal, this->curr[this->active], 1);
 		  break;
 
@@ -2496,6 +2518,44 @@ static void PalTable__other_key(int key, RGBEditor *rgb, void *info)
 		     }
 
 		  palrangetogrey(this->pal, a, 1+(b-a));
+		  break;
+		  }
+	       }
+
+	    PalTable__UpdateDAC(this);
+	    RGBEditor_SetRGB(this->rgb[0], this->curr[0], &(this->pal[this->curr[0]]));
+	    RGBEditor_Update(this->rgb[0]);
+	    RGBEditor_SetRGB(this->rgb[1], this->curr[1], &(this->pal[this->curr[1]]));
+	    RGBEditor_Update(this->rgb[1]);
+	    break;
+	    }
+
+	 case 'N':   /* convert to negative color */
+	 case 'n':
+	    {
+	    switch ( this->exclude )
+	       {
+	       case 0:	 /* normal mode.  convert all colors to grey scale */
+		  palrangetonegative(this->pal, 0, 256);
+		  break;
+
+	       case 1:	 /* 'x' mode. convert current color to grey scale.  */
+		  palrangetonegative(this->pal, this->curr[this->active], 1);
+		  break;
+
+	       case 2:  /* 'y' mode.  convert range between editors to grey. */
+		  {
+		  int a = this->curr[0],
+		      b = this->curr[1];
+
+		  if (a > b)
+		     {
+		     int t = a;
+		     a = b;
+		     b = t;
+		     }
+
+		  palrangetonegative(this->pal, a, 1+(b-a));
 		  break;
 		  }
 	       }

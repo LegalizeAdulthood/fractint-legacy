@@ -10,7 +10,9 @@
 all : fractint.exe
 
 .asm.obj:
-	masm /ML $*;
+	$(AS) /ML $*;
+# for Quick Assembler
+#       $(AS) /c $*.asm
 
 .c.obj:
 	  $(CC) /AM /W1 /FPi /c $(OptT) $*.c
@@ -21,11 +23,15 @@ lorenz.obj : lorenz.c fractint.h fractype.h
 
 lsys.obj : lsys.c fractint.h
 
+lsysa.obj: lsysa.asm
+
 plot3d.obj : plot3d.c fractint.h fractype.h
 
 3d.obj : 3d.c fractint.h
 
 fractals.obj : fractals.c fractint.h fractype.h mpmath.h helpdefs.h
+
+fractalp.obj : fractalp.c fractint.h fractype.h mpmath.h helpdefs.h
 
 calcfrac.obj : calcfrac.c fractint.h mpmath.h
 
@@ -36,6 +42,12 @@ fracsuba.obj : fracsuba.asm
 parser.obj : parser.c fractint.h mpmath.h
 
 calcmand.obj : calcmand.asm
+
+calmanfp.obj : calmanfp.asm
+# for MASM
+	$(AS) /e /ML calmanfp;
+# for QuickAssembler
+#   $(AS) /FPi /c calmanfp.asm
 
 cmdfiles.obj : cmdfiles.c fractint.h
 	$(Optsize)
@@ -76,7 +88,7 @@ intro.obj : intro.c fractint.h helpdefs.h
 line3d.obj : line3d.c fractint.h
 
 newton.obj : newton.asm
-	masm /e /ML newton;
+	$(AS) /e /ML newton;
 
 printer.obj : printer.c fractint.h
 	$(Optsize)
@@ -104,7 +116,7 @@ yourvid.obj : yourvid.c
 fpu387.obj : fpu387.asm
 
 fpu087.obj : fpu087.asm
-	masm /e /ML fpu087;
+	$(AS) /e /ML fpu087;
 
 f16.obj : f16.c targa_lc.h
 
@@ -136,16 +148,16 @@ slideshw.obj : slideshw.c
 	$(Optsize)
 
 fractint.exe : fractint.obj help.obj loadfile.obj encoder.obj gifview.obj \
-     general.obj calcmand.obj fractals.obj calcfrac.obj testpt.obj \
-     decoder.obj rotate.obj yourvid.obj prompts.obj parser.obj \
+     general.obj calcmand.obj calmanfp.obj fractals.obj fractalp.obj calcfrac.obj \
+     testpt.obj decoder.obj rotate.obj yourvid.obj prompts.obj parser.obj \
      diskvid.obj line3d.obj 3d.obj newton.obj cmdfiles.obj \
      intro.obj slideshw.obj \
      targa.obj loadmap.obj printer.obj printera.obj fracsubr.obj fracsuba.obj \
      video.obj tgaview.obj f16.obj fr8514a.obj loadfdos.obj \
      hgcfra.obj fpu087.obj fpu387.obj mpmath_c.obj mpmath_a.obj \
      lorenz.obj plot3d.obj jb.obj zoom.obj miscres.obj miscovl.obj \
-     realdos.obj lsys.obj editpal.obj tplus.obj tplus_a.obj tp3d.obj \
+     realdos.obj lsys.obj lsysa.obj editpal.obj tplus.obj tplus_a.obj tp3d.obj \
      fractint.hlp
-#	link /ST:4096 /CO /NOE /SE:200 /PACKC /F /EXEPACK @fractint.lnk
-	link /ST:4096 /SE:200 /PACKC /F /EXEPACK /NOE @fractint.lnk
+#       $(LINKER) /ST:4096 /CO /NOE /SE:200 /PACKC /F /EXEPACK @fractint.lnk
+	$(LINKER) /ST:4096 /SE:200 /PACKC /F /EXEPACK /NOE @fractint.lnk
 	hc /a

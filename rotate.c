@@ -103,7 +103,7 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	 if (!paused)
 	    pauserotate();
 	 }
-      else while(1) { /* rotate until key hit, at least once so step=oldstep ok */
+      else while(!keypressed()) { /* rotate until key hit, at least once so step=oldstep ok */
 	 if (fkey > 0) {		/* randomizing is on */
 	    for (istep = 0; istep < step; istep++) {
 	       jstep = next + (istep * direction);
@@ -125,9 +125,9 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	       }
 	    }
 	 if (step >= rotate_size) step = oldstep;
-	 if (keypressed()) break;
-	 spindac(direction, step);
+         spindac(direction, step);
 	 }
+      if (step >= rotate_size) step = oldstep;
       kbdchar = getakey();
       if (paused && (kbdchar != ' ' && kbdchar != 'c' && kbdchar != 'C' ))
 	 paused = 0;			/* clear paused condition	*/
@@ -228,13 +228,22 @@ static int fsteps[] = {2,4,8,12,16,24,32,40,54,100}; /* (for Fkeys) */
 	 case '.':
 	 case '<':
 	 case ',':
+	    if (kbdchar == '>' || kbdchar == '.') {
+               direction = 1;
+	       last = rotate_max;
+	       next = rotate_lo;
+	       incr = 999;
+	       }
+	    else {
+	       direction = -1;
+	       last = rotate_lo;
+	       next = rotate_max;
+	       incr = 999;
+	       }
+	    fkey = 0;
+            spindac(direction,1);
 	    if (! paused)
 	       pauserotate();		/* pause */
-	    fkey = 0;
-	    if (kbdchar == '>' || kbdchar == '.')
-	       spindac(1,1);
-	    else
-	       spindac(-1,1);
 	    break;
 	 case 'd':                      /* load colors from "default.map" */
 	 case 'D':

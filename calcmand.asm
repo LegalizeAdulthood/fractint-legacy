@@ -39,7 +39,29 @@
 
 
 ;					Bert Tyler
-
+; History since Fractint 16.0
+;  (See comments with CJLT in them)
+;  CJLT=Chris Lusby Taylor who has...
+;
+;   1. Speeded up 16 bit on 16 bit CPU
+;	Minor changes, notably prescaling to fg14 before multiplying
+;	instead of scaling the answer.
+;	Also, I added overflow detection after adding linit, since it
+;	seems this could overflow.  
+;	Overall effect is about 10% faster on 386 with debugflag=8088
+;   2. Speeded up 32 bit on 16 bit CPU
+;	The macro `square' is totally rewritten, as is the logic for 2xy,
+;	by prescaling x and y to fg31, not fg29. This allows us to do a
+;	32 bit multiply in 3, not 4, 16 bit chunks while retaining full
+;	fg29 accuracy.
+;       Also, I removed lots of well-meaning but ineffective code handling
+;	special cases of zeros and tidied up the handling of negative numbers,
+;	so the routine is quite a bit shorter now and overall throughput of
+;	Mandel is now over 40% faster on a 386 with debugflag=8088.
+;       By the way, I was tempted to go the whole hog and replace x*x-y*y
+;	by (x+y)*(x-y) to reduce 4 16-bit multiplys to 3, but it makes
+;	escape detection a bit trickier. Another time, maybe.
+;
 
 ;			 required for compatibility if Turbo ASM
 IFDEF ??version
@@ -294,7 +316,7 @@ kloop386_16:   ; cx=bitshift-16, ebp=overflow.mask
 
 	mov	ebx,esi 		; compute (x * x)
 	imul	ebx,ebx 		;  ...
-	test	ebx,ebp 		; say, did we overflow? <V20-compat>
+	test	ebx,ebp 		;
 	jnz	short end386_16 	;  (oops.  We done.)
 	shr	ebx,cl			; get result down to 16 bits
 
@@ -470,71 +492,83 @@ calcmandasm endp
 ; ******************** Function code16bit() *****************************
 ;
 ;	Performs "short-cut" 16-bit math where we can get away with it.
-;
+; CJLT has modified it, mostly by preshifting x and y to fg30 from fg29
+; or, since we ignore the lower 16 bits, fg14 from fg13.
+; If this shift overflows we are outside x*x+y*y=2, so have escaped.
+; Also, he commented out several conditional jumps which he calculated could
+; never be taken (e.g. mov ax,si / imul si ;cannot overflow).
 
 code16bit	proc	near
 
-	mov	si,word ptr x+2 	; use SI for X
-	mov	di,word ptr y+2 	; use DI for Y
+	mov	si,word ptr x+2 	; use SI for X fg13
+	mov	di,word ptr y+2 	; use DI for Y fg13
 
 start16bit:
+	add	si,si			;CJLT-Convert to fg14
+	jo	end16bit		;overflows if <-2 or >2
 	mov	ax,si			; compute (x * x)
-	imul	si			;  ...
-	cmp	dx,0			; say, did we overflow? <V20-compat>
-	jl	end16bit		;  (oops.  We done.)
-	mov	cx,32-FUDGEFACTOR	; ( / fudge)
+	imul	si			; Answer is fg14+14-16=fg12
+;	cmp	dx,0			;CJLT commented out-
+;	jl	end16bit		;CJLT-  imul CANNOT overflow
+;	mov	cx,32-FUDGEFACTOR	;CJLT. FUDGEFACTOR=29 is hard coded
 loop16bit1:
 	shl	ax,1			;  ...
 	rcl	dx,1			;  ...
 	jo	end16bit		;  (oops.  overflow)
-	loop	loop16bit1		;  ...
+;	loop	loop16bit1		;CJLT...do it once only. dx now fg13.
 	mov	bx,dx			; save this for a tad
 
+;ditto for y*y...
+
+	add	di,di			;CJLT-Convert to fg14
+	jo	end16bit		;overflows if <-2 or >2
 	mov	ax,di			; compute (y * y)
 	imul	di			;  ...
-	cmp	dx,0			; say, did we overflow? <V20-compat>
-	jl	end16bit		;  (oops.  We done.)
-	mov	cx,32-FUDGEFACTOR	; ( / fudge)
-loop16bit2:
+;	cmp	dx,0			; say, did we overflow? <V20-compat>
+;	jl	end16bit		;  (oops.  We done.)
+;	mov	cx,32-FUDGEFACTOR	; ( / fudge)
+;loop16bit2:
 	shl	ax,1			;  ...
 	rcl	dx,1			;  ...
 	jo	end16bit		;  (oops.  overflow)
-	loop	loop16bit2		;  ...
+;	loop	loop16bit2		;  ...
 
 	mov	cx,bx			; compute (x*x - y*y) / fudge
 	sub	bx,dx			;  for the next iteration
 
 	add	cx,dx			; compute (x*x + y*y) / fudge
 	jo	end16bit		; bail out if too high
-	js	end16bit		;  ...
+;	js	end16bit		;  ...
 
 	cmp	cx,word ptr lm+2	; while (xx+yy < lm)
 	jae	end16bit		;  ...
+	dec	k			; while (k < maxit)
+	jz	end16bit		;  we done.
 
-	mov	ax,di			; compute (y * x)
+	mov	ax,di			; compute (y * x) fg14+14=fg28
 	imul	si			;  ...
-	mov	cx,33-FUDGEFACTOR	; ( * 2 / fudge)
-loop16bit3:
+;	mov	cx,33-FUDGEFACTOR-2	; ( * 2 / fudge)
+;loop16bit3:
 	shl	ax,1			;  ...
 	rcl	dx,1			;  ...
-	loop	loop16bit3		;  ...
+	shl	ax,1			;  shift two bits
+	rcl	dx,1			;  cannot overflow as |x|<=2, |y|<=2
+;	loop	loop16bit3		;  ...
 	add	dx,word ptr linity+2	; (2*y*x) / fudge + linity
+	jo	end16bit		; bail out if too high
 	mov	di,dx			; save as y
 
 	add	bx,word ptr linitx+2	; (from above) (x*x - y*y)/fudge + linitx
+	jo	end16bit		; bail out if too high
 	mov	si,bx			; save as x
 
 	mov	ax,oldcolor		; recall the old color
 	cmp	ax,k			; check it against this iter
-	jl	short nonmax3		;  nope.  bypass periodicity check.
+	jle	short nonmax3		;  nope.  bypass periodicity check.
 	mov	word ptr x+2,si 	; save x for periodicity check
 	mov	word ptr y+2,di 	; save y for periodicity check
 	call	checkperiod		; check for periodicity
 nonmax3:
-
-	dec	k			; while (k < maxit)
-	jz	end16bit		;  we done.
-
 	jmp	start16bit		; try, try again.
 
 end16bit:				; we done.
@@ -601,251 +635,166 @@ checkperiod	endp
 ;
 ;	New twice as fast logic,
 ;	   Courtesy of Bill Townsend and Mike Gelvin (CIS:73337,520)
+;	Even newer, faster still by Chris Lusby Taylor
+;	 who noted that we needn't square the low word if we first multiply
+;	 by 4, since we only need 29 places after the point and this will
+;	 give 30. (We divide answer by two to give 29 bit shift in answer)
+;	Also, he removed all testing for special cases where a word of operand
+;	happens to be 0, since testing 65536 times costs more than the saving
+;	1 time out of 65536! (I benchmarked it. Just removing the tests speeds
+;	us up by 3%.)
+;
+;Note that square returns DI,AX squared in DX,AX now.
+; DI,AX is first converted to unsigned fg31 form.
+; (For its square to be representable in fg29 (range -4..+3.999)
+; DI:AX must be in the range 0..+1.999 which fits neatly into unsigned fg31.)
+; This allows us to ignore the part of the answer corresponding to AX*AX as it
+; is less than half a least significant bit of the final answer.
+; I thought you'd like that.
+;
+; As we prescaled DI:AX, we need to shift the answer 1 bit to the right to
+; end up in fg29 form since 29=(29+2)+(29+2)-32-1
+; However, the mid term AX*DI is needed twice, so the shifts cancel.
+;
+; Since abs(x) and abs(y) in fg31 form will be needed in calculating 2*X*Y
+; we push them onto the stack for later use.
 
-square	macro	doneaddr
-	local	donejp,skip1y,skip2y,squrey,allzero
-	sub	bh,bh
-	sub	cx,cx
-	mov	bp,cx
-	or	ax,ax			;GET LOW HWORD
-	jz	skip1y			;LOW HWORD IS ZERO, ONLY DO HIGH HWORD
-	mov	si,ax
-	mul	ax			;SQUARE LOW HWORD - B*B
-	mov	bh,dh
-	or	di,di			;TEST HIGH HWORD
-	jz	squrey			;HIGH HWORD ZERO, SKIP THE FOLLOWING
+; Note that square does nor affect bl,si,bp
+; and leaves highword of argument in di
+; but destroys bh,cx
+square	MACRO	donepops
+	LOCAL	notneg
+	shl	ax,1		;Multiply by 2 to convert to fg30
+	rcl	di,1		;If this overflows DI:AX was negative
+	jnc	notneg
+	not	ax			; so negate it
+	not	di			; ...
+	add	ax,1			; ...
+	adc	di,0			; ...
+	not	bl			; change negswt
+notneg:	shl	ax,1		;Multiply by 2 again to give fg31
+	rcl	di,1		;If this gives a carry then DI:AX was >=2.0
+				;If its high bit is set then DI:AX was >=1.0
+				;This is OK, but note that this means that
+				;DI:AX must now be treated as unsigned.
+	jc	donepops
+	push	di		; save y or x (in fg31 form) on stack
+	push	ax		; ...
+	mul	di		;GET MIDDLE PART - 2*A*B
+	mov	bh,ah		;Miraculously, it needs no shifting!
+	mov	cx,dx
 	mov	ax,di
-	mul	si			;GET MIDDLE PART - A*B
-	add	bh,ah			;add
-	adc	cx,dx			; A*B
-	adc	bp,0			;  twice
-	add	bh,ah			;   -
-	adc	cx,dx			;    -
-	adc	bp,0			;     SI,CX,BH = 2(A*B)+(B*B)
-	jmp	short skip2y
-donejp: JMP	doneaddr		;M0=DONEJP
-skip1y: or	di,di			;M1=SKIP1Y
-	jz	allzero
-skip2y: mov	ax,di			;M2=SKIP2Y
-	mul	ax			;SQUARE HIGH HWORD - A*A
-	add	cx,ax
-	adc	bp,dx
-squrey: shl	bh,1			;M3=SQUREY
-	rcl	cx,1
-	rcl	bp,1
-;	jo	donejp			; squaring a +ve, top bit known off
-	shl	bh,1
-	rcl	cx,1
-	rcl	bp,1
-;	jo	donejp			; squaring a +ve, 2nd bit known off
-	shl	bh,1
-	rcl	cx,1
-	rcl	bp,1
-	jo	donejp
-	add	bp,0
-	js	donejp			; if went neg have overflow also
-allzero:
-
-	endm	;#EM
+	mul	ax		;SQUARE HIGH HWORD - A*A
+	shl	bh,1		;See if we round up
+	adc	ax,1		;Anyway, add 1 to round up/down accurately
+	adc	dx,0
+	shr	dx,1		;This needs shifting one bit
+	rcr	ax,1
+	add	ax,cx		;Add in the 2*A*B term
+	adc	dx,0
+	ENDM	;#EM
 
 
 code32bit	proc near
 ;
-; BL IS USED FOR THE FLAGS,TWO LOW ORDER BITS ARE "NEGSWT", THIRD BIT IS XSIGN
-;   XSIGN IS ONE IF THE SIGN OF THE NEW "X" IS NEGATIVE
+; BL IS USED FOR THE "NEGSWT" FLAG
 ;   NEGSWT IS ONE IF EITHER "X" OR "Y" ARE NEGATIVE, BUT NOT BOTH NEGATIVE
 ;
-xsign	equ	00000100b
-negswt	equ	00000001b
 
 	push	bp
-	sub	si,si			; make a zero __________
-	mov	bx,si			; BOTH XSIGN & NEGSWT START OFF ZERO
-	mov	di,1			; MAKE A ONE
-	mov	cx,word ptr y		; cx=y
-	mov	bp,word ptr y+2 	; bp=y+2
-	cmp	bp,si			; y>0?
-	jns	qnotng			;  yup
-	not	cx			; nope, negate it
-	not	bp			; ...
-	add	cx,di			; ...
-	adc	bp,si			; ...
-	inc	bl			; INCREMENT negswt
-qnotng: mov	ax,word ptr x
-	mov	dx,word ptr x+2
-	cmp	dx,si			; x>0?
-	jns	pnotng			;  yup
-	not	ax			; nope, negate it
-	not	dx			; ...
-	add	ax,di			; ...
-	adc	dx,si			; ...
-	inc	bl			; INCREMENT negswt
-pnotng: mov	word ptr absx,ax	; save unsigned x
-	mov	word ptr absx+2,dx	; ...
+	xor	bl,bl			; NEGSWT STARTS OFF ZERO
 
 ;	iteration loop
-nextit: push	bp			; save y on stack
-	push	cx			; ...
-	mov	ax,cx			; load y for squaring
-	mov	di,bp			;  ...
-	square	done2			; square di,ax & br to jmp_done2 if overflow
-	push	cx			; return results in bp,cx
-	push	bp			; save y*y on stack
-	mov	ax,word ptr absx	; load x for squaring
-	mov	di,word ptr absx+2	;  ...
-	square	done			; square di,ax & br to done if overflow
-	mov	di,bp			; return results in bp,cx
-	mov	si,cx			; save x*x in di,si
-	pop	dx			; unstack y*y into dx,ax
-	pop	ax			;  ...
-	ADD	cx,ax			; calc y*y + x*x
-	ADC	bp,dx			;  ...
-	jo	done2			; overflow?
-	js	done2			; overflow?
-	cmp	bp,word ptr lm+2	; while (lr < lm)
-	jb	short nextxy		;  keep going
-	jmp	short done2		; magnitude is past limit, bailout
-done:	add	sp,4			; discard saved value of "y*y"
-done2:	add	sp,4			; discard saved value of "y"
-xydone: pop	bp			; restore saved bp
+
+nextit:	mov	ax,word ptr y		; ax=low(y)
+	mov	di,word ptr y+2 	; di=high(y)
+	square done0	;square y and quit via done0 if it overflows
+	mov	si,ax		; square returns results in dx,ax
+	mov	bp,dx		; save y*y in bp,si
+	mov	ax,word ptr x
+	mov	di,word ptr x+2
+	square	done2		; square x and quit via done2 if it overflows
+	mov	cx,ax		; Save low answer in cx.
+	ADD	ax,si		; calc y*y + x*x
+	mov	ax,bp
+	ADC	ax,dx		;  ...
+	jno	nextxy		; overflow?
+				;NOTE: The original code tests against lm
+				;here, but as lm=4<<29 this is the same
+				;as testing for signed overflow
+done4:	add	sp,4			; discard saved value of |x| fg 31
+done2:	add	sp,4			; discard saved value of |y| fg 31
+done0: pop	bp			; restore saved bp
 	ret
 
 ;---------------------------------------------------------------------------
-;y=nz, x=nz, x+2=z
-x2is0:	pop	ax			; get old y+2
-	or	ax,ax			; test y+2
-	jz	jgotxy
-	mul	si			; do y+2(ax)*x(si)
+
+nextxy:	dec	k		; while (k < maxit)
+	jz	done4		;  we done.
+	sub	cx,si			; subtract y*y from x*x
+	sbb	dx,bp			;  ...
+	add	cx,word ptr linitx	; add "A"
+	adc	dx,word ptr linitx+2	;  ...
+	jo	done4			;CJLT-Must detect overflow here
+					; but increment loop count first
+	mov	word ptr x,cx		; store new x = x*x-y*y+a
+	mov	word ptr x+2,dx 	;  ...
+
+; now calculate x*y
+;
+;More CJLT tricks here. We use the pushed abs(x) and abs(y) in fg31 form
+;which, when multiplied, give x*y in fg30, which, luckily, is the same as...
+;2*x*y fg29.
+;As with squaring, we can ignore the product of the low order words, and still
+;be more accurate than the original algorithm.
+;
+	pop	bp		;Xlow
+	pop	di		;Xhigh (already there, actually)
+	pop	ax		;Ylow
+	mul	di		;Xhigh * Ylow
+	mov	bh,ah		;Discard lowest 8 bits of answer
+	mov	cx,dx
+	pop	ax		;Yhigh
+	mov	si,ax		; copy it
+	mul	bp		;Xlow * Yhigh
+	xor	bp,bp		;Clear answer
 	add	bh,ah
 	adc	cx,dx
 	adc	bp,0
-jgotxy: jmp	gotxy
-
-;x=z
-xis0:	or	di,di			; test x+2
-	jz	popy_2			; zero all done, around again please
-	mul	di			; do y(ax)*x+2(di)
-	add	bh,ah
-	adc	cx,dx
-	adc	bp,0
-	pop	ax			; get old y+2
-	or	ax,ax
-	jz	gotxy
-mulxyj: jmp	mulxy2
-
-;x=z, x+2=z
-popy_2: pop	ax			; discard old y+2
-	sub	cx,cx			; x==0, so x*y is zero
-	mov	bp,cx			; ...
-	jmp	signok			; go add b and store new y
-
-nextxy: sub	si,ax			; subtract y*y from x*x
-	sbb	di,dx			;  ...
-	add	si,word ptr linitx	; add "A"
-	adc	di,word ptr linitx+2	;  ...
-	mov	word ptr x,si		; store new x = x*x+y*y+a
-	mov	word ptr x+2,di 	;  ...
-	jns	swtxxx			; NO SIGN, NOT NEG
-	or	bl,xsign		; REMEMBER THE NEW "X" IS NEGATIVE
-	not	si			; make it positive in register
-	not	di			;  ...
-	add	si,1			;  ...
-	adc	di,0			;  ...
-swtxxx: xchg	di,word ptr absx+2	; save the new x, load the old
-	xchg	si,word ptr absx	;  ...
-
-	; now calculate x*y
-	sub	bh,bh			; zero some registers
-	sub	cx,cx			;  ...
-	mov	bp,cx			;  ...
-	pop	ax			; get old "y"
-	or	ax,ax			; test "y"
-	jz	yis0			; br if "y" is zero
-	or	si,si			; test old "x"
-	jz	xis0			; br if "x" is zero
-	mov	bp,ax			; save old "y"
-	mul	si			; do y(ax)*x(si)
-	mov	ax,bp			; get old "y" again
-	mov	bp,cx			; RE-ZERO BP
-	mov	bh,dh			; save/set low hword(bx)
-	or	di,di			; test old "x+2"
-	jz	x2is0
-	mul	di			; do y(ax)*x+2(di)
-	add	bh,ah
-	adc	cx,dx
-	adc	bp,0
-
-yis0:	pop	ax			; get old "y+2"
-	or	ax,ax			; test y+2
-	jz	gotxy			; br if y+2 is zero
-	mov	dx,si			; dx="x"
-	mov	si,ax			; si=save "y+2"
-	mul	dx			; do y+2(ax)*x(dx)--(si)
-	add	bh,ah
-	adc	cx,dx
-	adc	bp,0
-
-	mov	ax,si			; get old "y+2"
-mulxy2: mul	di			; do y+2(ax)*x+2(di)
-	add	cx,ax
-	adc	bp,dx
-
-gotxy:	shl	bh,1
-	rcl	cx,1			; bp,cx,bx
-	rcl	bp,1
-	jo	jmpxydone
-	shl	bh,1
-	rcl	cx,1
-	rcl	bp,1
-	jo	jmpxydone
-	shl	bh,1
-	rcl	cx,1
-	rcl	bp,1
-	jo	jmpxydone
-	add	bp,0
-	js	jmpxydone		; if went neg have overflow also
-
-	test	bl,negswt		; ZERO IF NONE OR BOTH X , Y NEG
-	jz	signok			; ONE IF ONLY ONE OF X OR Y IS NEG
-	not	cx			; negate result
-	not	bp			;  ...
-	add	cx,1			;  ...
-	adc	bp,0			;  ...
+	mov	ax,si		;Yhigh
+	mul	di		;Xhigh * Yhigh
+	shl	bh,1		;round up/down
+	adc	ax,cx		;Answer-low
+	adc	dx,bp		;Answer-high
+				;NOTE: The answer is 0..3.9999 in fg29
+	js	done0		;Overflow if high bit set
+	or	bl,bl		; ZERO IF NONE OR BOTH X , Y NEG
+	jz	signok		; ONE IF ONLY ONE OF X OR Y IS NEG
+	not	ax		; negate result
+	not	dx		;  ...
+	add	ax,1		;  ...
+	adc	dx,0		;  ...
+	xor	bl,bl		;Clear negswt
 signok:
-	shr	bl,1
-	shr	bl,1			;MOVE "XSIGN"(X=NEG) DOWN TO "NEGSWT"
-	add	cx,cx			;bp,CX = 2(X*Y)
-	adc	bp,bp
-
-	add	cx,word ptr linity
-	adc	bp,word ptr linity+2	; BP,CX = 2(X*Y)+B
-	mov	word ptr y,cx		; save the new value of y
-	mov	word ptr y+2,bp 	;  ...
-	jns	jmpnit			; NO SIGN, NOT NEG
-	inc	bl			; INCREMENT NEGSWT
-	not	cx			; negate
-	not	bp			;  ...
-	add	cx,1			;  ...
-	adc	bp,0			;  ...
-
-jmpnit: mov	ax,oldcolor		; recall the old color
+	add	ax,word ptr linity
+	adc	dx,word ptr linity+2	; dx,ax = 2(X*Y)+B
+	jo	done0
+	mov	word ptr y,ax		; save the new value of y
+	mov	word ptr y+2,dx 	;  ...
+	mov	ax,oldcolor		; recall the old color
 	cmp	ax,k			; check it against this iter
-	jl	short chkmaxit		;  nope.  bypass periodicity check.
+	jle	short chkmaxit		;  nope.  bypass periodicity check.
 	call	checkperiod		; check for periodicity
 
 chkmaxit:
-	dec	k			; while (k < maxit)
-	jz	jmpxydone		;  we done.
 	cmp	show_orbit,0		; orbiting on?
 	jne	horbit			;  yep.
 	jmp	nextit			;go around again
 
-jmpxydone:
-	jmp	xydone			; DOES [(X*X)-(Y*Y)+P] BEFORE THE DEC.
+jmpdone0:
+	jmp	done0			; DOES [(X*X)-(Y*Y)+P] BEFORE THE DEC.
 
 horbit: push	bx			; save my flags
-	push	bp			; and registers
-	push	cx			;  ...
 	mov	ax,-1			; color for plot orbit
 	push	ax			;  ...
 	push	word ptr y+2		; co-ordinates for plot orbit
@@ -854,15 +803,10 @@ horbit: push	bx			; save my flags
 	push	word ptr x		;  ...
 	call	far ptr iplot_orbit	; display the orbit
 	add	sp,5*2			; clear out the parameters
-	pop	cx			; restore registers
-	pop	bp			;  ...
-	pop	bx			; and flags
+	pop	bx			; restore flags
 	jmp	nextit			; go around again
 
 code32bit	endp
-
-
-calcmand_TEXT	ends
 
 	   end
 

@@ -17,6 +17,7 @@ timer.
 72	fractint.c	don't use fast >= 287 fpu routines
 90	fractals.c	force "C" mandel & julia integer type (no calcmand)
 90	fractals.c	force generic code for fn+fn etc types
+100	calcmand.asm	force use of 'code32bit' logic
 200	fractint.c	time encoder
 420	diskvid.c	don't use extended/expanded mem (force disk)
 420	realdos.c	  same for screen save (force disk)
@@ -24,10 +25,10 @@ timer.
 422	realdos.c	  same for screen save (force extended or disk)
 600	printer.c	paintjet, no form feed
 602	printer.c	paintjet, flip image
+700     fracsubr.c      display clock scaling factor
 870	fractint.c	set fpu to max 87
 1010	fractals.c	force fp for newton & newtbasin (no mpc math)
 1234	fractint.c	force larger integer arithmetic bitshift value
-1946	calcfrac.c	BTM fills with color 1 (boundary only display)
 2222	line3d.c	show amount of extra seg memory used
 2224	line3d.c	old just-the-dots logic, probably a temporary thing
 2870	fractint.c	set fpu to max 287 iit off

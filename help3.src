@@ -40,8 +40,16 @@ Boundary Tracing ("b"), which only
 works with fractal types (such as the Mandelbrot set, but not the Newton
 type) that do not contain "islands" of colors, finds a color "boundary",
 traces it around the screen, and then "blits" in the color over the
-enclosed area.\
-;
+enclosed area.
+
+Tesseral ("t") is a sort of "super-solid-guessing" option that successively
+divides the image into subsections.  It's actually slower than the
+solid-guessing algorithm, but it looks neat, so we left it in.\
+
+The "fillcolor=" option in the <X> screen or on the command line sets a 
+fixed color to be used by the Boundary Tracing and Tesseral calculations 
+for filling in defined regions. The effect of this is to show off the 
+boundaries of the areas delimited by these two methods. 
 ;
 ;
 ~Topic=Autokey Mode
@@ -785,6 +793,20 @@ Brief output:
    use the default color specified at the begining of the file.
    This color should be edited to supply the color of your choice.
 
+Targa Output:
+
+   If you want any of the 3d transforms you select to be saved as a
+   Targa-24 file or overlayed onto one, select yes for this option.
+   The overlay option in the final screen determines whether you will
+   create a new file or overlay an existing one.
+
+MAP File name:
+
+   Imediately after selecting the previous options, you will be given the
+   chance to select an alternate color MAP file. The default is to
+   use the current MAP. If you want another MAP used, then enter your
+   selection at this point.
+
 Output File Name:
 
    This is a ray tracing sub-option, used to specify the name of the
@@ -1013,13 +1035,6 @@ colors by randomizing them and reduce the banding that occurs with some
 maps. Select the value of randomize to between 0 (for no effect) and 7 (to
 randomize your colors almost beyond use). 3 is a good starting point.
 
-Well, OK, we lied. If you selected one of the light source fill options,
-there are still MORE options.
-
-If you have selected a fill type which uses light source, you can select
-the final image to be either in monochrome or full color. 0 selects
-monochrome and 1 selects glorious full color.
-
 That's all for this screen. Press enter for these parameters and the
 next and final screen will appear (honestly!).
 ;
@@ -1027,7 +1042,7 @@ next and final screen will appear (honestly!).
 ;
 ~Topic=Light Source Parameters, Label=HELP3DLIGHT
 
-This one deals with all the aspects of light source.
+This one deals with all the aspects of light source and Targa files.
 
 You must chose the direction of the light from the light source. This will
 be scaled in the x, y, and z directions the same as the image. For
@@ -1060,20 +1075,35 @@ overall contrast of the image.
 
 If you selected the full color option, you have a few more choices. The
 next is the haze factor. Set this to make distant objects more hazy. Close
-up objects will have little effect, distant objects will have most. 0
+up objects will show little effect, distant objects will have most.
+If you selected the Targa Out option, you have a few more choices.
+
+The next is the haze factor. Set this to make distant objects more hazy.
+Close up objects will have little effect, distant objects will have most. 0
 disables the function. 100 is the maximum effect, the farthest objects
 will be lost in the mist. Currently, this does not really use distance
 from the viewer, we cheat and use the y value of the original image. So
 the effect really only works if the y-rotation (set earlier) is between
 +/- 30.
 
-Finally, absolutely the last option (this time we mean it): you can chose
-the name under which to save your light file. If you have a RAM disk
-handy, you might want to create the file on it for speed, so include its
-full path name in this option. If you have not set "overwrite=yes" then
-the file name will be incremented to avoid over-writing previous files. By
-the way, the background on the full color file is sky blue instead of
-black.
+Next, you can chose the name under which to save your Targa file. If you
+have a RAM disk handy, you might want to create the file on it, for speed.
+So include its  full path name in this option. If you have not set
+"overwrite=yes" then the file name will be incremented to avoid over-writing
+previous files. If you are going to overlay an existing Targa file, enter
+its name here.
+
+Next, you may select the background color for the Targa file. The default
+background on the Targa file is sky blue. Enter the Red, Green, and Blue
+component for the background color you wish.
+
+Finally, absolutely the last option (this time we mean it): you can now
+choose to overlay an existing Targa-24, type 2, non mapped, top-to-bottom
+file, such as created by Fractint or PVRay. The Targa file specified above
+will be overlayed with new info just as a GIF is overlayed on screen. Note:
+it is not necessary to use the "O" overlay command to overlay Targa files.
+The Targa_Overlay option must be set to yes, however.
+
 
 You'll probably want to adjust the final colors for monochrome fill types
 using light source via {=@ColorCycling color cycling}.
@@ -1351,3 +1381,7 @@ These are harmless, but may be edited out of the file if desired.
 ;
 ;
 ;
+
+
+
+
