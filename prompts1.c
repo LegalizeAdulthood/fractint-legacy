@@ -77,7 +77,7 @@ extern int red_crop_left, red_crop_right;
 extern int blue_crop_left, blue_crop_right;
 extern int red_bright, blue_bright;
 extern char showbox; /* flag to show box and vector in preview */
-extern int extraseg;
+extern SEGTYPE extraseg;
 extern int whichimage;
 extern int xadjust;
 extern int eyeseparation;
@@ -1808,7 +1808,13 @@ restart_1:
 
    RAY = uvalues[k++].uval.ival;
    k++;
-
+   {
+      static char far msg[] = {
+"DKB/POV-Ray output is obsolete but still works. See \"Ray Tracing Output\" in\n\
+the online documentation."};
+      if(RAY == 1)
+         stopmsg(0,msg);
+   }
    BRIEF = uvalues[k++].uval.ch.val;
 
    strcpy(ray_name,uvalues[k++].uval.sval);

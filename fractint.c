@@ -176,7 +176,7 @@ BYTE olddacbox[256][3]; /* backup copy of the Video-DAC */
 extern struct videoinfo far videotable[];
 extern BYTE far *mapdacbox;	/* default dacbox when map= specified */
 extern int	daclearn, daccount;	/* used by the color-cyclers */
-extern int	extraseg;		/* used by Save-to-DISK routines */
+extern SEGTYPE	extraseg;		/* used by Save-to-DISK routines */
 extern int	cpu;			/* cpu type			*/
 extern int	fpu;			/* fpu type			*/
 extern int	iit;			/* iit fpu?			*/
@@ -422,7 +422,7 @@ restorestart:
       stacked = 0;
       overlay3d = 0;			/* forget overlays */
       display3d = 0;			/* forget 3D */
-      if (calc_status > 0)
+      if (calc_status > 0 && calc_status !=2)
 	 calc_status = 0;
       goto resumeloop;			/* ooh, this is ugly */
       }
@@ -1022,9 +1022,11 @@ resumeloop:				/* return here on failed overlays */
 		  discardscreen();
 		  if(!functionpreloaded)
 		    set_if_old_bif(); /* old bifs need function set, JCO 7/5/92 */
-		  if(fractype==MANDELTRIG && usr_floatflag==1 && save_release < 1800)
+		  if(fractype==MANDELTRIG && usr_floatflag==1
+			 && save_release < 1800 && bailout == 0)
 		    bailout = 2500;
-		  if(fractype==LAMBDATRIG && usr_floatflag==1 && save_release < 1800)
+		  if(fractype==LAMBDATRIG && usr_floatflag==1
+			 && save_release < 1800 && bailout == 0)
 		    bailout = 2500;
 		  kbdmore = calc_status = 0;
 		  }
@@ -1704,7 +1706,7 @@ va_dcl
    int (*subrtn)();
    va_start(arg_marker);
    timertype = va_arg(arg_marker, int);
-   subrtn = ( int (*)()) va_arg(arg_marker, int);
+   subrtn = ( int (*)()) va_arg(arg_marker, int *);
 #endif
 
    do_bench = timerflag; /* record time? */

@@ -47,7 +47,7 @@ static	int findfirst(char *path);
 static  int check_f6_key(int curkey,int choice);
 static	int findnext(void );
 	int splitpath(char *template,char *drive,char *dir,char *fname,char *ext);
-static	int makepath(char *template,char *drive,char *dir,char *fname,char *ext);
+        int makepath(char *template,char *drive,char *dir,char *fname,char *ext);
 static	void fix_dirname(char *dirname);
 static	int expand_dirname(char *dirname,char *drive);
 static	int filename_speedstr(int, int, int, char *, int);
@@ -135,12 +135,6 @@ extern int initbatch;		/* 1 if batch run (no kbd)  */
 #define   SYSTEM	 4
 #define   SUBDIR	 16
 #define   MAXNUMFILES	 300
-
-#define FILE_MAX_PATH  80
-#define FILE_MAX_DIR   80
-#define FILE_MAX_DRIVE  3
-#define FILE_MAX_FNAME  9
-#define FILE_MAX_EXT    5
 
 struct				   /* Allocate DTA and define structure */
 {
@@ -1248,7 +1242,9 @@ retry_dir:
    {
       if((DTA.attribute & SUBDIR) && strcmp(DTA.filename,"."))
       {
+#ifndef XFRACT
 	 strlwr(DTA.filename);
+#endif
 	 if(strcmp(DTA.filename,".."))
             strcat(DTA.filename,SLASH);
 	 strncpy(choices[++filecount]->name,DTA.filename,13);
@@ -1541,7 +1537,7 @@ int splitpath(char *template,char *drive,char *dir,char *fname,char *ext)
 }
 #endif
 
-static makepath(char *template,char *drive,char *dir,char *fname,char *ext)
+makepath(char *template,char *drive,char *dir,char *fname,char *ext)
 {
 #ifndef XFRACT
    strcpy(template,drive);

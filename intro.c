@@ -22,7 +22,7 @@
 extern int  lookatmouse;
 extern long timer_start;
 extern int  helpmode;
-extern int  extraseg;
+extern SEGTYPE  extraseg;
 
 
 #ifdef XFRACT

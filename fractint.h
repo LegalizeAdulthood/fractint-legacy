@@ -23,6 +23,8 @@ typedef BYTE BOOLEAN;
 #endif
 
 #ifndef XFRACT
+typedef int SEGTYPE;
+typedef unsigned USEGTYPE;
 #ifdef __TURBOC__
 #   define _bios_printer(a,b,c)   biosprint((a),(c),(b))
 #   define _bios_serialcom(a,b,c) bioscom((a),(c),(b))
@@ -35,8 +37,11 @@ typedef BYTE BOOLEAN;
 #endif
 #endif
 #else
+typedef char * SEGTYPE;
+typedef char * USEGTYPE;
 #   define MK_FP(seg,off) (VOIDFARPTR )(seg+off)
 #endif
+
 
 #ifndef XFRACT
 #define clock_ticks() clock()
@@ -45,6 +50,13 @@ typedef BYTE BOOLEAN;
 #ifdef XFRACT
 #define _fstrcpy(to,from) strcpy(to,from)
 #endif
+
+/* these are used to declare arrays for file names */
+#define FILE_MAX_PATH  80       /* max length of path+filename  */
+#define FILE_MAX_DIR   80       /* max length of directory name */
+#define FILE_MAX_DRIVE  3       /* max length of drive letter   */
+#define FILE_MAX_FNAME  9       /* max length of filename       */
+#define FILE_MAX_EXT    5       /* max length of extension      */
 
 #define MAXPARAMS 10		/* maximum number of parameters */
 #define MAXPIXELS 2048		/* Maximum pixel count across/down the screen */

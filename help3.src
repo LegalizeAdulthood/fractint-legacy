@@ -346,6 +346,8 @@ parameter:
   logmap=-N (<-1): Similar to logmap=N, but uses a square root
   distribution of the colors instead of a logarithmic one.
 
+  logmap=2 or -2: Auto calculates the logmap value for maximum effect.
+
 Another way to change the 1:1 mapping of iteration counts to colors is to
 use the "RANGES=" parameter.  It has the format:\
    RANGES=aa/bb/cc/dd/...
@@ -374,7 +376,6 @@ This example maps iteration counts to colors as follows:
       5      66 to 79
       6      80 and greater
 ~Format+
-
 Note that the maximum value in a RANGES parameter is 32767.
 ;
 ;
@@ -748,22 +749,26 @@ Ray Tracing Output:
 
    Fractint can create files of its 3d transformations which are
    compatible with many ray tracing programs. Currently four are supported
-   directly: DKB, VIVID, MTV, and RAYSHADE.
-   In addition a "RAW" output is supported which
-   can be relatively easily transformed to be usable by many other
-   products.
-
+   directly: DKB (now obsolete), VIVID, MTV, and RAYSHADE. In addition a "RAW"
+   output is supported which can be relatively easily transformed to be 
+   usable by many other products. 
    One other option is supported: ACROSPIN.  This is not a ray tracer,
    but the same Fractint options apply - see {=@ACROSPIN Acrospin}.
 
    Option values:\
       0  disables the creation of ray tracing output\
-      1  DKB format\
+      1  DKB format (obsolete-see below)\
       2  VIVID format\
       3  generic format (must be massaged externally)\
       4  MTV format\
       5  RAYSHADE format\
       6  ACROSPIN format\
+   Users of POV-Ray can use the DKB output and convert to POV-Ray with the 
+   DKB2POV utility that comes with POV-Ray. A better (faster) approach is to 
+   create a RAW output file and convert to POV-Ray with RAW2POV.  A still
+   better approach is to use POV-Ray's height field feature to directly
+   read the fractal .GIF or .POT file and do the 3D transformation inside
+   POV-Ray.
 
    All ray tracing files consist of triangles which follow the surface
    created by Fractint during the 3d transform. Triangles which lie below
@@ -1371,9 +1376,9 @@ otherwise identical to normal files but will run faster than the non BRIEF
 files.	Also, with BRIEF=yes, you may be able to get files with more
 triangles to run than with BRIEF=no.
 
-For DKB, when BRIEF=yes and WATERLINE is non-zero, you may get empty
-COMPOSITE/END_COMPOSITE pairs, ie. containing no triangle info.
-These are harmless, but may be edited out of the file if desired.
+The DKB format is now obsolete. POV-Ray users should use the RAW output 
+and convert to POV-Ray using the POV Group's RAW2POV utility. POV-Ray 
+users can also do all 3D transformations within POV-Ray using height fields.
 ;
 ;
 ;

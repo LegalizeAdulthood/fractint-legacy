@@ -2413,6 +2413,8 @@ static void _fastcall setsymmetry(int sym, int uselist) /* set up proper symmetr
       if (!parmszero)
 	 break;
    case PI_SYM: 		     /* PI symmetry */
+      if(fabs(xxmax - xxmin) < PI/4)   
+         break; /* no point in pi symmetry if values too close */
       if(invert && forcesymmetry == 999)
 	 goto originsym;
       plot = symPIplot ;

@@ -2108,9 +2108,8 @@ int ifs2d()
       /* pick which iterated function to execute, weighted by probability */
       sum = localifs[6];  /* [0][6] */
       k = 0;
-      while ( sum < r && ++k < numaffine)
-	 sum += localifs[k*IFSPARM+6];
-
+      while ( sum < r && k < numaffine-1) /* fixed bug of error if sum < 1 */
+	 sum += localifs[++k*IFSPARM+6];
       /* calculate image of last point under selected iterated function */
       lfptr = localifs + k*IFSPARM; /* point to first parm in row */
       newx = multiply(lfptr[0],x,bitshift) + 

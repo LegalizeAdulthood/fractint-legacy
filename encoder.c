@@ -62,7 +62,7 @@ extern	int	disk16bit;		/* 16 bit continuous potential */
 extern BYTE dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
 extern	int	gotrealdac;		/* DAC valid? */
 extern int	daclearn, daccount;	/* used by the color-cyclers */
-extern int	extraseg;		/* used by Save-to-GIF routines */
+extern SEGTYPE	extraseg;		/* used by Save-to-GIF routines */
 extern int	debugflag;
 
 extern int	gif87a_flag;		/* if 1, supress GIF extension blocks */

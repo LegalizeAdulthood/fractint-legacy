@@ -17,7 +17,7 @@
    { Introduction }			    { Distribution of Fractint }
    { Conditions on Use }		    { Contacting the Authors }
    { Getting Started }			    { The Stone Soup Story }
-   { New Features in Version 18.1 }	    { A Word About the Authors }
+   { New Features in Version 18.2 }	    { A Word About the Authors }
 					  { Other Fractal Products }
    { Display Mode Commands }
    { Color Cycling Commands }		    { Using Fractint With a Mouse }
@@ -37,7 +37,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New Features in Version 18.1", FF}
+{     , 0, "New Features in Version 18.2", FF}
 
 {     , 0, "Introduction", "Conditions on Use", FF}
 
@@ -253,10 +253,30 @@ documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in Version 18.1
+~Topic=New Features in Version 18.2
+Versions 18.1 and 18.2 are bug-fix releases for version 18.0.  Changes from
+18.1 to 18.2 include:
 
-Version 18.1 is mostly a bug-fix release for version 18.0.  Changes from
-18.0 to 18.1 include:
+ The <b> command now causes filenames only to be written in PAR files.
+
+ Fractint will now search directories in the PATH for files not found in the 
+ requested the requested directory or the current directory. If you place 
+ .MAP, .FRM, etc. in directories in your PATH, then Fractint will find them.
+
+ Fixed bug that caused fractals using PI symmetry to fail at high resolution.
+
+ Fractals interrupted with <3> or <r> can now resume.
+
+ The palette editor's <u> (undo) now works.
+
+ The <s> command in orbit/Julia window mode is no longer case sensitive.
+
+ Added warnings that the POV-Ray output is obsolete (but has been left in).
+ Use POV-Ray's height field facility instead or create and convert RAW files.
+
+ Fixed several IFS bugs.
+
+Changes from 18.0 to 18.1 include:
 
  Overlay tuning - the Mandelbrot/Julia Set fractals are now back up
  to 17.x speeds
@@ -694,7 +714,7 @@ Commands marked with an '*' are also available at the credits screen.
 
 {Print Command}
    p		   Print the screen (command-line options set printer type)
-
+~OnlineFF
 {Parameter Save/Restore Commands}
    b		   Save commands describing the current image in a file
 		   (writes an entry to be used with @ command)
@@ -862,13 +882,13 @@ for each point. Slows the display a bit, but shows you how clever the
 program is behind the scenes. (See "A Little Code" in
 {"Fractals and the PC"}.)
 
+<D>\
+Shell to DOS. Return to Fractint by entering "exit" at a DOS prompt.
+~OnlineFF
 <Insert>\
 Restart at the "credits" screen and reset most variables to their initial
 state.	Variables which are not reset are: savename, lightname, video,
 startup filename.
-
-<D>\
-Shell to DOS. Return to Fractint by entering "exit" at a DOS prompt.
 ;
 ;
 ;
@@ -1261,8 +1281,7 @@ over the fractal. A window appears showing the orbit used in the
 calculation of the color at the point where the cursor is. Move the 
 cursor around the fractal using the arrow keys or the mouse and watch
 the orbits change. Try entering the Orbits mode with View Windows (<V>)
-turned on. The following keys take effect in Orbits mode. 
-
+turned on. The following keys take effect in Orbits mode.\
 <c>         Circle toggle - makes little circles with radii inversely\
             proportional to the iteration. Press <c> again to toggle\
             back to point-by-point display of orbits.\
@@ -1668,7 +1687,7 @@ See {Color Cycling Commands}.
 Create a smoothly shaded range of colors between the colors selected by
 the two color registers.
 
-<m>\
+<M>\
 Specify a gamma value for the shading created by <=>.
 
 <D>\
@@ -1706,15 +1725,15 @@ Pause and load an external color map (.MAP file).  See {Palette Maps}.
 Pause, prompt for a filename, and save the current palette to the named
 file (.MAP assumed).  See {Palette Maps}.
 
+<I>\
+Invert frame colors.  With some colors the palette is easier to see when
+the frame colors are interchanged.
+~OnlineFF
 <\\>\
 Move or resize the palette frame.  The frame outline is drawn - it can
 then be repositioned and sized with the cursor keys, <Pageup> and
 <Pagedn>, just as was done when first entering palette-editing mode.  Hit
-Enter when done moving/sizing
-
-<I>\
-Invert frame colors.  With some colors the palette is easier to see when
-the frame colors are interchanged.
+Enter when done moving/sizing.
 
 <V>\
 Use the colors currently selected by the two color registers for the
@@ -1729,7 +1748,7 @@ active register to the color under the cursor.
 
 <Enter>\
 Only useful when 'auto' is off, as described above; double clicking the
-left mouse button is the same as Enter
+left mouse button is the same as Enter.
 
 <X>\
 Toggle 'exclude' mode on or off - when toggled on, only those image pixels
@@ -1750,6 +1769,13 @@ mode.
 Swap R<->G, G<->B, and R<->B columns. These keys are shifted 1, 2, and 3,
 which you may find easier to remember.
 
+<U>\
+Undoes the last palette editor command.  Will undo all the way to the 
+beginning of the current session.
+~OnlineFF
+<E>
+Redoes the undone palette editor commands.
+
 <F>\
 Toggles "Freestyle mode" on and off (Freestyle mode changes a range of
 palette values smoothly from a center value outward).
@@ -1767,7 +1793,7 @@ mode:
  
  The normal color editing keys (R,G,B,1-6, etc) set the central color
  of the affected palette range.
- 
+~OnlineFF
  Pressing ENTER or double-clicking the left mouse button makes the
  palette changes permanent (if you don't perform this step, any
  palette changes disappear when you press the <F> key again to exit
@@ -1799,6 +1825,7 @@ mode:
   c		   Enter Color-Cycling Mode (see {=HELPCYCLING Color Cycling Commands})
   =		   Create a smoothly shaded range of colors
   m		   Set the gamma value for '='.
+~FF
   d		   Duplicate the inactive color register in active color
   t		   Stripe-shade; after hitting 't', hit a number from 2 to 9
 		   which is used as stripe width
@@ -1818,12 +1845,14 @@ mode:
   o		   Set the 'cyclerange' (range affected by color cycling
 		   commands) to the range of the two registers
   n		   Make a negative color palette
+  u		   Undoes the last command
+  e		   Redoes the last undone command
+~FF
   !		   Swap red and green columns
   @		   Swap green and blue columns
   #		   Swap red and blue columns
   f                Enter Palette-Editing Mode.  See {Palette Editing Commands}
                    for details.
-
 ;
 ;
 ; Fractal Types:

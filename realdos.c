@@ -24,9 +24,12 @@
 
 static int menu_checkkey(int curkey,int choice);
 
-int release=1810; /* this has 2 implied decimals; increment it every synch */
+/* uncomment following for book version */
+/* #define WAITE */
+
+int release=1820; /* this has 2 implied decimals; increment it every synch */
 int patchlevel=0; /* patchlevel for DOS version */
-int xrelease=201;
+int xrelease=202;
 
 /* fullscreen_choice options */
 #define CHOICERETURNKEY 1
@@ -35,7 +38,7 @@ int xrelease=201;
 
 extern char diskfilename[];
 extern int using_jiim;
-extern int  xdots, ydots, sxdots, sydots, sxoffs, syoffs;
+extern int  xdots, ydots, sxdots, sydots, sxoffs, syoffs, vxdots;
 extern int  colors;
 extern int  dotmode;
 extern int  oktoprint;
@@ -49,7 +52,7 @@ extern int  color_dark,color_medium,color_bright;
 extern int  lookatmouse;
 extern int  gotrealdac;
 extern int  reallyega;
-extern int  extraseg;
+extern SEGTYPE  extraseg;
 extern int  active_system;
 extern int  first_init;
 extern int initbatch;		/* 1 if batch run (no kbd)  */
@@ -281,11 +284,11 @@ void helptitle()
    putstringcenter(0,0,80,C_TITLE,msg);
 #else
 #ifdef WAITE
-   release=1811;
+   release=1821;
    patchlevel = 0;
-   sprintf(msg,"Special FRACTINT  Version %d.%01d",release/100,(release%100)/10);
+   sprintf(msg,"Special FRACTINT Version %d.%01d",release/100,(release%100)/10);
 #else
-   sprintf(msg,"FRACTINT  Version %d.%01d",release/100,(release%100)/10);
+   sprintf(msg,"FRACTINT Version %d.%01d",release/100,(release%100)/10);
 #endif
    if (release%10) {
       sprintf(buf,"%01d",release%10);
@@ -1400,7 +1403,7 @@ int savegraphics()
    struct XMM_Move   xmmparms;
 
    discardgraphics(); /* if any emm/xmm in use from prior call, release it */
-   swaptotlen = (long)sxdots * sydots;
+   swaptotlen = (long)(vxdots > sxdots ? vxdots : sxdots) * (long)sydots;
    i = colors;
    while (i <= 16) {
       swaptotlen >>= 1;
@@ -1540,7 +1543,6 @@ void discardgraphics() /* release expanded/extended memory if any in use */
 #endif
 }
 
-extern int extraseg;
 extern int badconfig;
 extern struct videoinfo far videotable[];
 struct videoinfo far *vidtbl;  /* temporarily loaded fractint.cfg info */

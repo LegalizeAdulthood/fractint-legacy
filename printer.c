@@ -136,8 +136,8 @@ static void _fastcall graphics_init(int,int,char *);
 /********  EXTRN GLOBAL VARS  ********/
 
 extern int xdots,ydots, 	       /* size of screen		   */
-	   extraseg,		       /* used for buffering		   */
 	   fractype;		       /* used for title block		   */
+extern SEGTYPE	   extraseg;	       /* used for buffering		   */
 extern BYTE dacbox[256][3];   /* for PostScript printing	   */
 extern BYTE dstack[2][3][400];
 extern char FormName[]; 	       /* for Title block info		   */

@@ -853,6 +853,9 @@ extern int get_starfield_params(void );
 extern int get_commands(void);
 extern void goodbye(void);
 extern int getafilename(char *,char *,char *);
+extern int splitpath(char *template,char *drive,char *dir,char *fname,char *ext);
+extern int makepath(char *template,char *drive,char *dir,char *fname,char *ext);
+extern char *extract_filename(char * fullfilename);
 
 /*  realdos -- C file prototypes */
 

@@ -866,7 +866,7 @@ Villanova, PA 19085
 (215) 525-5478
 
 Timothy Wegner		[71320,675] on CIS
-4714 Rockwood		twegner@.mitre.org on Internet
+4714 Rockwood		twegner@mitre.org on Internet
 Houston, TX 77004
 (713) 747-7543
 
@@ -917,7 +917,7 @@ Argentina
 Michael D. Burkey	burkey@sun9.math.utk.edu on Internet
 6600 Crossgate Rd.
 Knoxville, TN 37912
-
+~OnlineFF
 Robin Bussell
 13 Bayswater Rd
 Horfield
@@ -938,7 +938,7 @@ South Orange, NJ 07079
 David Guenther		[70531,3525] on CIS
 50 Rockview Drive
 Irvine, CA 92715
-
+~OnlineFF
 Michael L. Kaufman	kaufman@eecs.nwu.edu on INTERNET
 2247 Ridge Ave, #2K	(also accessible via EXEC-PC bbs)
 Evanston, IL, 60201
@@ -1222,20 +1222,20 @@ Jon Horner.  Contact:
 ;
 ~Topic=Bibliography
 
-BARNSLEY, Michael: "Fractals Everywhere", Academic Press, 1988.
+BARNSLEY, Michael: "Fractals Everywhere," Academic Press, 1988.
 
 DEWDNEY, A. K., "Computer Recreations" columns in "Scientific American" --
    8/85, 7/87, 11/87, 12/88, 7/89.
 
-FEDER, Jens: "Fractals", Plenum, 1988.\
+FEDER, Jens: "Fractals," Plenum, 1988.\
    Quite technical, with good coverage of applications in fluid
    percolation, game theory, and other areas.
 
-GLEICK, James: "Chaos: Making a New Science", Viking Press, 1987.\
+GLEICK, James: "Chaos: Making a New Science," Viking Press, 1987.\
    The best non-technical account of the revolution in our understanding
    of dynamical systems and its connections with fractal geometry.
 
-MANDELBROT, Benoit: "The Fractal Geometry of Nature", W. H. Freeman & Co.,
+MANDELBROT, Benoit: "The Fractal Geometry of Nature," W. H. Freeman & Co.,
    1982.\
    An even more revised and expanded version of the 1977 work. A rich and
    sometimes confusing stew of formal and informal mathematics, the
@@ -1243,8 +1243,8 @@ MANDELBROT, Benoit: "The Fractal Geometry of Nature", W. H. Freeman & Co.,
    small doses.
 ~OnlineFF
 
-MANDELBROT, Benoit: "Fractals: Form, Chance, and Dimension", W. H. Freeman
-   & Co., 1977\
+MANDELBROT, Benoit: "Fractals: Form, Chance, and Dimension," W. H. Freeman
+   & Co., 1977.\
    A much revised translation of "Les objets fractals: forme, hasard, et
    dimension," Flammarion, 1975.
 
@@ -1258,13 +1258,19 @@ PEITGEN, Heinz-Otto & SAUPE, Ditmar: "The Science of Fractal Images,"
    A fantastic work, with a few nice pictures, but mostly filled with
    *equations*!!!
 
-WEGNER, Timothy & PETERSON, Mark: "Fractal Creations", Waite Group Press,
+PICKOVER, Clifford: "Computers, Pattern, Chaos, and Beauty," St. Martin's
+   Press, 1990.\
+
+SCHROEDER, Manfred: "Fractals, Chaos, Power Laws," W. H. Freeman
+   & Co., 1991.\
+
+WEGNER, Timothy & PETERSON, Mark: "Fractal Creations," Waite Group Press,
    1991 (second edition, by Wegner and Tyler, due in the fall of 1993).\
    If we tell you how *wonderful* this book is you might think we were
    bragging, so let's just call it:  THE definitive companion to Fractint!
 
 WEGNER, Timothy & PETERSON, Mark & TYLER, Bert, & Branderhorst, Pieter:
-   "Fractals for Windows", Waite Group Press, 1992.\
+   "Fractals for Windows," Waite Group Press, 1992.\
    This book is to Winfract (the Windows version of Fractint) what
    "Fractals for Windows" is to Fractint.
 ;
@@ -2264,7 +2270,7 @@ TETRATE PARAMS=nnn	TETRATE BAILOUT=nnn+3
  Marc Reinig	  [72410,77] Lots of 3D options
  Kyle Powell	  [76704,12] 8514/A Support
  Matt Saucier	  [72371,3101] Printer Support
- Herb Savage	  [71640,455] 'inside=bof60', 'inside=bof61' options
+ Herb Savage	  [75260,217] 'inside=bof60', 'inside=bof61' options
  Ken Shirriff     shirriff@sprite.berkeley.edu Quaternions, CA, Xfract port
  Lee Skinner	  [75450,3631] Tetrate fractal types and more
  Dean Souleles	  [75115,1671] Hercules Support

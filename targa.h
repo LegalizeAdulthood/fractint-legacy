@@ -31,7 +31,7 @@ extern unsigned int _dataseg_xx;
 
 #define  FALSE	0
 #ifdef TRUE
- #undef TRUE
+#undef TRUE
 #endif
 #define  TRUE	1
 

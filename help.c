@@ -118,7 +118,7 @@ extern int  helpmode;
 extern int  text_type;	 /* 0=real color text, 1=640x200x2, 2=??mono?? */
 extern int  textcbase;
 extern int  textrbase;
-extern int  extraseg;
+extern SEGTYPE  extraseg;
 extern int  release;
 
 int  putstringcenter (int row, int col, int width, int attr, char far *msg);

@@ -1931,7 +1931,7 @@ static void PalTable__SaveUndoRotate(PalTable *this, int dir, int first, int las
    putc(first, this->undo_file);
    putc(last,  this->undo_file);
    putw(dir, this->undo_file);
-   putw(1 + 2 + 2*sizeof(int), this->undo_file);
+   putw(1 + 2 + sizeof(int), this->undo_file);
 
    this->num_redo = 0;
    }
@@ -2014,7 +2014,7 @@ static void PalTable__Undo(PalTable *this)
       return ;
       }
 
-   fseek(this->undo_file, -sizeof(int), SEEK_CUR);  /* go back to get size */
+   fseek(this->undo_file, -(int)sizeof(int), SEEK_CUR);  /* go back to get size */
 
    size = getw(this->undo_file);
    fseek(this->undo_file, -size, SEEK_CUR);   /* go to start of undo */
@@ -3014,7 +3014,7 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
 
 	    segread(&seg);
 	    movedata(FP_SEG(this->save_pal[which]), FP_OFF(this->save_pal[which]),
-		     seg.ds, (unsigned)(this->pal), 256*3);
+		     seg.ds, (USEGTYPE)(this->pal), 256*3);
 
 	    PalTable__UpdateDAC(this);
 
@@ -3043,7 +3043,7 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
 	    struct SREGS seg;
 
 	    segread(&seg);
-	    movedata(seg.ds, (unsigned)(this->pal), FP_SEG(this->save_pal[which]),
+	    movedata(seg.ds, (USEGTYPE)(this->pal), FP_SEG(this->save_pal[which]),
 		    FP_OFF(this->save_pal[which]), 256*3);
 	    }
 	 else
@@ -3246,7 +3246,7 @@ static void PalTable__MkDefaultPalettes(PalTable *this)  /* creates default Fkey
    segread(&seg);
 
    for (ctr=0; ctr<8; ctr++)   /* copy temp into all fkey saves */
-      movedata(seg.ss, (unsigned)(temp), FP_SEG(this->save_pal[ctr]),
+      movedata(seg.ss, (USEGTYPE)(temp), FP_SEG(this->save_pal[ctr]),
 	       FP_OFF(this->save_pal[ctr]), 256*3);
    }
 

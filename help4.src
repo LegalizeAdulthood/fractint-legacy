@@ -56,7 +56,7 @@
 			   with types using variable functions. Values are
 			   sin, cos, tan, cotan, sinh, cosh, tanh, cotanh,
 			   exp, log, sqr, recip (1/z), ident (identity),
-			   and cosxx (cos with bug)
+			   conj, flip, zero, and cosxx (cos with bug)
   formulaname=name	   Formula name for 'type=formula' fractals
   lname=name		   Lsystem name for 'type=lsystem' fractals
   ifs=name		   IFS name for 'type=ifs' fractals
@@ -68,12 +68,6 @@
   miim=[depth|breadth|walk]/[left|right]/[xxx/yyy[/zzz]] Params for MIIM
                            julias.  xxx/yyy = julia constant, zzz = max hits.
                            Eg. miim=depth/left/-.74543/.11301/3
-
-{Sound Parameters}
-  sound=off|x|y|z          Nobody ever plays with fractals at work, do they?
-                           x|y|z can be used to add sound to attractor
-                           fractals, the orbits command, and reading GIFs.
-  hertz=nnn                Base frequency for attractor sound effects
 ~FF
 {Image Calculation Parameters}
   corners=xmin/xmax/ymin/ymax[/x3rd/y3rd]
@@ -99,8 +93,9 @@
   showdot=nn		   Colors the current dot being calculated color nn.
 ~FF
 {Color Parameters}
-  inside=nnn		   Fractal interior color (inside=0 for black)
-  outside=nnn|iter|real|imag|mult|sum  Fractal exterior color options
+  inside=nnn|maxiter|zmag|bof60|bof61|epscr|star|per
+			   Fractal interior color (inside=0 for black)
+  outside=nnn|iter|real|imag|mult|summ  Fractal exterior color options
   map=filename		   Use 'filename' as the default color map (vga/targa)
   colors=@filename|colorspec Sets current image color map from file or spec,
 			   vga or higher only
@@ -119,9 +114,15 @@
   biomorph=nnn		   Biomorph Coloring
   potential=nn[/nn[/nn[/16bit]]]  Continuous Potential
   invert=nn/nn/nn	   Turns on inversion - turns images 'inside out'
+~FF
   finattract=yes	   Look for finite attractor in julia types
   exitnoask=yes		   bypasses the final "are you sure?" exit screen
-~FF
+
+{Sound Parameters}
+  sound=off|x|y|z          Nobody ever plays with fractals at work, do they?
+                           x|y|z can be used to add sound to attractor
+                           fractals, the orbits command, and reading GIFs.
+  hertz=nnn                Base frequency for attractor sound effects
 
 {File Parameters}
   savename=filename	   Save files using this name (instead of FRACT001)
@@ -136,6 +137,8 @@
   ifsfile=filename	   File for type=ifs, default FRACTINT.IFS
   orbitsave=yes 	   Causes IFS and orbit fractals orbit points to be
 			   saved in the file ORBITS.RAW
+~FF
+
 {Video Parameters}
   video=xxx		   Begin with this video mode (Example: Video=F2)
   askvideo=no		   Skip the prompt for video mode when restoring files
@@ -178,9 +181,10 @@
 			   baud=115,150,300,600,1200,2400,4800,9600
 			   options 7,8 | 1,2 | e,n,o (any order)
 			   Example: comport=1/9600/n71
+~FF
   colorps=yes|no           Enable or Disable the color postscript extensions
   rleps=yes|no             Enable or Disable the postscript rle encoding
-~FF
+
 {3D Parameters}
   3d=yes|overlay	   Resets 3D to defaults, starts 3D mode. If overlay
 			   specified, does not clear existing graphics screen
@@ -574,7 +578,6 @@ fractals for showing you the calculation status.
 ;
 ;
 ~Topic=Color Parameters
-
 INSIDE=nnn|bof60|bof61|zmag|attractor|epscross|startrail|period\
 Set the color of the interior: for
 example, "inside=0" makes the M-set "lake" a stylish basic black. A setting of
@@ -666,6 +669,7 @@ Color values are:
     6 brown	E yellow
     7 white	F bright white
 31 colors can be specified, their meanings are as follows:
+~OnlineFF
   heading:
     1  Fractint version info
     2  heading line development info (not used in released version)
@@ -1100,10 +1104,13 @@ being used, the other nine options specify the red, green, then blue
 screens. A negative number in any of these places will cause it to use
 the previous (or default) value for that parameter. NOTE: Especially when
 using color, the built-in screens in the printer's ROM may be the best
-choice for printing. The default values are as follows:
-halftone=45/45/1/45/75/1/45/15/1/45/0/1 and these will be used
-if Fractint's halftone is chosen over the printer's built-in screen.
+choice for printing.
+~OnlineFF
+The default values are as follows: halftone=45/45/1/45/75/1/45/15/1/45/0/1
+and these will be used if Fractint's halftone is chosen over the printer's
+built-in screen.
 ~Format-
+
 Current halftone styles:
     0 Dot
     1 Dot (Smoother)
@@ -1123,7 +1130,7 @@ Current halftone styles:
    15 Random
    16 Line (slightly different)
 ~Format+
-
+~OnlineFF
 
 A note on device-resolution black and white printing\
 ----------------------------------------------------\
@@ -1142,8 +1149,7 @@ of a letter size page with 300 dpi printer resolution.  For higher
 resolution printers, you will wish fractint supported larger window
 sizes (hint, hint...). Bug reports and/or suggestions should be
 forwarded to Yavuz Onder (post to sci.fractals, no e-mail yet).
-;
-
+~OnlineFF
 
 A word from the author (Scott Taylor)\
 -------------------------------------\

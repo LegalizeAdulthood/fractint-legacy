@@ -109,7 +109,7 @@ extern int filetype;
 extern char usr_floatflag;
 extern int xdots, ydots, colors, sxoffs, syoffs;
 extern int debugflag;
-extern int extraseg;
+extern SEGTYPE extraseg;
 extern unsigned height;
 extern int rowcount;		/* in general.asm */
 extern int init3d[];		/* 3D arguments (FRACTINT.C) */

@@ -186,6 +186,7 @@ public		TPlusInstalled
 
 public		vesa_detect		; set to 0 to disable VESA-detection
 
+public          vxdots                  ; virtual scan line length
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
 
@@ -5022,10 +5023,10 @@ setvideobios_doit2:
 	shl	cx,1
 store_vesa_bytes:
 	mov	vxdots,cx		; adjust the screen width accordingly XXX
-	cmp	cx,sxdots
-	je	skipvesafix
-	mov	ax,offset swapnormread	; use the slow swap routine
-	mov	word ptr swapsetup,ax	;  ...
+;       cmp     cx,sxdots               ; 8/93 JRS textsafe=save fix
+;       je      skipvesafix
+;       mov     ax,offset swapnormread  ; use the slow swap routine
+;       mov     word ptr swapsetup,ax   ;  ...
 skipvesafix:
 	mov	cx, word ptr suffix+4	; get the granularity
 	cmp	cl,1			; ensure the divide won't blow out
@@ -5677,6 +5678,7 @@ setforgraphicsnocga2:
 ;;setfgncfast:
 ;;	mov	orvideo,80h		; preserve memory (just to be fast)
 ;;setfgncsetvid:
+        mov     orvideo,00h   ; JRS          ; preserve memory (just to be fast)
 	mov	ax,videoax		; set up the video call
 	mov	bx,videobx		;  ...
 	mov	cx,videocx		;  ...
@@ -7404,4 +7406,3 @@ put_a_char proc character:word
 put_a_char endp
 
 	end
-

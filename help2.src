@@ -23,7 +23,7 @@ SUMMARY OF FRACTAL TYPES
 ~Label=HF_BARNSJ1
       z(0) = pixel;
       z(n+1) = (z-1)*c if real(z) >= 0, else
-      z(n+1) = (z+1)*modulus(c)/c
+      z(n+1) = (z+1)*c
     Two parameters: real and imaginary parts of c
 {=HT_BARNS barnsleyj2}
 ~Label=HF_BARNSJ2
@@ -48,7 +48,7 @@ SUMMARY OF FRACTAL TYPES
       if real(z) >= 0 then
 	z(n+1) = (z-1)*c
       else
-	z(n+1) = (z+1)*modulus(c)/c.
+	z(n+1) = (z+1)*c.
     Parameters are perturbations of z(0)
 {=HT_BARNS barnsleym2}
 ~Label=HF_BARNSM2
@@ -232,9 +232,38 @@ SUMMARY OF FRACTAL TYPES
       y(n+1) = a - x(n)
     Parameters are a, b, and c.
 
+{=HT_HYPERC hypercomplex}
+~Label=HF_HYPERC
+    HyperComplex Mandelbrot set.
+      h(0)   = (0,0,0,0)
+      h(n+1) = fn(h(n)) + C.
+      where "fn" is sin, cos, log, sqr etc.
+    Two parameters: cj, ck
+    C = (xpixel,ypixel,cj,ck)
+~OnlineFF
+
+{=HT_HYPERC hypercomplexj}
+~Label=HF_HYPERCJ
+    HyperComplex Julia set.
+      h(0)   = (xpixel,ypixel,zj,zk)
+      h(n+1) = fn(h(n)) + C.
+      where "fn" is sin, cos, log, sqr etc.
+    Six parameters: c1, ci, cj, ck
+    C = (c1,ci,cj,ck)
+
+{=HT_ICON icon, icon3d}
+~Label=HF_ICON
+    Orbit in three dimensions defined by:
+      p = lambda + alpha * magnitude + beta * (x(n)*zreal - y(n)*zimag)
+      x(n+1) = p * x(n) + gamma * zreal - omega * y(n)
+      y(n+1) = p * y(n) - gamma * zimag + omega * x(n)
+      (3D version uses magnitude for z)
+      Parameters:  Lambda, Alpha, Beta, Gamma, Omega, and Degree
+
 {=HT_IFS IFS}
     Barnsley IFS (Iterated Function System) fractals. Apply
     contractive affine mappings.
+~OnlineFF
 
 {=HT_PICKMJ julfn+exp}
 ~Label=HF_JULFNPLUSEXP
@@ -242,7 +271,6 @@ SUMMARY OF FRACTAL TYPES
       z(0) = pixel;
       z(n+1) = fn(z(n)) + e^z(n) + c.
     Three parameters: real & imaginary parts of c, and fn
-~OnlineFF
 
 {=HT_PICKMJ julfn+zsqrd}
 ~Label=HF_JULFNPLUSZSQRD
@@ -255,6 +283,7 @@ SUMMARY OF FRACTAL TYPES
     Classic Julia set fractal.
       z(0) = pixel; z(n+1) = z(n)^2 + c.
     Two parameters: real and imaginary parts of c.
+~OnlineFF
 
 {=HT_INVERSE julia_inverse}
 ~Label=HF_INVERSE
@@ -268,6 +297,16 @@ SUMMARY OF FRACTAL TYPES
         Notice the differences in the way the image evolves.  Start with
         a fairly low Maximum Hit limit, then increase it.  The hit limit
         cannot be higher than the maximum colors in your video mode.
+
+{=HT_FNORFN julia(fn||fn)}
+~Label=HF_JULIAFNFN
+      z(0) = pixel;
+      if modulus(z(n)) < shift value, then
+         z(n+1) = fn1(z(n)) + c,
+      else
+         z(n+1) = fn2(z(n)) + c.
+    Five parameters: real, imaginary portions of c, shift value,
+                     fn1 and fn2.
 ~OnlineFF
 
 {=HT_MANDJUL4 julia4}
@@ -329,38 +368,6 @@ SUMMARY OF FRACTAL TYPES
     Five parameters: real, imaginary portions of lambda, shift value,
                      fn1 and fn2.
 
-{=HT_FNORFN manlam(fn||fn)}
-~Label=HF_MANLAMFNFN
-      c = pixel;
-      z(0) = p1
-      if modulus(z(n)) < shift value, then
-         z(n+1) = fn1(z(n)) * c, else
-         z(n+1) = fn2(z(n)) * c.
-    Five parameters: real, imaginary parts of p1, shift value, fn1, fn2.
-~OnlineFF
-
-{=HT_FNORFN julia(fn||fn)}
-~Label=HF_JULIAFNFN
-      z(0) = pixel;
-      if modulus(z(n)) < shift value, then
-         z(n+1) = fn1(z(n)) + c,
-      else
-         z(n+1) = fn2(z(n)) + c.
-    Five parameters: real, imaginary portions of c, shift value,
-                     fn1 and fn2.
-
-{=HT_FNORFN mandel(fn||fn)}
-~Label=HF_MANDELFNFN
-      c = pixel;
-      z(0) = p1
-      if modulus(z(n)) < shift value, then
-         z(n+1) = fn1(z(n)) + c,
-      else
-         z(n+1) = fn2(z(n)) + c.
-    Five parameters: real, imaginary portions of p1, shift value,
-                     fn1 and fn2.
-~OnlineFF
-
 {=HT_LORENZ lorenz, lorenz3d}
 ~Label=HF_LORENZ
     Lorenz two lobe attractor - orbit in three dimensions.
@@ -370,15 +377,7 @@ SUMMARY OF FRACTAL TYPES
       y(n+1) = y(n) + ( b*x(n)*dt) - (	   y(n)*dt) - (z(n)*x(n)*dt)
       z(n+1) = z(n) + (-c*z(n)*dt) + (x(n)*y(n)*dt)
     Parameters are dt, a, b, and c.
-
-{=HT_ICON icon, icon3d}
-~Label=HF_ICON
-    Orbit in three dimensions defined by:
-      p = lambda + alpha * magnitude + beta * (x(n)*zreal - y(n)*zimag)
-      x(n+1) = p * x(n) + gamma * zreal - omega * y(n)
-      y(n+1) = p * y(n) - gamma * zimag + omega * x(n)
-      (3D version uses magnitude for z)
-      Parameters:  Lambda, Alpha, Beta, Gamma, Omega, and Degree
+~OnlineFF
 
 {=HT_LORENZ lorenz3d1}
 ~Label=HF_LORENZ3D1
@@ -407,7 +406,6 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = z(n) +(3*x(n)*dt*x(n)*y(n)-y(n)*dt*y(n)^2)/2 - c*dt*z(n)
     Parameters are dt, a, b, and c.
 ~OnlineFF
-
 {=HT_LORENZ lorenz3d4}
 ~Label=HF_LORENZ3D4
     Lorenz four lobe attractor - orbit in three dimensions.
@@ -421,8 +419,6 @@ SUMMARY OF FRACTAL TYPES
          - a*dt*y(n)^3) / (2 * (x(n)^2+y(n)^2))
       z(n+1) = z(n) +(2*x(n)*dt*x(n)^2*y(n) - 2*x(n)*dt*y(n)^3 - c*dt*z(n))
     Parameters are dt, a, b, and c.
-~OnlineFF
-
 
 {=HT_LSYS lsystem}
     Using a turtle-graphics control language and starting with
@@ -433,6 +429,7 @@ SUMMARY OF FRACTAL TYPES
     Derived from the Bifurcation fractal, the Lyapunov plots the Lyapunov
     Exponent for a population model where the Growth parameter varies between
     two values in a periodic manner.
+~OnlineFF
 
 {=HT_MAGNET magnet1j}
 ~Label=HF_MAGJ1
@@ -441,7 +438,6 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) =	| ---------------- | 
 		[  2*z(n) + (c-2)  ]
     Parameters: the real and imaginary parts of c
-~OnlineFF
 
 {=HT_MAGNET magnet1m}
 ~Label=HF_MAGM1
@@ -450,6 +446,7 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) =	| ---------------- | 
 		[  2*z(n) + (c-2)  ]
     Parameters: the real & imaginary parts of perturbation of z(0)
+
 {=HT_MAGNET magnet2j}
 ~Label=HF_MAGJ2
       z(0) = pixel;
@@ -457,6 +454,7 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) =	|  -------------------------------------------- |
 		[  3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) + 1 ]
     Parameters: the real and imaginary parts of c
+~OnlineFF
 {=HT_MAGNET magnet2m}
 ~Label=HF_MAGM2
       z(0) = 0; c = pixel;
@@ -464,13 +462,25 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) =	|  -------------------------------------------- |
 		[  3*(z(n)^2) + 3*(C-2)*z(n) + (C-1)*(C-2) + 1 ]
     Parameters: the real and imaginary parts of perturbation of z(0)
-~OnlineFF
+
 {=HT_MANDEL mandel}
 ~Label=HF_MANDEL
     Classic Mandelbrot set fractal.
       z(0) = c = pixel;
       z(n+1) = z(n)^2 + c.
     Two parameters: real & imaginary perturbations of z(0)
+
+{=HT_FNORFN mandel(fn||fn)}
+~Label=HF_MANDELFNFN
+      c = pixel;
+      z(0) = p1
+      if modulus(z(n)) < shift value, then
+         z(n+1) = fn1(z(n)) + c,
+      else
+         z(n+1) = fn2(z(n)) + c.
+    Five parameters: real, imaginary portions of p1, shift value,
+                     fn1 and fn2.
+~OnlineFF
 
 {=HT_MANDELCLOUD mandelcloud}
 ~Label=HF_MANDELCLOUD
@@ -493,6 +503,15 @@ SUMMARY OF FRACTAL TYPES
     Parameters: real & imaginary perturbations of z(0), and fn
 ~OnlineFF
 
+{=HT_FNORFN manlam(fn||fn)}
+~Label=HF_MANLAMFNFN
+      c = pixel;
+      z(0) = p1
+      if modulus(z(n)) < shift value, then
+         z(n+1) = fn1(z(n)) * c, else
+         z(n+1) = fn2(z(n)) * c.
+    Five parameters: real, imaginary parts of p1, shift value, fn1, fn2.
+
 {=HT_MARTIN Martin}
 ~Label=HF_MARTIN
     Attractor fractal by Barry Martin - orbit in two dimensions.
@@ -506,6 +525,19 @@ SUMMARY OF FRACTAL TYPES
       z(0) = .5; lambda = pixel;
       z(n+1) = lambda*z(n)*(1 - z(n)).
     Parameters: real & imaginary perturbations of z(0)
+~OnlineFF
+
+{=HT_PHOENIX mandphoenix}
+~Label=HF_MANDPHOENIX
+      z(0) = p1, y(0) = 0;
+      For degree of Z = 0:
+        z(n+1) = z(n)^2 + pixel.x + (pixel.y)y(n), y(n+1) = z(n)
+      For degree of Z >= 2:
+        z(n+1) = z(n)^degree + pz(n)^(degree-1) + qy(n), y(n+1) = z(n)
+      For degree of Z <= -3:
+        z(n+1) = z(n)^|degree| + pz(n)^(|degree|-2) + qy(n), y(n+1) = z(n)
+    Three parameters: real part of z(0), imaginary part of z(0), and the
+      degree of Z.
 
 {=HT_PICKMJ manfn+exp}
 ~Label=HF_MANDFNPLUSEXP
@@ -521,18 +553,22 @@ SUMMARY OF FRACTAL TYPES
       z(0) = c = pixel;
       z(n+1) = fn(z(n)) + z(n)^2 + c.
     Parameters: real & imaginary perturbations of z(0), and fn
+
 {=HT_SCOTSKIN manowar}
 ~Label=HF_MANOWAR
       c = z1(0) = z(0) = pixel;
       z(n+1) = z(n)^2 + z1(n) + c;
       z1(n+1) = z(n);
     Parameters: real & imaginary perturbations of z(0)
+
 {=HT_SCOTSKIN manowar}
 ~Label=HF_MANOWARJ
       z1(0) = z(0) = pixel;
       z(n+1) = z(n)^2 + z1(n) + c;
       z1(n+1) = z(n);
     Parameters: real & imaginary perturbations of c
+~OnlineFF
+
 {=HT_PICKMJ manzpower}
 ~Label=HF_MANZPOWER
     'Mandelbrot-Equivalent' for julzpower.
@@ -540,7 +576,6 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = z(n)^exp + c; try exp = e = 2.71828...
     Parameters: real & imaginary perturbations of z(0), real &
     imaginary parts of exponent exp.
-~OnlineFF
 
 {=HT_PICKMJ manzzpwr}
 ~Label=HF_MANZZPWR
@@ -555,6 +590,8 @@ SUMMARY OF FRACTAL TYPES
       z(0) = pixel;
       z(n+1) = (c^exp)*z(n)^2 + c.
     Parameters: real & imaginary parts of c, and exponent
+~OnlineFF
+
 {=HT_MARKS marksmandel}
 ~Label=HF_MARKSMAND
     A variant of the mandel-lambda fractal.
@@ -562,7 +599,6 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = (c^exp)*z(n)^2 + c.
     Parameters: real & imaginary perturbations of z(0), and exponent
 
-~OnlineFF
 {=HT_MARKS marksmandelpwr}
 ~Label=HF_MARKSMANDPWR
     The marksmandelpwr formula type generalized (it previously
@@ -579,6 +615,8 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = ((p-1)*z(n)^p + 1)/(p*z(n)^(p - 1)).
     Two parameters: the polynomial degree p, and a flag to turn
     on color stripes to show alternate iterations.
+~OnlineFF
+
 {=HT_NEWT newton}
 ~Label=HF_NEWT
     Based on the Newton formula for finding the roots of z^p - 1.
@@ -597,19 +635,6 @@ SUMMARY OF FRACTAL TYPES
       For degree of Z <= -3:
         z(n+1) = z(n)^|degree| + pz(n)^(|degree|-2) + qy(n), y(n+1) = z(n)
     Three parameters: real p, real q, and the degree of Z.
-
-{=HT_PHOENIX mandphoenix}
-~Label=HF_MANDPHOENIX
-      z(0) = p1, y(0) = 0;
-      For degree of Z = 0:
-        z(n+1) = z(n)^2 + pixel.x + (pixel.y)y(n), y(n+1) = z(n)
-      For degree of Z >= 2:
-        z(n+1) = z(n)^degree + pz(n)^(degree-1) + qy(n), y(n+1) = z(n)
-      For degree of Z <= -3:
-        z(n+1) = z(n)^|degree| + pz(n)^(|degree|-2) + qy(n), y(n+1) = z(n)
-    Three parameters: real part of z(0), imaginary part of z(0), and the
-      degree of Z.
-
 ~OnlineFF
 {=HT_PICK pickover}
 ~Label=HF_PICKOVER
@@ -637,6 +662,7 @@ SUMMARY OF FRACTAL TYPES
     are plotted for each screen pixel and superimposed.
     One parameter: step size h.
 ~OnlineFF
+
 {=HT_POPCORN popcornjul}
 ~Label=HF_POPCJUL
     Conventional Julia using the popcorn formula:
@@ -644,24 +670,6 @@ SUMMARY OF FRACTAL TYPES
       x(n+1) = x(n) - h*sin(y(n) + tan(3*y(n))
       y(n+1) = y(n) - h*sin(x(n) + tan(3*x(n))
     One parameter: step size h.
-
-{=HT_HYPERC hypercomplexj}
-~Label=HF_HYPERCJ
-    HyperComplex Julia set.
-      h(0)   = (xpixel,ypixel,zj,zk)
-      h(n+1) = fn(h(n)) + c.
-      where "fn" is sin, cos, log, sqr etc.
-    Six parameters: c1, ci, cj, ck
-    c = (c1,ci,cj,ck)
-
-{=HT_HYPERC hypercomplex}
-~Label=HF_HYPERC
-    HyperComplex Mandelbrot set.
-      h(0)   = (0,0,0,0)
-      h(n+1) = fn(h(n)) + C.
-      where "fn" is sin, cos, log, sqr etc.
-    Two parameters: cj, ck
-    C = (xpixel,ypixel,cj,ck)
 
 {=HT_QUAT quatjul}
 ~Label=HF_QUATJ
@@ -678,6 +686,7 @@ SUMMARY OF FRACTAL TYPES
       q(n+1) = q(n)*q(n) + c.
     Two parameters: cj,ck
     c = (xpixel,ypixel,cj,ck)
+~OnlineFF
 
 {=HT_ROSS rossler3D}
 ~Label=HF_ROSS
@@ -687,7 +696,7 @@ SUMMARY OF FRACTAL TYPES
       y(n+1) = y(n) + x(n)*dt + a*y(n)*dt
       z(n+1) = z(n) + b*dt + x(n)*z(n)*dt - c*z(n)*dt
     Parameters are dt, a, b, and c.
-~OnlineFF
+
 {=HT_SIER sierpinski}
 ~Label=HF_SIER
     Sierpinski gasket - Julia set producing a 'Swiss cheese triangle'
@@ -702,6 +711,7 @@ SUMMARY OF FRACTAL TYPES
       z(n+1) = z(n)^2 + c(n);
       c(n+1) = c(n)/2 + z(n+1)
     Parameters: real & imaginary perturbation of z(0)
+~OnlineFF
 
 {=HT_SCOTSKIN sqr(1/fn)}
 ~Label=HF_SQROVFN
@@ -714,7 +724,6 @@ SUMMARY OF FRACTAL TYPES
       z(0) = pixel;
       z(n+1) = fn(z(n))^2
     One parameter: the function fn.
-~OnlineFF
 
 {=HT_TEST test}
 ~Label=HF_TEST
@@ -727,6 +736,7 @@ SUMMARY OF FRACTAL TYPES
       z(0) = c = pixel;
       z(n+1) = c^z(n)
     Parameters: real & imaginary perturbation of z(0)
+~OnlineFF
 
 {=HT_MARKS tim's_error}
 ~Label=HF_TIMSERR
@@ -738,7 +748,6 @@ SUMMARY OF FRACTAL TYPES
       imag(tmp) = real(tmp) * imag(c) - imag(tmp) * real(c);
       z(n+1) = tmp + pixel;
     Parameters: real & imaginary perturbations of z(0) and function fn
-~OnlineFF
 
 {=HT_UNITY unity}
 ~Label=HF_UNITY
@@ -819,6 +828,8 @@ Select a fractal type:
 { Cellular Automata }
 { Phoenix }
 { Frothy Basins }
+{ Icon }
+{ Hypercomplex }
 ~EndTable
 ~Doc+
 ;
@@ -1516,13 +1527,13 @@ a b c d e f g h i j k l p, defining:
     |d e f|   |k|\
     |g h i|   |l|\
 
-You can experiment with changes to IFS definitions interactively by using
-Fractint's <Z> command.  After selecting an IFS definition, hit <Z> to
-bring up the IFS editor. This editor displays the current IFS values, lets
-you modify them, and lets you save your modified values as a text file
-which you can then merge into an XXX.IFS file for future use with
-Fractint.
-
+;You can experiment with changes to IFS definitions interactively by using
+;Fractint's <Z> command.  After selecting an IFS definition, hit <Z> to
+;bring up the IFS editor. This editor displays the current IFS values, lets
+;you modify them, and lets you save your modified values as a text file
+;which you can then merge into an XXX.IFS file for future use with
+;Fractint.
+;
 The program FDESIGN can be used to design IFS fractals - see
 {=@FDESIGN FDESIGN}.
 
@@ -1650,7 +1661,7 @@ Normally the orbit points are plotted individually, but for a negative
 spacing the points are connected.
 
 This fractal is similar to the {=HT_POPCORN Pickover Popcorn}.
-
+~OnlineFF
 A variant is the implicit Euler approximation:
 	 y(n+1) = y(n) + dt*f(x(n))\
 	 x(n+1) = x(n) - dt*f(y(n+1))\
@@ -1665,7 +1676,6 @@ time an orbit touches it; the resulting display is a 2-d histogram.
 
 These fractals are discussed in Chapter 14 of Pickover's "Computers,
 Pattern, Chaos, and Beauty".
-
 ;
 ;
 ~Topic=Mandelcloud, Label=HT_MANDELCLOUD
@@ -1757,6 +1767,7 @@ done by the parameters!
             sign of the imaginary component of argument: (x,y) becomes (x,-y)
  ident()  - identity function. Leaves the value of the argument unchanged,
             acting like a "z" term in a formula.
+~OnlineFF
  flip()   - Swap the real and imaginary components of the complex number.
             e.g. (4,5) would become (5,4)
 
@@ -2059,17 +2070,17 @@ in "Scientific American". They are attributed to Barry Martin of Aston
 University in Birmingham, England. 
 
 Hopalong is an "orbit" type fractal like lorenz. The image is obtained by 
-iterating this formula after setting z(0) = y(0) = 0:
-      x(n+1) = y(n) - sign(x(n))*sqrt(abs(b*x(n)-c))
-      y(n+1) = a - x(n)
+iterating this formula after setting z(0) = y(0) = 0:\
+      x(n+1) = y(n) - sign(x(n))*sqrt(abs(b*x(n)-c))\
+      y(n+1) = a - x(n)\
 Parameters are a, b, and c. The function "sign()"  returns 1 if the argument 
 is positive, -1 if argument is negative.
 
 This fractal continues to develop in surprising ways after many iterations.
 
-Another Martin fractal is simpler. The iterated formula is:
-      x(n+1) = y(n) - sin(x(n))
-      y(n+1) = a - x(n)
+Another Martin fractal is simpler. The iterated formula is:\
+      x(n+1) = y(n) - sin(x(n))\
+      y(n+1) = a - x(n)\
 The parameter is "a". Try values near the number pi.
 ;
 ;
@@ -2153,11 +2164,11 @@ to hypercomplex numbers. Fractint's implementation takes advantage of this
 by using "fn" variables - the iteration formula is\
     h(n+1) = fn(h(n)) + C.\
 where "fn" is the hypercomplex generalization of sin, cos, log, sqr etc.
-
+~OnlineFF
 You can see 3D versions of these fractals using fractal type Julibrot.
 Hypercomplex numbers were brought to our attention by Clyde Davenport,
 author of "A Hypercomplex Calculus with Applications to Relativity",
-ISBN 0-9623837-0-8. 
+ISBN 0-9623837-0-8.
 ;
 ;
 
@@ -2314,9 +2325,8 @@ Precedence may be overridden by use of parenthesis.  Note the modulus
 squared operator |z| is also parenthetic and always sets the imaginary
 component to zero.  This means 'c * |z - 4|' first subtracts 4 from z,
 calculates the modulus squared then multiplies times 'c'.  Nested modulus
-squared operators require overriding parenthesis:
-
-	  c * |z + (|pixel|)|
+squared operators require overriding parenthesis:\
+	  c * |z + (|pixel|)|\
 
 The functions fn1(...) to fn4(...) are variable functions - when used,
 the user is prompted at run time (on the <Z> screen) to specify one of
@@ -2355,7 +2365,8 @@ The equations that generate this fractal are not very different from those
 that generate many other orbit fractals.
 
 ~Format-
-      z(0) = pixel;  z(n+1) = z(n)^2 - c*conj(z(n))
+      z(0) = pixel;
+      z(n+1) = z(n)^2 - c*conj(z(n))
       where c = 1 + ai,  and  a = 1.02871376822...
 ~Format+
 
@@ -2385,15 +2396,17 @@ has been subjected to lots of stirring and folding.
 Pixel color is determined by which attractor captures the orbit.  The shade
 of color is determined by the number of iterations required to capture the
 orbit.  In Fractint, the actual shade of color used depends on how many
-colors are available in the video mode being used.  If 256 colors are
-available, the default coloring scheme is determined by the number of
-iterations that were required to capture the orbit.  An alternative
-coloring scheme can be used where the shade is determined by the
-iterations required divided by the maximum iterations.  This method is
-especially useful on deeply zoomed images.  If only 16 colors are
-available, then only the alternative coloring scheme is used.  If fewer
-than 16 colors are available, then Fractint just colors the basins without
-any shading.
+colors are available in the video mode being used.
+
+If 256 colors are available, the default coloring scheme is determined by
+the number of iterations that were required to capture the orbit.  An
+alternative coloring scheme can be used where the shade is determined by
+the iterations required divided by the maximum iterations.  This method is
+especially useful on deeply zoomed images.
+
+If only 16 colors are available, then only the alternative coloring
+scheme is used.  If fewer than 16 colors are available, then Fractint
+just colors the basins without any shading.
 ;
 ;
 ~Topic=Julibrots, Label=HT_JULIBROT

@@ -17,6 +17,7 @@
 #ifdef __TURBOC__
 #include <dir.h>
 #endif
+
 #include "fractint.h"
 #include "fractype.h"
 #include "helpdefs.h"
@@ -85,12 +86,23 @@ void restore_active_ovly()
 
 
 #ifndef XFRACT
+extern int splitpath(char *template,char *drive,char *dir,char *fname,char *ext);
+extern int makepath(char *template,char *drive,char *dir,char *fname,char *ext);
+
 void findpath(char *filename, char *fullpathname) /* return full pathnames */
 {
-   if (filename[0] == SLASHC
-     || (filename[0] && filename[1] == ':')) {
-      strcpy(fullpathname,filename);
-      return;
+   char fname[FILE_MAX_FNAME];
+   char ext[FILE_MAX_EXT];
+   extern int first_init;
+   if (filename[0] == SLASHC || (filename[0] && filename[1] == ':')) {
+      if(access(filename,0)==0) {   /* file exists */
+         strcpy(fullpathname,filename);
+         return;
+         }
+      else {
+         splitpath(filename ,NULL,NULL,fname,ext);
+         makepath(filename,""   ,"" ,fname,ext);
+         }
       }
    fullpathname[0] = 0; 			/* indicate none found */
 #ifdef __TURBOC__				/* look for the file */
@@ -746,7 +758,7 @@ int ifsload()			/* read in IFS parameters */
    fclose(ifsfile);
 
    if (ret == 0) {
-      numaffine = i;
+      numaffine = i/rowsize;
       if ((ifs_defn = (float far *)farmemalloc(
 			(long)((NUMIFS+1)*IFS3DPARM*sizeof(float)))) == NULL) {
      stopmsg(0,insufficient_ifs_mem);
@@ -762,11 +774,13 @@ int ifsload()			/* read in IFS parameters */
 int find_file_item(char *filename,char *itemname,FILE **infile)
 {
    char tmpname[41];
+   char fullpathname[FILE_MAX_PATH];
    long notepoint;
    char buf[201];
    int c;
-   if ((*infile = fopen(filename,"rt")) == NULL) {
-      sprintf(buf,s_cantopen,filename);
+   findpath(filename, fullpathname); 
+   if ((*infile = fopen(fullpathname,"rt")) == NULL) {
+      sprintf(buf,s_cantopen,fullpathname);
       stopmsg(0,buf);
       return(-1);
       }
@@ -916,4 +930,15 @@ int ungetakey(int key)
 int gifview()
 {
     return(gifview1());
+}
+
+char *extract_filename(char * fullfilename)
+{
+   static char fname_ext[FILE_MAX_FNAME+FILE_MAX_EXT];
+   char fname[FILE_MAX_FNAME];
+   char ext[FILE_MAX_EXT];
+   fname_ext[0] = 0;
+   splitpath(fullfilename ,NULL,NULL,fname,ext);
+   makepath(fname_ext,""   ,"" ,fname,ext);
+   return(fname_ext);
 }

@@ -1476,7 +1476,7 @@ finish:
  * end Msnyder code.
  */
 
-   if(kbdchar != 's')
+   if(kbdchar != 's'&& kbdchar != 'S')
    {
       Cursor_Hide();
       if(windows == 0)
@@ -1521,7 +1521,7 @@ finish:
    calctype = oldcalctype;
 
    helpmode = oldhelpmode;
-   if(kbdchar == 's')
+   if(kbdchar == 's' || kbdchar == 'S')
    {
       viewwindow = viewxdots = viewydots = 0;
       viewreduction = 4.2;

@@ -672,11 +672,11 @@ static void write_batch_parms(FILE *batch,char *colorinf,int maxcolor)
             put_parm(" 3Dmode=%s",juli3Doptions[juli3Dmode]);
       }
       if (fractype == FORMULA || fractype == FFORMULA)
-	 put_parm( " formulafile=%s formulaname=%s",FormFileName,FormName);
+	 put_parm( " formulafile=%s formulaname=%s",extract_filename(FormFileName),FormName);
       if (fractype == LSYSTEM)
-	 put_parm( " lfile=%s lname=%s",LFileName,LName);
+	 put_parm( " lfile=%s lname=%s",extract_filename(LFileName),LName);
       if (fractype == IFS || fractype == IFS3D)
-	 put_parm( " ifsfile=%s ifs=%s",IFSFileName,IFSName);
+	 put_parm( " ifsfile=%s ifs=%s",extract_filename(IFSFileName),IFSName);
       if (fractype == INVERSEJULIA || fractype == INVERSEJULIAFP)
       {
 	 extern int major_method, minor_method;
@@ -720,7 +720,7 @@ static void write_batch_parms(FILE *batch,char *colorinf,int maxcolor)
 #ifndef XFRACT
 	 put_parm(" params=%.17Lg",(long double)param[0]);
 #else
-       put_parm(" params=%.17g",(long double)param[0]);
+       put_parm(" params=%.17g",(double)param[0]);
 #endif
 	 for (j = 1; j <= i; ++j)
         if (fractype == CELLULAR)
@@ -729,7 +729,7 @@ static void write_batch_parms(FILE *batch,char *colorinf,int maxcolor)
 #ifndef XFRACT
 	    put_parm("/%.17Lg",(long double)param[j]);
 #else
-          put_parm("/%.17g",(long double)param[j]);
+          put_parm("/%.17g",(double)param[j]);
 #endif
 	 }
 
@@ -1113,7 +1113,7 @@ static void put_float(int slash,double fnum,int prec)
 #ifndef XFRACT
      sprintf(bptr,"%1.*Lg",prec,(long double)fnum);
 #else
-     sprintf(bptr,"%1.*g",prec,(long double)fnum);
+     sprintf(bptr,"%1.*g",prec,(double)fnum);
 #endif
 
    if ((dptr = strchr(bptr,'.'))) {
