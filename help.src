@@ -17,8 +17,8 @@
    { Introduction }			    { Distribution of Fractint }
    { Conditions on Use }		    { Contacting the Authors }
    { Getting Started }			    { The Stone Soup Story }
-   { New Features in Version 18.2 }	    { A Word About the Authors }
-					  { Other Fractal Products }
+   { What's New for the Second Edition }    { A Word About the Authors }
+   { New Features in Version 18.21 }	    { Other Fractal Products }
    { Display Mode Commands }
    { Color Cycling Commands }		    { Using Fractint With a Mouse }
    { Palette Editing Commands } 	    { Video Adapter Notes }
@@ -37,7 +37,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New Features in Version 18.2", FF}
+{     , 0, "New Features in Version 18.21", FF}
 
 {     , 0, "Introduction", "Conditions on Use", FF}
 
@@ -253,9 +253,62 @@ documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in Version 18.2
-Versions 18.1 and 18.2 are bug-fix releases for version 18.0.  Changes from
-18.1 to 18.2 include:
+~Topic=What's New for the Second Edition
+The first edition of Fractal Creations came with Fractint version 15.1x,
+which was released in late 1990. The Fractal Creations Second Edition
+comes with Fractint version 18.2X, released in mid 1993. In the
+intervening three years literally hundreds of new additions and improvements 
+have been made. A few of the main changes are highlighted here. For more 
+details see { New Features in Version 18.21 } and { Revision History }.
+
+ * More than 27 new fractal types on the fractal type screen. Since
+   many previous fractal types have been consolidated, in reality
+   there are hundreds more new types.
+
+ * Over 350 screens of on-line help accessible via a hypertext system
+   that lets you jump directly to related topics.
+
+ * Many fractal types have been greatly speeded up through the use of
+   hand-coded assembler routines.
+
+ * New real-time window mode lets you view orbit tracks and Julia outlines
+   as you move the cursor around your computer screen. 
+
+ * New 3-D fractal types including ICON3D, new lorenz types, new IFS
+   types, and a greatly generalized Julibrot type that can use 4-D math.
+
+ * Fractal parameter sets can be saved as named entries in .PAR files
+   so that you can exchange fractals in very compact form with fractal
+   enthusiasts around the world. Fractint's PAR format has become a
+   de facto standard supported by software on other platforms including
+   Mandella (Macintosh) and Xfract (UNIX).
+
+ * New capability to make truly GIANT images, up to 65535x65535x256. The
+   previous limit was 2048x2048x256.
+
+ * Greatly improved and expanded super VGA support.
+
+ * IFS and Lyapunov fractals can now be stored as named entries
+   in .IFS and .L files.
+
+ * Many new rendering options, including inside color options zmag, 
+   epscross, starcross, periodicity and outside options real, imag, mult,
+   and summ.
+
+ * You can make fractal music (well, maybe "noise" is more accurate)
+   using Sound= with <O>rbits and <R>ead commands. This feature was
+   worked out with the help of Nick Dotson, a blind Fractint user,
+   who uses this feature to visualize fractals.
+;
+;
+;
+~Topic=New Features in Version 18.21
+Fractint version 18.21 is a special version of Fractint supplied with the
+Waite Group's "Fractal Creations, Second Edition", based on the 
+freeware version 18.2.
+
+Versions 18.1 and 18.2 (and 18.21) are bug-fix releases for version 18.0.  
+Changes from 18.1 to 18.21 include:
 
  The <b> command now causes filenames only to be written in PAR files.
 

@@ -1,0 +1,811 @@
+Hot_Silk!          { ; Fractal Flag
+                     ; (c)1992 Peter Moreland 100012,3213
+  reset type=barnsleym1 passes=t
+  corners=-1.907569/-1.35147/0.369773/-0.37169/-1.35147/-0.37169
+  bailout=12123 decomp=256 periodicity=-256
+  colors=000g0J<56>10y10y00z00z11y<77>vv4ww3xx2yy2yy1zz0<83>z10z00z00y01<22>h0\
+  I
+  }
+
+Mirror, Mirror!    { ; (c) Peter Moreland 100012,3213
+  reset type=barnsleyj1 corners=-1.3564493/-1.2725469/0.717811/0.7807173
+  params=0.1414/1.79 float=y maxiter=32000 bailout=100 decomp=256
+  colors=00000e0e00eee00e0eeL0eeeLLLLLzLzLLzzzLLzLzzzLzzz000555<3>HHHKKKOOOSSS\
+  WWW___ccchhhmmmssszzz00z<3>z0z<3>z00<3>zz0<3>0z0<3>0zz<2>0GzVVz<3>zVz<3>zVV<\
+  3>zzV<3>VzV<3>Vzz<2>Vbzhhz<3>zhz<3>zhh<3>zzh<3>hzh<3>hzz<2>hlz00S<3>S0S<3>S0\
+  0<3>SS0<3>0S0<3>0SS<2>07SEES<3>SES<3>SEE<3>SSE<3>ESE<3>ESS<2>EHSKKS<2>QKSSKS\
+  SKQSKOSKMSKK<2>SQKSSKQSKOSKMSKKSK<2>KSQKSSKQSKOSKMS00G<3>G0G<3>G00<3>GG0<3>0\
+  G0<3>0GG<2>04G88G<2>E8GG8GG8EG8CG8AG88<2>GE8GG8EG8CG8AG88G8<2>8GE8GG8EG8CG8A\
+  GBBG<2>FBGGBGGBFGBDGBCGBB<2>GFBGGBFGBDGBCGBBGB<2>BGFBGGBFGBDGBCG000<6>000
+  }
+
+rhs249             { ; (c) Dick Sherry Aug 8, 1992 76264,752
+  reset type=barnsleym2 corners=-0.271995/0.272007/0.75088/1.158889
+  params=1/-0.06 maxiter=500 inside=0 potential=255/1000/1
+  colors=000``0<28>FF000F<62>00z00z00y<61>00FFF0<61>zz0zz0yy0<31>aa0
+  }
+
+food_chain         { ; Jonah's View?
+                     ; BG Dodson 1993 71636,1075
+  reset type=barnsleyj2 corners=-31.99/20.4736/-20.174345/19.173355
+  params=0.6/1.1 maxiter=20 bailout=22 inside=bof60 outside=summ
+  invert=0.5/0.0533337/0
+  colors=000hh0<14>330000003<14>00r<15>000<15>r00<15>000<15>0pp<14>044000222<1\
+  4>hhh<14>333000000<26>007017037<13>4S4<13>2A2292171151131000<15>rAr<15>000<1\
+  4>ee0
+  }
+
+AeolisAndJanus     { ; 00:06:40.46
+                     ; ... from JMS01:PigSnoutFace
+  reset type=barnsleym3 corners=3.320626/-2.679374/-4.4/4.4/-2.679374/4.4
+  maxiter=32767 bailout=16 outside=real logmap=yes invert=1/0/0
+  colors=000840<13>zX0<15>000<15>ut0<15>000GA4<12>2v10z00w0<14>000<15>00z<14>0\
+  00<16>z0X<15>000<15>p0w<15>000<15>zzz<15>000L00<13>z00<2>p00l00h00d00a00<9>0\
+  00420
+  }
+
+Fractal_Angel???   { ; Most bizzare.
+                     ; BG Dodson 71636,1075
+  reset type=barnsleyj3 corners=-31.99/31.989999/-23.992556/23.992536
+  params=0.1/0.36 maxiter=32000 inside=bof61 potential=255/200/32000
+  invert=7.99752/0/0
+  colors=000zg3<44>v31v21u00<4>t00t00t00s00s00s00<34>g00g00f00e00<5>d00c00c00b\
+  00b00<82>644644544444<57>yyyzzzzzzzzzzzzzzz
+  }
+
+YosemiteSunrise    { ; 00:01:05.63
+                     ; 26 dec 92 .. caren park
+  reset type=cmplxmarksmand passes=t
+  corners=-0.761978/0.934022/-1.207056/0.064944 params=0.4/1/5/2 float=y
+  maxiter=500 inside=maxiter potential=255/50/500 periodicity=-1
+  colors=000zj0<6>zx0zz0zz1<29>zzxzzzzzz<61>zV1zU0zU0zT0<28>z10z00z00y00<30>c0\
+  0b11a11`22_22<23>GEEFFFFFFFFF<29>x11z00z10<21>zh0
+  }
+
+The_Great_Divide   { ; Bridge that gap with....(C)1992 Peter Moreland1000123213
+  reset type=mandel
+  corners=-7.079179/-3.838073/-3.277214/4.310403/-9.554437/0.02313
+  params=5/-0.555 float=y maxiter=30333 bailout=500 fillcolor=9
+  inside=256 decomp=256 periodicity=-1
+  colors=000311522343642334534356654931D31962D52964D74784A83D92FC2A95D95BC\
+  5ED54799795ACA9ADA9AD9ED9AADDBDADEEDDG31H62L72H74L75P75HA3L93ID3LF3H95LA\
+  5HD6LD6QC6HB8LB8ID9ME9HACHEDLEDPB8SB9PE9TE9QFCUFCFG6EHBJG3MG3IG6MH5NK6PI\
+  3UH3RK3TL3PI4TH6QL5TM5UO6IH9MHAIKAMLAIHEMIDILDMLEQHATHAPLAULAPIDTIDQLEUL\
+  EMPESPC37J5EJCEI4ESAEQIEIPFJHEO6GMEHKFPM6IR9KTCPUIHHLIHJLIMLHHILLILHKMML\
+  LRLILPKTPKJLQQMQLPSRRRXE6XDAYL5YQ6dP6YKDdKCZPDeRCZMHdMIYPI`PIXTIaSJXQLaQ\
+  LXTMaTLeRLYMRZTQfTQkTNlURUXJUXSYWEfXA_YMdXN`XTfYTecSmXUlfS4FW6IX8MX9OZJN\
+  XRNXMQYSTZKRdRVcYUYfUYUX`UYe_Z_eYXiYXe`Xh`YeZ`iY`ea`ia`ac_gd`Z`ffafadhgf\
+  gn`Zsa_nd`tcanbdsbdnffuffikinlitliZbkdbkafmfinaisnjlujkhlqimsllmplmnompo\
+  mmmpqnpmoqppqunprtruupnptwrtqtxutuxtuxwutvyyvwuxzzzz<24>zzz
+  }
+
+sai003             { ; (c) 1993 Richard H. Sherry CIS:76264,752
+  reset=1732 type=julia passes=b corners=-2.0/2.000012/-1.499989/1.5
+  params=-7.15255737304688e-007/1.99 maxiter=256 fillcolor=241
+  inside=-100 outside=summ logmap=yes potential=255/500/25
+  periodicity=0
+  colors=000eZM<16>xo`zpaypa<13>kcRibRibR<14>UPF111<29>ppp<31>000PFF<29>xe\
+  DzfCyfC<30>PFF0A0<15>Zc0<14>0A0<15>Zc0<15>0A0SNC<11>dYM
+  }
+
+sac030             { ; (c) Richard H. Sherry 1993, CIS:76264,752
+                     ; V17.32
+  reset=1731 type=mandel4
+  corners=-1.259916/-1.109256/0.100439/-0.100434/-1.109256/-0.100434
+  maxiter=256 inside=0 logmap=yes potential=256/250/50 biomorph=0
+  periodicity=0
+  colors=000TTT<16>000PFF<52>uuE_NE<8>PFF0A0<15>Zc0<14>0A0<12>SY0000<17>00\
+  0SNC<3>WQF000<2>000aVJ<3>eZM000<2>000kcR<3>ogU000<2>000ulY<2>xo`000<3>00\
+  0ulZtkYsjX000<3>000meTldSkcRibR<5>dZN000<9>222333555<26>nnnpppooo<12>UUU
+  }
+
+Julias Jewels      { ; These would be *very* nice to own!
+  reset type=julia4 corners=0.43594/0.565764/-0.4706169/-0.3732543
+  params=0.6/0.55
+  colors=000exG<2>dyD<3>qd`<6>jdYmG8<3>pAA<16>3BN0CO0CO<36>MYsNZtNZtOZt<34>phq\
+  qipphp<33>ABM
+  }
+
+TheyWentThat_A_Way { ; (c)1992 Peter Moreland 100012,3213
+  reset type=manzpower
+  corners=6.13366561/6.13069422/21.2647339/21.2103975/6.15867736/21.2313848
+  params=11/6/4.555/12.666 float=y maxiter=32000 bailout=100 inside=255
+  potential=255/128/0 decomp=256 biomorph=0
+  colors=LSUcio<128>KQUJQUJQUJPUJPUIPU<11>FMUFLUFLUEKUEKUDJV<2>BLSAMR9MQ8MP6KM\
+  <58>inujovinu<34>cio
+  }
+
+CutPaperI          { ; From "EVIL" By Dick Sherry, via SMOKIE by Peter Moreland
+                     ; Dan Farmer 
+  reset type=manzzpwr
+  corners=-1.1503476/-1.0993901/-0.002827848/-0.058661504/-1.0993901/-0.058550\
+  457 params=0.1/0/2 float=y maxiter=32000 inside=0 decomp=255
+  colors=000<126>00y00z00y<125>000
+  }
+
+sac016             { ; (c) Richard H. Sherry 1993, CIS:76264,752
+                     ; V17.32
+  reset=1731 type=julzzpwr
+  corners=2.55567/-2.76433/-3.546667/3.546667/-2.76433/3.546667
+  params=0.010101/0.0707/3 float=y maxiter=256 inside=0 logmap=yes
+  potential=256/200/75 periodicity=0
+  colors=000Xb0<14>0A0SNC<6>ZTH000<54>000111333<28>ppp<31>000PFF<29>xeDzfC\
+  yfC<30>PFF0A0<15>Zc0<14>0A0<15>Zc0
+  }
+
+CoralAtolls        { ; 00:03:27.29
+                     ;  26 nov 92 .. caren park
+  reset type=mandellambda
+  corners=-1.01561762/-1.00898082/0.10249492/0.10747252 params=0.1/0.2
+  float=y maxiter=5000 bailout=8000 inside=maxiter periodicity=-1
+  colors=000703<14>z0X<15>000<15>p0w<15>000<15>zzz<15>000L00<13>z00<2>p00l00h0\
+  0d00a00<9>000<15>zX0<15>000<15>ut0<15>000GA4<12>2v10z00w0<14>000<15>00z<14>0\
+  00301
+  }
+
+Really?            { ; 00:01:27.27
+                     ; 19 dec 92 .. caren park
+  reset type=lambda corners=0.00437346/0.00645346/0.07547513/0.07701662
+  params=1.00000000000005/0.2 float=y maxiter=500 inside=maxiter
+  colors=000K0A<4>000<15>p0w<15>000<15>zzz<15>000L00<13>z00<2>p00l00h00d00a00<\
+  9>000<15>zX0<15>000<15>ut0<15>000GA4<12>2v10z00w0<14>000<15>00z<14>000<16>z0\
+  X<9>O0C
+  }
+The_Stargate       { ; The monolith should be here somewhere? (c)1992 Peter M.
+  reset type=magnet1m passes=b
+  corners=-15.976545/-12.5556/-0.799068/-3.116968/-11.998739/-3.812038
+  params=1.76/4 maxiter=32000 bailout=500 fillcolor=9 inside=zmag
+  potential=255/511/0 decomp=256
+  colors=0009TU<35>9Im9ImAHnBHnCHnWGuDGo<19>WBu`ot<21>WCuv`I<21>XCtGSG<43>WBui\
+  NG<16>WBsJyI<11>VEr4Yf<46>WBupuI<9>XFrJ5S<9>N7Z
+  }
+
+OctopusBreast      { ; 00:30:23.96
+                     ; 05 dec 92 .. caren park
+  reset type=magnet1j corners=-4.218291/2.565709/-2.544/2.544
+  params=-0.2/0.4 float=y maxiter=500 inside=maxiter periodicity=0
+  colors=000dce<4>nrt<15>OI4<6>eYIg_KiaMkcOneQ<4>zp`<4>jdVgaUcZS`WRYUQ<6>AAJ<3\
+  >ALPAORARTBUVBXX<6>DqkDtmCqk<5>8Xb7T`9Q_<5>L4Q<8>VHH<5>rH4vH1zH0vH1<7>SDE<3>\
+  N3IL0JL1JM2JN3JO4I<10>tq2wu0zz0ww0<6>``8YY9XVA<6>KAIMAJOAL<12>ziE<13>K8B4120\
+  00<15>svbsvbsvbsvb<13>UMGSJEQII<5>EAa<6>7Nt5Pw5Nt<5>A5b<2>D6WheTG8R<2>KBK000\
+  OEJ<7>b`b
+  }
+
+BirdAndWaves       { ; 00:01:03.22
+                     ; 14 dec 92 .. caren park
+  reset type=magnet2m passes=t
+  corners=-1.325065/-0.821314/-0.247782/-0.3197466/-1.109172/-0.5356402
+  params=0.8/1 float=y maxiter=500 inside=-100 outside=real logmap=yes
+  decomp=32 periodicity=-1
+  colors=7Nu5Px<5>98fA5cB5`<3>G8SH9QIAQ<4>SKP<3>_VZ`Y`b`cdcf<4>nru<15>OI5<6>eY\
+  Jg_LiaNkcPneR<4>zpa<4>jdWgaVcZT`WSYUR<6>AAK<3>ALQAOSARUBUWBXY<6>DqlDtnCql<5>\
+  8Xc7Ta9Q`<5>L4R<8>VHI<7>zH0<8>SDF<3>N3JL0KL1KM2KN3KO4J<12>zz0<7>``9YYAXVB<6>\
+  KAJMAKOAM<12>ziF<13>K8C413000<15>svcsvcsvcsvc<4>jiWhfUfdTebS<4>YRKWPJUMHSJF<\
+  6>EAb<5>8Lr cyclerange=0/255
+  }
+
+sac003             { ; (c) Richard H. Sherry 1993, CIS:76264,752
+                     ; V17.32
+  reset=1731 type=mandphoenix corners=-2.5/1.500012/-2.552616/0.447372
+  params=0.5/1.3/-3 maxiter=256 inside=0 outside=imag logmap=yes
+  periodicity=0
+  colors=000CBCCABC8AD79<40>qe8qe8pd8<45>KAAKAALBA<41>sg8sg8rf8<40>K9B<15>\
+  zz6<14>MFA96G<15>B_ZCa`Bb`Aca9da8da<21>CCD
+  }
+
+Wolf               { ; Jonathan Osuch
+  reset type=phoenix corners=-1.557441/2.234555/-1.422003/1.421998
+  params=-0.75078049362069/1.40200999374372/2 inside=0
+  }
+t16097             { ; Jon Horner
+  reset type=manowar corners=-2.5/1.500012/-1.500014/1.5 inside=0
+  invert=0.2/0.2/0.2 decomp=128
+  colors=000J00<8>200000001<30>00z<30>002000100<30>wPF<30>211000101<29>_0_a0a`\
+  0`<28>101000100<30>w00<20>L00
+  }
+t16142             { ; Jon Horner
+  reset type=manowarj corners=-5.803056/9.808064/-7.758382/3.949979
+  params=0/0.01 inside=0 invert=0.3/0/0 periodicity=4
+  colors=000KET<2>EAb<6>7Nu5Px5Nu<5>A5cB5`<6>KBLMCIOEK<3>WQUYSX_VZ`Y`<6>nru<4>\
+  ggdfeadbYb`U<7>OI5<5>bVHeYJg_LiaN<6>zpa<4>jdWgaVcZT`WSYUR<6>AAK<4>AOSARUBUWB\
+  XYB__Bba<5>Dtn<6>8Xc7Ta9Q`<5>L4R<8>VHI<7>zH0<7>WEDSDFRAG<2>N3JL0KL1KM2KN3KO4\
+  J<12>zz0<7>``9YYAXVB<6>KAJ<4>VBQXBS_CUbCV<6>zEe<15>000<15>svc<14>XOBVL9UKC<3\
+  >MFP
+  }
+Transmitter        { ; More fun, ready to zoom.
+  reset type=marksmandel corners=-1.236413/-1.466042/0.088695/-0.083512
+  params=0.8/0/-1
+  colors=000Oaq<5>XQlYOkYKj<21>ejpekpfor<14>`Wd_UcX8BX8AW89Z54<26>5fjNO0DYO1yq\
+  3pn4gk5Zh5Sg<38>D7ZD6ZC4a<19>EHACG7EH9
+  }
+
+SEASLUG            {
+  reset=1611 type=marksjulia passes=1 corners=-2.0/2.0/-1.499983/1.5
+  params=0.1/0.9 maxiter=1023 inside=0 symmetry=none
+  
+  colors=000F4E<11>7DdG66<8>1tHmsmIDB<3>MxbJ79<6>YobH25<18>DWLCYME6E<3>1Um\
+  <18>fgzcWh_JQ<22>XpZWr_YDg_EkH26<21>GO_FPaH58<10>CvoI56<9>TrMMBA<4>kxaJ4\
+  9<4>YKXG5B<4>7TeI35<16>lcGJ16<13>vARI26<20>r`fH25<20>QQ2H17G29G3B
+  }
+
+OrnateCBCLogo      { ; Caren Park 00:02:04.73
+                     ; ... from JMS:PseudoSphere
+  reset type=mandelfn function=ident
+  corners=-1.552978/1.551022/-1.155134/1.172866 float=y maxiter=32767
+  outside=real logmap=yes invert=1/0/0 finattract=y
+  colors=000002<122>00z000<125>z00000<2>001
+  }
+rhs131             { ; (c) June 1992 Dick Sherry 76264,752
+                     ; no commercial use w/o permission
+  reset type=manfn+exp function=cos float=yes
+  corners=4.11792/4.546936/4.822723/5.145401 maxiter=500 inside=0
+  potential=255/300/150 decomp=265 biomorph=0
+  colors=000000000usp<7>d_6<8>zzz<18>`ZI_XG`YI<21>zzzKU5<10>7L15K06K0<11>KU400\
+  0KU0000KU0000KU0000KU0000KU0000<154>000
+  }
+
+cet16109           { ; Jon Horner
+  reset type=lambdafn function=exp
+  corners=-5.711838/-0.014282/0.165024/4.436798 params=2/4 inside=0
+  potential=255/511/0
+  colors=000332SDF<3>N3JL0KL1KM2KN3KO4J<12>zz0<7>``9YYAXVB<6>KAJMAKOAM<12>ziF<\
+  13>K8C413000775<13>svcsvcsvcsvc<13>UMHSJFQIJ<5>EAb<6>7Nu5Px5Nu<5>A5cB5`<6>KB\
+  LMCIOEK<3>WQUYSX_VZ`Y`<6>nru<15>OI5<5>bVHeYJg_LiaN<6>zpa<4>jdWgaVcZT`WSYUR<6\
+  >AAK<4>AOSARUBUWBXYB__Bba<5>Dtn<6>8Xc7Ta9Q`<5>L4R<8>VHI<7>zH0<7>WED
+  cyclerange=2/255
+  }
+
+rhs137             { ; (c) June 1992 Dick Sherry 76264,752
+                     ; no commercial use w/o permission
+  reset type=manfn+zsqrd function=log float=yes
+  corners=-23.043366/-26.245789/-2.199417/2.071243/-26.245789/2.071243
+  params=20 maxiter=32000 inside=0 potential=255/300/150 decomp=265
+  biomorph=0
+  colors=000<14>0000K0<23>070060070<10>0L0<3>mM1020<192>011011000f_8eZ8
+  }
+
+ChevyChrome        { ; 00:02:50.00
+                     ; 08 Dec 92 .. caren park
+  reset type=julfn+zsqrd function=cosxx
+  corners=-2.00383/2.007874/-1.507797/1.5 params=-0.5/0.5 maxiter=2250
+  bailout=30 decomp=256 biomorph=0
+  colors=000WPJUMHSJF<6>EAb<6>7Nu5Px5Nu<5>A5cB5`<2>E7UG8SH9QJANKBL000OEK<5>_VZ\
+  `Y`b`cdcf<4>nru<15>OI5<6>eYJg_LiaNkcPneR<4>zpa<4>jdWgaVcZT`WSYUR<6>AAK<3>ALQ\
+  AOSARUBUWBXY<6>DqlDtnCql<5>8Xc7Ta9Q`<5>L4R<8>VHI<7>zH0<8>SDF<3>N3JL0KL1KM2KN\
+  3KO4J<12>zz0<7>``9YYAXVB<6>KAJMAKOAM<12>ziF<13>K8C413000<15>svcsvcsvcsvc<11>\
+  YRK
+  }
+
+Vortex......       { ; "They are moving right into the vortex!" (C)1993 PGM
+                     ; (c)1993  Peter Moreland 100012,3213
+  reset type=julia(fn||fn) function=recip/conj
+  corners=-7.395582/-7.086847/-0.432864/-0.201313 params=1/-0.33/0.25
+  float=y maxiter=20000 bailout=500 decomp=256
+  colors=000QEF<11>G2JF0KF0K<11>I0NI0NI0NI0OI0OI0P<33>Q0XR0YR0YR0ZR0Z<6>T0\
+  bT0bU1bU2c<62>zzzzzzzzy<60>zz1zz0zy0yx0<45>QFF
+  }
+
+The_Final_Curtain  { ; Regrets, I have a few, but then again, Sid Lives! <g>.
+                     ; (c)1993 Peter Moreland,  CIS Address 100012,3213
+                     ;  
+  reset type=manlam(fn||fn) function=sqr/conj
+  corners=-1.078314/-0.623828/0.775666/0.47905/-0.772323/0.367679
+  params=1.76/0/10 float=y maxiter=500 bailout=90
+  colors=LSU6KM<58>inujovinu<164>JRTIRTIRTHRTHRT<23>8MP
+  }
+
+Cellular           { ; (c)1992 Peter Moreland 100012,3213
+  reset type=popcorn
+  corners=5.335739/5.043655/3.106827/6.645966/3.498291/5.510727
+  params=0.078
+  colors=000gVP<7>nYKt`GnYJ<5>s`Gt`FsRh<5>t_JaAb<4>eFZeGZfGYfHXgIW<23>t`Foac<7\
+  4>t`Ft`Ft`Ft_Ft_FtZFtZFsYF<7>sXF
+  }
+
+sba051             { ; (c) 1993 Richard H. Sherry, CIS:76264,752
+  reset type=sierpinski passes=b corners=-0.9/1.699996/-0.8999948/1.7
+  maxiter=256 bailout=155 fillcolor=253 inside=zmag outside=mult
+  potential=255/200/0 invert=0.67/0/0 periodicity=0
+  colors=0008H0<11>Zc0<2>TY0QW0OU0LS0JQ0<7>0A0<15>Zc0<15>0A0SNC<29>xo`zpay\
+  pa<13>kcRibRibR<14>UPF111<29>ppp<31>000PFF<29>xeDzfCyfC<30>PFF0A0<2>6F0
+  }
+
+SpiderLeggings     { ; 00:11:23.54
+                     ; 11 dec 92 .. caren park
+  reset type=spider passes=t
+  corners=-1.3204703/-1.3828737/-0.052686/0.056887/-1.3828737/0.056887
+  maxiter=500 fillcolor=7 inside=zmag outside=imag logmap=yes
+  periodicity=4
+  colors=000ZKD<2>RCCEEEHHG000LLL<12>ppn<15>F0AUPF<2>OI5<6>eYJg_LiaNkcPneR<4>z\
+  pa<12>UPFHGMEDLAAK<3>ALQAOSARUBUWBXY<6>DqlDtnCql<5>8Xc7Ta9Q`<5>L4R<8>VHI<7>z\
+  H0<8>SDF<4>L0K0G5<21>Np6Pr7Op7<16>0G5ZJE<6>wgF<8>XKDUHDSGC<6>AB7<12>svcsvcsv\
+  csvc<9>aXO<6>kbL000ocJ<6>zjF<9>aMD
+  }
+
+t17058             {
+  reset type=tetrate
+  corners=-0.099385/0.048997/0.109008/-0.088834/0.048997/-0.088834
+  params=-1 inside=zmag outside=imag potential=255/511/0
+  invert=0.05/0.01/0.01
+  colors=000ME8LD7<53>kSIlSImTJnTJnTJ<2>qVKqVKqUJ<28>r53s42s53<60>spyspyspx<19\
+  >slnslmsllsklskkskj<21>tdWucVtcV<7>nZQmYPlXPlXP<35>NF8
+  }
+Eggzactly!         { ; You must be yoking... (C)1993 Peter Moreland 100012,3213
+  reset type=tim's_error function=sqr
+  corners=-1.207252452/-1.087561701/-0.0635867674/-0.2180058723/-1.0877397\
+  04/-0.218058332 float=y maxiter=25 bailout=10 outside=real
+  decomp=256 biomorph=256
+  colors=000310521342641333533355653930D30961D51963D73783A82D91FC1A94D94BC\
+  4ED44789785ABA99DA8AD8ED8AACDBCADDEDCG30H61L71H73L74P74HA2L92ID2LF2H94LA\
+  4HD5LD5QC5HB7LB7ID8ME8HABHECLECPB7SB8PE8TE8QFBUFBFG5EHAJG2MG2IG5MH4NK5PI\
+  2UH2RK2TL2PI3TH5QL4TM4UO5IH8MH9IK9ML9IHDMICILCMLDQH9TH9PL9UL9PICTICQLDUL\
+  DMPDSPB37I5EICEH4ERAEPIEHPFIHEN6GLEHJFPL6IQ9KSCPTIHGLIGJLHMLGHIKLIKHKLML\
+  KRLHLPJTPJJLPQMPLPRRRQXE5XD9YL4YQ5dP5YKCdKBZPCeRBZMGdMHYPH`PHXTHaSIXQKaQ\
+  KXTLaTKeRKYMQZTPfTPkTMlUQUXIUXRYWDfX9_YLdXM`XSfYSecRmXTlfR4FV6IW8MW9OYJN\
+  WRNWMQXSTYKRcRVbYUXfUXUX_UYd_ZZeYWiYWe`Wh`XeZ_iY_ea_ia_acZgd_Z`efaeadggf\
+  fn`YsaZnd_tc`nbcsbcnfeufeikhnlhtlhZbjdbjaflfimairnjkujjhlpimrlllpllnolpo\
+  lmmoqnomoppppunortquuonpswrsqtwuttxttxwttvxyvvuxyzzy<24>zzy
+  }
+
+Downpoor           { ; Pastal watercolour thingy - (c) 1992 Pete M. 100012,3213
+                     ; Blantyre House, Cossack SQ, Nailsworth, Gloucs, UK.
+  reset type=fn(z)+fn(pix) function=cosxx/cosh
+  corners=-1.502386/-1.371228/2.3414666/2.4398491 params=1.5/0.06/1
+  colors=000eQUhFLk4C<7>duQ`aaYIl<2>ZViZZhXWe<6>K8H<2>5G`<7>Y9WXXSWtP<7>rgvkVu\
+  dIu<6>nVC<2>ifQgjVgbQ<2>eDAeV_ely<3>TDd<6>QuJIhYBXl<2>Oh_<5>mjr<5>ohrohrqbi<\
+  3>uGBqWQnjc<2>1Vw<7>kDj<5>MEM<5>cX5MEv<6>gctjgtkhr<4>nkf<7>73gOFhdRieIh
+  }
+
+Uh...yeah...II     { ; Interesting
+                     ; BG Dodson 1992 71636,1075
+  reset type=fn(z*z) function=cotan passes=b corners=-4.0/4.0/-3.0/3.0
+  float=y maxiter=32000 fillcolor=200 inside=bof61 logmap=4
+  potential=253/3000/1 decomp=128
+  colors=000151131000<15>rAr<15>000<15>hh0<14>330000003<14>00r<15>000<15>r00<1\
+  5>000<15>0pp<14>044000222<14>hhh<14>333000000<26>007017037<13>4S4<15>171
+  }
+
+cet16104           {
+  reset type=fn*fn function=exp/tanh
+  corners=0.144507/1.626775/1.426092/2.537793 float=y inside=0
+  potential=255/511/0
+  colors=000AB7vH3zH0<7>WEDSDFRAG<2>N3JL0KL1KM2KN3KO4J<12>zz0<7>``9YYAXVB<6>KA\
+  JMAKOAM<12>ziF<13>K8C413000332775EEA<11>svcsvcsvcsvc<13>UMHSJFQIJ<5>EAb<6>7N\
+  u5Px5Nu<5>A5cB5`<6>KBLMCIOEK<3>WQUYSX_VZ`Y`<6>nru<15>OI5<5>bVHeYJg_LiaN<6>zp\
+  a<4>jdWgaVcZT`WSYUR<6>AAK<4>AOSARUBUWBXYB__Bba<5>Dtn<6>8Xc7Ta9Q`<5>L4R<8>VHI\
+  <5>rH5 cyclerange=2/255
+  }
+
+Cut_me             { ; Cut me and I bleed Fractals!
+                     ; Ronald C. Lewen, 76376,2567
+  reset type=fn*z+z function=cosh corners=-4.0/3.999993/-2.999991/3.0
+  params=1.414/0/0/1.414 inside=255 potential=255/128/0
+  colors=00000j0j0jj0j00j0j0jjkkkkrkdmwCCC_C_<9>sCs<20>ECsCCsCEs<19>CqsCssCsq<\
+  19>CsECsCEsE<19>qsqsssssq<19>ssEssCsqC<19>sECsCCqCC<18>GCCECCACCECE<9>YCYbjb\
+  <2>zjbFrb<5>zrbFzb<5>zzbFFj<5>zFjFNj<5>zNjFVj<5>zVjFbj<5>zbjFjj<5>zjjFrj<4>r\
+  rjzywccdWWWz000z0zz000zz0z0zzzzz
+  }
+
+BRACLET            {
+  reset=1720 type=fn+fn function=cosh/sqr passes=1
+  corners=1.77888557/1.78734031/1.16095279/1.1673213 params=1/0/-1
+  float=y maxiter=1023 bailout=8192 inside=maxiter logmap=yes
+  potential=255/511/0 
+  colors=000OSV<65>BCWECO0CG<3>8Q7<6>LE5NC4NC4<5>NB2NB2OB2PB2<24>gN1hN1hP1\
+  <6>nb1oe1oe1<26>mS6mS6lR7kR7<8>hPAhPAhPBhOBhNAhMA<2>gI8gH8eG8<9>M32<9>z3\
+  3Y3g<55>z0VOTWOSW
+  }
+
+SNAKDEN.GIF        {
+  reset=1720 type=marksmandelpwr function=sqr passes=1
+  corners=-1.10652/-1.0778615/-0.0107626/0.01077 float=y maxiter=2047
+  inside=0 logmap=yes
+  colors=000sgJ<4>hXabVeMDU<2>VKSdRS<5>FO7vd0PGWcMW<6>X_W<2>UXZTWZSVY<20>2\
+  2L00K00K<10>A0KB0KD0J<41>u0Gw1Fw1F<117>z00zt5<12>zt2zt1zt1zs0ys1<2>vs6zm\
+  8xkCviG
+  }
+
+Purple_KaleidoRing { ; (c) 1992 Bill Potter/Rings of foil kaleidoscope
+                     ; have fun use & abuse but no commercial use wo permission
+  reset type=sqr(1/fn) function=sin passes=g float=y corners=-1.12/1.12/-0.84/0.84
+   maxiter=5000 decomp=255
+  colors=000F0K<57>T0aT0bT0bU0cU0c<62>zzzzzzzzy<60>zz1zz0zy0yx0<56>I4IH3JG2JF0\
+  KF0KF0KF0K
+  }
+
+sae008             { ; (c) 1993 Richard H. Sherry CIS:76264,752
+  reset=1732 type=sqr(fn) function=sin
+  corners=-1.26561/1.259735/0.506409/1.76059 maxiter=256 fillcolor=0
+  inside=-102 outside=real logmap=yes decomp=255 periodicity=0
+  colors=0002B0<14>Zc0<15>0A0SNC<29>xo`zpaypa<13>kcRibRibR<14>UPF111<29>pp\
+  p<31>000PFF<29>xeDzfCyfC<30>PFF0A0<15>Zc0<13>3C00F0
+  }
+
+quat               {
+  reset=1733 type=quat corners=-2/2/-1.5/1.5
+  params=0/0/0.3/-0.2 float=y
+  periodicity=0
+  }
+
+QuatJ1             { ; Julia Quaternion in blue-greens
+                     ; By Dan Farmer
+                     ; Quaternion example
+  reset type=quatjul corners=-1.388288/1.388288/-1.041216/1.041216
+  params=-0.745/0/0.113/0.05 float=y inside=0 periodicity=0
+  colors=000143<146>Ioh000000
+  }
+
+Hypercomplex{ ; (C)1993 Peter Moreland
+                     ; 100012,3213
+  reset type=hypercomplex function=exp passes=1
+  corners=-1.38284756/-1.38985234/-5.10519207/-5.08976125/-1.40480462/-5.0\
+  8092665 params=1.3/1/1.5/1.11
+  float=y maxiter=250 bailout=100 inside=bof60 decomp=256 biomorph=0
+  periodicity=0 viewwindows=4.2/0.75/yes/0/0
+  colors=000Bzz<6>2zz0zz0yz<37>0Ez0Cz0Bz09z08z<3>02z00z00y<59>002000000000\
+  <29>00k00m01m<29>0ky0mz1mz<30>zzz<38>Czz
+  }
+t17064             { ; Jon Horner
+  reset type=newton corners=-0.344/0.344/-0.25567/0.26033 params=6 float=y
+  inside=-100 invert=0.1/0/0
+  colors=000XZTPQP<2>5A2LAG<6>xC5<11>5OP<8>9da<13>9Kv<4>O0O<7>IATIBTHCUHEUGFV<\
+  6>CQ_CR_DTZMQ_<2>WMZ_LZbIb<5>z0z<14>`8TZ9QY9P<8>K9GI8FI8LJ8RK8X<6>dLk<14>i23\
+  j00i02<13>I9dGAgG9e<7>M6RN5PO6O<5>_EHaGFcHEeJCgKB<6>uT0qT2lS5<3>SLG<7>HDLFCL\
+  CCN<2>BGNBHNAHNCHM<12>lO0<7>`NCZNDXMFVLH<5>2AR<7>ifU<9>svckn_dfX
+  }
+
+Genesis_Wave       { ; Darn! They have used Proto-Matter in the matrix.......
+                     ; (c) 1992 Peter Moreland 100012,3213
+  reset type=newtbasin
+  corners=12.1762344559/12.176355783/12.1888035646/12.1890084717/12.1761797786\
+  /12.1888764682 params=4 float=y maxiter=32000 decomp=256
+  colors=000<56>000ix8<4>lgBlcCl`DlYDlVE<2>nLGoIHoEHoBI<15>cJQfZg<20>k_hk_hix8\
+  <13>oEHoBInCJ<14>cJQ000<109>000
+  }
+
+CMPNWT1.GIF        {
+  reset=1611 type=complexnewton passes=1
+  corners=-7.425266/3.0421/3.319312/11.169836
+  params=3/2.71828182845905/3.14159265358979/9 float=y inside=0
+  logmap=yes periodicity=0 viewwindows=1.25/0.75/yes/0/0
+  colors=0000A0<8>IDCLEEMDD<24>x11z00z10<29>zx0zz0zz1<29>zzxzzzzzz<61>zV1z\
+  U0zU0zT0<28>z10z00z00y00<30>c00b11a11`22_22<19>KCC
+  }
+Jukebox            { ; 01:39:09.43
+                     ; 03 jan 93 .. caren park
+  reset type=complexbasin corners=-1.074297/-0.955225/-0.044652/0.044652
+  params=111/0/111 float=y maxiter=500 inside=maxiter periodicity=0
+  colors=0000i0<5>0A0<6>eXU<7>0A0AKK<6>mmK<7>AKMFF0<6>zz0<7>FF0F00<6>z0A<7>F00\
+  FFF<6>zzz<7>FFF0FK<6>0Um<7>0FKPF0<6>mK0<7>PF0FKA<5>NSIPUKOTJ<6>FKA00K<4>57j7\
+  9p78l<6>00K0D1<6>1aA<7>1F0KF1<6>hZ0<6>OI0KF0F0F<6>Z0U<7>F0FKF0<6>hZ0<7>KF000\
+  A<6>00k<7>00AA00<6>z00<7>A00<6>2r00z00u00o0
+  }
+
+ Jewelry_1          {  ; Delicate Halley
+                       ; By Dan Farmer??
+                       ; Halley example
+   reset type=halley passes=b corners=-1.352/1.352/-0.773344/0.773344
+   params=6/2/0.0001 float=y maxiter=256 inside=maxiter outside=real
+   periodicity=0
+   colors=000333222000PFF<27>vcDwdDxeDzfCyfCxeC<29>PFF0A0<15>Zc0<14>0A0<15>\
+   Zc0<15>0A0SNC<29>xo`zpaypa<29>UPF000<4>888000BBB<23>ppp<28>555
+   }
+
+EvilFrog          { ; Kermit with rabies                   Wesley Loewer
+  reset type=frothybasin passes=1
+  corners=0.1987794025371462/0.1987794025306378/-1.287290394040766/-1.2872\
+  90394029171/0.1987794025292465/-1.287290394030193 params=6/1 float=y
+  maxiter=100
+  colors=000z00<82>M00z0z<40>M0M0z0<40>0M000z<40>00Mzz0<40>MM0000000000
+  }
+
+Lo_Iteration_Unity { ; (C)1993 Peter Moreland 100012,3213
+                     ; Thanks to Lee Skinner for the palette
+  reset=1732 type=unity passes=t
+  corners=-31.914182/31.914182/-2.438782/2.438782/-11.277216/-29.954578
+  float=y maxiter=2 inside=bof60 invert=7.47995/0/0 distest=3/5
+  periodicity=0
+  colors=MgCMgC<19>zz9<60>2I10H00I1<8>4WH<4>MU`YUzUTh<6>cOheNgeOg<25>soltp\
+  luqlvrlwslxumyvmzwn<47>C2W<8>V6aY7bZ9`<14>zg0<13>nGDmDEmCDmBDmACl8B<2>r6\
+  C<15>IfCKfC
+  }
+
+Barnsley_Sponge    { ; Tim Wegner
+  reset=1733 type=julibrot julibrotfromto=0.45/0.55/1.1/1.1
+  julibroteyes=2.5 orbitname=barnsleyj1 3Dmode=red-blue
+  corners=-2.336449/2.336452/-1.752338/1.752337 float=y
+  colors=@glasses1.map
+  }
+
+Sand_Dollar_3d_II  { ; Rotated view
+  reset type=icons3d corners=-2.134489/2.036423/-1.519231/1.608953
+  params=-2.34/2/0.2/0.1/0.0/5 maxiter=32767 inside=0
+  rotation=90/45/270 perspective=180 xyshift=0/0 stereo=2 interocular=3
+  converge=-3 crop=4/0/0/4 bright=100/100 colors=@glasses2.map
+  }
+
+Lorenz_two_lobe    {
+  reset=1733 type=lorenz3d
+  corners=-100.4318/26.56676/-63.80547/63.18771
+  params=0.02/5/15/1/0/3 maxiter=300
+  rotation=34/72/30 perspective=150 xyshift=0/0 stereo=2 interocular=2
+  converge=-3 crop=4/0/0/4 bright=80/100 colors=@glasses2.map
+  }
+
+Lorenz_one_lobe    {
+  reset=1733 type=lorenz3d1
+  corners=2.181638/7.261645/-24.08926/-19.00947
+  params=0.02/5/15/1/0/3 float=y maxiter=300
+  rotation=34/72/30 perspective=150 xyshift=0/0 stereo=2 interocular=2
+  converge=-3 crop=4/0/0/4 bright=80/100 colors=@glasses2.map
+  }
+
+lorenz_three_lobe  {
+  reset type=lorenz3d3 passes=t corners=-20.28/20.28/-20.28/20.28
+  params=0.020000000000000000416/10/28/2.6600000000000001421 float=y
+  maxiter=200 fillcolor=1 inside=bof60 outside=0 rotation=0/0/0
+  perspective=150 xyshift=0/0 stereo=2 interocular=3 converge=-4
+  crop=4/0/0/4 bright=80/100 colors=@glasses2.map
+  }
+
+Lorenz_four_lobe   {
+  reset=1733 type=lorenz3d4 corners=-28.75506/31.99/-31.99/28.75506
+  params=0.02/10/28/2.66/0/3
+  float=y maxiter=300 rotation=10/20/30 perspective=150 xyshift=0/0
+  stereo=2 interocular=2 converge=-3 crop=4/0/0/4 bright=80/100
+  colors=@glasses2.map
+  }
+Rossler3d          {
+  reset=1733 type=rossler3d corners=-30/30.00375/-19.99925/40
+  params=0.04/0.2/0.2
+  11/5.7 rotation=60/30/30 perspective=150
+  xyshift=0/0 stereo=2 interocular=1 converge=-6 crop=4/0/0/4
+  bright=80/100 colors=@glasses2.map
+  }
+
+pod034             { ; Par of the day 11-15-92, Dick Sherry, 76264,752
+                     ; (c) 1992
+  reset type=kamtorus3d
+  corners=0.103714/-0.102463/-0.372742/2.21312/-0.979996/1.762589
+  params=0.33/0.005/200/50 maxiter=500 inside=0 logmap=yes periodicity=0
+  rotation=60/30/0 perspective=0 xyshift=0/0
+  colors=000IVUNWdR9ejk0<2>W_bs6IeJZaYYXXfibQc_ZYYgvHUfPdK`4<2>QXcdGSeC6`JMWQ`\
+  FL7MRUlpPaebc7V<2>VQj3cC<2>MYeEsGLgY1eZ71GIHYxltmfrb`pKEEowhgmk_dmG8TMKd9RRG\
+  T_MVgEomHRJNU_9iURJVIHUMMaPRhDeLIaWNZeD7cIGgNOk0m`<2>L_lq31<2>YPcastaT_YUeVV\
+  jvsPkkYacfgVb_WitrPjjY`bfYjgWejU`mP6BQFPRObKcROkzQctfVWZWe9G7JOUQ4rRIpb40XIQ\
+  XpvUersRiiTk`Vm9p1JeRjRG<2>WVfmEnYnC<2>T_e`KztVPkP7aTUmYmbXn53KHI_`rN<2>U`hf\
+  DV<2>VSjKbD<2>QXfchK_cVW_e2xj7_YGlz<2>P_qEqRJi_Obgbm4ZgKVa_MDB<2>RSeXNnVQoTT\
+  oHte<2>Qam8yJjd4<2>WYcCDvIKsNQquwukmsadqIW8NWU54xDEuLNrvT`nUdfVhZWlTfOSbYSZf\
+  0hN<2>LZh374HXH<2>QWgkDvdKsYQqr1KdH_UpT<2>S`j6tFHgYVzPlZL`aTPd_fljwtu`BAcXQe\
+  qdnDXlKZkR_<2>FBU89H2744FG6NR7UaBgkFtt`rXuq9mlD<2>lLJlCLi7dg3w<3>fcivHddE2<2\
+  >VScMkG<2>R_f8U7DVJ
+  }
+
+pod035             { ; Par of the day 11-16-92, Dick Sherry, 76264,752
+                     ; (c) 1992
+  reset type=mandel
+  corners=-0.76152722/-0.75981895/-0.08676214/-0.08320042/-0.76262195/-0.08530\
+  292 maxiter=500 inside=0 logmap=-4 periodicity=0
+  colors=000hUE<6>RCCEEE<13>kki<18>005SNC<17>zpa<12>UPFMJIEDLAAK<4>AOSARUBUWBX\
+  YB__Bba<5>DtnDqm<14>14RC6QO8O<5>VHI<7>zH0<7>WEDSDFRAG<3>L0KB8D1H5<19>Q`5Sa6R\
+  `6<16>2I6IIAZJE<6>wgF<9>UHD<7>AB7000HIC<10>svcsvc<20>200pdJ<5>zjF<5>kWE
+  }
+
+NYUF013            { ; Kamtorus variation #2 - Dan Farmer
+  reset type=kamtorus corners=-1.103439/2.785873/-1.57457/1.341705
+  params=1.3/0.005/300/500 maxiter=3200 inside=0
+  colors=000dMk<40>zzzzzzzzy<60>zz1zz0zy0yx0<58>G2JF0KF0K<4>F0LG0LG0LG0MG0MH0M\
+  <52>T0bU0cU0cV1cV2d<18>dLj
+  }
+
+gingerbreadman {
+	reset colors=@default.map type=gingerbreadman maxiter=20000
+	}
+
+henon              {
+  reset=1733 type=henon corners=-1.399994/1.398849/-0.49900818/0.5
+  params=1.4/0.3
+  }
+
+SeaShell           { ; MIIM Julia                           Michael Snyder
+                     ; Like a Chambered Nautilus cut in half; my favorite.
+                     ; Give it your highest 16-color resolution.
+  reset=1732 type=julia_inverse miim=depth/right
+  corners=0.839251/-0.839269/-1.119046/1.119006/-0.839269/1.119006
+  params=0.27334/0.00742/5/1024
+  }
+lorenz {
+	reset colors=@default.map type=lorenz
+	}
+
+martin {
+	reset colors=@default.map type=martin params=3.14159
+	}
+
+pickover           { ; 3-D image - use red/blue glasses
+  reset type=pickover corners=-3.696451/3.79018/-2.249562/3.098032
+  params=2.2400000000000002/0.42999999999999999/-0.65000000000000002/-2.43\
+  00000000000002 float=y maxiter=1000 inside=0 rotation=60/30/0
+  perspective=150 xyshift=0/0 stereo=2 interocular=3 converge=-4
+  crop=4/0/0/4 bright=80/100
+  colors=000<14>k00004<14>k04008<14>k0800C<14>k0C00G<14>k0G00K<14>k0K00O<1\
+  4>k0O00S<14>k0S00W<14>k0W00_<14>k0_00c<14>k0c00g<14>k0g00k<14>k0k00o<14>\
+  k0o00s<14>k0s00w<14>k0w
+  }
+
+sba016             { ; (c) 1993 Richard H. Sherry, CIS:76264,752
+  reset=1701 type=popcorn
+  corners=-2.047073/-1.013535/4.3996124/5.1545563
+  params=0.14999999999999999445 inside=0 float=no
+  colors=000RD6RC5RC4<66>umZumZtlYtlYskYCB3skX<97>CA2lWs<13>EB5BITCEFC_C<3\
+  2>CA2JwE<28>CB2
+  }
+
+ Sin_Waves          { ; Dynamical System Fractal
+                      ; By Dan Farmer
+                      ; "Dynamic"  Example
+   reset type=dynamic function=log passes=1
+   corners=-31.99/-6.208486/5.823209/31.604723 params=200/0.001/10/5
+   float=y maxiter=25 inside=0 outside=summ
+   colors=000rT3LPb<10>ksMJNc<40>JAYI9XJNb<25>Gk3JNc<54>kA3JOb<25>UmBJNc<11\
+   >MPkJNc<40>J9`I8_JNb<19>XI5LOcNQbMN`PSa<7>fgV
+   }
+
+In_the_Abyss       { ; Extra-terrestrial Jelly-fish! (C)1993 Peter Moreland
+                     ; Data 486 | 33 | Y | SF7 | 17.31(5) | 0:2:22.91
+                     ; Produced 31.1.93
+                     ; Map = Joe
+  reset type=mandelcloud
+  corners=-0.833158/-1.151253/0.437465/-0.407465/-0.542105/0.049396
+  params=350 float=y maxiter=55 outside=summ
+  colors=0004FW6IX8MX9OZJNXRNXMQYSTZKRdRVcYUYfUYUX`UYe_Z_eYXiYXe`Xh`YeZ`iY\
+  `ea`ia`hb`gd`Z`ffafadhgfgn`Zsa_nd`tcanbdsbdnffuff<2>tliZbkdbkafmfinaisnj\
+  lujkhlqimsllmplmnompommmpqnpmoqppqunprtruupnptwrtqtxutuxtuxwutvyyvwuxzzz\
+  z<24>zzz311522343642334534356654931D31962D52964D74784A83D92FC2A95D95BC5E\
+  D54799795ACA9ADA9AD9ED9AADDBDADEEDDG31H62L72H74L75P75HA3L93ID3LF3H95LA5H\
+  D6LD6QC6HB8LB8ID9ME9HACHEDLEDPB8SB9PE9TE9QFCUFCFG6EHBJG3MG3IG6MH5NK6PI3U\
+  H3RK3TL3PI4TH6QL5TM5UO6IH9MHAIKAMLAIHEMIDILDMLEQHATHAPLAULAPIDTIDQLEULEM\
+  PESPC37J5EJCEI4ESAEQIEIPFJHEO6GMEHKFPM6IR9KTCPUIHHLIHJLIMLHHILLILHKMMLLR\
+  LILPKTPKJLQQMQLPSRRRXE6XDAYL5YQ6dP6YKDdKCZPDeRCZMHdMIYPI`PIXTIaSJXQLaQLX\
+  TMaTLeRLYMRZTQfTQkTNlURUXJUXSYWEfXA_YMdXN`XTfYTecSmXUlfS
+  }
+
+bifmay {
+	reset maxiter=20000 colors=@default.map type=bifmay
+	}
+
+bifurcation {
+	reset maxiter=20000 colors=@default.map type=bifurcation
+	}
+
+biflambda {
+	reset maxiter=20000 colors=@default.map type=biflambda
+	}
+
+bifurcation_equal_sinepi {
+	reset maxiter=20000 colors=@default.map type=bif=sinpi
+	}
+
+bifurcation_Stewart{
+	reset maxiter=20000 colors=@default.map type=bifstewart
+	}
+
+bifurcation_plus_sinepi {
+	reset maxiter=20000 colors=@default.map type=bif+sinpi
+	}
+
+Lyapunov_one       { ; (c) 1992 Peter Moreland, The Saint                      
+                     ; come in Brett Sinclair!
+  reset type=lyapunov corners=2.93748764/2.94703484/3.67514065/3.68217105
+  params=4/0.75 maxiter=50 colors=000000<29>00k00m01m<16>0St
+  }
+
+diffusion {
+	reset colors=@default.map type=diffusion params=1 
+	}
+
+Type_61            { ; Jonathan Osuch
+  reset type=cellular corners=-1.0/1.0/-1.0/1.0
+  params=11.0/2111000355004045.0/61.0 inside=0 colors=000e00AZADCTwuIeL0
+  }
+
+whirlpool          { ; Tim Wegner
+                     ; Inverted circle, based on Lee Skinner's SKIP.GIF
+  reset=1720 type=circle passes=1
+  corners=-2.44259235/0.689915143/0.45481222/-0.32858413/0.597129484/-0.77\
+  192783 params=10000 float=y bailout=6 inside=0 logmap=yes
+  invert=0.130566/0/0 viewwindows=1.25/0.75/yes/0/0
+  colors=000Fmi<2>Fnb<5>thM<7>rJu<7>lvv<4>o3J<4>vnXwedxXmzNv<4>s59m89fC9_G\
+  9VXB<3>`n7PFJ<6>P5qv46OHGNIIWMK<3>ykcDDF0AFE_NEaS3xdPFE<4>O65NMHKSKZJVHY\
+  N<3>6vZ<5>IEZL6_MEX<5>SyClWq<3>NPe<7>NvL<7>MrCVvGdzK<6>ZLD<6>VxL<2>GGjFN\
+  qDVyRerdpk<7>DOTRQuRVmR_d<7>wzw<7>JFu<2>zur<5>GxS<2>EdWDYYCTW<2>8DO67L68\
+  J<5>8G2<5>aG4fH5iJGlMRpPa<7>Ylx<7>CVB<5>qWq<4>rPb<7>Ifi<3>lpX<6>FmoFmmFm\
+  k
+  }
+
+Stars_Like_Jewels  { ; (Well...WHAT would you call it????)
+                     ; BG Dodson 1992 71636,1075
+  reset type=formula formulafile=fractint.frm formulaname=Jm_14
+  function=sin/sqr/sinh passes=b
+  corners=2.828701/0.84579/-1.28/1.28/0.84579/1.28 float=y fillcolor=200
+  logmap=4 decomp=128
+  colors=000<78>ppnuud<7>yyazzMzze<4>zzzGez<23>PzzQ`0<13>`Q0jQ0<13>eN0
+  }
+
+Snowflake          { ; Renders well at 1024x768 
+                     ; Use a lower order at lower resolutions
+  reset=1733 type=lsystem lfile=fractint.l lname=SnowFlake1
+  corners=-1/1/-1/1 params=5 float=y
+  }
+
+3D Fern            {
+  reset=1733 type=ifs3d ifsfile=fractint.ifs ifs=3dfern
+  corners=-4.999313/7.013138/-4.505173/7.503448 params=1
+  rotation=30/10/0 perspective=150 xyshift=0/0 stereo=2 interocular=3
+  converge=-5 crop=4/0/0/4 bright=80/100 colors=@glasses2.map
+  }
+
+Keyboard_madness   { ; An ergonomic nightmare.....  (c)1992 Peter Moreland
+  reset type=cmplxmarksjul
+  corners=9.592494/8.9412748/-1.074353/-0.3477897/9.0093047/-0.2967673
+  params=1/3/1.1/2 float=y maxiter=30000 bailout=250 inside=256
+  outside=mult
+  colors=000554<8>`mF<2>diDfgChfBjdBkbA<3>rX6<4>Y6h<5>b5kb5lc5lc5md5ne4nf4oH6z\
+  CDc7LH<8>FO`GPcHPeIQhJQjKRm<5>Udr<9>60O<8>IYSKaTKaT<21>bcLbcLbbM<8>YXU<3>DHb\
+  <3>vSj<5>bP9dFLf4X<5>RcuReuShv<30>UenUemUemUelUel<21>KfS_99<15>x11z00z10<29>\
+  zx0zz0zz1<7>103
+  }
+
+decomp32           { ; An inverted decomposition julia using z=z^7+c
+                                ; Paul Dickins
+  reset type=julzpower corners=-1.834286/1.834286/-1.375714/1.375714
+  params=-0.434234481334931/0.966090025277329/7 float=y maxiter=44
+  invert=0.77/0/0 decomp=32
+  colors=zzzzN00Xz00zNf000zNf0zX0000zzzD3z0000ee0e000e000zzz<9>zV_zRYzOVzKTzHQ\
+  zDN<4>oBKmBJkBIiAHgAGe9G<2>Z8D
+  }
+
+Flaked_Gold        { ; Museum exhibit from a dig, dig it!
+                     ; (C)1993 Peter Moreland 100012,3213
+  reset type=hypercomplexj function=exp
+  corners=0.7495447/0.6251076/-0.1647639/0.0808346/0.58686/0.052149
+  params=-0.745/0/0.113/0.05 float=y maxiter=250 bailout=100
+  inside=bof60 decomp=256 distest=1/71 biomorph=0 periodicity=0
+  colors=000kf6<38>I4IH3JG2JF0KF0K<9>H0MH0MH0NI0NI0NI0O<45>T0aT0bT0bU0cU0c\
+  <62>zzzzzzzzy<60>zz1zz0zy0yx0<16>lg6
+  }
+
+NETWORK          { ; A hopalong lacey little number Peter Moreland 100012,3213
+  reset type=hopalong corners=-24.694914/29.486391/-22.866557/23.187553
+  params=1.666/0.556/4.6 float=y maxiter=32767 bailout=300 inside=0
+  logmap=yes
+  colors=00000e0e00eee00e0eeL0eeeLLLLLzLzLLzzzLLzLzzzLzzz000555<3>HHHKKKOOOSSS\
+  WWW___ccchhhmmmssszzz00z<3>z0z<3>z00<3>zz0<3>0z0<3>0zz<2>0GzVVz<3>zVz<3>zVV<\
+  3>zzV<3>VzV<3>Vzz<2>Vbzhhz<3>zhz<3>zhh<3>zzh<3>hzh<3>hzz<2>hlz00S<3>S0S<3>S0\
+  0<3>SS0<3>0S0<3>0SS<2>07SEES<3>SES<3>SEE<3>SSE<3>ESE<3>ESS<2>EHSKKS<2>QKSSKS\
+  SKQSKOSKMSKK<2>SQKSSKQSKOSKMSKKSK<2>KSQKSSKQSKOSKMS00G<3>G0G<3>G00<3>GG0<3>0\
+  G0<3>0GG<2>04G88G<2>E8GG8GG8EG8CG8AG88<2>GE8GG8EG8CG8AG88G8<2>8GE8GG8EG8CG8A\
+  GBBG<2>FBGGBGGBFGBDGBCGBB<2>GFBGGBFGBDGBCGBBGB<2>BGFBGGBFGBDGBCGkkk<5>343642
+  }
+
+Halloween          {
+  reset type=icons corners=-1.0496/1.0496/-0.7872/0.7872
+  params=-2.7/5/1.5/1/0.0/6 float=y inside=0
+  colors=000TgsSfsSestYS<3>zvErMY<39>fZEqMY<32>FUyrMY<62>0V4rMYqNXqNW
+  }
+
+plasma             {
+  reset=1733 type=plasma corners=-2/2/-1.5/1.5 params=2
+  }
+
+Flatworm           {
+  reset=1733 type=mandel(fn||fn) function=sqr/cos
+  corners=-8.279133/10.66292/-7.483134/6.719686 params=0/0/0.5 float=y
+  }
+
+Plate              {
+  reset=1733 type=manlam(fn||fn) function=sqr/cos
+  corners=-2.642944/2.642944/-1.982208/1.982208 params=0/0/10 float=y
+  }
+
+

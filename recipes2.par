@@ -1,0 +1,262 @@
+Default_Mandelbrot         { ;This is as simple as it gets
+  reset type=mandel 
+  }
+
+man001              { ; (c) 1993 Richard H. Sherry, 76264,752
+                     ; Par series based on Mandelbrot classic lake
+  reset type=mandel passes=1 corners=-2.14/1.14/-1.23/1.23 float=y
+  maxiter=255 inside=255 potential=255/2000/1000
+  colors=000<200>000ZK0<45>xpAxpAwoA<3>tl9000
+  }
+
+man004             { ; (c) 1993 Richard H. Sherry, 76264,752
+                     ; Par series based on Mandelbrot classic lake
+  reset type=mandel passes=1
+  corners=-1.905194/0.654814/-0.959991/0.960002 maxiter=500
+  inside=bof60 outside=0
+  colors=000jVD<17>PFF0A0<15>Zc0<14>0A0<15>Zc0<15>0A0SNC<29>xo`zpaypa<29>U\
+  PF000<29>nnnpppooo<30>000PFF<29>xeDzfCyfC<11>kWD
+  }
+
+man012             { ; (c) 1993 Richard H. Sherry, 76264,752
+                     ; Par series based on Mandelbrot classic lake
+  reset type=mandel passes=1 corners=-2.5/1.500012/-1.499989/1.5
+  maxiter=125 inside=bof60 outside=mult biomorph=0
+  colors=000eib<3>JQNDLJ5_n<4>8JL1Cr<3>7GNxfd<3>ILLQCc<2>CFMVHH<4>EGGBGG9j\
+  e8VTipUXcPKSKcRe<6>CHJxa4<5>FJFHZBJ44<3>AEEhMBWKDKIFhnV<4>ELIhG7<6>CGFiI\
+  k<3>FGMhJk<2>HGOlpm<6>DKKyiRBmh<2>8ONM_9<4>AJFlf6<4>EKFhW60cw4Savl3XWAul\
+  FdaGhlEhq7c3v<6>8b5<6>mJ9<6>lHR<4>BWI<6>xMo<5>_BDkJ7vQ1<2>Isd<2>Ce0<6>QS\
+  r<5>gcridrjYo<3>lAe<3>d7Ec77_A8<2>PJ9<3>U1tha9VaLIaX8GHEURBNLIuB<4>9NG7c\
+  t8S_I53<3>AEEGkOCWKSk8<2>DOE80P<3>8DHhWE<4>EIGdNYOJPaz3NbAPVV<2>CJJ1CO5E\
+  KLcN<6>9JGqtjknf
+  }
+
+man026             { ; (c) 1993 Richard H. Sherry, 76264,752
+                     ; Par series based on Mandelbrot classic lake
+  reset type=mandel corners=-2.139999/1.140009/-1.229988/1.230001
+  maxiter=500 inside=0 potential=255/300/0
+  colors=000sl9<40>QK00000F0<44>Fx0Gz0Gy0<31>0F0F00<45>x00z00y00<30>F00ZK0\
+  <45>xpAxpAwoA<2>um9 
+  cyclerange=0/255
+  }
+
+man032             { ; (c) 1993 Richard H. Sherry, 76264,752
+                     ; Par series based on Mandelbrot classic lake
+  reset type=mandel
+  corners=-1.930068861596/-1.930068528796/-0.000000121619/0.000000125717
+  float=y maxiter=500 inside=0 periodicity=0
+  colors=000USQJNQSzg<2>DTUjKO<2>IIQ4Y1gn2QYEz6M7DOKhDEVKQCEr1UWASBGzAHgTK\
+  ITF5MGCFHJpZqW4sOae<2>CNU8YL9QOCfYBYVAQSm9ETEK2g26VECF4AHFj1l<2>IEVb9`I3\
+  ADBIlRmTMa`CpOLmill<2>IPVIN8FLECJK3Au6EeCunc2VT8TJDRD2p<2>AEW`dygRanQc3Q\
+  `<2>8KSYSf<2>FKUv81<2>LGKRJ8IIHBqs<2>9RXBrCJLg<2>BIUxHO<2>MIQhUu<2>ILYP4\
+  9OprGZc3RB5OG7LLN_SIURDOQjTQlFITHMKmWOvh<2>CSUB33A8B9DJ1M75KHKgSMEE3pB<2\
+  >8QNV`kKR`NA4GEF7Rk<2>9KVtAnEIi<2>AIVSGK<2>DIPb76ODGK9iEE_o8aUDW3Qq5Ng7K\
+  Zpu1vzRYcQJWn<2>BLW4xvZo5QcCHTJ8Ov<2>9JY0tW<2>7RReKHPJMNa_GSVPDXDIZ1M`<2\
+  >GpH<2>0_c<2>754PdM<3>dqHB0dF8XIGPLNH<3>SFp<3>l27JILd``UUXJOTkNkZLcMJXQM\
+  PKKQEJQvvtYad0Yr5Qc1cWRZT<2>DMQovx<2>JSY95waHlSIdIIXQ4TK9SEEROgvJZkEQ`En\
+  B<2>AQNbNvOKevAd<2>LGTdYQ
+  }
+
+Smile_2            { ; (c) June 1992, Dick Sherry 76264,752
+  reset type=formula formulafile=fractint.frm formulaname=Richard5
+  corners=-1.750391/1.249622/1.496003/-1.495989/1.249622/-1.495989
+  inside=bof60 decomp=256
+  colors=000UM0AGRcccKF5`eI_dI<2>X`GPK5VXE<13>FA0<6>YR0<7>BA0GG0<11>KV0PM0<17>\
+  FD0KI0<31>HiBHiBHhB<78>A506Pz<24>46K4Gz<39>00FWlGVkG
+  }
+
+rhs144             { ; (c) June 1992 Dick Sherry 76264,752
+                     ; no commercial use w/o permission
+  reset type=fn(z)+fn(pix) function=sqr/cos
+  corners=-1.066106/-0.517546/2.981645/3.122173/-0.936088/2.808271
+  params=0/0/1 maxiter=32000 inside=0 potential=255/500/20
+  colors=000B7C54693607n<13>503frT<10>842qP3<11>810Kd0<15>880MdU<9>9pc7re7re<1\
+  9>5td000<60>0005Va<6>534JJN<2>845CoP<11>541H8G<19>500ja`<2>F99JGd<11>613qXY<\
+  7>Ydw000<19>000kSq<5>GAI
+  }
+
+rhs143             { ; (c) June 1992 Dick Sherry 76264,752
+                     ; no commercial use w/o permission
+  reset type=fn(z)+fn(pix) function=sqr/cos float=yes
+  corners=-1.066106/-0.517546/2.981645/3.122173/-0.936088/2.808271
+  params=0/0/1 maxiter=32000 inside=0 potential=255/500/20
+  colors=000<20>000kSq<7>54693607n<13>503frT<10>842qP3<11>810Kd0<15>880MdU<9>9\
+  pc7re7re<19>5td000<60>0005Va<6>534JJN<2>845CoP<11>541H8G<19>500ja`<2>F99JGd<\
+  11>613qXY<7>Ydw
+  }
+
+rhs148             { ; (c) June 1992 Dick Sherry 76264,752
+                     ; no commercial use w/o permission
+  reset type=fn(z)+fn(pix) function=recip/sqr float=yes
+  corners=-1.133658/0.246355/0.852341/-0.98766/0.246355/-0.98766
+  params=0/0/1 maxiter=32000 inside=0 potential=255/500/20
+  colors=0004F164G<20>65z<11>06F0E3<17>HW8IY9HW9<7>4F1FA4<19>ZLC_MCZLB<8>HB0<2\
+  2>ppp<8>C900A0<20>A`1Bb2A`2<6>2G10D00G0<6>0f0<9>0E0<30>Ln6Mp7Mo7<23>0E0kdh<9\
+  >LDD<4>LIC_JB_KBLLBu9e
+  }
+
+rhs205             { ; (c) Dick Sherry Aug 8, 1992 76264,752
+  reset type=lambda
+  corners=0.3536842/0.0873952/0.3558072/0.8289457/0.0307212/0.786423
+  params=0.95/0.6 maxiter=500 inside=0 decomp=256
+  colors=00000_<26>00FFF0<61>zz0zz0yy0<61>FF000F<62>00z00z00y<33>00_
+  }
+
+HI Earthling..     { ; Well where is your leader?
+                     ; Peter Moreland 100012,3213   
+  reset type=magnet1m
+  corners=7.414884/3.717069/-6.804988/3.803521/1.034958/1.774657
+  params=1.76/4 float=y maxiter=32000 bailout=500 inside=0
+  potential=255/511/0 
+  colors=LSUK`W<4>9kZ<2>s72<2>b9k<27>I2V<9>j5k<27>gjX<30>gUa<7>Hb1<13>Vq7Wr7Xs\
+9<30>esw<5>wUV<24>ubSubStaT<21>h9w<6>eHAeI3cL7<4>W_RVbUUcS<4>ThNk5Ln5K<12>MZ\
+  V
+  }
+
+Tentacles          { ; 00:18:05.11
+                     ; 10 jan 93 .. caren park
+  reset type=magnet1j corners=1.265442/1.604642/0.775681/1.030081
+  params=-0.2/0.4 float=y maxiter=500 inside=maxiter periodicity=0
+  colors=000bL0<9>000<15>ut0<15>000GA4<12>2v10z00w0<14>000<15>00z<14>000<16>z0\
+  X<15>000<15>p0w<15>000<15>zzz<15>000L00<13>z00<2>p00l00h00d00a00<9>000<15>zX\
+  0<4>fN0
+  }
+
+Smokie_Watches_you { ; From "Evil" by Dick Sherry ;) Credit where it's due <G>.
+                     ; (c) 1992 Peter Moreland 100012,3213
+  reset type=manzzpwr
+  corners=-1.1681533/-1.1222362/0.0256899/-0.0246208/-1.1222362/-0.0246208
+  params=1/0/2 float=y maxiter=500 inside=0 potential=255/511/0
+  colors=000<178>000S00FZH<3>6H7ppp<3>UUUhhUhhT<10>NF4giT<11>TPBSOARM8PL7OJ5MH\
+  3<2>LG3KG3JF3IF3IF2<24>050iN9hMA
+  }
+
+AeolisAndJanus     { ; 00:06:40.46
+                     ; ... from JMS01:PigSnoutFace
+  reset type=barnsleym3 corners=3.320626/-2.679374/-4.4/4.4/-2.679374/4.4
+  maxiter=32767 bailout=16 outside=real logmap=yes invert=1/0/0
+  colors=000840<13>zX0<15>000<15>ut0<15>000GA4<12>2v10z00w0<14>000<15>00z<14>0\
+  00<16>z0X<15>000<15>p0w<15>000<15>zzz<15>000L00<13>z00<2>p00l00h00d00a00<9>0\
+  00420
+  }
+
+AsteroidShip       { ; 00:38:19.91
+                     ; 02 jan 93 .. caren park
+  reset type=fn*z+z function=cotan passes=t
+  corners=-1.914244/1.413756/-1.248/1.248 params=1/0/1 maxiter=32767
+  inside=bof60 outside=real logmap=yes invert=0.5/0/0
+  colors=0tz<39>05z03z02z00z00y<59>003002000000000<29>00k00m01m<29>0ky0mz1mz<3\
+  0>zzz<44>5zz3zz2zz0zz0yz<2>0uz cyclerange=0/255
+  }
+
+BadDream           { ; 01:30:10.15
+                     ; 05 dec 92 .. caren park
+  reset type=newton
+  corners=0.813797527/0.814047167/-0.001023803/-0.000836573 params=47
+  float=y maxiter=500 inside=maxiter periodicity=-1
+  colors=000f0l<2>p0w<15>000<15>zzz<15>000L00<13>z00<2>p00l00h00d00a00<9>000<1\
+  5>zX0<15>000<15>ut0<15>000GA4<12>2v10z00w0<14>000<15>00z<14>000<16>z0X<15>00\
+  0<11>c0h
+  }
+
+BullsEyeStar       { ; 00:01:46.94
+                     ; 31 dec 92 .. caren park
+  reset type=fn*z+z function=recip
+  corners=31.99/-31.99/23.992505/-23.992505 params=-300/-200/5100/-21072
+  maxiter=32000 inside=0 potential=255/200/32000 invert=0.5/0/0
+  colors=WPJbHE<5>zH0<8>SDF<3>N3JL0KL1KM2KN3KO4J<12>zz0<7>``9YYAXVB<6>KAJMAKOA\
+  M<12>ziF<13>K8C413000<15>svcsvcsvcsvc<4>jiWhfUfdTebS<3>ZUMYRKUMHSJF<6>EAb<6>\
+  7Nu5Px5Nu<5>A5cB5`<3>G8SH9QIAQ<4>SKP<3>_VZ`Y`b`cdcf<4>nru<15>OI5<6>eYJg_LiaN\
+  kcPneR<4>zpa<4>jdWgaVcZT`WSYUR<6>AAK<3>ALQAOSARUBUWBXY<6>DqlDtnCql<5>8Xc7Ta9\
+  Q`<5>L4R<8>VHIZHG
+  }
+
+bullseye           {
+  3d=yes filename=bullseye.gif scalexyz=90/90 roughness=30 waterline=0
+  ambient=20 rotation=60/30/0 perspective=0 xyshift=0/0
+  colors=WPJbHE<5>zH0<8>SDF<3>N3JL0KL1KM2KN3KO4J<12>zz0<7>``9YYAXVB<6>KAJM\
+  AKOAM<12>ziF<13>K8C413000<15>svcsvcsvcsvc<4>jiWhfUfdTebS<3>ZUMYRKUMHSJF<\
+  6>EAb<6>7Nu5Px5Nu<5>A5c<5>H9Q<4>QIPSKPUNS<2>_VZ`Y`b`cdcf<4>nru<15>OI5<6>\
+  eYJg_LiaNkcPneR<4>zpa<4>jdWgaVcZT`WSYUR<6>AAK<3>ALQAOSARUBUWBXY<6>DqlDtn\
+  Cql<6>7Ta<6>L4R<8>VHIZHG
+  }
+
+BlueStrandsOnGreen { ; 01:05:38.22
+                     ; 06 dec 92 .. caren park
+  reset type=complexnewton passes=t
+  corners=-0.000008636234/-0.000008034234/0.0000004819/0.0000009334
+  params=3/2/4/1 float=y maxiter=400 bailout=2500 inside=maxiter
+  periodicity=0
+  colors=000ZZZ<6>zzz<15>000L00<13>z00<2>p00l00h00d00a00<9>000<15>zX0<15>000<1\
+  5>ut0<15>000GA4<12>2v10z00w0<14>000<15>00z<14>000<16>z0X<15>000<15>p0w<15>00\
+  0<7>WWW
+  }
+
+Chains             { ; 00:01:15.68
+                     ; 03 jan 93 .. caren park
+  reset type=julia corners=-0.1/0.1/-0.075/0.075
+  params=-0.784469886/0.133089005
+  colors=WPJ775<13>svcsvcsvcsvc<4>jiWhfUfdTebS<3>ZUMYRKUMHSJF<6>EAb<6>7Nu5Px5N\
+  u<5>A5cB5`<3>G8SH9QIAQ<4>SKP<3>_VZ`Y`b`cdcf<4>nru<15>OI5<6>eYJg_LiaNkcPneR<4\
+  >zpa<4>jdWgaVcZT`WSYUR<6>AAK<3>ALQAOSARUBUWBXY<6>DqlDtnCql<5>8Xc7Ta9Q`<5>L4R\
+  <8>VHI<7>zH0<8>SDF<3>N3JL0KL1KM2KN3KO4J<12>zz0<7>``9YYAXVB<6>KAJMAKOAM<12>zi\
+  F<13>K8C413000443
+  }
+
+EggsOnLeaf         { ; 00:16:32.89
+                     ; 28 dec 92 .. caren park
+  reset type=fn(z)+fn(pix) function=sin/cosh passes=t
+  corners=-0.571705/-0.403833/0.808401/0.934305 params=0.7/0.333/0.5/0.5
+  float=y maxiter=100 bailout=50 inside=bof60
+  colors=ddd<16>000PFF<29>xeDzfCyfC<30>PFF0A0<70>_UI`UIaVJbWK<19>xo`zpaypa<29>\
+  UPF000<29>nnnpppooo<13>TTT
+  }
+
+Who_pulled_the.... { ; Plug!  Oh well, there goes the galaxy...
+                     ; (C)1993 Peter Moreland 100012,3213
+                     ;  
+  reset type=frothybasin
+  corners=0.4968056/0.6382582/0.3680705/0.5064456/0.4813085/0.3887334
+  params=6 float=y maxiter=5000 decomp=256 distest=5/71 finattract=y
+  colors=@froth6.map
+  }
+
+Meta_Cold!         { ; (c)1992 Peter Moreland 100012,3213
+  reset type=fn*z+z function=tan
+  corners=21.315763/-31.989983/-22.868427/22.868451/-19.828226/31.989997
+  params=5/5/5/100 maxiter=32000 inside=0 potential=255/200/32000
+  colors=LSUJPU<11>GMUFMUFMUFLUFLUEKUEKUDJV<2>BLSAMR9MQ8MP6KM<58>inujovinu<164\
+  >JQUQW`JQU
+  }
+
+MagneticHole       { ; 00:23:23.30
+                     ; 19 dec 92 .. caren park
+  reset type=formula formulafile=fractint.frm formulaname=halleysin
+  passes=2 corners=0.883445/1.020085/-0.05124/0.05124 params=1.6 float=y
+  maxiter=500 bailout=1000 inside=maxiter
+  colors=000sIE<6>lKKkLLjLMiMNhMO<5>aPT<20>zzz0z0LLLz00<5>zz0000555<2>EEE0z0KK\
+  K<3>___ccchhhmmmssszzzzz0<6>z0Gz00<3>zz0nx6buCP0ZFpP<3>0zz<2>0GzVVz<3>zVz<3>\
+  zVV<3>zzV<3>VzV<3>Vzz<2>Vbzhhz<3>zhz<3>zhh<3>zzh<3>hzh<3>hzz<2>hlzz00w03000o\
+  0B<12>00z<15>zz0<8>EfH<2>zzz<5>jkqzzzdfm0zlZaj<5>IN`FKZAEO57C000<6>zkk<7>z00\
+  G00G40G8000z<10>zc0<4>zY2000zV3<5>zN5000zL6zJ7zI7zG8<5>tID
+  }
+
+MapCompass         { ; 00:00:21.20
+                     ; ... from POD047
+  reset type=lambdafn function=sqr passes=t
+  corners=-6.81694/6.810364/-4.549606/4.544006 params=1/0.9 maxiter=128
+  fillcolor=255 inside=epsiloncross outside=mult logmap=yes
+  colors=000LMF<9>svcsvcsvcsvc<13>UMHSJFQIJ<5>EAb<6>7Nu5Px5Nu<5>A5c<2>E7WF8UG8\
+  SH9QJANKBLMCI<6>_VZ`Y`b`cdcf<4>nru<15>OI5<6>eYJg_LiaNkcPneR<4>zpa<4>jdWgaVcZ\
+  T`WSYUR<6>AAK<4>AOS
+  }
+
+triangles3         { ; Jonathan Osuch
+                     ; Beautiful
+  reset type=cellular params=22.0/3210331001.0/41.0 inside=0 colors=000e00AZADCTwuI
+  }
+
+TrueMandelbrot     { ; Shows the missing first iteration stripe
+  reset=1733 type=test corners=-2/2/-1.5/1.5 float=y
+  }
+

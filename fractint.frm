@@ -643,21 +643,3 @@ ZZa(XAXIS) { ; Prof Jm using Newton-Raphson method
     .001 <= |solution-z1|
   }
 
-MandelXAxis(XAXIS) {	; for Transparent3D
-  z = zt,		; Define Julia axes as depth/time and the
-  c = xy:		;   Mandelbrot axes as width/height for each slice.
-			;   This corresponds to Mandelbrot axes as
-			;   height/depth and the Julia axes as width
-			;   time for the 3D image.
-   z = Sqr(z) + c
-    LastSqr <= 4;
-  }
-
-OldJulibrot(ORIGIN) {		    ; for Transparent3D
-  z = real(zt) + flip(imag(xy)),    ; These settings coorespond to the
-  c = imag(zt) + flip(real(xy)):    ;	Julia axes as height/width and
-				    ;	the Mandelbrot axes as time/depth
-				    ;	for the 3D image.
-   z = Sqr(z) + c
-    LastSqr <= 4;
-  }
