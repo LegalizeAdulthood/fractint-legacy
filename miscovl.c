@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 #ifndef XFRACT
 #include <malloc.h>
 #include <process.h>
@@ -23,6 +24,7 @@
 /* routines in this module      */
 
 static void write_batch_parms(char *colorinf,int maxcolor);
+static void expand_comments(char far *target, char far *source);
 
 #ifndef XFRACT
 static void put_parm(char *parm,...);
@@ -45,6 +47,8 @@ static void strip_zeros(char *buf);
 #define CHOICERETURNKEY 1
 #define CHOICEMENU      2
 #define CHOICEHELP      4
+
+static char far par_comment[4][MAXCMT];
 
 char s_yes[]      = "yes";
 char s_no[]       = "no";
@@ -74,7 +78,6 @@ FILE *parmfile;
    ptr += sizeof(tmp);\
    }
 
-
 void make_batch_file()
 {
 #define MAXPROMPTS 18
@@ -94,7 +97,7 @@ void make_batch_file()
 
    int i;
    char far *inpcommandfile, far *inpcommandname;
-   char far *inpcomment1, far *inpcomment2, far *inpcomment3, far *inpcomment4;
+   char far *inpcomment[4];
    struct fullscreenvalues paramvalues[18];
    char far * choices[MAXPROMPTS];
    char far *ptr;
@@ -111,19 +114,20 @@ void make_batch_file()
    /* put comment storage in extraseg */
    inpcommandfile = MK_FP(extraseg,0);
    inpcommandname = inpcommandfile+80;
-   inpcomment1    = inpcommandname+(ITEMNAMELEN + 1);
-   inpcomment2    = inpcomment1 + 57;
-   inpcomment3    = inpcomment2 + 57;
-   inpcomment4    = inpcomment3 + 57;
+   inpcomment[0]    = inpcommandname+(ITEMNAMELEN + 1);
+   inpcomment[1]    = inpcomment[0] + MAXCMT;
+   inpcomment[2]    = inpcomment[1] + MAXCMT;
+   inpcomment[3]    = inpcomment[2] + MAXCMT;
 
    /* steal existing array for "choices" */
-   ptr = (char far *)(inpcomment4 + 57);
+   ptr = (char far *)(inpcomment[3] + MAXCMT);
    stackscreen();
    oldhelpmode = helpmode;
    helpmode = HELPPARMFILE;
 
-   strcpy(colorspec, "y");
    maxcolor = colors;
+   colorspec[0] = 'y';
+   colorspec[1] = '\0';
    if (gotrealdac && !reallyega)
    {
       --maxcolor;
@@ -149,14 +153,14 @@ void make_batch_file()
             sptr = MAP_name;
          }
       }
-      else
-      if (colorstate == 2)
+      else if (colorstate == 2)
       {                         /* colors match colorfile */
          colorspec[0] = '@';
          sptr = colorfile;
       }
       else                      /* colors match no .map that we know of */
          colorspec[0] = 'y';
+
       if (colorspec[0] == '@')
       {
          if ((sptr2 = strrchr(sptr, SLASHC)) != NULL)
@@ -169,10 +173,12 @@ void make_batch_file()
    }
    far_strcpy(inpcommandfile, CommandFile);
    far_strcpy(inpcommandname, CommandName);
-   far_strcpy(inpcomment1, CommandComment1);
-   far_strcpy(inpcomment2, CommandComment2);
-   far_strcpy(inpcomment3, CommandComment3);
-   far_strcpy(inpcomment4, CommandComment4);
+   for(i=0;i<4;i++)
+   {
+      expand_comments(CommandComment[i], par_comment[i]);
+      far_strcpy(inpcomment[i], CommandComment[i]);
+   }
+   
    if (CommandName[0] == 0)
       far_strcpy(inpcommandname, "test");
    /* TW added these  - and Bert moved them */
@@ -188,23 +194,23 @@ void make_batch_file()
 prompt_user:
       promptnum = 0;
       LOADBATCHPROMPTS("Parameter file");
-      paramvalues[promptnum].type = 0x100 + 56;
+      paramvalues[promptnum].type = 0x100 + MAXCMT - 1;
       paramvalues[promptnum++].uval.sbuf = inpcommandfile;
       LOADBATCHPROMPTS("Name");
       paramvalues[promptnum].type = 0x100 + ITEMNAMELEN;
       paramvalues[promptnum++].uval.sbuf = inpcommandname;
       LOADBATCHPROMPTS("Main comment");
-      paramvalues[promptnum].type = 0x100 + 56;
-      paramvalues[promptnum++].uval.sbuf = inpcomment1;
+      paramvalues[promptnum].type = 0x100 + MAXCMT - 1;
+      paramvalues[promptnum++].uval.sbuf = inpcomment[0];
       LOADBATCHPROMPTS("Second comment");
-      paramvalues[promptnum].type = 0x100 + 56;;
-      paramvalues[promptnum++].uval.sbuf = inpcomment2;
+      paramvalues[promptnum].type = 0x100 + MAXCMT - 1;
+      paramvalues[promptnum++].uval.sbuf = inpcomment[1];
       LOADBATCHPROMPTS("Third comment");
-      paramvalues[promptnum].type = 0x100 + 56;;
-      paramvalues[promptnum++].uval.sbuf = inpcomment3;
+      paramvalues[promptnum].type = 0x100 + MAXCMT - 1;
+      paramvalues[promptnum++].uval.sbuf = inpcomment[2];
       LOADBATCHPROMPTS("Fourth comment");
-      paramvalues[promptnum].type = 0x100 + 56;;
-      paramvalues[promptnum++].uval.sbuf = inpcomment4;
+      paramvalues[promptnum].type = 0x100 + MAXCMT - 1;
+      paramvalues[promptnum++].uval.sbuf = inpcomment[3];
       if (gotrealdac && !reallyega)
       {
          LOADBATCHPROMPTS("Record colors?");
@@ -243,10 +249,8 @@ prompt_user:
       if (has_ext(CommandFile) == NULL)
          strcat(CommandFile, ".par");   /* default extension .par */
       far_strcpy(CommandName, inpcommandname);
-      far_strcpy(CommandComment1, inpcomment1);
-      far_strcpy(CommandComment2, inpcomment2);
-      far_strcpy(CommandComment3, inpcomment3);
-      far_strcpy(CommandComment4, inpcomment4);
+      for(i=0;i<4;i++)
+         far_strncpy(CommandComment[i], inpcomment[i], MAXCMT);
       if (gotrealdac && !reallyega)
          if (paramvalues[maxcolorindex].uval.ival > 0 &&
              paramvalues[maxcolorindex].uval.ival <= 256)
@@ -428,23 +432,33 @@ Continue to replace it, Cancel to back out"};
          }
          else
             fprintf(parmfile, "%-19s{", CommandName);
-         if (CommandComment1[0])
-            fprintf(parmfile, " ; %s", CommandComment1);
+         {
+            /* guarantee that there are no blank comments above the last
+               non-blank par_comment */
+            int i, last;
+            for(last=-1,i=0;i<4;i++)
+               if(*par_comment[i])
+                  last=i;
+            for(i=0;i<last;i++)      
+               if(*CommandComment[i]=='\0')
+                  far_strcpy(CommandComment[i],";");
+         }
+         if (CommandComment[0][0])
+            fprintf(parmfile, " ; %s", CommandComment[0]);
          fputc('\n', parmfile);
          {
+            int k;
             char buf[25];
             memset(buf, ' ', 23);
             buf[23] = 0;
             buf[21] = ';';
-            if (CommandComment2[0])
-               fprintf(parmfile, "%s%s\n", buf, CommandComment2);
-            if (CommandComment3[0])
-               fprintf(parmfile, "%s%s\n", buf, CommandComment3);
-            if (CommandComment4[0])
-               fprintf(parmfile, "%s%s\n", buf, CommandComment4);
+            for(k=1;k<4;k++)
+               if (CommandComment[k][0])
+                  fprintf(parmfile, "%s%s\n", buf, CommandComment[k]);
+            /*
             if (patchlevel != 0)
                fprintf(parmfile, "%s Version %d Patchlevel %d\n", buf,
-                  release, patchlevel);
+                  release, patchlevel); */
          }
          write_batch_parms(colorspec, maxcolor);   /* write the parameters */
          if(xm > 1 || ym > 1)
@@ -487,6 +501,7 @@ Continue to replace it, Cancel to back out"};
    helpmode = oldhelpmode;
    unstackscreen();
 }
+
 #ifdef C6
 #pragma optimize("e",on)  /* back to normal */
 #endif
@@ -931,9 +946,17 @@ static void write_batch_parms(char *colorinf,int maxcolor)
          put_parm("/%s",s_no);
       put_parm("/%d/%d",viewxdots,viewydots);
    }
-   if (*colorinf != 'n') {
+   if (*colorinf != 'n') 
+   {
+      if(recordcolors=='c' && *colorinf == '@')
+      {
+         put_parm_line();
+         put_parm("; %s=",s_colors);
+         put_parm(colorinf);
+         put_parm_line();
+      }   
       put_parm(" %s=",s_colors);
-      if (*colorinf == '@')
+      if (recordcolors !='c' && recordcolors != 'y' && *colorinf == '@')
          put_parm(colorinf);
       else {
          int curc,scanc,force,diffmag = -1;
@@ -1619,6 +1642,7 @@ int select_video_mode(int curmode)
 
 void format_vid_table(int choice,char *buf)
 {
+   char local_buf[81];
    char kname[5];
    char biosflag;
    int truecolorbits;
@@ -1629,15 +1653,15 @@ void format_vid_table(int choice,char *buf)
    sprintf(buf,"%-5s %-25s %4d %4d ",  /* 42 chars */
            kname, videoentry.name, videoentry.xdots, videoentry.ydots);
    if((truecolorbits = videoentry.dotmode/1000) == 0)
-      sprintf(buf,"%s%3d",  /* 45 chars */
+      sprintf(local_buf,"%s%3d",  /* 45 chars */
            buf, videoentry.colors);
    else 
-      sprintf(buf,"%s%3s",  /* 45 chars */
+      sprintf(local_buf,"%s%3s",  /* 45 chars */
            buf, (truecolorbits == 3)?"64m":
                 (truecolorbits == 2)?"16k":
                 (truecolorbits == 1)?"15k":"???");
    sprintf(buf,"%s%c %-25s",  /* 72 chars */
-           buf, biosflag, videoentry.comment);
+           local_buf, biosflag, videoentry.comment);
 }
 
 static int check_modekey(int curkey,int choice)
@@ -2109,4 +2133,200 @@ void flip_image(int key)
    }
    reset_zoom_corners();
    calc_status = 0;
+}
+static char *expand_var(char *var, char *buf)
+{
+   static FCODE s_year    [] = {"year"    };
+   static FCODE s_month   [] = {"month"   };
+   static FCODE s_day     [] = {"day"     };
+   static FCODE s_hour    [] = {"hour"    };
+   static FCODE s_min     [] = {"min"     };
+   static FCODE s_sec     [] = {"sec"     };
+   static FCODE s_time    [] = {"time"    };
+   static FCODE s_date    [] = {"date"    };
+   static FCODE s_calctime[] = {"calctime"};
+   static FCODE s_version [] = {"version" };
+   static FCODE s_patch   [] = {"patch"   };
+   static FCODE s_xdots   [] = {"xdots"   };
+   static FCODE s_ydots   [] = {"ydots"   };
+   static FCODE s_vidkey  [] = {"vidkey"  };
+   
+   time_t ltime;
+   char *str, *out;
+   
+   time( &ltime );
+   str = ctime(&ltime);
+
+   /* ctime format             */
+   /* Sat Aug 17 21:34:14 1996 */
+   /* 012345678901234567890123 */
+   /*           1         2    */   
+   if(far_strcmp(var,s_year) == 0)       /* 4 chars */
+   {
+      str[24] = '\0';
+      out = &str[20];
+   }
+   else if(far_strcmp(var,s_month) == 0) /* 3 chars */
+   {
+      str[7] = '\0';
+      out = &str[4];
+   }
+   else if(far_strcmp(var,s_day) == 0)   /* 2 chars */
+   {
+      str[10] = '\0';
+      out = &str[8];
+   }
+   else if(far_strcmp(var,s_hour) == 0)  /* 2 chars */
+   {
+      str[13] = '\0';
+      out = &str[11];
+   }
+   else if(far_strcmp(var,s_min) == 0)   /* 2 chars */
+   {
+      str[16] = '\0';
+      out = &str[14];
+   }
+   else if(far_strcmp(var,s_sec) == 0)   /* 2 chars */
+   {
+      str[19] = '\0';
+      out = &str[17];
+   }
+   else if(far_strcmp(var,s_time) == 0)  /* 8 chars */
+   {
+      str[19] = '\0';
+      out = &str[11];
+   }
+   else if(far_strcmp(var,s_date) == 0)
+   {
+      str[10] = '\0';
+      str[24] = '\0';
+      out = &str[4];
+      strcat(out,", ");
+      strcat(out,&str[20]);
+   }
+   else if(far_strcmp(var,s_calctime) == 0)
+   {
+      get_calculation_time(buf);
+      out = buf;
+   }
+   else if(far_strcmp(var,s_version) == 0)  /* 4 chars */
+   {
+      sprintf(buf,"%d",release);
+      out = buf;
+   }
+   else if(far_strcmp(var,s_patch) == 0)   /* 1 or 2 chars */
+   {
+      sprintf(buf,"%d",patchlevel);
+      out = buf;
+   }
+   else if(far_strcmp(var,s_xdots) == 0)   /* 2 to 4 chars */
+   {
+      sprintf(buf,"%d",xdots);
+      out = buf;
+   }
+   else if(far_strcmp(var,s_ydots) == 0)   /* 2 to 4 chars */
+   {
+      sprintf(buf,"%d",ydots);
+      out = buf;
+   }
+   else if(far_strcmp(var,s_vidkey) == 0)   /* 2 to 3 chars */
+   {
+      char vidmde[5];
+      vidmode_keyname(videoentry.keynum, vidmde);
+      sprintf(buf,"%s",vidmde);
+      out = buf;
+   }
+   else
+   {
+      static char far msg[] = {"Unknown comment variable xxxxxxxxxxxxxxx"};
+      msg[25] = '\0';
+      far_strcat(msg,var);
+      stopmsg(0,msg);
+      out = "";
+   }
+   return(out);
+}
+
+#define MAXVNAME  13
+
+static const char esc_char = '$';
+
+/* extract comments from the comments= command */
+static void expand_comments(char far *target, char far *source)
+{
+   int i,j, k, escape = 0;
+   char c, oldc, varname[MAXVNAME];
+   i=j=k=0;
+   c = oldc = 0;
+   while(i < MAXCMT && j < MAXCMT && (c = *(source+i++)) != '\0')
+   {
+      if(c == '\\' && oldc != '\\')
+      {
+         oldc = c;
+         continue;
+      }
+      /* expand underscores to blanks */
+      if(c == '_' && oldc != '\\')
+         c = ' ';
+      /* esc_char marks start and end of variable names */
+      if(c == esc_char && oldc != '\\')
+         escape = 1 - escape;
+      if(c != esc_char && escape != 0) /* if true, building variable name */
+      {
+         if(k < MAXVNAME-1)
+            varname[k++] = c;
+      }
+      /* got variable name */
+      else if(c == esc_char && escape == 0 && oldc != '\\')
+      {
+         char buf[100];
+         char *varstr;
+         varname[k] = 0;
+         varstr = expand_var(varname,buf);
+         far_strncpy(target+j,varstr,MAXCMT-j-1);
+         j += strlen(varstr);
+      }
+      else if (c == esc_char && escape != 0 && oldc != '\\')
+         k = 0;
+      else if ((c != esc_char || oldc == '\\') && escape == 0)
+         *(target+j++) = c;
+      oldc = c;
+   }   
+   if(*source != '\0')
+      *(target+min(j,MAXCMT-1)) = '\0';
+}
+
+/* extract comments from the comments= command */
+void parse_comments(char *value)
+{
+   int i;
+   char *next,save;
+   for(i=0;i<4;i++)
+   {
+      save = '\0';
+      if (*value == 0) 
+         break;
+      next = strchr(value,'/');
+      if (*value != '/') 
+      {
+         if(next != NULL)
+         {
+            save = *next;
+            *next = '\0';
+         }
+         far_strncpy(par_comment[i],value, MAXCMT);
+      }
+      if(next == NULL)
+         break;
+      if(save != '\0')
+         *next = save;
+      value = next+1;
+   }
+}
+   
+void init_comments()
+{
+   int i;
+   for(i=0;i<4;i++)
+      par_comment[i][0] = '\0';
 }

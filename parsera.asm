@@ -32,7 +32,9 @@
 
 ;             Date      Init   Change description
 
-;          30 Jun 1996   TIW   Added floor, ceil, trunc, and round functions 
+;           7 Aug 1996   TIW   Added scrnpix constant
+;           4 Aug 1996   TIW   Added whitesq variable support
+;          30 Jun 1996   TIW   Added floor, ceil, trunc, and round functions
 ;           7 Mar 1995   TIW   Added PWR (0,0) domain check
 ;          21 Feb 1995   TIW   Shortened ATanh/ATan for MASM 6 compatibility
 ;          21 Feb 1995   CAE   Changes ATan and ATanh
@@ -95,6 +97,8 @@ ARGSZ              equ 16              ; size of complex arg
 CPFX               equ 4               ; size of constarg prefix
 CARG               equ CPFX+ARGSZ      ; size of constarg
 LASTSQR            equ CARG*4+CPFX     ; offset of lastsqr from start of v
+WHITESQ            equ CARG*9+CPFX     ; offset of whitesq from start of v
+SCRNPIX            equ CARG*10+CPFX    ; offset of scrnpix from start of v
 
 ; ---------------------------------------------------------------------------
 FRAME              MACRO regs          ; build a stack frame
@@ -1406,7 +1410,7 @@ End_Log_ATan:
       pop          ax                  ; restore old CW to AX
       mov          _Arg2,ax            ; ...then move it to Arg2
       fldcw        _Arg2               ; Restore control word from Arg2
-   ; Normal rounding is in effect again  
+   ; Normal rounding is in effect again
    END_OPER        Floor
 ; --------------------------------------------------------------------------
    BEGN_OPER       Ceil                ; Complex ceiling
@@ -1426,7 +1430,7 @@ End_Log_ATan:
       pop          ax                  ; restore old CW to AX
       mov          _Arg2,ax            ; ...then move it to Arg2
       fldcw        _Arg2               ; Restore control word from Arg2
-   ; Normal rounding is in effect again  
+   ; Normal rounding is in effect again
    END_OPER        Ceil
 ; --------------------------------------------------------------------------
    BEGN_OPER       Trunc               ; Complex truncation
@@ -1445,26 +1449,29 @@ End_Log_ATan:
       pop          ax                  ; restore old CW to AX
       mov          _Arg2,ax            ; ...then move it to Arg2
       fldcw        _Arg2               ; Restore control word from Arg2
-   ; Normal rounding is in effect again  
+   ; Normal rounding is in effect again
    END_OPER        Trunc
 ; --------------------------------------------------------------------------
-   BEGN_OPER       Round               ; Complex round
+   BEGN_OPER       Round               ; Complex round to nearest
       fstcw        _Arg2               ; use arg2 to hold CW
       fwait
       mov          ax,_Arg2            ; Now do some integer instr.'s
       push         ax                  ; Save control word on stack
       and          ax,1111001111111111b
+      or           ax,0000010000000000b
       mov          _Arg2,ax
-      fldcw        _Arg2               ; Now set control to round to nearest
-   ; Chop toward nearest rounding applies now
+      fldcw        _Arg2               ; Now set control to round toward -inf
+   ; Round toward negative infinity applies now
+      fadd         _PointFive          ; x+.5  y
       frndint                          ; round(x) y
       fxch                             ; y round(x)
+      fadd         _PointFive          ; y+.5 round(x)
       frndint                          ; round(y) round(x)
       fxch                             ; round(x) round(y)
       pop          ax                  ; restore old CW to AX
       mov          _Arg2,ax            ; ...then move it to Arg2
       fldcw        _Arg2               ; Restore control word from Arg2
-   ; Normal rounding is in effect again  
+   ; Normal rounding is in effect again
    END_OPER        Round
 ; --------------------------------------------------------------------------
 ; End of new functions.                                          TIW 30Jun96
@@ -1986,6 +1993,31 @@ _fFormula          endp
    align           4
 _fform_per_pixel   proc far
       FRAME        <si, di>
+   ;    if((row+col)&1)
+      mov          ax,_row             ; ax = row
+      add          ax,_col             ; ax = row+col
+      and          ax,1                ; ax = (row+col)&1
+      les          bx,_v               ; load pointer to constants
+      cmp          ax,0                ; zero?
+      je           checker_is_0
+   ;      v[9].a.d.x = 1.0;            ; not zero, set whitesq.x=1.0
+      fld1                             ; constant 1.0 to ST
+      fstp         QWORD PTR es:[bx+WHITESQ]  ; copy ST to whitesq.x
+      jmp          checker_is_1
+checker_is_0:                          ; is zero, set whitesq to (0,0)
+   ;      v[9].a.d.y = 0.0;
+      fldz                             ; load constant zero to ST
+      fstp         QWORD PTR es:[bx+WHITESQ]  ; copy ST to whitesq.x
+checker_is_1:
+      fldz
+      fstp         QWORD PTR es:[bx+WHITESQ+8]
+   ;    v[10].a.d.x = (double)col;
+      fild         _col                ; ST  = col
+      fstp         QWORD PTR es:[bx+SCRNPIX] ; scrnpix.x = col
+   ;    v[10].a.d.y = (double)row;
+      fild         _row                ; ST  = row
+      fstp         QWORD PTR es:[bx+SCRNPIX+8] ; scrnpix.y = row
+
       cmp          _invert,0            ; inversion support added
       je           skip_invert          ;                        CAE 08FEB95
       mov          si,offset DGROUP:_old

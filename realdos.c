@@ -25,8 +25,8 @@ static int menu_checkkey(int curkey,int choice);
 /* uncomment following for production version */
 /* #define PRODUCTION */
 
-int release=1940;  /* this has 2 implied decimals; increment it every synch */
-int patchlevel=0; /* patchlevel for DOS version */
+int release=1950;  /* this has 2 implied decimals; increment it every synch */
+int patchlevel=0;  /* patchlevel for DOS version */
 #ifdef XFRACT
 int xrelease=300;
 #endif

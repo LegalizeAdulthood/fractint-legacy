@@ -211,7 +211,7 @@ restart:   /* insert key re-starts here */
    dopause(0);                  /* pause for error msg if not batch */
    init_msg(0,"",NULL,0);  /* this causes getakey if init_msg called on runup */
    checkfreemem(1);
-   if(debugflag==450 && initbatch==1)   /* abort if savename already exits */
+   if(debugflag==450 && initbatch==1)   /* abort if savename already exists */
        check_samename();
 #ifdef XFRACT
    initUnixWindow();

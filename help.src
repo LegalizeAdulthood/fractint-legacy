@@ -17,7 +17,7 @@
    { Introduction }                         { Distribution of Fractint }
    { Conditions on Use }                    { Contacting the Authors }
    { Getting Started }                      { The Stone Soup Story }
-   { New Features in Version 19.4 }         { A Word About the Authors }
+   { New Features in Version 19.5 }         { A Word About the Authors }
                                           { Other Fractal Products }
    { Display Mode Commands }
    { Color Cycling Commands }               { Fractint on Unix }
@@ -38,7 +38,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New Features in Version 19.4", FF}
+{     , 0, "New Features in Version 19.5", FF}
 {     , 0, "Introduction", "Conditions on Use", FF}
 
 {1.   , 0, Fractint Commands, FF}
@@ -264,17 +264,63 @@ integrated documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in Version 19.4
+~Topic=New Features in Version 19.5
+Version 19.5 is a bug-fix release for version 19.4 based on the developer's
+  version 19.40 patch 11. As always, we added a few new features along 
+  with the bug fixes.
+
+New {=@COMMENTS Comment= command}. You can automatically set any of the four 
+  PAR comments, and can include variables in the comments such as the 
+  much-requested $calctime$ and $date$. Fractint now writes ';;' for empty 
+  comments above the last comment from the comment= command. This prevents 
+  comments from moving positions when the PAR is reloaded.
+
+New {=@RECORDCOLORS recordcolors= command}. If you place 
+  recordcolors=y in your SSTOOLS.INI, compressed colors will always be 
+  written in your PARS. If you want to remember what the map file was 
+  (assuming the colors were loaded from one), try recordcolors=c. This is 
+  exactly like recordcolors=y except that the map file (if any) is written 
+  to a parfile comment.
+
+Added new parser constants:\
+  1. whitesq parser constant = (row+col)&1\
+  2. scrnpix parser constant = (col,row)\
+  3. scrnmax parser constant = (xdots, ydots)\
+  4. maxit   parser constant = (maxit,0)\
+
+Added "\\" linewrap for formula files.
+
+Made the round function consistent in all modes. Now round(z) is always
+  (floor(x+.5)+i*floor(y+.5)). In version 19.4, in floating point mode
+  with type=formula, round() used the coprocessor "nearest or even"
+  rounding. Version 19.5 always rounds xxx.5 up.
+
+Fixed a bug that caused a crash when zooming out with certain functions in 
+  integer mode.
+
+Fixed a bug that caused a crash when attempting 3d=overlay without a filename
+  in batch mode.
+
+Fixed a bug that caused part of the video table to not show when compiled
+  by Borland.
+
+Fixed a bug that kept the last image browsed from showing up when you
+  regenerate an image and then start the browser again.
+
+Fixed a bug that loaded images with the wrong aspect ratio when using the
+  browser with the view window turned on, and the file image size was not the
+  same as the screen image size.
+~ONLINEFF
 Version 19.4 is a bug-fix release for version 19.3 based on the developer's
   version 19.30 patch 18. But a few new features did slip in when we weren't
   looking.
 
-New functions are now available for type=formula and general function 
-  variable use. They are the rounding functions: floor(), ceil(), trunc(), 
-  and round() 
+New functions are now available for type=formula and general function
+  variable use. They are the rounding functions: floor(), ceil(), trunc(),
+  and round()
 
 New larger showdot "turtle" to enable better seeing which pixel is currently
-  being calculated. The syntax is showdot=<color>/<size>, but the color 
+  being calculated. The syntax is showdot=<color>/<size>, but the color
   parameter can now be one of auto, bright, medium, and dark in addition to
   the previously-supported color number value.
 
@@ -283,17 +329,17 @@ The <g> command now remembers the last command.
 Added the ability to load images into a view window.  This can be used
   with the browser to browse images larger than the current image.
 
-Added George Martin's new integrated entry-finding code. Fractint is now 
+Added George Martin's new integrated entry-finding code. Fractint is now
   more tolerant of text between entries, and the internal code is much
   cleaner than before.
 
-Added Bert Tyler's new VESA truecolor video drivers. These don't do anything 
+Added Bert Tyler's new VESA truecolor video drivers. These don't do anything
   yet; we've just added the video drivers for testing. Work goes on ...\
-  To test out the new modes, try fractint debug=500 type=test and select 
-  a new truecolor mode. They only work with video boards having VESA 
+  To test out the new modes, try fractint debug=500 type=test and select
+  a new truecolor mode. They only work with video boards having VESA
   truecolor support. Some "non-standard VESA" modes (an unfortunate
-  oxymoron if there ever was one) can also be supported by editing 
-  FRACTINT.CFG. These vendor-specific "VESA" modes tend to make Bert, 
+  oxymoron if there ever was one) can also be supported by editing
+  FRACTINT.CFG. These vendor-specific "VESA" modes tend to make Bert,
   our video expert, real grumpy ...
 
 Now for the squashed bugs report:
@@ -311,13 +357,13 @@ Fixed bug that caused any command with greater than 16 parameters to fail,
   most notably textcolors and ranges.
 
 Fixed a center-mag<->corners conversion bug that occurred with rotated images.
-  arbitrary precision also (test with debug=3200). 
- 
-Fixed bug that allowed the matherr debugging file to grow arbitrarily large.
-  Matherr file is limited to 100 messages for each fractal. 
+  arbitrary precision also (test with debug=3200).
 
-Fixed bug that affected some Icons3d types, which were broken due to a 
-  very subtle bug in apparently good code caused compiler optimizer.
+Fixed bug that allowed the matherr debugging file to grow arbitrarily large.
+  Matherr file is limited to 100 messages for each fractal.
+
+Fixed bug that affected some Icons3d types, which were broken due to a
+  very subtle bug in apparently good code caused by the compiler optimizer.
 
 Version 19.3 is a bug-fix release for version 19.2 based on the developer's
   version 19.21 patch 30.
@@ -1271,8 +1317,9 @@ After you press <B>, Fractint prompts for:
 
   Second, Third, and Fourth comment:  Additional comments to store in the
   file with the entry. These comments go in the file only, and are not
-  displayed by the <@> command.
-
+  displayed by the <@> command. You can set these commenst from the
+  command line - see {=@COMMENTS Comment= Command}.
+  
   Record colors?:  Whether color information should be included in the
   entry. Usually the default value displayed by Fractint is what you want.
   Allowed values are:\
@@ -1296,7 +1343,10 @@ After you press <B>, Fractint prompts for:
   you want. You might want to increase it in some cases, e.g. if you are
   using a 256 color mode with maxiter 150, and have used the palette
   editor to set all 256 possible colors for use with color cycling, then
-  you'll want to set the "# of colors" to 256.
+  you'll want to set the "# of colors" to 256. 
+
+  See the {=@RECORDCOLORS Recordcolors} command, which controls when mapfiles
+  are used and when compressed colors are written to PAR files.
 
   At the bottom of the input screen are inputs for Fractint's "pieces"
   divide-and-conquer feature. You can create multiple PAR entries that
@@ -1642,15 +1692,12 @@ saved.
 
 Esc backs out of image selecting mode.\
 
-To find the next outer image, zoom in using page_up, press control_enter,
-ignore the generating image, and press control_L to start browsing.  Whatever
-is boxed around the center is the next outer image!
-
-The browser can now use expanded memory or extended memory.  The expanded
-memory works better if you don't have 4 MB of memory available as it will
-allocate as much as possible.  The extended memory support will silently
-fail and default to the use of far memory if 4 MB of extended memory is not
-available.
+The browser can now use expanded memory or extended memory.  If you have
+more than 4 MB of expanded/extended memory available, you can use either.
+If you don't have 4 MB of expanded/extended memory available, use expanded
+memory as it will allocate as much as possible.  The extended memory support
+will silently fail and default to the use of far memory if 4 MB of extended
+memory is not available.
 
 Here's a tip on how to zoom out beyond your starting point when browsing:
 Suppose you restore a fractal deeply-zoomed down in a directory of
@@ -1661,7 +1708,8 @@ can do is exit the browser, press PgUp until the zoom box won't get any
 smaller, zoom out with Ctrl-Enter, and before any image starts to
 develop, call up the browser again, locate your zoomed image that you
 started with, and see if there is another image that contains it - if
-so, restore it with the browser.
+so, restore it with the browser.  You can also use a view window <v> to load
+the first image, and then use the browser.
 
 POSSIBLE ERRORS:
 
@@ -1672,14 +1720,16 @@ See {Browser Parameters}  This is also displayed if you have less than
 
 "Sorry....  no more space"\
 At the moment the browser can only cope with 450 sub images at one time.
-Any subsequent images are ignored, make sure that the minimum image size
+Any subsequent images are ignored.  Make sure that the minimum image size
 isn't set too small on the parameters screen.
 
 ~OnlineFF
 "Sorry .... out of memory"\
-The browser has run out of far memory in which to store the pixels covered by
-the sub image boxes.  Try again with the main image at lower resolution,
-and/or reduce the number of TSRs resident in memory when you start Fractint.
+The browser has run out of far, expanded, or extended memory in which to
+store the pixels covered by the sub image boxes.  Try again with the main
+image at lower resolution, and/or reduce the number of TSRs resident in
+memory when you start Fractint.  Make sure you have expanded or extended
+memory available.
 
 "Sorry...it's a read only file, can't del <filename>"\
 "Sorry....can't rename"\

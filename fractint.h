@@ -63,7 +63,7 @@ typedef char * USEGTYPE;
 #define FILE_MAX_DRIVE  3       /* max length of drive letter   */
 #define FILE_MAX_FNAME  9       /* max length of filename       */
 #define FILE_MAX_EXT    5       /* max length of extension      */
-
+#define MAXCMT 57               /* length of par comments       */
 #define MAXPARAMS 10            /* maximum number of parameters */
 #define MAXPIXELS 2048          /* Maximum pixel count across/down the screen */
 #define DEFAULTASPECT ((float)0.75)/* Assumed overall screen dimensions, y/x  */

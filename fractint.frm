@@ -1159,25 +1159,46 @@ G-3-03-M  { ; Sylvie Gallet [101324,3444], 1996
 comment {
   The following formula overlays a Mandel and a reverse-Mandel, using a
   checkerboard dithering invisible at very high resolutions.
-  It has some limitations:
-  - it is resolution dependent: the parameter p3 must be set to the
-    horizontal resolution, incorrect values of p3 produce diagonal or
-    vertical lines.
-  - the image must be allowed to finish without interruption, otherwise
-    artifacts may occur once the image restarts.
+  Since it uses the new predefined variable "whitesq", it's now resolution
+  independent and the image can be interrupted, saved and restored.
+  Panning an even number of pixels is now possible.
   }
 
 JD-SG-04-1 { ; Sylvie Gallet [101324,3444], 1996
   ; On an original idea by Jim Deutch [104074,3171]
   ; use p1 and p2 to adjust the inverted Mandel
-  ; p3 = horizontal resolution: 320, 640, 800, 1024, 1280, ,1600...
-  count = (count + 1) * (count != (p3-1))
-  evenodd = (evenodd == (count == 1))
-  oddeven = (evenodd == 0)
-  z = c = pixel * evenodd + (p1 / (pixel+p2)) * oddeven :
+  ; 16-bit Pseudo-HiColor
+  z = c = pixel * whitesq + (p1 / (pixel+p2)) * (whitesq==0) :
    z = z*z + c
     |z| < 4
- }
+  }
+
+comment {
+  These formula overlay 3 or 4 fractals.
+  }
+
+ptc+mjn { ; Sylvie Gallet [101324,3444], 1996
+          ; 24-bit Pseudo-TrueColor
+          ; Mandel: z^2 + c , Julia: z^2 + p1 , Newton: z^p2 - 1 = 0
+  cr = real(scrnpix) + imag(scrnpix)
+  r = cr - 3 * trunc(cr / real(3))
+  z = pixel , b1 = 256 , b2 = 0.000001 , ex = p2 - 1
+  c = pixel * (r==0) + p1 * (r==1) :
+   zd = z^ex , zn = zd*z , n = zn - 1 , d = p2 * zd
+   z = (z*z + c) * (r!=2) + (z - n/d) * (r==2)
+    ((|z| <= b1) && (r!=2)) || ((|n| >= b2 ) && (r==2))
+  }
+
+ptc+4mandels { ; Sylvie Gallet [101324,3444], 1996
+               ; 32-bit Pseudo-TrueColor
+  cr = real(scrnpix) + 2*imag(scrnpix)
+  r = cr - 4 * trunc(cr / 4)
+  c = r == 0 , c1 = p1 * (r == 1)
+  c2 = p2 * (r == 2) , c3 = p3 * (r == 3)
+  z = c = pixel * (c + c1 + c2 + c3) :
+   z = z * z + c
+    |z| <= 4
+  }
 
 {--- CHRIS GREEN ---------------------------------------------------------}
 

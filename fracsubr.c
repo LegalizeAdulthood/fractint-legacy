@@ -835,6 +835,8 @@ static void _fastcall adjust_to_limits(double expand)
    limit = 32767.99;
 
    if (integerfractal) {
+      if (save_release > 1940) /* let user reproduce old GIF's and PAR's */
+         limit = 1023.99;
       if (bitshift >= 24) limit = 31.99;
       if (bitshift >= 29) limit = 3.99;
    }

@@ -1546,6 +1546,9 @@ struct ConstArg far *isconst(char *Str, int Len) {
                RandomSeed();
             if(n == 8)        /* The formula uses 'p3'. */
                uses_p3 = 1;
+            if(n == 10 || n == 11 || n == 12)
+               if(MathType == L_MATH)
+                  keybuffer = 'f';
             if(!isconst_pair(Str))
                return(&v[n]);
          }
@@ -1730,6 +1733,10 @@ static char *Constants[] = {
    "e",            /* v[6] */
    "rand",         /* v[7] */
    "p3",           /* v[8] */
+   "whitesq",      /* v[9] */
+   "scrnpix",      /* v[10] */
+   "scrnmax",      /* v[11] */
+   "maxit",        /* v[12] */
 };
 
 struct SYMETRY {
@@ -1947,6 +1954,10 @@ static int ParseStr(char *Str, int pass) {
    const_pi = atan(1.0) * 4;
    const_e  = exp(1.0);
    v[7].a.d.x = v[7].a.d.y = 0.0;
+   v[11].a.d.x = (double)xdots;
+   v[11].a.d.y = (double)ydots;
+   v[12].a.d.x = (double)maxit;
+   v[12].a.d.y = 0;
 
    switch(MathType) {
    case D_MATH:
@@ -1973,6 +1984,8 @@ static int ParseStr(char *Str, int pass) {
       v[6].a.m.y = *d2MP(0.0);
       v[8].a.m.x = *d2MP(param[4]);
       v[8].a.m.y = *d2MP(param[5]);
+      v[11].a.m  = cmplx2MPC(v[11].a.d);
+      v[12].a.m  = cmplx2MPC(v[12].a.d);
       break;
    case L_MATH:
       v[1].a.l.x = (long)(param[0] * fg);
@@ -1980,11 +1993,15 @@ static int ParseStr(char *Str, int pass) {
       v[2].a.l.x = (long)(param[2] * fg);
       v[2].a.l.y = (long)(param[3] * fg);
       v[5].a.l.x = (long)(const_pi * fg);
-      v[5].a.l.y = (long)(0.0);
+      v[5].a.l.y = 0L;
       v[6].a.l.x = (long)(const_e * fg);
-      v[6].a.l.y = (long)(0.0);
+      v[6].a.l.y = 0L;
       v[8].a.l.x = (long)(param[4] * fg);
       v[8].a.l.y = (long)(param[5] * fg);
+      v[11].a.l.x = xdots; v[11].a.l.x <<= bitshift;
+      v[11].a.l.y = ydots; v[11].a.l.y <<= bitshift;
+      v[12].a.l.x = maxit; v[12].a.l.x <<= bitshift;
+      v[12].a.l.y = 0L;
       break;
 #endif
    }
@@ -2377,6 +2394,37 @@ int form_per_pixel(void) {
    Arg1 = &s[0];
    Arg2 = Arg1;
    Arg2--;
+
+   v[10].a.d.x = (double)col;
+   v[10].a.d.y = (double)row;
+
+   switch(MathType) {
+   case D_MATH:
+      if((row+col)&1)
+         v[9].a.d.x = 1.0;
+      else
+         v[9].a.d.x = 0.0;
+      v[9].a.d.y = 0.0;
+      break;
+#ifndef XFRACT
+   case M_MATH:
+      if((row+col)&1)
+         v[9].a.m = MPCone;
+      else {
+         v[9].a.m.x.Mant = v[9].a.m.x.Exp = 0;
+         v[9].a.m.y.Mant = v[9].a.m.y.Exp = 0;
+      }
+      v[10].a.m = cmplx2MPC(v[10].a.d);
+      break;
+   case L_MATH:
+      v[9].a.l.x = (long) (((row+col)&1) * fg);
+      v[9].a.l.y = 0L;
+      v[10].a.l.x = col;   v[10].a.l.x <<= bitshift;
+      v[10].a.l.y = row;   v[10].a.l.y <<= bitshift;
+      break;
+#endif
+   }
+
    /* TW started additions for inversion support here 4/17/94 */
    {
       if(invert)
@@ -2481,6 +2529,7 @@ char *PrepareFormula(FILE * File) {
    int c;
    int message_code = 0;
    int not_a_repeat = 1;
+   int carryover_line;
 
    static char far last_formula_file[FILE_MAX_PATH];
    static char far last_formula_name[ITEMNAMELEN+1];
@@ -2565,11 +2614,14 @@ char *PrepareFormula(FILE * File) {
       FormulaStr = NULL;
    else
       FormulaStr = (char *)boxx;
-   array_pos = 0;
+   array_pos = carryover_line = 0;
    while(!Done)
    {
       switch(c = getc(File))
       {
+         case '\\':
+            carryover_line = 1;
+            break;
          case ' ': case '\t':
             break;
          case '}':
@@ -2581,8 +2633,12 @@ char *PrepareFormula(FILE * File) {
          case ';':
             while((c = getc(File)) != '\n' && c != '\r')
                ;              /* GGM - fall through is intentional*/
-         case '\n': case '\r': case ',':
-            if(array_pos>0 && FormulaStr[array_pos-1] != ',' && FormulaStr[array_pos-1] != ':')
+         case ',':
+            if (c == ',')     /* needed because of the fall through*/
+               carryover_line = 0; /* fall through is intentional*/
+         case '\n': case '\r':
+            if(array_pos>0 && FormulaStr[array_pos-1] != ','
+                      && FormulaStr[array_pos-1] != ':' && !carryover_line)
                FormulaStr[array_pos++] = ',';
             break;
          case ':':
@@ -2594,6 +2650,7 @@ char *PrepareFormula(FILE * File) {
                if(FormulaStr[array_pos-1] == ',')
                   array_pos--;
             FormulaStr[array_pos++] = ':';
+            carryover_line = 0;
             break;
          case '\032': case EOF:
             Done = 1;
@@ -2602,6 +2659,7 @@ char *PrepareFormula(FILE * File) {
             break;
          default:
             FormulaStr[array_pos++] = (char)c;
+            carryover_line = 0;
             break;
       }
       if (array_pos >= MAX_BOXX)

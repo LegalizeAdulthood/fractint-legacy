@@ -1074,33 +1074,6 @@ int lccompare(VOIDFARPTR arg1, VOIDFARPTR arg2) /* for sort */
    return(strncasecmp(*((char far * far *)arg1),*((char far *far *)arg2),40));
 }
 
-void far_strncpy(char far *t, char far *s, int len)
-{
-   while((len-- && (*t++ = *s++) != 0));
-}
-
-char far *far_strchr(char far *str, char c)
-{
-   int len,i;
-   len = far_strlen(str);
-   i= -1;
-   while (++i < len && c != str[i]);
-   if(i == len)
-      return(NULL);
-   else
-      return(&str[i]);
-}
-
-char far *far_strrchr(char far *str, char c)
-{
-   int len;
-   len = far_strlen(str);
-   while (--len > -1 && c != str[len]);
-   if(len == -1)
-      return(NULL);
-   else
-      return(&str[len]);
-}
 
 static int speedstate;
 int getafilename(char *hdg,char *template,char *flname)
@@ -2168,3 +2141,39 @@ void shell_sort(void far *v1, int n, unsigned sz, int (__cdecl *fct)(VOIDFARPTR 
             *(char far *far*)(v+(j+gap)*sz) = temp;
          }
 }
+
+#if (_MSC_VER >= 700)
+#pragma code_seg ("prompts3_text")     /* place following in an overlay */
+#endif
+
+void far_strncpy(char far *t, char far *s, int len)
+{
+   while((len-- && (*t++ = *s++) != 0));
+}
+
+char far *far_strchr(char far *str, char c)
+{
+   int len,i;
+   len = far_strlen(str);
+   i= -1;
+   while (++i < len && c != str[i]);
+   if(i == len)
+      return(NULL);
+   else
+      return(&str[i]);
+}
+
+char far *far_strrchr(char far *str, char c)
+{
+   int len;
+   len = far_strlen(str);
+   while (--len > -1 && c != str[len]);
+   if(len == -1)
+      return(NULL);
+   else
+      return(&str[len]);
+}
+
+#if (_MSC_VER >= 700)
+#pragma code_seg ("")
+#endif

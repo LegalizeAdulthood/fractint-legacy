@@ -132,7 +132,7 @@ int projection = 2; /* projection plane - default is to plot x-y */
 /*                 zoom box conversion functions                  */
 /******************************************************************/
 
-/* 
+/*
    Conversion of complex plane to screen coordinates for rotating zoom box.
    Assume there is an affine transformation mapping complex zoom parallelogram
    to rectangular screen. We know this map must map parallelogram corners to
@@ -151,22 +151,22 @@ int projection = 2; /* projection plane - default is to plot x-y */
       then we just apply the transformation to each orbit value.
 */
 
-/* 
+/*
    Thanks to Sylvie Gallet for the following. The original code for
-   setup_convert_to_screen() solved for coefficients of the 
+   setup_convert_to_screen() solved for coefficients of the
    complex-plane-to-screen transformation using a very straight-forward
    application of determinants to solve a set of simulataneous
-   equations. The procedure was simple and general, but inefficient. 
-   The inefficiecy wasn't hurting anything because the routine was called 
+   equations. The procedure was simple and general, but inefficient.
+   The inefficiecy wasn't hurting anything because the routine was called
    only once per image, bit it seemed positively sinful to use it
    because the code that follows is SO much more compact, at the
-   expense of being less general. Here are sylvie's notes. I have further
-   optimized the code a slight bit. 
+   expense of being less general. Here are Sylvie's notes. I have further
+   optimized the code a slight bit.
                                                Tim Wegner
                                                July, 1996
-  Sylvie's notes, slightly editedm follow:
-  
-  You don't need 3x3 determinates to solve these sets of equations because
+  Sylvie's notes, slightly edited follow:
+
+  You don't need 3x3 determinants to solve these sets of equations because
   the unknowns e and f have the same coefficient: 1.
 
   First set of 3 equations:
@@ -185,7 +185,7 @@ int projection = 2; /* projection plane - default is to plot x-y */
      a*(x3-x1) + b*(y3-y2)     == 0   (2)-(1)
      a*(x2-x1) + b*(y1-y2)     == xd  (3)-(1)
 
-  I just have to calculate a 2x2 determinate:
+  I just have to calculate a 2x2 determinant:
      det == (x3-x1)*(y1-y2) - (y3-y2)*(x2-x1)
 
   And the solution is:
@@ -222,8 +222,8 @@ int setup_convert_to_screen(struct affine *scrn_cnvt)
 
    if((det = (xx3rd-xxmin)*(yymin-yymax) + (yymax-yy3rd)*(xxmax-xxmin))==0)
       return(-1);
-   xd = dxsize/det;   
-   yd = dysize/det;   
+   xd = dxsize/det;
+   yd = dysize/det;
    scrn_cnvt->a =  xd*(yymax-yy3rd);
    scrn_cnvt->b =  xd*(xx3rd-xxmin);
    scrn_cnvt->e = -scrn_cnvt->a*xxmin - scrn_cnvt->b*yymax;

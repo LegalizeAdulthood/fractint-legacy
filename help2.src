@@ -2429,6 +2429,7 @@ All variables are created automatically by their usage and treated as
 complex.  If you declare 'v = 2' then the variable 'v' is treated as a
 complex with an imaginary value of zero.
 
+~OnlineFF
 ~Format-
           Predefined Variables (x, y)
           --------------------------------------------
@@ -2436,12 +2437,21 @@ complex with an imaginary value of zero.
           p1         parameters 1 and 2
           p2         parameters 3 and 4
           p3         parameters 5 and 6
-          pixel      screen coordinates
+          pixel      complex coordinates
           LastSqr    Modulus from the last sqr() function
           rand       Complex random number
           pi         (3.14159..., 0.0)
           e          (2.71828..., 0.0)
+          maxit      (maxit, 0) maximum iterations
+          scrnmax    (xdots, ydots) max horizontal/vertical resolution.
+                     e.g. for SF7 scrnmax = (1024,768)
+          scrnpix    (col, row) pixel screen coordinates. (col, row) ranges
+                     from (0,0) to (xdots-1, ydots-1)
+          whitesq    ((col+row) modulo 2, 0) i.e. thinking of the screen
+                     coordinates as a large checker board, whitesq is (1,0)
+                     for the white squares and (0,0) for the black ones.
 
+~OnlineFF
           Precedence
           --------------------------------------------
           1          sin(), cos(), sinh(), cosh(), cosxx(), tan(), cotan(),
@@ -2486,10 +2496,11 @@ others that are not conventional.
             e.g. (4,5) would become (5,4)
  ident()  - identity function. Leaves the value of the argument unchanged,
             acting like a "z" term in a formula.
- floor()  - greatest integer less than the argument
- ceil()   - least integer greater than the argument
+ floor()  - largest integer not greater than the argument
+            floor(x+iy) = floor(x) + i*floor(y)
+ ceil()   - smallest integer not less than the argument
  trunc()  - truncate fraction part toward zero
- round()  - round to nearest integer 
+ round()  - round to nearest integer or up. e.g. round(2.5,3.4) = (3,3)
 ~Format+
 
 The formulas are performed using either integer or floating point
@@ -2506,13 +2517,21 @@ time to initialize the sequence.  This could cause a different fractal to be
 generated each time the formula is used depending on how the formula is
 written.
 
+A formula containing one of the predefined variables "maxit", "scrnpix" or
+"scrnmax" will be automatically run in floating point mode.
+
+The rounding functions must be used cautiously; formulas that depend on
+exact values of numbers will not work reliably in all cases.  For example,
+in floating point mode, trunc(6/3) returns 1 while trunc(6/real(3)) returns
+2.\
+Note that if x is an integer, floor(x) = ceil(x) = trunc(x) = round(x) = x.
+
 Remember that when using integer math there is a limited dynamic range, so
 what you think may be a fractal could really be just a limitation of the
 integer math range.  God may work with integers, but His dynamic range is
 many orders of magnitude greater than our puny 32 bit mathematics!  Always
 verify with the floating point <F> toggle.
 
-~OnlineFF
 The possible values for symmetry are:\
 
 XAXIS,  XAXIS_NOPARM\

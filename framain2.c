@@ -93,7 +93,7 @@ int big_while_loop(int *kbdmore, char *stacked, int resumeflag)
          memcpy(olddacbox,dacbox,256*3); /* save the DAC */
          diskisactive = 1;              /* flag for disk-video routines */
 
-         if (overlay3d) {
+         if (overlay3d && !initbatch) {
             unstackscreen();            /* restore old graphics image */
             overlay3d = 0;
             }
@@ -289,6 +289,9 @@ int big_while_loop(int *kbdmore, char *stacked, int resumeflag)
                ++saveticks; /* make low word nonzero */
             finishrow = -1;
             }
+         browsing = FALSE;      /* regenerate image, turn off browsing */
+         name_stack_ptr = -1;   /* reset pointer */
+         browsename[0] = '\0';  /* null */
          i = calcfract();       /* draw the fractal using "C" */
          if (i == 0)
             buzzer(0); /* finished!! */

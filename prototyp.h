@@ -757,6 +757,8 @@ extern void make_mig(unsigned int, unsigned int);
 extern int getprecdbl(int);
 extern int getprecbf(int);
 extern int getprecbf_mag(void);
+extern void parse_comments(char *value);
+extern void init_comments(void);
 
 /*  miscres -- C file prototypes */
 
@@ -781,6 +783,7 @@ extern int file_gets(char *,int ,FILE *);
 extern void roundfloatd(double *);
 extern void fix_inversion(double *);
 extern int ungetakey(int);
+extern void get_calculation_time(char *msgout);
 
 /*  mpmath_c -- C file prototypes */
 

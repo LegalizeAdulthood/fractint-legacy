@@ -744,6 +744,18 @@ static FCODE sbatch[] = {" (Batch mode)"};
 static FCODE ssavename[] = {"Savename: "};
 static FCODE sstopsecret[] = {"Top Secret Developer's Screen"};
 static FCODE sthreepass[] = {" (threepass)"};
+static FCODE sreallylongtime[] = {"A long time! (> 24.855 days)"};
+
+void get_calculation_time(char *msg)
+{
+   if (calctime >= 0)
+   {
+      sprintf(msg,"%3ld:%02ld:%02ld.%02ld", calctime/360000L,
+             (calctime%360000L)/6000, (calctime%6000)/100, calctime%100);
+   }
+   else
+      far_strcpy(msg,sreallylongtime);
+}
 
 static void show_str_var(char *name, char *var, int *row, char *msg)
 {
@@ -807,8 +819,8 @@ int tab_display_2(char *msg)
    sprintf(msg,"xxstart %d xxstop %d yystart %d yystop %d ",
       xxstart,xxstop,yystart,yystop);
    putstring(s_row++,2,C_GENERAL_HI,msg);
-   sprintf(msg,"ixstart %d ixstop %d iystart %d iystop %d ",
-      ixstart,ixstop,iystart,iystop);
+   sprintf(msg,"ixstart %d ixstop %d iystart %d iystop %d bitshift %d",
+      ixstart,ixstop,iystart,iystop,bitshift);
    putstring(s_row++,2,C_GENERAL_HI,msg);
 
    putstringcenter(24,0,80,C_GENERAL_LO,spressanykey1);
@@ -1012,13 +1024,8 @@ top:
          }
       }
    putstring(s_row,2,C_GENERAL_MED,scalculation_time);
-   if (calctime >= 0)
-      sprintf(msg,"%3ld:%02ld:%02ld.%02ld", calctime/360000L,
-             (calctime%360000L)/6000, (calctime%6000)/100, calctime%100);
-   else
-      sprintf(msg," A Really Long Time!!! (> 24.855 days)");
+   get_calculation_time(msg);
    putstring(-1,-1,C_GENERAL_HI,msg);
-   /* XXX */
 
    if ((curfractalspecific->flags&INFCALC) && (coloriter != 0)) {
       putstring(s_row,-1,C_GENERAL_MED,siterations);

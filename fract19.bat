@@ -1,5 +1,5 @@
 @echo off
-rem
+
 set mode_1280=1280
 set mode_1600=1600
 set gifdir=?
@@ -16,7 +16,7 @@ echo                      -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 echo.
 if not %gifdir%==? goto si1
 
-echo    I don't know the path for your .gif files.  Please, add it to the 4th line
+echo    I don't know the path for your .gif files.  Please, add it to the 5th line
 echo  of this file (e.g.  set gifdir=gifs  or:  set gifdir=c:\fract\gifs)
 echo.
 goto end
@@ -34,11 +34,14 @@ echo         5 images:  Fractint, Newton-real, Threeply, TileJulia, TileMandel.
 echo     4 - Images for Fractint 19.3
 echo         4 images:  Caverns_Of_Mongue, Mandel-virus, NutcrackerMonsters,
 echo                    Sliced-Tomato.
-echo     5 - New Images for Fractint 19.4
+echo     5 - Images for Fractint 19.4
 echo         4 images:  Graphs, G-3-03-M, Spirals, Jdsg410.
-echo     6 - Exit
-choice /n /c:123456 "                   Your selection: "
-if errorlevel 6 goto END
+echo     6 - New Images for Fractint 19.5
+echo         2 images:  Ptcmjn01, Ptc4m01.
+echo     7 - Exit
+choice /n /c:1234567 "                   Your selection: "
+if errorlevel 7 goto END
+if errorlevel 6 goto 19_5_1
 if errorlevel 5 goto 19_4_1
 if errorlevel 4 goto 19_3_4
 if errorlevel 3 goto 19_3_3
@@ -59,6 +62,9 @@ set pars=4
 goto select_video
 :19_4_1
 set pars=5
+goto select_video
+:19_5_1
+set pars=6
 
 rem                           +--------------+
 rem                           ! Select video !
@@ -71,6 +77,7 @@ if %pars%==2 echo                Total time: 4 mins 30 s at 1024x768 on a P166
 if %pars%==3 echo                Total time: 10 minutes at 1024x768 on a P166
 if %pars%==4 echo                Total time: 24 minutes at 1024x768 on a P166
 if %pars%==5 echo                Total time: 12 minutes at 1024x768 on a P166
+if %pars%==6 echo                Total time: 11 minutes at 1024x768 on a P166
 
 echo.
 echo     Use this table to get an idea of the calculation time on your computer:
@@ -244,7 +251,7 @@ rem                         ! Images for 19.4 !
 rem                         +-----------------+
 
 :19_4_1_g
-if not %pars%==5 goto end
+if not %pars%==5 goto 19_5_1_g
 IF EXIST %gifdir%GRAPHS.GIF GOTO 22
 FRACTINT video=%video% @FRACT19.PAR/GRAPHS BATCH=YES SAVENAME=GRAPHS
 IF ERRORLEVEL 2 GOTO ABORT
@@ -258,15 +265,25 @@ FRACTINT video=%video% @FRACT19.PAR/G-3-03-M BATCH=YES SAVENAME=G-3-03-M
 IF ERRORLEVEL 2 GOTO ABORT
 :24
 IF EXIST %gifdir%jdsg410.GIF GOTO 25
-if %video%==F3 set R=3
-if %video%==SF5 set R=5
-if %video%==SF6 set R=6
-if %video%==SF7 set R=7
-if %video%==%mode_1280% set R=9
-if %video%==%mode_1600% set R=1
-FRACTINT video=%video% @FRACT19.PAR/jdsg410%R% BATCH=YES SAVENAME=jdsg410
+FRACTINT video=%video% @FRACT19.PAR/jdsg4101 BATCH=YES SAVENAME=jdsg410
 IF ERRORLEVEL 2 GOTO ABORT
 :25
+goto SUCCESS
+
+rem                         +-----------------+
+rem                         ! Images for 19.5 !
+rem                         +-----------------+
+
+:19_5_1_g
+if not %pars%==6 goto end
+IF EXIST %gifdir%PTCMJN01.GIF GOTO 26
+FRACTINT video=%video% @FRACT19.PAR/PTCMJN01 BATCH=YES SAVENAME=PTCMJN01
+IF ERRORLEVEL 2 GOTO ABORT
+:26
+IF EXIST %gifdir%PTC4M01.GIF GOTO 27
+FRACTINT video=%video% @FRACT19.PAR/PTC4M01 BATCH=YES SAVENAME=PTC4M01
+IF ERRORLEVEL 2 GOTO ABORT
+:27
 goto SUCCESS
 
 rem                              +------+

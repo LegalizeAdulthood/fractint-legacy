@@ -765,17 +765,21 @@ exponentiation; x^y is x to the y power.
 
    asinh(z) = log(z+sqrt(z*z+1))
    acosh(z) = log(z+sqrt(z*z-1))
-   atanh(z) = 1/2*log((1+z)/(1-z))
+   atanh(z) = 1/2 * log((1+z)/(1-z))
 
    sqr(x+iy) = (x^2-y^2) + i*2xy
    sqrt(x+iy) = sqrt(sqrt(x^2+y^2)) * (cos(atan(y/x)/2) + i sin(atan(y/x)/2))
 
-   ident(x+iy) = x+iy
-   conj(x+iy) = x-iy
-   recip(x+iy) = (x-iy)/(x^2+y^2)
-   flip(x+iy) = y+ix
+   ident(x+iy) = x + iy
+   conj(x+iy) = x - iy
+   recip(x+iy) = (x-iy) / (x^2+y^2)
+   flip(x+iy) = y + ix
    zero(x+iy) = 0
    cabs(x+iy) = sqrt(x^2 + y^2)
+   floor(x+iy) = floor(x) + i*floor(y)
+   ceil(x+iy)  = ceil(x) + i*ceil(y)
+   trunc(x+iy) = trunc(x) + i*trunc(y)
+   round(x+iy) = round(x) + i*round(y)
 
 ~Format+
 Fractint's definitions of abs(x+iy) and |x+iy| below are non-standard.
@@ -1033,11 +1037,11 @@ http://spanky.triumf.ca/pub/fractals/programs/ibmpc/frainxxx.zip\
 where xxx is the release number.
 
 Via FTP, login to spanky.triumf.ca as ANONYMOUS, and change directories
-to [pub.fractals.programs.ibmpc], then download fraixxx.zip. (The directory
+to [pub.fractals.programs.ibmpc], then download frainxxx.zip. (The directory
 syntax is in VAX format.)
 
 Another site to check out is the simtel archive, \
-ftp://ftp.simtel.net/pub/simtelnet/msdos/graphics/fraixxx.zip\
+ftp://ftp.simtel.net/pub/simtelnet/msdos/graphics/frainxxx.zip\
 where xxx is the release number.
 
 Your favorite local BBS probably carries these files as well (although

@@ -244,13 +244,12 @@ Spirals            { ; Uses the new trunc function.
   cyclerange=0/255
   }
 
-jdsg4101           { ; 1600 x 1200 These images are resolution dependent. All
-                     ; Par and Image Copyright 1996 by Lee H. Skinner
+jdsg4101           { ; Par and Image Copyright 1996 by Lee H. Skinner
                      ; time: 13mins 38s at 1600x1200 on a Pentium 166
-  reset=1930 type=formula formulafile=fractint.frm
+  reset=1950 type=formula formulafile=fractint.frm
   formulaname=JD-SG-04-1 passes=1
   center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
-  params=0.75/0/2/0/1600/0 float=y maxiter=1023 inside=0 logmap=yes
+  params=0.75/0/2/0 float=y maxiter=1023 inside=0 logmap=yes
   symmetry=none
   colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
   XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
@@ -259,73 +258,23 @@ jdsg4101           { ; 1600 x 1200 These images are resolution dependent. All
   9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
   }
 
-jdsg4103           { ; 320 x 200   6 pars use the same parameters and palette,
-                     ; Par and Image Copyright 1996 by Lee H. Skinner
-                     ; Formula by Jim Deutch and Sylvie Gallet
-  reset=1930 type=formula formulafile=fractint.frm
-  formulaname=JD-SG-04-1 passes=1
-  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
-  params=0.75/0/2/0/320/0 float=y maxiter=1023 inside=0 logmap=yes
-  symmetry=none
-  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
-  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
-  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
-  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
-  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
+ptcmjn01           { ; Copyright Sylvie Gallet [101324,3444], Aug 1996
+                     ; t= 0:25:20.78 on a Pentium 166 at 1600x1200
+  reset=1950 type=formula formulafile=fractint.frm formulaname=ptc+mjn
+  passes=1 center-mag=-0.555949/0.589869/13.92602
+  params=0.077/0.626/6/0 float=y maxiter=1023 inside=0 logmap=3
+  colors=00000K00U<13>0fj0ik2ik<15>mww<15>zrw<15>ww0<14>yn7zm8zkA<14>z4c<1\
+  5>www<30>VndUmcUmcUmc<47>UmmVmmVmmWmmWmm<52>vvm000kkk
+  cyclerange=2/255
   }
 
-jdsg4105           { ; 640 x 480   p3 = horizontal resolution.
-                     ; Par and Image Copyright 1996 by Lee H. Skinner
-  reset=1930 type=formula formulafile=fractint.frm
-  formulaname=JD-SG-04-1 passes=1
-  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
-  params=0.75/0/2/0/640/0 float=y maxiter=1023 inside=0 logmap=yes
-  symmetry=none
-  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
-  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
-  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
-  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
-  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
+ptc4m01            { ; Copyright Sylvie Gallet [101324,3444], Aug 1996
+                     ; t= 0:02:31.26 on a Pentium 166 at 1600x1200
+  reset=1950 type=formula formulafile=fractint.frm formulaname=ptc+4mandels
+  passes=1 center-mag=0/0/0.6666667 params=-1/0/1.4/0/-1.4/0 float=y
+  maxiter=255 inside=0 decomp=256 symmetry=none periodicity=0
+  colors=06W<11>0fj0ik2ik<15>mww<15>zrw<15>ww0<14>yn7zm8zkA<14>z4c<13>xptx\
+  suxtuwuuvvuuwv<27>VndUmcUmcUmc<47>UmmVmmVmmWmmWmm<41>ptm<15>00U03V
+  cyclerange=0/255
   }
 
-jdsg4106           { ; 800 x 600        Par and Image Copyright 1996
-                     ; Par and Image Copyright 1996 by Lee H. Skinner
-  reset=1930 type=formula formulafile=fractint.frm
-  formulaname=JD-SG-04-1 passes=1
-  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
-  params=0.75/0/2/0/800/0 float=y maxiter=1023 inside=0 logmap=yes
-  symmetry=none
-  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
-  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
-  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
-  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
-  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
-  }
-
-jdsg4107           { ; 1024 x 768             by Lee H. Skinner
-                     ; Par and Image Copyright 1996 by Lee H. Skinner
-  reset=1930 type=formula formulafile=fractint.frm
-  formulaname=JD-SG-04-1 passes=1
-  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
-  params=0.75/0/2/0/1024/0 float=y maxiter=1023 inside=0 logmap=yes
-  symmetry=none
-  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
-  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
-  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
-  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
-  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
-  }
-
-jdsg4109           { ; 1280 x 1024         Formula by Sylvie Gallet
-                     ; Par and Image Copyright 1996 by Lee H. Skinner
-  reset=1930 type=formula formulafile=fractint.frm
-  formulaname=JD-SG-04-1 passes=1
-  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
-  params=0.75/0/2/0/1280/0 float=y maxiter=1023 inside=0 logmap=yes
-  symmetry=none
-  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
-  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
-  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
-  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
-  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
-  }

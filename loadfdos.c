@@ -292,13 +292,11 @@ Press F1 for help, "};
    far_memcpy((char far *)&videoentry,(char far *)&videotable[initmode],
               sizeof(videoentry));
 
-   if (viewwindow) { /* pull image into a view window */
+   if (viewwindow &&
+      filexdots == videoentry.xdots && fileydots == videoentry.ydots) {
+      /* pull image into a view window */
       if (calc_status != 4) /* if not complete */
           calc_status = 0;  /* can't resume anyway */
-      if (videoentry.xdots != filexdots) { /* too wierd if not same */
-         viewwindow = viewxdots = viewydots = 0;
-         return(0);
-      }
       if (viewxdots) {
          viewreduction = videoentry.xdots / viewxdots;
          viewxdots = viewydots = 0; /* easier to use auto reduction */

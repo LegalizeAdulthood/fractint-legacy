@@ -51,6 +51,7 @@ int     pseudoy=0;              /* ydots to use for video independence */
 int     bfdigits=0;             /* digits to use (force) for bf_math */
 int     showdot=-1;             /* color to show crawling graphics cursor */
 int     sizedot;                /* size of dot crawling cursor */
+char    recordcolors;           /* default PAR color-writing method */
 char    autoshowdot=0;          /* dark, medium, bright */
 char    start_showorbit=0;      /* show orbits on at start of fractal */
 char    temp1[256];             /* temporary strings        */
@@ -147,10 +148,7 @@ char LFileName[FILE_MAX_PATH];   /* file to find (type=)L-System's in */
 char LName[ITEMNAMELEN+1];       /* Name of L-System */
 char CommandFile[FILE_MAX_PATH]; /* file to find command sets in */
 char CommandName[ITEMNAMELEN+1]; /* Name of Command set */
-char CommandComment1[57];        /* comments for command set */
-char CommandComment2[57];
-char CommandComment3[57];
-char CommandComment4[57];
+char CommandComment[4][MAXCMT];    /* comments for command set */
 char IFSFileName[FILE_MAX_PATH];/* file to find (type=)IFS in */
 char IFSName[ITEMNAMELEN+1];    /* Name of the IFS def'n (if not null) */
 float far *ifs_defn = NULL;     /* ifs parameters */
@@ -233,6 +231,7 @@ char s_cga[] =              "cga";
 char s_coarse[] =           "coarse";
 char s_colorps[] =          "colorps";
 char s_colors[] =           "colors";
+char s_comment[] =          "comment";
 char s_comport[] =          "comport";
 char s_converge[] =         "converge";
 char s_corners[] =          "corners";
@@ -407,7 +406,7 @@ char s_atanh [] =           "atanh";
 char s_cabs [] =            "cabs";
 char s_sqrt [] =            "sqrt";
 char s_bfdigits [] =        "bfdigits";
-
+char s_recordcolors [] =    "recordcolors";
 static char s_sstoolsini [] =  "sstools.ini";
 static char s_fractintfrm [] = "fractint.frm";
 static char s_fractintl [] =   "fractint.l";
@@ -560,6 +559,7 @@ static void initvars_run()              /* once per run init */
 {
    char *p;
    init_rseed = (int)time(NULL);
+   init_comments();
    if((p = getenv("TMP")) == NULL)
       p = getenv("TEMP");
    if(p != NULL)
@@ -576,6 +576,8 @@ static void initvars_run()              /* once per run init */
 
 static void initvars_restart()          /* <ins> key init */
 {
+   int i;
+   recordcolors = 'a';                  /* don't use mapfiles in PARs */
    save_release = release;              /* this release number */
    gif87a_flag = INIT_GIF87;            /* turn on GIF89a processing */
    dither_flag = 0;                     /* no dithering */
@@ -601,8 +603,9 @@ static void initvars_restart()          /* <ins> key init */
    far_strcpy(LFileName,s_fractintl);
    LName[0] = 0;
    far_strcpy(CommandFile,s_fractintpar);
-   CommandName[0] = CommandComment1[0] = CommandComment2[0] = 0;
-   CommandComment3[0] = CommandComment4[0] = 0;
+   CommandName[0] = 0;
+   for(i=0;i<4; i++)
+      CommandComment[i][0] = 0;
    far_strcpy(IFSFileName,s_fractintifs);
    IFSName[0] = 0;
    reset_ifs_defn();
@@ -787,8 +790,8 @@ static int cmdfile(FILE *handle,int mode)
 
    if (mode == 2 || mode == 3) {
       while ((i = getc(handle)) != '{' && i != EOF) { }
-      CommandComment1[0] = CommandComment2[0] = 0;
-      CommandComment3[0] = CommandComment4[0] = 0;
+      for(i=0;i<4; i++)
+          CommandComment[i][0] = 0;
       }
    linebuf[0] = 0;
    while (next_command(cmdbuf,10000,handle,linebuf,&lineoffset,mode) > 0) {
@@ -812,6 +815,7 @@ static int cmdfile(FILE *handle,int mode)
 static int next_command(char *cmdbuf,int maxlen,
                       FILE *handle,char *linebuf,int *lineoffset,int mode)
 {
+   int i;
    int cmdlen = 0;
    char *lineptr;
    lineptr = linebuf + *lineoffset;
@@ -827,22 +831,20 @@ static int next_command(char *cmdbuf,int maxlen,
          if (*lineptr == ';' || *lineptr == 0) {
             if (*lineptr == ';'
               && (mode == 2 || mode == 3)
-              && (CommandComment1[0] == 0 || CommandComment2[0] == 0 ||
-                  CommandComment3[0] == 0 || CommandComment4[0] == 0)) {
+              && (CommandComment[0][0] == 0 || CommandComment[1][0] == 0 ||
+                  CommandComment[2][0] == 0 || CommandComment[3][0] == 0)) {
                /* save comment */
                while (*(++lineptr)
                  && (*lineptr == ' ' || *lineptr == '\t')) { }
                if (*lineptr) {
-                  if (strlen(lineptr) > 56)
-                     *(lineptr+56) = 0;
-                  if (CommandComment1[0] == 0)
-                     far_strcpy(CommandComment1,lineptr);
-                  else if (CommandComment2[0] == 0)
-                     far_strcpy(CommandComment2,lineptr);
-                  else if (CommandComment3[0] == 0)
-                     far_strcpy(CommandComment3,lineptr);
-                  else
-                     far_strcpy(CommandComment4,lineptr);
+                  if (strlen(lineptr) >= MAXCMT)
+                     *(lineptr+MAXCMT-1) = 0;
+                  for(i=0;i<4; i++)
+                     if (CommandComment[i][0] == 0)
+                     {
+                        far_strcpy(CommandComment[i],lineptr);
+                        break;   
+                     }
                   }
                }
             if (next_line(handle,linebuf,mode) != 0)
@@ -936,6 +938,8 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
          *argptr += 'a' - 'A';
       if (*argptr == '=' && strncmp(curarg,"colors=",7) == 0)
          break;                         /* don't convert colors=value */
+      if (*argptr == '=' && strncmp(curarg,s_comment,7) == 0)
+         break;                         /* don't convert comment=value */
       ++argptr;
       }
 
@@ -1247,6 +1251,18 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
 
    if (strcmp(variable,s_colors) == 0) {       /* colors=, set current colors */
       if (parse_colors(value) < 0) goto badarg;
+      return 0;
+      }
+
+   if (strcmp(variable,s_recordcolors) == 0) {       /* recordcolors= */
+      if(*value != 'y' && *value != 'c' && *value != 'a')
+         goto badarg;
+      recordcolors = *value;
+      return 0;
+      }
+
+   if (strcmp(variable,s_comment) == 0) {       /* comment= */
+      parse_comments(value);
       return 0;
       }
 
@@ -2870,3 +2886,4 @@ void dopause(int action)
       break;
    }
 }
+

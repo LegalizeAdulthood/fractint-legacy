@@ -28,7 +28,8 @@
   @filename[/setname]      Process commands from a file
   [filename=]filename      Start with this saved file (one saved by FRACTINT
                            or a generic GIF file [treated as a plasma cloud])
-  makepar=parfile/entry    Batch copy of GIF to PAR. Use after gif filename.
+  makepar=parfile[/entry]  Invokes batch facility to copy a GIF to
+                           PAR format with colors.
   batch=yes                Batch mode run (display image, save-to-disk, exit)
   autokey=play|record      Playback or record keystrokes
   autokeyname=filename     File for autokey mode, default AUTO.KEY
@@ -42,8 +43,8 @@
                            before default directory when opening files. Use
                            this command when testing temporary .FRM, .L, etc.
                            files in the current directory.
-  makepar=parfile[/entry]  Invokes batch facility to to copy a GIF to
-                           PAR format with colors.
+  comment=comment1/comment2/comment3/comment4
+                           Inserts comments into PAR files.
 ~FF
 {Calculation Mode Parameters}
   passes=1|2|3|g|b|t|g1..g6  Select Single-Pass, Dual-Pass, Triple-Pass
@@ -108,10 +109,10 @@
                            of checking (default 1, higher is more stringent)
                            'show' or a neg value colors 'caught' points white.
   rseed=nnnnn              Random number seed, for reproducable Plasma Clouds
-  showdot=[auto|bright|medium|dark|nn]/size  Colors the current dot being 
+  showdot=[auto|bright|medium|dark|nn]/size  Colors the current dot being
                            calculated color nn or an automatically calculated
-                           color. The second parameter is the size of the 
-                           traveling pointer.
+                           color (-1 disables). The second parameter is the
+                           size of the traveling pointer.
   aspectdrift=nn           How much the aspect ratio can vary from normal due
                            to zooming. (default is 0.01)
 {Color Parameters}
@@ -121,6 +122,12 @@
   map=filename             Use 'filename' as the default color map (vga/targa)
   colors=@filename|colorspec Sets current image color map from file or spec,
                            vga or higher only
+  recordcolors=auto|comment|yes Sets method of writing colors in PAR files.
+                           Auto causes colors=@mapfile to be written if
+                           colors came from loading a color map. Yes and 
+                           comment force compressed colors always. Comment 
+                           also writes map name in a comment if colors came
+                           from a map file. Default is auto. 
   cyclerange=nnn/nnn       Range of colors to cycle (default 1/255)
   cyclelimit=nnn           Color-cycler speed-limit (1 to 256, default = 55)
   olddemmcolors=yes|no     Use old coloring scheme with distance estimator
@@ -409,6 +416,7 @@ WORKDIR=[directory]\
 This command sets the directory where miscellaneous Fractint files get
 written, including MAKEBIG.BAT and debugging files.
 
+~ONLINEFF
 FILENAME=[name]\
 Causes Fractint to read the named file, which must either have been saved
 from an earlier Fractint session or be a generic GIF file, and use that as
@@ -428,6 +436,7 @@ before looking in the default directory set by the other commands. Warning:
 <tab> screen may not reflect actual file opened in cases where the file was
 opened in the DOS current directory.
 
+~ONLINEFF
 MAKEPAR=parfile/entryname\
 This command invokes a batch facility to copy fractal and color information
 stored in GIF files to PAR format. The syntax is:\
@@ -439,6 +448,29 @@ will replace the previous entry. If the entry doesn't exist, it will be
 added. If the parfile doesn't exist it will be created.
 Redirection of output to a log file is possible in the DOS version because
 all screen output is written to the standard output.
+
+~ONLINEFF
+~Label=@COMMENTS
+COMMENT=[comment1]/[comment2]/[comment3]/[comment4]\
+Inserts comments into PAR files. These comments can include
+variables that are expanded at the time the PAR file is created. Variables are
+indicated by $varname$. Underscore characters are expanded to blanks. 
+If you want to include the special characters '$', '_', or '\\' in a comment, 
+precede the character with '\\'. Supported variables are:\
+
+Variable   Expands to   Example     Variable   Expands to   Example 
+===============================     ===============================\
+$year$     time:year    1996        $date$     mo. day, yr  Aug 17, 1996\
+$month$    time:month   Aug         $calctime$ h:m:s        4:34:45.3\
+$day$      time:day     12          $version$  version      1940\
+$hour$     time:hour    21          $patch$    patch number 2\
+$min$      time:minute  34          $xdots$    horiz rez    640\
+$sec$      time:sec     14          $ydots$    vertical rez 480\
+$time$     time:h:m:s   21:34:14    $vidkey$   video key    SF4\
+
+You can leave any of the four comment fields unchanged by leaving that 
+position blank. For example, the command comment=//Created_$date$ inserts 
+the text "Created Aug 17, 1996" into the third comment.
 
 BATCH=yes\
 See {Batch Mode}.
@@ -456,24 +488,6 @@ See also {Autokey Mode}.
 AUTOKEYNAME=[filename]\
 Specifies the file name to be used in autokey mode. The default file name
 is AUTO.KEY.
-
-FPU=387|iit|noiit\
-This parameter is useful if you have an unusual coprocessor chip. If you
-have a 80287 replacement chip with full 80387 functionality use "FPU=387"
-to inform Fractint to take advantage of those extra 387 instructions.
-If you have the IIT fpu, but don't have IIT's 'f4x4int.com' TSR loaded,
-use "FPU=iit" to force Fractint to use that chip's matrix multiplication
-routine automatically to speed up 3-D transformations (if you have an IIT
-fpu and have that TSR loaded, Fractint will auto-detect the presence of
-the fpu and TSR and use its extra capabilities automatically).
-Since all IIT chips support 80387 instructions, enabling the IIT code also
-enables Fractint's use of all 387 instructions.
-Setting "FPU=noiit" disables Fractint's IIT Auto-detect capability.
-Warning: multi-tasking operating systems such as Windows and DesQView
-don't automatically save the IIT chip extra registers, so running two
-programs at once that both use the IIT's matrix multiply feature but
-don't use the handshaking provided by that 'f4x4int.com' program,
-errors will result.
 
 MAKEDOC[=filename]\
 Create Fractint documentation file (for printing or viewing with a text
@@ -499,6 +513,24 @@ is very tight, and some memory-intensive Fractint operations are giving
 in mind that every time you color cycle or change from integer to float or
 back, another image parameter set is saved, so the default ten images are
 used up quickly.
+
+FPU=387|iit|noiit\
+This parameter is useful if you have an unusual coprocessor chip. If you
+have a 80287 replacement chip with full 80387 functionality use "FPU=387"
+to inform Fractint to take advantage of those extra 387 instructions.
+If you have the IIT fpu, but don't have IIT's 'f4x4int.com' TSR loaded,
+use "FPU=iit" to force Fractint to use that chip's matrix multiplication
+routine automatically to speed up 3-D transformations (if you have an IIT
+fpu and have that TSR loaded, Fractint will auto-detect the presence of
+the fpu and TSR and use its extra capabilities automatically).
+Since all IIT chips support 80387 instructions, enabling the IIT code also
+enables Fractint's use of all 387 instructions.
+Setting "FPU=noiit" disables Fractint's IIT Auto-detect capability.
+Warning: multi-tasking operating systems such as Windows and DesQView
+don't automatically save the IIT chip extra registers, so running two
+programs at once that both use the IIT's matrix multiply feature but
+don't use the handshaking provided by that 'f4x4int.com' program,
+errors will result.
 ;
 ;
 ~Topic=Calculation Mode Parameters
@@ -546,10 +578,10 @@ Julia set for the stated x (real) and y (imaginary) coordinates.)
 FUNCTION=[fn1[/fn2[/fn3[/fn4]]]]\
 Allows setting variable functions found in some fractal type formulae.
 Possible values are sin, cos, tan, cotan, sinh, cosh, tanh, cotanh, exp,
-log, sqr, recip (i.e. 1/z), ident (i.e. identity), cosxx (cos with a 
+log, sqr, recip (i.e. 1/z), ident (i.e. identity), cosxx (cos with a
 pre version 16 bug), flip, zero, asin, asinh, acos, acosh, atan, atanh,
 sqrt, abs (abs(x)+i*abs(y)), cabs (sqrt(x*x+y*y)). New additions are
-the various rounding-to-integer functions: floor (round down), ceil 
+the various rounding-to-integer functions: floor (round down), ceil
 (round up), trunc (round toward zero), and round (round to nearest).
 
 FORMULANAME=[formulaname]\
@@ -671,14 +703,14 @@ discussion of why a TRULY random number may be impossible to define, let
 alone generate, will have to wait for "FRACTINT: The 3-MB Doc File."
 
 SHOWDOT=[auto|bright|medium|dark|<nnn>[/<size>]]\
-Colors the current dot being calculated color <nnn> or an automatically 
-calculated color taken from the current palette. The second parameter is 
+Colors the current dot being calculated color <nnn> or an automatically
+calculated color taken from the current palette. The second parameter is
 the size of the traveling pointer in units of pixels of 1/1024th of a screen.
 
-The travelling pointer strobes with fast fractals because of interaction with 
-the monitor's vertical refresh. The orbitdelay parameter can be used to 
-introduce a per-pixel delay when showdot is turned on. Try orbitdelay=1000 
-with showdot=b/20 to get a feel for how the showdot triangle works. 
+The travelling pointer strobes with fast fractals because of interaction with
+the monitor's vertical refresh. The orbitdelay parameter can be used to
+introduce a per-pixel delay when showdot is turned on. Try orbitdelay=1000
+with showdot=b/20 to get a feel for how the showdot triangle works.
 
 ASPECTDRIFT=<nn>\
 When zooming in or out, the aspect ratio (the width to height ratio) can
@@ -756,6 +788,18 @@ COLORS=colorspecification specifies the colors directly. The value of
 and its syntax is not documented here.  This form of the COLORS= command
 is not intended for manual use - it exists for use by the <B> command
 when saving the description of a nice image.
+
+~ONLINEFF
+~Label=@RECORDCOLORS
+RECORDCOLORS=auto|comment|yes\
+Controls the method of writing colors in PAR files. Auto causes the colors
+to be written in the colors=@mapfile form if the colors were loaded from
+a map. Use this mode if you manage your colors using map files. If you
+share PAR files with others, and have trouble remembering to send them the
+map file, use RECORDCOLORS=comment or yes. These modes force the writing
+of compressed color maps in the PAR file in all cases. The only difference is
+that the 'comment' option also writes the mapfile name in a comment so you
+can remember where the colors came from.
 ~Doc-
  See {Color Specification}.
 ~Doc+
