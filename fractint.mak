@@ -194,7 +194,7 @@ fractint.exe : fractint.obj help.obj loadfile.obj encoder.obj gifview.obj \
      lorenz.obj plot3d.obj jb.obj zoom.obj miscres.obj miscovl.obj \
      realdos.obj lsys.obj lsysa.obj editpal.obj tplus.obj tplus_a.obj tp3d.obj \
      lyapunov.obj fractint.hlp hcmplx.obj $(DEFFILE) $(LINKFILE)
-	$(LINKER) /ST:4096 /SE:200 /PACKC /F /NOE @$(LINKFILE) > foo
+	$(LINKER) /ST:5120 /SE:200 /PACKC /F /NOE @$(LINKFILE) > foo
 !ifdef C7
         @echo (Any overlay_thunks (L4059) warnings from the linker are harmless) >> foo
 !endif

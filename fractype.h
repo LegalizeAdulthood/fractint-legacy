@@ -198,10 +198,10 @@
 /* demonstration Mandelbrot and Julia fractals
 
 #define DEMOWALK            161
-#define DEMOMANDEL          160
-#define DEMOJULIA           161
-#define DEMOMANDELFP        162
-#define DEMOJULIAFP         163
+#define DEMOMANDEL          162
+#define DEMOJULIA           163
+#define DEMOMANDELFP        164
+#define DEMOJULIAFP         165
 
 */
 

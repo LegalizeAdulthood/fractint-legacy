@@ -20,6 +20,8 @@
 /*	Chuck Ebbert (CompuServe [76306,1226] ) changed code marked 'CAE fp'	*/
 /*   for fast 387 floating-point math.  See PARSERA.ASM and PARSERFP.C */
 /*   (13 Dec 1992.)  */
+/* */
+/*   Modified 12 July 1993 by CAE to fix crash when formula not found.  */
 
 #include <string.h>
 #include <ctype.h>
@@ -2113,27 +2115,54 @@ skipcomments:
    return((char *)0);            /* PB 910511 */
 }
 
-int RunForm(char *Name) {
-   if (FormName[0] == 0) return(1);
-   parser_allocate();
-   if((FormStr = FindFormula(Name)) != NULL)
-      return(ParseStr(FormStr));
-   else
-      return(1);                    /* PB, msg moved to FindFormula */
+int BadFormula() {
+   /*  moved from Parsera.Asm by CAE  12 July 1993  */
+
+   /*  this is called when a formula is bad, instead of calling  */
+   /*     the normal functions which will produce undefined results  */
+   return 1;
+}
+
+int RunForm(char *Name) {  /*  returns 1 if an error occurred  */
+   /*  CAE changed fn 12 July 1993 to fix problem when formula not found  */
+
+   /*  first set the pointers so they point to a fn which always returns 1  */
+   curfractalspecific->per_pixel = BadFormula;
+   curfractalspecific->orbitcalc = BadFormula;
+
+   if (FormName[0] == 0 ){
+      return 1;  /*  and don't reset the pointers  */
+   }
+
+   parser_allocate();  /*  ParseStr() will test if this alloc worked  */
+
+   if((FormStr = FindFormula(Name)) != NULL ){
+      /*  formula was found  */
+      if (ParseStr(FormStr)){
+         /*  parse failed, don't change fn pointers  */
+         return 1;
+      }
+      else {
+         /*  parse succeeded so set the pointers back to good functions  */
+         curfractalspecific->per_pixel = form_per_pixel;
+         curfractalspecific->orbitcalc = Formula;
+         return 0;
+      }
+   }
+   else {
+      /*  formula not found, leave pointers set to BadFormula  */
+      return 1;                    /* PB, msg moved to FindFormula */
+   }
 }
 
 int fpFormulaSetup(void) {
 #ifndef XFRACT
    int RunFormRes;		/* CAE fp */
 
-   /* CAE fp - must reset pointers here */
-   curfractalspecific->per_pixel = form_per_pixel;
-   curfractalspecific->orbitcalc = Formula;
-
    if (fpu > 0) {
       MathType = D_MATH;
       /* CAE changed below for fp */
-      RunFormRes = !RunForm(FormName); /* returns 1 for failure */
+      RunFormRes = !RunForm(FormName); /* RunForm() returns 1 for failure */
       if (RunFormRes && fpu >=387 && debugflag != 90 )
          return CvtStk(); /* run fast assembler code in parsera.asm */
       return RunFormRes;
@@ -2148,14 +2177,11 @@ int fpFormulaSetup(void) {
 #endif
 }
 
-   int intFormulaSetup(void) {
+int intFormulaSetup(void) {
 #ifdef XFRACT
       printf("intFormulaSetup called!!!\n");
       exit(-1);
 #endif
-      /* CAE fp added the two lines below */
-      curfractalspecific->per_pixel = form_per_pixel;
-      curfractalspecific->orbitcalc = Formula;
       MathType = L_MATH;
       fg = (double)(1L << bitshift);
       fgLimit = (double)0x7fffffffL / fg;

@@ -78,7 +78,7 @@ extern int debugflag;
 
 #ifndef XFRACT
 extern char dstack[4096];
-extern char suffix[4096];
+extern char boxy[4096];
 #else
 BYTE dstack[4096];
 #endif
@@ -532,10 +532,7 @@ int diffusion()
    extern char floatflag;
 
    if (diskvideo)
-   {
       notdiskmsg();
-      return(-1);
-   }
 
    bitshift = 16;
    fudge = 1L << 16;
@@ -1605,7 +1602,7 @@ cellular () {
   /* two 4096 byte arrays, at present at most 2024 + 1 bytes should be */
   /* needed in each array (max screen width + 1) */
    cell_array[0] = (BYTE *)&dstack[0]; /* dstack is in general.asm */
-   cell_array[1] = (BYTE *)&suffix[0]; /* suffix is in general.asm */
+   cell_array[1] = (BYTE *)&boxy[0]; /* boxy is in general.asm */
 #else
    cell_array[0] = (BYTE far *)farmemalloc(ixstop+1);
    cell_array[1] = (BYTE far *)farmemalloc(ixstop+1);
@@ -1661,8 +1658,8 @@ cellular () {
 /* This section can't be resumed since no screen output is generated */
 /* calculates the (lnnmbr - 1) generation */
    if (lstscreenflag) { /* line number != 0 & not resuming & not continuing */
-     thinking(1,"Cellular thinking (higher start row takes longer)");
      for (row = start_row; row < lnnmbr; row++) {
+      thinking(1,"Cellular thinking (higher start row takes longer)");
       if(rflag || randparam==0 || randparam==-1){
        /* Use a random border */
        for (i=0;i<=r;i++) {
@@ -1678,10 +1675,19 @@ cellular () {
        }
       }
 
-       for (col=r;col<ixstop-r;col++) {
-         t = 0;
-         for (i=col-r;i<=col+r;i++)
+       t = 0; /* do first cell */
+       for (i=0;i<=r+r;i++)
            t += cell_array[filled][i];
+       if (t>rule_digits || t<0) {
+         thinking(0, NULL);
+         abort_cellular(BAD_T, t);
+         return(-1);
+       }
+       cell_array[notfilled][r] = cell_table[t];
+
+           /* use a rolling sum in t */
+       for (col=r+1;col<ixstop-r;col++) { /* now do the rest */
+         t = t + cell_array[filled][col+r] - cell_array[filled][col-r-1];
          if (t>rule_digits || t<0) {
            thinking(0, NULL);
            abort_cellular(BAD_T, t);
@@ -1689,6 +1695,7 @@ cellular () {
          }
          cell_array[notfilled][col] = cell_table[t];
        }
+
        filled = notfilled;
        notfilled = 1-filled;
        if (check_key()) {
@@ -1723,16 +1730,27 @@ contloop:
        }
       }
 
-       for (col=r;col<ixstop-r;col++) {
-         t = 0;
-         for (i=col-r;i<=col+r;i++)
+       t = 0; /* do first cell */
+       for (i=0;i<=r+r;i++)
            t += cell_array[filled][i];
+       if (t>rule_digits || t<0) {
+         thinking(0, NULL);
+         abort_cellular(BAD_T, t);
+         return(-1);
+       }
+       cell_array[notfilled][r] = cell_table[t];
+
+           /* use a rolling sum in t */
+       for (col=r+1;col<ixstop-r;col++) { /* now do the rest */
+         t = t + cell_array[filled][col+r] - cell_array[filled][col-r-1];
          if (t>rule_digits || t<0) {
+           thinking(0, NULL);
            abort_cellular(BAD_T, t);
            return(-1);
          }
          cell_array[notfilled][col] = cell_table[t];
        }
+
        filled = notfilled;
        notfilled = 1-filled;
        put_line(row,0,ixstop,cell_array[filled]);

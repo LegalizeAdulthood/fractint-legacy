@@ -1164,7 +1164,7 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
    if (strcmp(variable,"outside") == 0 ) {      /* outside=? */
       if(strcmp(value,s_iter)==0)
 	 outside = -1;
-      if(strcmp(value,s_real)==0)
+      else if(strcmp(value,s_real)==0)
 	 outside = -2;
       else if(strcmp(value,s_imag)==0)
 	 outside = -3;

@@ -16,6 +16,15 @@
 
 #define RANDOM(x)  (rand()%(x))
 
+/* BAD_PIXEL is used to cutoff orbits that are diverging. It might be better
+to test the actual floating point prbit values, but this seems safe for now.
+A higher value cannot be used - to test, turn off math coprocessor and
+use +2.24 for type ICONS. If BAD_PIXEL is set to 20000, this will abort
+Fractint with a math error. Note that this approach precludes zooming in very
+far to an orbit type. */
+
+#define BAD_PIXEL  10000L    /* pixels can't get this big */
+
 struct affine
 {
    /* weird order so a,b,e and c,d,f are vectors */
@@ -81,7 +90,6 @@ static int  long3dviewtransf(struct long3dvtinf *inf);
 static int  float3dviewtransf(struct float3dvtinf *inf);
 static FILE *open_orbitsave();
 static void _fastcall plothist(int x, int y, int color);
-
 extern char far insufficient_ifs_mem[];
 extern int numaffine;
 static int realtime;
@@ -1382,7 +1390,9 @@ int orbit2dfloat()
          oldrow = row;
          start = 0;
       }
-      else
+      else if((long)abs(row) + (long)abs(col) > BAD_PIXEL) /* sanity check */
+         return(ret);
+      else   
          oldrow = oldcol = -1;
 
       if(curfractalspecific->orbitcalc(p0, p1, p2))
@@ -1482,6 +1492,11 @@ int orbit2dlong()
 
       col = (multiply(cvt.a,x,bitshift) + multiply(cvt.b,y,bitshift) + cvt.e) >> bitshift;
       row = (multiply(cvt.c,x,bitshift) + multiply(cvt.d,y,bitshift) + cvt.f) >> bitshift;
+      if(overflow)
+      {
+         overflow = 0;
+         return(ret);
+      }
       if ( col >= 0 && col < xdots && row >= 0 && row < ydots )
       {
          if (soundflag > 0)
@@ -1499,7 +1514,9 @@ int orbit2dlong()
          oldrow = row;
          start = 0;
       }
-      else
+      else if((long)abs(row) + (long)abs(col) > BAD_PIXEL) /* sanity check */
+         return(ret);
+      else   
 	 oldrow = oldcol = -1;
 
       /* Calculate the next point */
@@ -1537,10 +1554,7 @@ int orbit3dlongcalc()
    inf.orbit[2] = initorbitlong[2];
 
    if(diskvideo)                /* this would KILL a disk drive! */
-   {
       notdiskmsg();
-      return(-1);
-   }
 
    fp = open_orbitsave();
 
@@ -1586,6 +1600,8 @@ int orbit3dlongcalc()
             else
                (*plot)(inf.col,inf.row,color&(colors-1));
          }
+         else if (inf.col == -2)
+            return(ret);
          oldcol = inf.col;
          oldrow = inf.row;
          if(realtime)
@@ -1599,6 +1615,8 @@ int orbit3dlongcalc()
                else
                   (*plot)(inf.col1,inf.row1,color&(colors-1));
             }
+            else if (inf.col1 == -2)
+               return(ret);
             oldcol1 = inf.col1;
             oldrow1 = inf.row1;
          }
@@ -1635,10 +1653,7 @@ int orbit3dfloatcalc()
    inf.orbit[2] = initorbit[2];
 
    if(diskvideo)                /* this would KILL a disk drive! */
-   {
       notdiskmsg();
-      return(-1);
-   }
 
    fp = open_orbitsave();
 
@@ -1679,6 +1694,8 @@ int orbit3dfloatcalc()
             else
                (*plot)(inf.col,inf.row,color&(colors-1));
          }
+         else if (inf.col == -2)
+            return(ret);
          oldcol = inf.col;
          oldrow = inf.row;
          if(realtime)
@@ -1692,6 +1709,8 @@ int orbit3dfloatcalc()
                else
                   (*plot)(inf.col1,inf.row1,color&(colors-1));
             }
+            else if (inf.col1 == -2)
+               return(ret);
             oldcol1 = inf.col1;
             oldrow1 = inf.row1;
          }
@@ -1842,6 +1861,8 @@ int dynam2dfloat()
 	     oldcol = col;
 	     oldrow = row;
 	  }
+	  else if((long)abs(row) + (long)abs(col) > BAD_PIXEL) /* sanity check */
+            return(ret);
 	  else
 	     oldrow = oldcol = -1;
 
@@ -1935,11 +1956,8 @@ static int ifs3dfloat()
    setup_convert_to_screen(&inf.cvt);
    srand(1);
    color_method = param[0];
-   if(diskvideo)		/* this would KILL a disk drive! */
-   {
+   if(diskvideo)                /* this would KILL a disk drive! */
       notdiskmsg();
-      return(-1);
-   }
 
    inf.orbit[0] = 0;
    inf.orbit[1] = 0;
@@ -2001,19 +2019,23 @@ static int ifs3dfloat()
 	    if( color < colors ) /* color sticks on last value */
 	       (*plot)(inf.col,inf.row,color);
 	 }
+         else if (inf.col == -2)
+            return(ret);
 	 if(realtime)
 	 {
 	    whichimage=2;
 	    /* plot if inside window */
 	    if (inf.col1 >= 0)
 	    {
-            if(color_method)
-               color = (k&(colors-1))+1;
-            else
-	       color = getcolor(inf.col1,inf.row1)+1;
-	       if( color < colors ) /* color sticks on last value */
+              if(color_method)
+                 color = (k&(colors-1))+1;
+              else
+	        color = getcolor(inf.col1,inf.row1)+1;
+	        if( color < colors ) /* color sticks on last value */
 		  (*plot)(inf.col1,inf.row1,color);
 	    }
+	    else if (inf.col1 == -2)
+               return(ret);
 	 }
       }
    } /* end while */
@@ -2026,10 +2048,8 @@ int ifs()			/* front-end for ifs2d and ifs3d */
 {
    if (ifs_defn == NULL && ifsload() < 0)
       return(-1);
-   if (diskvideo) {		 /* this would KILL a disk drive! */
+   if(diskvideo)                /* this would KILL a disk drive! */
       notdiskmsg();
-      return(-1);
-      }
    return((ifs_type == 0) ? ifs2d() : ifs3d());
 }
 
@@ -2088,7 +2108,7 @@ int ifs2d()
       /* pick which iterated function to execute, weighted by probability */
       sum = localifs[6];  /* [0][6] */
       k = 0;
-      while ( sum < r && ++k < numaffine*IFSPARM)
+      while ( sum < r && ++k < numaffine)
 	 sum += localifs[k*IFSPARM+6];
 
       /* calculate image of last point under selected iterated function */
@@ -2115,6 +2135,8 @@ int ifs2d()
 	 if( color < colors ) /* color sticks on last value */
 	    (*plot)(col,row,color);
       }
+      else if((long)abs(row) + (long)abs(col) > BAD_PIXEL) /* sanity check */
+            return(ret);
    }
    if(fp)
       fclose(fp);
@@ -2202,6 +2224,8 @@ static int ifs3dlong()
 
       if (long3dviewtransf(&inf))
       {
+	 if((long)abs(inf.row) + (long)abs(inf.col) > BAD_PIXEL) /* sanity check */
+            return(ret);
 	 /* plot if inside window */
 	 if (inf.col >= 0)
 	 {
@@ -2411,7 +2435,12 @@ static int long3dviewtransf(struct long3dvtinf *inf)
 		>> bitshift)
 	      + xxadjust;
    if (inf->col < 0 || inf->col >= xdots || inf->row < 0 || inf->row >= ydots)
-      inf->col = inf->row = -1;
+   {
+      if((long)abs(inf->col)+(long)abs(inf->row) > BAD_PIXEL)
+        inf->col= inf->row = -2;
+      else
+        inf->col= inf->row = -1;
+   }    
    if(realtime)
    {
       inf->row1 = ((multiply(inf->cvt.c,inf->viewvect1[0],bitshift) +
@@ -2423,7 +2452,12 @@ static int long3dviewtransf(struct long3dvtinf *inf)
 		    inf->cvt.e) >> bitshift)
 		  + xxadjust1;
       if (inf->col1 < 0 || inf->col1 >= xdots || inf->row1 < 0 || inf->row1 >= ydots)
-	 inf->col1 = inf->row1 = -1;
+      {
+         if((long)abs(inf->col1)+(long)abs(inf->row1) > BAD_PIXEL)
+           inf->col1= inf->row1 = -2;
+         else
+           inf->col1= inf->row1 = -1;
+      }    
    }
    return(1);
 }
@@ -2504,7 +2538,12 @@ static int float3dviewtransf(struct float3dvtinf *inf)
    inf->col = inf->cvt.a*inf->viewvect[0] + inf->cvt.b*inf->viewvect[1]
 	    + inf->cvt.e + xxadjust;
    if (inf->col < 0 || inf->col >= xdots || inf->row < 0 || inf->row >= ydots)
-      inf->col = inf->row = -1;
+   {
+      if((long)abs(inf->col)+(long)abs(inf->row) > BAD_PIXEL)
+        inf->col= inf->row = -2;
+      else
+        inf->col= inf->row = -1;
+   }    
    if(realtime)
    {
       inf->row1 = inf->cvt.c*inf->viewvect1[0] + inf->cvt.d*inf->viewvect1[1]
@@ -2512,7 +2551,12 @@ static int float3dviewtransf(struct float3dvtinf *inf)
       inf->col1 = inf->cvt.a*inf->viewvect1[0] + inf->cvt.b*inf->viewvect1[1]
 		+ inf->cvt.e + xxadjust1;
       if (inf->col1 < 0 || inf->col1 >= xdots || inf->row1 < 0 || inf->row1 >= ydots)
-	 inf->col1 = inf->row1 = -1;
+      {
+         if((long)abs(inf->col1)+(long)abs(inf->row1) > BAD_PIXEL)
+           inf->col1= inf->row1 = -2;
+         else
+           inf->col1= inf->row1 = -1;
+      }    
    }
    return(1);
 }
@@ -2536,3 +2580,7 @@ int x,y,color;
     if (color<colors) 
 	putcolor(x,y,color);
 }
+
+
+
+

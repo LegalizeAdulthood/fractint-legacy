@@ -3,11 +3,11 @@
 ;    Name: PARSERA.ASM
 ;  Author: Chuck Ebbert  CompuServe [76306,1226]
 ;                         internet: 76306.1226@compuserve.com
-;    Date: 22 MAR 1993
+;    Date: 12 July 1993
 
 ; Fast floating-point routines for Fractint.
 
-;   (C) 1992, 1993 Chuck Ebbert.  All rights reserved.
+;   Copyright (C) 1992, 1993 Chuck Ebbert.  All rights reserved.
 
 ; This program is an assembler version of the C 'execution engine' part
 ;    of Mark Peterson's FRACTINT Formula Parser.  Many of the operator
@@ -1511,12 +1511,6 @@ abNormal_Pixel:
    ; }
       jmp          short after_load
 _fform_per_pixel   endp
-; --------------------------------------------------------------------------
-   public          _BadFormula
-_BadFormula        proc far
-      mov          ax,1
-      ret
-_BadFormula        endp
 ; --------------------------------------------------------------------------
 PARSERFP_TEXT      ends
    end

@@ -50,6 +50,7 @@ extern int julibrot;
 extern char gifmask[];
 extern int TPlusErr;
 
+extern int save_release, bailout;
 extern int Transparent3D, far NewTPFractal, tpdepth;
 extern int AntiAliasing, Shadowing;
 extern int pot16bit;		/* save 16 bit values for continuous potential */
@@ -1021,6 +1022,10 @@ resumeloop:				/* return here on failed overlays */
 		  discardscreen();
 		  if(!functionpreloaded)
 		    set_if_old_bif(); /* old bifs need function set, JCO 7/5/92 */
+		  if(fractype==MANDELTRIG && usr_floatflag==1 && save_release < 1800)
+		    bailout = 2500;
+		  if(fractype==LAMBDATRIG && usr_floatflag==1 && save_release < 1800)
+		    bailout = 2500;
 		  kbdmore = calc_status = 0;
 		  }
 	       else

@@ -24,9 +24,9 @@
 
 static int menu_checkkey(int curkey,int choice);
 
-int release=1800; /* this has 2 implied decimals; increment it every synch */
+int release=1810; /* this has 2 implied decimals; increment it every synch */
 int patchlevel=0; /* patchlevel for DOS version */
-int xrelease=109;
+int xrelease=201;
 
 /* fullscreen_choice options */
 #define CHOICERETURNKEY 1
@@ -306,7 +306,7 @@ void helptitle()
 #endif
 #endif
 /* uncomment next for production executable: */
-/* return; */
+   /* return;  */
    /*NOTREACHED*/
    if (debugflag == 3002) return;
 /* putstring(0,2,C_TITLE_DEV,"Development Version"); */
@@ -1339,6 +1339,7 @@ int thinking(int options,char *msg)
    static int thinkstate = -1;
    static char *wheel[] = {"-","\\","|","/"};
    static int thinkcol;
+   static int count=0;
    char buf[81];
    if (options == 0) {
       if (thinkstate >= 0) {
@@ -1356,7 +1357,12 @@ int thinking(int options,char *msg)
       strcat(buf,"    ");
       putstring(4,10,C_GENERAL_HI,buf);
       thinkcol = textcol - 3;
+      count = 0;
       }
+   if ((count++)<100) {
+       return 0;
+   }
+   count = 0;
    putstring(4,thinkcol,C_GENERAL_HI,wheel[thinkstate]);
    movecursor(25,80); /* turn off cursor */
    thinkstate = (thinkstate + 1) & 3;

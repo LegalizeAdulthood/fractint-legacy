@@ -26,20 +26,20 @@ SEGMENTS	mpmath_a_text ovl:0
 
 ; specialized video routines (which could be in overlays if needs be)
 
-SEGMENTS	diskvid_text ovl:0
-SEGMENTS	fr8514a_text ovl:0
-SEGMENTS	hgcfra_text ovl:0
-SEGMENTS	tplus_text ovl:0
-SEGMENTS	tplus_a_text ovl:0
-SEGMENTS	tp3d_text ovl:0
-SEGMENTS	targa_text ovl:0
-SEGMENTS	tgaview_text ovl:0
-SEGMENTS	f16_text ovl:0
+SEGMENTS	diskvid_text ovl:31
+SEGMENTS	fr8514a_text ovl:32
+SEGMENTS	hgcfra_text ovl:33
+SEGMENTS	tplus_text ovl:34
+SEGMENTS	tplus_a_text ovl:35
+SEGMENTS	tp3d_text ovl:36
+SEGMENTS	targa_text ovl:37
+SEGMENTS	tgaview_text ovl:38
+SEGMENTS	f16_text ovl:39
 
 ; commonly-used 3D routines (which could be in overlays if needs be)
 
-SEGMENTS	plot3d_text ovl:0
-SEGMENTS	$3d_text ovl:0
+SEGMENTS	plot3d_text ovl:40
+SEGMENTS	$3d_text ovl:40
 
 ; now the overlays start: hopefully, nothing runs *too* slowly...
 
@@ -74,7 +74,7 @@ SEGMENTS	miscovl_text ovl:13
 SEGMENTS	zoom_text ovl:14
 
 SEGMENTS	miscres_text ovl:15
-SEGMENTS	realdos_text ovl:16
+SEGMENTS	realdos_text ovl:15
 SEGMENTS	loadmap_text ovl:17
 
 ; fractal-specific routines, each in its own overlay.

@@ -65,6 +65,7 @@ char s_cantfind[]       = {"Can't find %s"};
    caller is an overlay which has been displaced */
 void restore_active_ovly()
 {
+
    switch (active_ovly) {
       case OVLY_MISCOVL:  miscovl_overlay();  break;
       case OVLY_CMDFILES: cmdfiles_overlay(); break;
@@ -107,9 +108,10 @@ void findpath(char *filename, char *fullpathname) /* return full pathnames */
 void notdiskmsg()
 {
 static char far sorrymsg[]={
-"I'm sorry, but because of its random-screen-access algorithms, this\n\
-type cannot be created using a real-disk based 'video' mode."};
-   stopmsg(1,sorrymsg);
+"This type may be slow using a real-disk based 'video' mode, but may not \n\
+be too bad if you have enough expanded or extended memory. Press <Esc> to \n\
+abort if it appears that your disk drive is working too hard."};
+   stopmsg(0,sorrymsg);
 }
 
 

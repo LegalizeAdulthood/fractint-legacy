@@ -2308,7 +2308,6 @@ trident_entries dw     0
 	dw	 640, 400,256, 05ch,0
 	dw	 640, 480,256, 05dh,0
 	dw	 800, 600,256, 05eh,0
-	dw	1024, 768, 16, 05fh,0
 	dw	1024, 768,256, 062h,0
 tseng_entries	dw	0
 	dw	 800, 600, 16, 029h,0
@@ -3146,15 +3145,16 @@ noct:	mov	ch,0
 @@:
 	mov	ch,1
 
-	mov	dx,3bfh 		;Enable access to extended registers
+not4:	mov	dx,3bfh 		;Enable access to extended registers
 	mov	al,3
 	out	dx,al
 	mov	dx,3d8h
 	mov	al,0a0h
 	out	dx,al
-	jmp	short yes4
+	cmp	ch,0
+	jnz	yes4
 
-not4:	mov	dx,3d4h 		;Test for Tseng 3000 or 4000
+	mov	dx,3d4h 		;Test for Tseng 3000 or 4000
 	mov	ax,1f25h		;is the Overflow High register there?
 	call	$isport2
 	jnz	nots

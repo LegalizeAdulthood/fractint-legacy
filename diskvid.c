@@ -135,7 +135,7 @@ int targa_startdisk(FILE *targafp,int overhead)
    return (i);
 }
 
-extern char dstack[];
+extern char boxy[];
 
 int _fastcall common_startdisk(long newrowsize, long newcolsize, int colors)
 {
@@ -289,13 +289,13 @@ int _fastcall common_startdisk(long newrowsize, long newcolsize, int colors)
       if ((fp = fopen(diskfilename,"w+b")) != NULL) {
 	 made_dsktemp = 1;
 #if 1					/* added by Michael Snyder */
-	 memset(dstack, 0, 1024);
-	 while (memorysize >= 0)
+	 memset(boxy, 0, 1024);
+	 while (memorysize > 0)
 	 {
 	    static char far cancel[] =
 		"Disk Video initialization interrupted:\n";
 
-	    fwrite(dstack, (memorysize > 1024) ? 1024 : (int)memorysize, 1, fp);
+	    fwrite(boxy, (memorysize > 1024) ? 1024 : (int)memorysize, 1, fp);
 	    memorysize -= 1024;
 	    if (keypressed())   	/* user interrupt */
 	       if (stopmsg(2, cancel))  /* esc to cancel, else continue */

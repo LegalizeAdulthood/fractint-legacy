@@ -362,7 +362,7 @@ void Print_Screen()
 	       */
 	    long ldist;
 	    int r,g,b;
-	    double gamma,gammadiv;
+	    double gamma_val,gammadiv;
 	    BYTE convert[256];
 	    BYTE scale[64];
 
@@ -389,12 +389,12 @@ void Print_Screen()
 		    case 2: table_ptr = pj_blues;
 			    i = Printer_SStyle;
 		    }
-		gamma = 10.0 / i;
-		gammadiv = pow(255,gamma) / 255;
+		gamma_val = 10.0 / i;
+		gammadiv = pow(255,gamma_val) / 255;
 		for (i = 0; i < 256; ++i) { /* build gamma conversion table */
 		    if ((i & 15) == 15)
 			thinking(1,"Calculating color translation");
-		    convert[i] = (int)((pow((double)i,gamma) / gammadiv) + 0.5);
+		    convert[i] = (int)((pow((double)i,gamma_val) / gammadiv) + 0.5);
 		    }
 		for (i = 0; i < 330; ++i) {
 		    k = convert[table_ptr[i]];
@@ -403,10 +403,10 @@ void Print_Screen()
 		}
 	    }
 	    /* build comparison lookup table */
-	    gamma = 1.7;
-	    gammadiv = pow(63,gamma) / 63;
+	    gamma_val = 1.7;
+	    gammadiv = pow(63,gamma_val) / 63;
 	    for (i = 0; i < 64; ++i) {
-	       if ((j = (int)((pow((double)i,gamma) / gammadiv) * 4 + 0.5)) < i)
+	       if ((j = (int)((pow((double)i,gamma_val) / gammadiv) * 4 + 0.5)) < i)
 		  j = i;
 	       scale[i] = j;
 	    }

@@ -14,7 +14,7 @@
 /* */
 /* ******************************************************************* */
 /*                                                                     */
-/*  (C) 1992, 1993 Chuck Ebbert.  All rights reserved.                 */
+/*  Copyright (C) 1992, 1993 Chuck Ebbert.  All rights reserved.       */
 /*                                                                     */
 /*    This code may be freely distributed and used in non-commercial   */
 /*    programs provided the author is credited either during program   */
@@ -30,7 +30,9 @@
 /*                                                                     */
 /* ******************************************************************* */
 /* */
-/* Revised 22 MAR 1993 */
+/* Revised 12 July 1993 (for v18.1) by CAE to fix optimizer bug  */
+/* */
+/* Revised 22 MAR 1993 (for Fractint v18.0)  */
 /* */
 /* Uncomment the next line to enable debug. */
 /*      #define TESTFP 1  */
@@ -336,9 +338,10 @@ static void CvtFptr(void (near * ffptr)(void), int MinStk, int MaxStk,
          }
          else if (cvtptrx>0 && fgf(cvtptrx-1) == fStkPush4 ){
 #ifdef TESTFP
-            stopmsg (0, "push4 *loddup (add) -> push2 (*loddbl)" );
+            stopmsg (0, "push4 *loddup (add) -> push2 (*loddbl),stk+=2" );
 #endif
             fgf(cvtptrx-1) = fStkPush2;
+            stkcnt += 2;  /*  CAE added 12 July 1993 to fix bug  */
          }
          else {
 #ifdef TESTFP
@@ -1195,4 +1198,4 @@ skipfinalopt: /* ---------------- end of final optimizations ----- */
    return 1;
 }
 
-#endif
+#endif  /*  XFRACT  */

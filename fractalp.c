@@ -91,7 +91,7 @@ static char frothshade[] =  "+Enter non-zero value for alternate color shading";
 static char lambda[] = "Lambda";
 static char alpha[]  = "Alpha";
 static char beta[]   = "Beta";
-static char gamma[]  = "Gamma";
+static char gamma2[]  = "Gamma";
 static char omega[]  = "Omega";
 static char symdegree[] = "+Degree of symmetry";
 
@@ -972,13 +972,13 @@ struct fractalspecificstuff far fractalspecific[] =
    MarksLambdafpFractal,juliafp_per_pixel,MarksJuliafpSetup,StandardFractal,STDBAILOUT,
 
    /* dmf */
-   "icons", lambda, alpha,beta,gamma, -2.34, 2.0, 0.2, 0.1,
+   "icons", lambda, alpha,beta,gamma2, -2.34, 2.0, 0.2, 0.1,
    HT_ICON, HF_ICON, NOGUESS+NOTRACE+WINFRAC+INFCALC+MORE,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL,  NOFRACTAL, NOSYM,
    iconfloatorbit, NULL, orbit3dfloatsetup,  orbit2dfloat, NOBAILOUT,
 
    /* dmf */
-   "icons3d", lambda, alpha,beta,gamma, -2.34, 2.0, 0.2, 0.1,
+   "icons3d", lambda, alpha,beta,gamma2, -2.34, 2.0, 0.2, 0.1,
    HT_ICON, HF_ICON, NOGUESS+NOTRACE+WINFRAC+INFCALC+PARMS3D+MORE,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL,  NOFRACTAL, NOSYM,
    iconfloatorbit, NULL, orbit3dfloatsetup,  orbit3dfloat, NOBAILOUT,

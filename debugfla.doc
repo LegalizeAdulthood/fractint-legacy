@@ -17,8 +17,10 @@ timer.
 72	fractint.c	don't use fast >= 287 fpu routines
 90	fractals.c	force "C" mandel & julia code (no calcmand or calmanfp)
 90	fractals.c	force generic code for fn+fn etc types
+90 parser.c    force "C" parser code even if FPU >= 387
 100	calcmand.asm	force use of 'code32bit' logic
 200	fractint.c	time encoder
+322   parserfp.c  disable optimizer (FPU >= 387 only)
 420	diskvid.c	don't use extended/expanded mem (force disk)
 420	realdos.c	  same for screen save (force disk)
 420	editpal.c	  same for screen save (force disk)
