@@ -877,6 +877,12 @@ typedef BYTE far BFCODE;
 #endif
 
 #if (_MSC_VER >= 700)
+typedef short __based(__segname("_CODE")) SIFCODE;
+#else
+typedef short far SIFCODE;
+#endif
+
+#if (_MSC_VER >= 700)
 typedef int __based(__segname("_CODE")) IFCODE;
 #else
 typedef int far IFCODE;

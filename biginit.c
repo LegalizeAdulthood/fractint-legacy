@@ -24,7 +24,9 @@ is in the allocations of memory for the big numbers.
 #define ENDVID 0
 
 /* globals */
+#ifdef BIG_BASED
 _segment bignum_seg;
+#endif
 int bnstep, bnlength, intlength, rlength, padding, shiftfactor, decimals;
 int bflength, rbflength, bfdecimals;
 
@@ -126,8 +128,9 @@ static void init_bf_2(void)
 #else /* BASED, NEAR, or ANSI_C */
     bnroot = (bf_t)ENDVID;  /* ENDVID is to avoid videotable */
 #endif
+#ifdef BIG_BASED
     bignum_seg = (_segment)extraseg;
-
+#endif
     /* at present time one call would suffice, but this logic allows
        mulytiple kinds of alternate math eg long double */
     if((i = find_alternate_math(fractype, BIGNUM)) > -1)

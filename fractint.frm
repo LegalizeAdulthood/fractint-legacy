@@ -490,7 +490,7 @@ inandout04 {
   }
 
 comment {
-  In this formula, a running count of the iterations is kept. After a 
+  In this formula, a running count of the iterations is kept. After a
   specified iteration number has been reached, the algorithm is changed.
   }
 
@@ -510,7 +510,7 @@ shifter01 { ; After shift, switch from z*z to z*z*z
 comment {
   The following resulted from a FRACTINT bug. Version 13 incorrectly
   calculated Spider (see above). We fixed the bug, and reverse-engineered
-  what it was doing to Spider - so here is the old "spider" 
+  what it was doing to Spider - so here is the old "spider"
   }
 
 Wineglass(XAXIS) {; Pieter Branderhorst
@@ -524,24 +524,24 @@ Wineglass(XAXIS) {; Pieter Branderhorst
 
 COMMENT {
   This formula is based on Sylvie Gallet's Five-Mandels formula.
-  Though it shouldn't produce a symmetrical image, a modification of pixel 
+  Though it shouldn't produce a symmetrical image, a modification of pixel
   forces symmetry around the Y axis.
   }
 
 Carr2289 (YAXIS) {; Modified Sylvie Gallet frm. [101324,3444],1996
   ; 0 < real(p1) < imag(p1) < real(p2) < imag(p2) < maxiter, periodicity=0
-  pixel = -abs(real(pixel))+flip(imag(pixel))
-  c = pixel+pixel-flip(0.0010/pixel)-conj(0.010/pixel)
-  z = pixel-conj(asin(pixel+pixel+0.32))
-  d1 = flip(-0.00059350/pixel)
+  pixel = -abs(real(pixel)) + flip(imag(pixel))
+  c = pixel + pixel - flip(0.001/pixel) - conj(0.01/pixel)
+  z = pixel - conj(asin(pixel+pixel+0.32))
+  d1 = flip(-0.0005935/pixel) , d4 = 4*d1
   z1 = 1.5*z+d1 , z2 = 2.25*z+d1 , z3 = 3.375*z+d1 , z4 = 5.0625*z+d1
   l1 = real(p1) , l2 = imag(p1) , l3 = real(p2) , l4 = imag(p2)
-  bailout = 16 , iter = 0 , d4 = 4*d1:
-   t1 = (iter==l1) , t2 = (iter==l2) , t3 = (iter==l3) , t4 = (iter==l4)
-   t = 1-(t1||t2||t3||t4) , ct = z1*t1 + z2*t2 + z3*t3 + z4*t4 + d4
+  bailout = 16 , iter = 0 :
+   t1 = iter==l1 , t2 = iter==l2 , t3 = iter==l3 , t4 = iter==l4
+   t = 1 - (t1||t2||t3||t4) , ct = z1*t1 + z2*t2 + z3*t3 + z4*t4 + d4
    z = z*t + ct , c = c*t + ct
-   z = z*z+c
-   iter = iter+1
+   z = z*z + c
+   iter = iter + 1
     |real(z)| <= bailout
   }
 
@@ -1041,15 +1041,15 @@ F'M-SetInNewtonC(XAXIS) { ; same as F'M-SetInNewtonB except for bailout
 
 {--- SYLVIE GALLET -------------------------------------------------------}
 
-comment { 
+comment {
   Because of its large size, this formula requires Fractint version 19.3 or
   later to run.
-  It uses Newton's formula applied to the equation z^6-1 = 0 and, in the 
+  It uses Newton's formula applied to the equation z^6-1 = 0 and, in the
   foreground, spells out the word 'FRACTINT'.
   }
 
 Fractint {; Sylvie Gallet [101324,3444], 1996
-          ; requires 'periodicity=0' 
+          ; requires 'periodicity=0'
   z = pixel-0.025 , x=real(z) , y=imag(z) , x1=x*1.8 , x3=3*x
   ty2 = ( (y<0.025) && (y>-0.025) ) || (y>0.175)
   f = ( (x<-1.2) || ty2 ) && ( (x>-1.25) && (x<-1) )
@@ -1064,7 +1064,7 @@ Fractint {; Sylvie Gallet [101324,3444], 1996
   n = (x<0.6) || (x>0.8) || ((y>-x1+1.215) && (y<-x1+1.305))
   n = n && (x>0.55) && (x<0.85)
   t2 = ((x>1.025) && (x<1.075) || (y>0.175)) && ((x>0.9) && (x<1.2))
-  test = 1 - (real(f||r||a||c||t1||i||n||t2)*real(y>-0.225)*real(y<0.225)) 
+  test = 1 - (real(f||r||a||c||t1||i||n||t2)*real(y>-0.225)*real(y<0.225))
   z = 1+(0.0,-0.65)/(pixel+(0.0,.75)) :
    z2 = z*z , z4 = z2*z2 , n = z4*z2-1 , z = z-n/(6*z4*z)
     (|n|>=0.0001) && test
@@ -1080,14 +1080,14 @@ comment {
   }
 
 Newton_real { ; Sylvie Gallet [101324,3444], 1996
-  ; Newton's method applied to   x^3 + y^2 - 1 = 0 
+  ; Newton's method applied to   x^3 + y^2 - 1 = 0
   ;                              y^3 - x^2 + 1 = 0
   ;                              solution (0,-1)
-  ; One parameter : real(p1) = bailout value 
-  z = pixel , x = real(z) , y = imag(z) : 
-   xy = x*y                                
-   d = 9*xy+4 , x2 = x*x , y2 = y*y        
-   c = 6*xy+2 
+  ; One parameter : real(p1) = bailout value
+  z = pixel , x = real(z) , y = imag(z) :
+   xy = x*y
+   d = 9*xy+4 , x2 = x*x , y2 = y*y
+   c = 6*xy+2
    x1 = x*c - (y*y2 - 3*y - 2)/x
    y1 = y*c + (x*x2 + 2 - 3*x)/y
    z = (x1+flip(y1))/d , x = real(z) , y = imag(z)
@@ -1120,10 +1120,64 @@ Five-Mandels (XAXIS) {; Sylvie Gallet [101324,3444], 1996
    t1 = (iter==l1) , t2 = (iter==l2) , t3 = (iter==l3) , t4 = (iter==l4)
    t = 1-(t1||t2||t3||t4) , ct = z1*t1 + z2*t2 + z3*t3 + z4*t4
    z = z*t + ct , c = c*t + ct
-   z = z*z+c
+   z = z*z + c
    iter = iter+1
     |z| <= bailout
   }
+
+comment {
+  The following formula draws the graphs of 4 real functions at a time.
+  }
+
+Graph { ; Sylvie Gallet [101324,3444], 1996
+  ; 2 parameters: curves thickness = real(p1)
+  ;                 axes thickness = imag(p1)
+  ; choose for example real(p1) = 0.002 and imag(p1) = 0.001
+  epsilon = abs(real(p1)) , axes = abs(imag(p1))
+  x = round(real(pixel)/epsilon) * epsilon
+  z1 = x + flip(fn1(x)) , z2 = x + flip(fn2(x))
+  z3 = x + flip(fn3(x)) , z4 = x + flip(fn4(x))
+  testaxes = (|real(pixel)|<=axes) || (|imag(pixel)|<=axes)
+  testfn1 = 2*(|z1-pixel|<=epsilon) , testfn2 = 4*(|z2-pixel|<=epsilon)
+  testfn3 = 8*(|z3-pixel|<=epsilon) , testfn4 = 16*(|z4-pixel|<=epsilon)
+  z = testaxes + testfn1 + testfn2 + testfn3 + testfn4
+  z = z + 100*(z==0) :
+   z = z - 1
+    z > 0
+  }
+
+G-3-03-M  { ; Sylvie Gallet [101324,3444], 1996
+            ; Modified Gallet-3-03 formula
+  z = pixel :
+   x = real(z) , y = imag(z)
+   x1 = x - p1 * fn1(y*y + round(p2*fn2(y)))
+   y1 = y - p1 * fn1(x*x + round(p2*fn2(x)))
+   z = x1 + flip(y1)
+    |z| <= 4
+  }
+
+comment {
+  The following formula overlays a Mandel and a reverse-Mandel, using a
+  checkerboard dithering invisible at very high resolutions.
+  It has some limitations:
+  - it is resolution dependent: the parameter p3 must be set to the
+    horizontal resolution, incorrect values of p3 produce diagonal or
+    vertical lines.
+  - the image must be allowed to finish without interruption, otherwise
+    artifacts may occur once the image restarts.
+  }
+
+JD-SG-04-1 { ; Sylvie Gallet [101324,3444], 1996
+  ; On an original idea by Jim Deutch [104074,3171]
+  ; use p1 and p2 to adjust the inverted Mandel
+  ; p3 = horizontal resolution: 320, 640, 800, 1024, 1280, ,1600...
+  count = (count + 1) * (count != (p3-1))
+  evenodd = (evenodd == (count == 1))
+  oddeven = (evenodd == 0)
+  z = c = pixel * evenodd + (p1 / (pixel+p2)) * oddeven :
+   z = z*z + c
+    |z| < 4
+ }
 
 {--- CHRIS GREEN ---------------------------------------------------------}
 
@@ -1306,7 +1360,7 @@ LeeMandel3(XAXIS) {; Kevin Lee
 
 RCL_Cross1 { ; Ron Lewen
   ; Try p1=(0,1), fn1=sin and fn2=sqr.  Set corners at
-  ; -10/10/-7.5/7.5 to see a cross shape.  The larger 
+  ; -10/10/-7.5/7.5 to see a cross shape.  The larger
   ; lakes at the center of the cross have good detail
   ; to zoom in on.
   ; Use floating point.
@@ -1316,7 +1370,7 @@ RCL_Cross1 { ; Ron Lewen
   }
 
 RCL_Pick13 { ; Ron Lewen
-  ;  Formula from Frontpiece for Appendix C 
+  ;  Formula from Frontpiece for Appendix C
   ;  and Credits in Pickover's book.
   ;  Set p1=(3,0) to generate the Frontpiece
   ;  for Appendix C and to (2,0) for Credits
@@ -1337,7 +1391,7 @@ RCL_1 (XAXIS) { ; Ron Lewen
 
 RCL_Cosh (XAXIS) { ; Ron Lewen, 76376,2567
   ; Try corners=2.008874/-3.811126/-3.980167/3.779833/
-  ; -3.811126/3.779833 to see Figure 9.7 (P. 123) in 
+  ; -3.811126/3.779833 to see Figure 9.7 (P. 123) in
   ; Pickover's Computers, Pattern, Chaos and Beauty.
   ; Figures 9.9 - 9.13 can be found by zooming.
   ; Use floating point
@@ -1557,7 +1611,7 @@ comment {
   Zoom in on a favorite spot on Mandel or Julia. Write down the center and
   magnification for that particular view. If it's a Julia, write down
   the real & imag. parameter as well.
-  The numbers you write down will be parameters to the fractal type 
+  The numbers you write down will be parameters to the fractal type
   TileMandel or TileJulia.
   - For both, paramter p1 is the center of the image you want to tile.
   - The real part of p2 is the magnification (the default is 1/3).
@@ -1688,7 +1742,7 @@ MyFractal {; Fractal Creations example
 
 Bogus1 {; Fractal Creations example
   z = 0; z = z + * 2
-   |z| <= 4 
+   |z| <= 4
   }
 
 MandelTangent {; Fractal Creations example (revised for v.16)

@@ -32,6 +32,7 @@
 
 ;             Date      Init   Change description
 
+;          30 Jun 1996   TIW   Added floor, ceil, trunc, and round functions 
 ;           7 Mar 1995   TIW   Added PWR (0,0) domain check
 ;          21 Feb 1995   TIW   Shortened ATanh/ATan for MASM 6 compatibility
 ;          21 Feb 1995   CAE   Changes ATan and ATanh
@@ -1387,6 +1388,86 @@ End_Log_ATan:
    END_OPER CAbs
 ; --------------------------------------------------------------------------
 ; End of new functions.                                          CAE 15Feb95
+; --------------------------------------------------------------------------
+   BEGN_OPER       Floor               ; Complex floor
+      fstcw        _Arg2               ; use arg2 to hold CW
+      fwait
+      mov          ax,_Arg2            ; Now do some integer instr.'s
+      push         ax                  ; Save control word on stack
+      and          ax,1111001111111111b
+      or           ax,0000010000000000b
+      mov          _Arg2,ax
+      fldcw        _Arg2               ; Now set control to round toward -inf
+   ; Chop toward negative infinity applies now
+      frndint                          ; floor(x) y
+      fxch                             ; y floor(x)
+      frndint                          ; floor(y) floor(x)
+      fxch                             ; floor(x) floor(y)
+      pop          ax                  ; restore old CW to AX
+      mov          _Arg2,ax            ; ...then move it to Arg2
+      fldcw        _Arg2               ; Restore control word from Arg2
+   ; Normal rounding is in effect again  
+   END_OPER        Floor
+; --------------------------------------------------------------------------
+   BEGN_OPER       Ceil                ; Complex ceiling
+      fstcw        _Arg2               ; use arg2 to hold CW
+      fwait
+      mov          ax,_Arg2            ; Now do some integer instr.'s
+      push         ax                  ; Save control word on stack
+      and          ax,1111001111111111b
+      or           ax,0000100000000000b
+      mov          _Arg2,ax
+      fldcw        _Arg2               ; Now set control to round toward +inf
+   ; Chop toward positive infinity applies now
+      frndint                          ; ceil(x) y
+      fxch                             ; y ceil(x)
+      frndint                          ; ceil(y) ceil(x)
+      fxch                             ; ceil(x) ceil(y)
+      pop          ax                  ; restore old CW to AX
+      mov          _Arg2,ax            ; ...then move it to Arg2
+      fldcw        _Arg2               ; Restore control word from Arg2
+   ; Normal rounding is in effect again  
+   END_OPER        Ceil
+; --------------------------------------------------------------------------
+   BEGN_OPER       Trunc               ; Complex truncation
+      fstcw        _Arg2               ; use arg2 to hold CW
+      fwait
+      mov          ax,_Arg2            ; Now do some integer instr.'s
+      push         ax                  ; Save control word on stack
+      or           ax,0000110000000000b
+      mov          _Arg2,ax
+      fldcw        _Arg2               ; Now set control to round toward zero
+   ; Chop toward zero rounding applies now
+      frndint                          ; trunc(x) y
+      fxch                             ; y trunc(x)
+      frndint                          ; trunc(y) trunc(x)
+      fxch                             ; trunc(x) trunc(y)
+      pop          ax                  ; restore old CW to AX
+      mov          _Arg2,ax            ; ...then move it to Arg2
+      fldcw        _Arg2               ; Restore control word from Arg2
+   ; Normal rounding is in effect again  
+   END_OPER        Trunc
+; --------------------------------------------------------------------------
+   BEGN_OPER       Round               ; Complex round
+      fstcw        _Arg2               ; use arg2 to hold CW
+      fwait
+      mov          ax,_Arg2            ; Now do some integer instr.'s
+      push         ax                  ; Save control word on stack
+      and          ax,1111001111111111b
+      mov          _Arg2,ax
+      fldcw        _Arg2               ; Now set control to round to nearest
+   ; Chop toward nearest rounding applies now
+      frndint                          ; round(x) y
+      fxch                             ; y round(x)
+      frndint                          ; round(y) round(x)
+      fxch                             ; round(x) round(y)
+      pop          ax                  ; restore old CW to AX
+      mov          _Arg2,ax            ; ...then move it to Arg2
+      fldcw        _Arg2               ; Restore control word from Arg2
+   ; Normal rounding is in effect again  
+   END_OPER        Round
+; --------------------------------------------------------------------------
+; End of new functions.                                          TIW 30Jun96
 ; --------------------------------------------------------------------------
    BEGN_OPER       LT                  ; <
    ; Arg2->d.x = (double)(Arg2->d.x < Arg1->d.x);

@@ -79,6 +79,7 @@ int big_while_loop(int *kbdmore, char *stacked, int resumeflag)
          xdots   = videoentry.xdots;       /* # dots across the screen */
          ydots   = videoentry.ydots;       /* # dots down the screen   */
          colors  = videoentry.colors;      /* # colors available */
+         dotmode %= 1000;
          textsafe2 = dotmode / 100;
          dotmode  %= 100;
          sxdots  = xdots;
@@ -772,6 +773,11 @@ int main_menu_switch(int *kbdchar, int *frommandel, int *kbdmore, char *stacked,
       {
          /* go back one file if somewhere to go (ie. browsing) */
          name_stack_ptr--;
+         while (file_name_stack[name_stack_ptr][0] == '\0' 
+                && name_stack_ptr >= 0)
+            name_stack_ptr--;
+         if (name_stack_ptr < 0) /* oops, must have deleted first one */
+            break;
          strcpy(browsename, file_name_stack[name_stack_ptr]);
          /*
          splitpath(browsename, NULL, NULL, fname, ext);
@@ -957,6 +963,11 @@ image.  Sorry - it's the best we could do."};
             {
                /* go back one file if somewhere to go (ie. browsing) */
                name_stack_ptr--;
+               while (file_name_stack[name_stack_ptr][0] == '\0' 
+                      && name_stack_ptr >= 0)
+                  name_stack_ptr--;
+               if (name_stack_ptr < 0) /* oops, must have deleted first one */
+                  break;
                strcpy(browsename, file_name_stack[name_stack_ptr]);
                /*
                splitpath(browsename, NULL, NULL, fname, ext);

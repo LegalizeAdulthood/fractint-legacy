@@ -46,10 +46,9 @@ FILE *t16_open(char *fname, int *hs, int *vs, int *csize, U8 *cp)
     char filename[64];
     U8 header[HEADERSIZE];
     FILE *fp;
-    char *period;
 
     strcpy(filename, fname);
-    if ((period = has_ext(filename)) == NULL) strcat(filename, ".TGA");
+    if (has_ext(filename) == NULL) strcat(filename, ".TGA");
     if ((fp = fopen(filename, READMODE)) == NULL) return NULL;
 
     fread(header, HEADERSIZE, 1, fp);

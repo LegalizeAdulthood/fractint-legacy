@@ -28,8 +28,6 @@ int bf_math = 0;
 #pragma code_seg ("bigsetup_text")     /* place following in an overlay */
 #endif
 
-/* #define DEBUG */
-/* following are handy debugging tools */
 #ifdef DEBUG
 
 /**********************************************************************/

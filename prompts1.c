@@ -844,6 +844,80 @@ char *JIIMmethod[] = {"breadth", "depth", "walk"};
 static FCODE JIIMstr2[] = "Left first or Right first?";
 char *JIIMleftright[] = {"left", "right"};
 
+/* moved from miscres.c so sizeof structure can be accessed here */
+struct trig_funct_lst trigfn[] =
+/* changing the order of these alters meaning of *.fra file */
+/* maximum 6 characters in function names or recheck all related code */
+{
+#ifndef XFRACT
+   {s_sin,   lStkSin,   dStkSin,   mStkSin   },
+   {s_cosxx, lStkCosXX, dStkCosXX, mStkCosXX },
+   {s_sinh,  lStkSinh,  dStkSinh,  mStkSinh  },
+   {s_cosh,  lStkCosh,  dStkCosh,  mStkCosh  },
+   {s_exp,   lStkExp,   dStkExp,   mStkExp   },
+   {s_log,   lStkLog,   dStkLog,   mStkLog   },
+   {s_sqr,   lStkSqr,   dStkSqr,   mStkSqr   },
+   {s_recip, lStkRecip, dStkRecip, mStkRecip }, /* from recip on new in v16 */
+   {s_ident, StkIdent,  StkIdent,  StkIdent  },
+   {s_cos,   lStkCos,   dStkCos,   mStkCos   },
+   {s_tan,   lStkTan,   dStkTan,   mStkTan   },
+   {s_tanh,  lStkTanh,  dStkTanh,  mStkTanh  },
+   {s_cotan, lStkCoTan, dStkCoTan, mStkCoTan },
+   {s_cotanh,lStkCoTanh,dStkCoTanh,mStkCoTanh},
+   {s_flip,  lStkFlip,  dStkFlip,  mStkFlip  },
+   {s_conj,  lStkConj,  dStkConj,  mStkConj  },
+   {s_zero,  lStkZero,  dStkZero,  mStkZero  },
+   {s_asin,  lStkASin,  dStkASin,  mStkASin  },
+   {s_asinh, lStkASinh, dStkASinh, mStkASinh },
+   {s_acos,  lStkACos,  dStkACos,  mStkACos  },
+   {s_acosh, lStkACosh, dStkACosh, mStkACosh },
+   {s_atan,  lStkATan,  dStkATan,  mStkATan  },
+   {s_atanh, lStkATanh, dStkATanh, mStkATanh },
+   {s_cabs,  lStkCAbs,  dStkCAbs,  mStkCAbs  },
+   {s_abs,   lStkAbs,   dStkAbs,   mStkAbs   },
+   {s_sqrt,  lStkSqrt,  dStkSqrt,  mStkSqrt  },
+   {s_floor, lStkFloor, dStkFloor, mStkFloor },
+   {s_ceil,  lStkCeil,  dStkCeil,  mStkCeil  },
+   {s_trunc, lStkTrunc, dStkTrunc, mStkTrunc },
+   {s_round, lStkRound, dStkRound, mStkRound },
+#else
+   {s_sin,   dStkSin,   dStkSin,   dStkSin   },
+   {s_cosxx, dStkCosXX, dStkCosXX, dStkCosXX },
+   {s_sinh,  dStkSinh,  dStkSinh,  dStkSinh  },
+   {s_cosh,  dStkCosh,  dStkCosh,  dStkCosh  },
+   {s_exp,   dStkExp,   dStkExp,   dStkExp   },
+   {s_log,   dStkLog,   dStkLog,   dStkLog   },
+   {s_sqr,   dStkSqr,   dStkSqr,   dStkSqr   },
+   {s_recip, dStkRecip, dStkRecip, dStkRecip }, /* from recip on new in v16 */
+   {s_ident, StkIdent,  StkIdent,  StkIdent  },
+   {s_cos,   dStkCos,   dStkCos,   dStkCos   },
+   {s_tan,   dStkTan,   dStkTan,   dStkTan   },
+   {s_tanh,  dStkTanh,  dStkTanh,  dStkTanh  },
+   {s_cotan, dStkCoTan, dStkCoTan, dStkCoTan },
+   {s_cotanh,dStkCoTanh,dStkCoTanh,dStkCoTanh},
+   {s_flip,  dStkFlip,  dStkFlip,  dStkFlip  },
+   {s_conj,  dStkConj,  dStkConj,  dStkConj  },
+   {s_zero,  dStkZero,  dStkZero,  dStkZero  },
+   {s_asin,  dStkASin,  dStkASin,  dStkASin  },
+   {s_asinh, dStkASinh, dStkASinh, dStkASinh },
+   {s_acos,  dStkACos,  dStkACos,  dStkACos  },
+   {s_acosh, dStkACosh, dStkACosh, dStkACosh },
+   {s_atan,  dStkATan,  dStkATan,  dStkATan  },
+   {s_atanh, dStkATanh, dStkATanh, dStkATanh },
+   {s_cabs,  dStkCAbs,  dStkCAbs,  dStkCAbs  },
+   {s_abs,   dStkAbs,   dStkAbs,   dStkAbs   },
+   {s_sqrt,  dStkSqrt,  dStkSqrt,  dStkSqrt  },
+   {s_floor, dStkFloor, dStkFloor, dStkFloor },
+   {s_ceil,  dStkCeil,  dStkCeil,  dStkCeil  },
+   {s_trunc, dStkTrunc, dStkTrunc, dStkTrunc },
+   {s_round, dStkRound, dStkRound, dStkRound },
+#endif
+};
+
+#define NUMTRIGFN  sizeof(trigfn)/sizeof(struct trig_funct_lst)
+
+const int numtrigfn = NUMTRIGFN;
+
 /* --------------------------------------------------------------------- */
 int get_fract_params(int caller)        /* prompt for type-specific parms */
 {
@@ -870,7 +944,7 @@ int get_fract_params(int caller)        /* prompt for type-specific parms */
    static FCODE *trg[] = {t1, t2, t3, t4};
    char *filename,*entryname;
    FILE *entryfile;
-   char *trignameptr[25];
+   char *trignameptr[NUMTRIGFN];
 #ifdef XFRACT
    static /* Can't initialize aggregates on the stack */
 #endif
@@ -1024,13 +1098,13 @@ gfp_top:
       numtrig = maxfn;
       }
 
-   if ((i = numtrigfn) > 27) i = 27;
+   i = NUMTRIGFN;
    while (--i >= 0)
       trignameptr[i] = trigfn[i].name;
    for (i = 0; i < numtrig; i++) {
       paramvalues[promptnum].type = 'l';
       paramvalues[promptnum].uval.ch.val  = trigndx[i];
-      paramvalues[promptnum].uval.ch.llen = numtrigfn;
+      paramvalues[promptnum].uval.ch.llen = NUMTRIGFN;
       paramvalues[promptnum].uval.ch.vlen = 6;
       paramvalues[promptnum].uval.ch.list = trignameptr;
       choices[promptnum++] = (char far *)trg[i];
@@ -1421,11 +1495,21 @@ int skip_comment(FILE *infile, long *file_offset)
 }
 
 #define MAXENTRIES 2000L
+
 int scan_entries(FILE * infile, void far * ch, char *itemname)
 {
+      /*
+      function returns the number of entries found; if a
+      specific entry is being looked for, returns -1 if
+      the entry is found, 0 otherwise.
+      */
    struct entryinfo far *far * choices;
    char buf[101];
-   long name_offset, file_offset = -1;
+   long name_offset, temp_offset;   /*rev 5/23/96 to add temp_offset,
+                                      used below to skip any '{' that
+                                      does not have a corresponding
+                                      '}' - GGM */
+   long file_offset = -1;
    int numentries = 0;
 
    choices = (struct entryinfo far * far *) ch;
@@ -1441,7 +1525,7 @@ top:
             break;
          continue;
       }
-      name_offset = file_offset;
+      name_offset = temp_offset = file_offset;
       /* next equiv roughly to fscanf(..,"%40[^* \n\r\t({\032]",buf) */
       len = 0;
       while (c != ' ' && c != '\t' && c != '(' && c != ';'
@@ -1455,7 +1539,7 @@ top:
             goto top;
       }
       buf[len] = 0;
-      while (c != '{' && /* c != '\n' && c != '\r' && */  c != EOF && c != '\032')
+      while (c != '{' &&  c != EOF && c != '\032')
       {
          if(c == ';')
             c = skip_comment(infile, &file_offset);
@@ -1475,11 +1559,27 @@ top:
                c = skip_comment(infile, &file_offset);
             else
             {
+               if(c == '\n' || c == '\r')     /* reset temp_offset to  */
+                  temp_offset = file_offset;  /* beginning of new line */
                c = getc(infile);
                ++file_offset;
             }
+            if(c == '{') /*second '{' found*/
+            {
+               if (temp_offset == name_offset) /*if on same line, skip line*/
+               {
+                  c = skip_comment(infile, &file_offset);
+                  goto top;
+               }
+               else
+               {
+                  fseek(infile, temp_offset, SEEK_SET); /*else, go back to */
+                  file_offset = temp_offset - 1;        /*beginning of line*/
+                  goto top;
+               }
+            }
          }
-         if (c != '}')
+         if (c != '}')   /* i.e. is EOF or '\032'*/
             break;
          buf[ITEMNAMELEN] = 0;
          if (itemname != NULL)  /* looking for one entry */

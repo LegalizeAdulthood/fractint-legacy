@@ -20,6 +20,7 @@ Additional fractal-specific modules are also invoked from CALCFRAC:
 #include <stdlib.h>
 #include <float.h>
 #include <limits.h>
+#include <time.h>
 #ifndef XFRACT
 #include <dos.h>
 #endif
@@ -45,7 +46,7 @@ static void _fastcall plotblock(int,int,int,int);
 static void _fastcall setsymmetry(int,int);
 static int  _fastcall xsym_split(int,int);
 static int  _fastcall ysym_split(int,int);
-static void _fastcall puttruecolor(int,int,int);
+static void _fastcall puttruecolor_disk(int,int,int);
 
 /**CJLT new function prototypes: */
 static int tesseral(void);
@@ -66,7 +67,8 @@ int iterations, invert;
 double f_radius,f_xcenter, f_ycenter; /* for inversion */
 void (_fastcall *putcolor)(int,int,int) = putcolor_a;
 void (_fastcall *plot)(int,int,int) = putcolor_a;
-typedef void (_fastcall *PLOT)(int,int,int);
+typedef void (_fastcall *PLOTC)(int,int,int);
+typedef void (_fastcall *GETC)(int,int,int);
 
 double          min_orbit;          /* orbit value closest to origin */
 long            min_index;          /* iteration of min_orbit */
@@ -168,10 +170,234 @@ int periodicitycheck;
 int nextsavedincr;
 long firstsavedand;
 
+static BYTE *savedots = NULL;
+static BYTE *fillbuff;
+static int savedotslen;
+static int showdotcolor;
+
+static int showdot_width = 0;
+#define SAVE    1
+#define RESTORE 2
+
+#define JUST_A_POINT 0
+#define LOWER_RIGHT  1
+#define UPPER_RIGHT  2
+#define LOWER_LEFT   3
+#define UPPER_LEFT   4
+
+/*
+   The sym_fill_line() routine was pulled out of the boundary tracing 
+   code for re-use with showdot. It's purpose is to fill a line with a
+   solid color. This assumes that BYTE *str is already filled
+   with the color. The routine does write the line using symmetry
+   in all cases, however the symmetry logic assumes that the line
+   is one color; it is not general enough to handle a row of
+   pixels of different colors. 
+*/  
+static void sym_fill_line(int row, int left, int right, BYTE *str)
+{
+   int i,j,k, length;
+   length = right-left+1;
+   put_line(row,left,right,str);
+   /* here's where all the symmetry goes */
+   if (plot == putcolor)
+      kbdcount -= length >> 4; /* seems like a reasonable value */
+   else if (plot == symplot2) /* X-axis symmetry */
+   {
+      i = yystop-(row-yystart);
+      if (i > iystop && i < ydots)
+      {
+         put_line(i,left,right,str);
+         kbdcount -= length >> 3;
+      }   
+   }
+   else if (plot == symplot2Y) /* Y-axis symmetry */
+   {
+      put_line(row,xxstop-(right-xxstart),xxstop-(left-xxstart),str);
+      kbdcount -= length >> 3;
+   }
+   else if (plot == symplot2J)  /* Origin symmetry */
+   {
+      i = yystop-(row-yystart);
+      j = min(xxstop-(right-xxstart),xdots-1);
+      k = min(xxstop-(left -xxstart),xdots-1);
+      if (i > iystop && i < ydots && j <= k)
+         put_line(i,j,k,str);
+      kbdcount -= length >> 3;
+   }
+   else if (plot == symplot4) /* X-axis and Y-axis symmetry */
+   {
+      i = yystop-(row-yystart);
+      j = min(xxstop-(right-xxstart),xdots-1);
+      k = min(xxstop-(left -xxstart),xdots-1);
+      if (i > iystop && i < ydots)
+      {
+         put_line(i,left,right,str);
+         if(j <= k)
+            put_line(i,j,k,str);
+      }
+      if(j <= k)
+         put_line(row,j,k,str);
+      kbdcount -= length >> 2;
+   }
+   else    /* cheap and easy way out */
+   {
+      for (i = left; i <= right; i++)  /* DG */
+         (*plot)(i,row,str[i-left]);
+      kbdcount -= length >> 1;
+   }
+}
+
+/*
+  The sym_put_line() routine is the symmetry-aware version of put_line().
+  It only works efficiently in the no symmetry or XAXIS symmetry case,
+  otherwise it just writes the pixels one-by-one.
+*/    
+static void sym_put_line(int row, int left, int right, BYTE *str)
+{
+   int length,i;
+   length = right-left+1;
+   put_line(row,left,right,str);
+   if (plot == putcolor)
+      kbdcount -= length >> 4; /* seems like a reasonable value */
+   else if (plot == symplot2) /* X-axis symmetry */
+   {
+      i = yystop-(row-yystart);
+      if (i > iystop && i < ydots)
+         put_line(i,left,right,str);
+      kbdcount -= length >> 3;
+   }
+   else
+   {
+      for (i = left; i <= right; i++)  /* DG */
+         (*plot)(i,row,str[i-left]);
+      kbdcount -= length >> 1;
+   }
+}
+
+void showdotsaverestore(int startx, int stopx, int starty, int stopy, int direction, int action)
+{
+   int j,ct;
+   ct = 0;
+   if(direction != JUST_A_POINT)
+   {
+      if(savedots == NULL)
+      {
+         stopmsg(0,"savedots NULL");
+         exit(0);
+      }
+      if(fillbuff == NULL)
+      {
+         stopmsg(0,"fillbuff NULL");
+         exit(0);
+      }
+   }
+   switch(direction)
+   {
+      case LOWER_RIGHT:
+         for(j=starty;   j<=stopy; startx++,j++)
+         {
+            if(action==SAVE)
+            {
+               get_line(j,startx,stopx,savedots+ct);
+               sym_fill_line(j,startx,stopx,fillbuff);
+            }
+            else
+               sym_put_line(j,startx,stopx,savedots+ct);
+            ct += stopx-startx+1;
+         }
+         break;
+      case UPPER_RIGHT:
+         for(j=starty;   j>=stopy; startx++,j--)
+         {
+            if(action==SAVE)
+            {
+               get_line(j,startx,stopx,savedots+ct);
+               sym_fill_line(j,startx,stopx,fillbuff);
+            }
+            else
+               sym_put_line(j,startx,stopx,savedots+ct);
+            ct += stopx-startx+1;
+         }
+         break;
+      case LOWER_LEFT:
+         for(j=starty; j<=stopy; stopx--,j++)
+         {
+            if(action==SAVE)
+            {
+               get_line(j,startx,stopx,savedots+ct);
+               sym_fill_line(j,startx,stopx,fillbuff);
+            }
+            else
+               sym_put_line(j,startx,stopx,savedots+ct);
+            ct += stopx-startx+1;
+         }
+         break;
+      case UPPER_LEFT:
+         for(j=starty; j>=stopy; stopx--,j--)
+         {
+            if(action==SAVE)
+            {
+               get_line(j,startx,stopx,savedots+ct);
+               sym_fill_line(j,startx,stopx,fillbuff);
+            }
+            else
+               sym_put_line(j,startx,stopx,savedots+ct);
+            ct += stopx-startx+1;
+         }
+         break;
+   }
+   if(action == SAVE)
+      (*plot) (col,row, showdotcolor); 
+}
+
 int calctypeshowdot(void)
 {
-   (*plot) (col, row, showdot%colors);
-   return((*calctypetmp)());
+   int out, startx, starty, stopx, stopy, direction, width;
+   direction = JUST_A_POINT;   
+   startx = stopx = col;
+   starty = stopy = row;
+   width = showdot_width+1;
+   if(width > 0)
+      if(col+width <= ixstop && row+width <= iystop)
+      {
+         /* preferred showdot shape */
+         direction = UPPER_LEFT;
+         startx = col;
+         stopx  = col+width;
+         starty = row+width;
+         stopy  = row+1;
+      }
+      else if(col-width >= ixstart && row+width <= iystop)
+      {
+         /* second choice */
+         direction = UPPER_RIGHT;
+         startx = col-width;
+         stopx  = col;
+         starty = row+width;
+         stopy  = row+1;
+      }
+      else if(col-width >= ixstart && row-width >= iystart)
+      {
+         direction = LOWER_RIGHT;
+         startx = col-width;
+         stopx  = col;
+         starty = row-width;
+         stopy  = row-1;
+      }
+      else if(col+width <= ixstop && row-width >= iystart)
+      {
+         direction = LOWER_LEFT;
+         startx = col;
+         stopx  = col+width;
+         starty = row-width;
+         stopy  = row-1;
+      }
+   showdotsaverestore(startx, stopx, starty, stopy, direction, SAVE);
+   if(orbit_delay > 0) sleepms(orbit_delay);
+   out = (*calctypetmp)();
+   showdotsaverestore(startx, stopx, starty, stopy, direction, RESTORE);
+   return(out);
 }
 
 /* use top of extraseg for LogTable if room */
@@ -194,7 +420,7 @@ int logtable_in_extra_ok(void)
 
 int calcfract(void)
 {
-   first_err = 1;
+   matherr_ct = 0;
    attractors = 0;          /* default to no known finite attractors  */
    display3d = 0;
    basin = 0;
@@ -206,7 +432,7 @@ int calcfract(void)
       {
          /* Have to force passes=1 */
          stdcalcmode = '1';
-         putcolor = puttruecolor;
+         putcolor = puttruecolor_disk;
       }
       else
          truecolor = 0;
@@ -260,8 +486,11 @@ int calcfract(void)
       MaxLTSize = INT_MAX;
       Log_Calc = 0; /* use logtable */
    }
+   else if(rangeslen && maxit > INT_MAX) {
+      MaxLTSize = INT_MAX;
+   }
 
-   if ((LogFlag != 0 || rangeslen) && !Log_Calc)
+   if ((LogFlag || rangeslen) && !Log_Calc)
    {
       if(logtable_in_extra_ok())
          LogTable = (BYTE far *)(dx0 + 2*(xdots+ydots));
@@ -630,10 +859,79 @@ static void perform_worklist()
       calc_status = 1; /* mark as in-progress */
 
       curfractalspecific->per_image();
-      if(showdot > 0)
+      if(showdot >= 0)
       {
+        find_special_colors();
+        switch(autoshowdot)
+        {
+           case 'd':
+              showdotcolor = color_dark%colors;
+              break;
+           case 'm':
+              showdotcolor = color_medium%colors;
+              break;
+           case 'b':
+           case 'a':  
+              showdotcolor = color_bright%colors;
+              break;
+           default:
+              showdotcolor = showdot%colors;
+              break;
+        }
+        if(sizedot <= 0)
+            showdot_width = -1;
+         else
+         {
+            double dshowdot_width;
+            dshowdot_width = (double)sizedot*xdots/1024.0;
+            /* 
+               Arbitrary sanity limit, however showdot_width will
+               overflow if dshowdot width gets near 256. 
+            */
+            if(dshowdot_width > 150.0)
+               showdot_width = 150;
+            else if(dshowdot_width > 0.0)
+               showdot_width = (int)dshowdot_width;
+            else
+               showdot_width = -1;      
+         }
+#ifdef SAVEDOTS_USES_MALLOC  
+         while(showdot_width >= 0)
+         {
+            /* 
+               We're using near memory, so get the amount down
+               to something reasonable. The polynomial used to
+               calculate savedotslen is exactly right for the 
+               triangular-shaped shotdot cursor. The that cursor
+               is changed, this formula must match.
+            */
+            while((savedotslen=sqr(showdot_width)+5*showdot_width+4) > 1000)
+               showdot_width--;
+            if((savedots = (BYTE *)malloc(savedotslen)) != NULL)
+            {
+               savedotslen /= 2;
+               fillbuff = savedots + savedotslen;
+               memset(fillbuff,showdotcolor,savedotslen);
+               break;
+            }
+            /*
+               There's even less free memory than we thought, so reduce
+               showdot_width still more
+            */   
+            showdot_width--;
+         }      
+         if(savedots == NULL)
+            showdot_width = -1;
+#else
+         while((savedotslen=sqr(showdot_width)+5*showdot_width+4) > 2048)
+            showdot_width--;
+         savedots = (BYTE *)decoderline;
+         savedotslen /= 2;
+         fillbuff = savedots + savedotslen;
+         memset(fillbuff,showdotcolor,savedotslen);
+#endif
          calctypetmp = calctype;
-         calctype = calctypeshowdot;
+         calctype    = calctypeshowdot;
       }
 
       /* some common initialization for escape-time pixel level routines */
@@ -643,7 +941,7 @@ static void perform_worklist()
 
       setsymmetry(symmetry,1);
 
-/* added for testing autologmap() */
+      /* added for testing autologmap() */
       if (!(resuming)&&(labs(LogFlag) ==2))
        {  /* calculate round screen edges to work out best start for logmap */
          LogFlag = ( autologmap() * (LogFlag / labs(LogFlag)));
@@ -665,7 +963,14 @@ static void perform_worklist()
       default:
          OneOrTwoPass();
       }
-
+#ifdef SAVEDOTS_USES_MALLOC
+      if(savedots != NULL)
+      {
+         free(savedots);
+         savedots = NULL;
+         fillbuff = NULL;
+      }
+#endif               
       if (check_key()) /* interrupted? */
          break;
    }
@@ -1907,6 +2212,8 @@ int  bound_trace_main(void)
             col = curcol;
             if ((*calctype)()== -1) /* color, row, col are global */
                 {
+                if (showdot != bkcolor) /* remove showdot pixel */
+                   (*plot)(col,row,bkcolor);
                 if (iystop != yystop)  /* DG */
                    iystop = yystop - (currow - yystart); /* allow for sym */
                 add_worklist(xxstart,xxstop,currow,iystop,currow,0,worksym);
@@ -1942,6 +2249,8 @@ int  bound_trace_main(void)
                     if ((color = getcolor(col, row)) == bkcolor && (*calctype)()== -1)
                                 /* color, row, col are global for (*calctype)() */
                         {
+                        if (showdot != bkcolor) /* remove showdot pixel */
+                           (*plot)(col,row,bkcolor);
                         if (iystop != yystop)  /* DG */
                            iystop = yystop - (currow - yystart); /* allow for sym */
                         add_worklist(xxstart,xxstop,currow,iystop,currow,0,worksym);
@@ -2020,39 +2329,7 @@ whenever going_to is South or West
                                         last_fillcolor_used = fillcolor_used;
                                         max_putline_length = length;
                                         }
-                                    put_line(row,left,right,dstack);
-                                    /* here's where all the symmetry goes */
-                                    if (plot == putcolor)
-                                        kbdcount -= length >> 4; /* seems like a reasonable value */
-                                    else if (plot == symplot2) /* X-axis symmetry */
-                                        {
-                                        put_line(yystop-(row-yystart),left,right,dstack);
-                                        kbdcount -= length >> 3;
-                                        }
-                                    else if (plot == symplot2Y) /* Y-axis symmetry */
-                                        {
-                                        put_line(row,xxstop-(right-xxstart),xxstop-(left-xxstart),dstack);
-                                        kbdcount -= length >> 3;
-                                        }
-                                    else if (plot == symplot2J)  /* Origin symmetry */
-                                        {
-                                        put_line(yystop-(row-yystart),xxstop-(right-xxstart),xxstop-(left-xxstart),dstack);
-                                        kbdcount -= length >> 3;
-                                        }
-                                    else if (plot == symplot4) /* X-axis and Y-axis symmetry */
-                                        {
-                                        put_line(yystop-(row-yystart),left,right,dstack);
-                                        put_line(row,xxstop-(right-xxstart),xxstop-(left-xxstart),dstack);
-                                        put_line(yystop-(row-yystart),xxstop-(right-xxstart),xxstop-(left-xxstart),dstack);
-                                        kbdcount -= length >> 2;
-                                        }
-                                    else    /* cheap and easy way out */
-                                        {
-                                        int c;
-                                        for (c = left; c <= right; c++)  /* DG */
-                                            (*plot)(c,row,fillcolor_used);
-                                        kbdcount -= length >> 1;
-                                        }
+                                    sym_fill_line(row, left, right, dstack);
                                     }
                                 } /* end of fill line */
 
@@ -3344,7 +3621,7 @@ void _fastcall symplot4basin(int x, int y, int color)
 }
 
 /* Symmetry plot for X Axis Symmetry - Striped Newtbasin version */
-static void _fastcall puttruecolor(int x, int y, int color)
+static void _fastcall puttruecolor_disk(int x, int y, int color)
 {
    putcolor_a(x,y,color);
 
@@ -3363,5 +3640,4 @@ void _fastcall noplot(int x,int y,int color)
 {
    x = y = color = 0;  /* just for warning */
 }
-
 

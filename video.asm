@@ -6,6 +6,8 @@
 ;       setvideotext()
 ;       getcolor()
 ;       putcolor_a()
+;       gettruecolor()
+;       puttruecolor()
 ;       out_line()
 ;       drawbox()
 ;       home()
@@ -187,6 +189,9 @@ public          TPlusInstalled
 public          vesa_detect             ; set to 0 to disable VESA-detection
 
 public          vxdots                  ; virtual scan line length
+
+public		istruecolor		; 1 if VESA truecolor mode, 0 otherwise
+
 ;               arrays declared here, used elsewhere
 ;               arrays not used simultaneously are deliberately overlapped
 
@@ -2099,6 +2104,50 @@ atisame_bank:
 ati1024addr     endp
 
 ;
+;	VESA true-color routines
+
+VESAtruewrite   proc near               ; VESA true-color write-a-dot
+        call    VESAtrueaddr            ; calculate address and switch banks
+        mov     es:[bx],al              ; write the dot
+        ret                             ; we done.
+VESAtruewrite   endp
+
+VESAtrueread    proc near               ; VESA true-color read-a-dot
+        call    VESAtrueaddr            ; calculate address and switch banks
+        mov     al,es:[bx]              ; read the dot
+        ret                             ; we done.
+VESAtrueread    endp
+
+VESAtrueaddr    proc near               ; can be put in-line but shared by
+                                        ; read and write routines
+        clc                             ; clear carry flag
+        push    ax                      ; save this for a tad
+	mov	ax,cx			; adjust the pixel location
+	cmp	vesa_bitsppixel,15	; by the bits/pixel factor
+	jb	@f
+	add	cx,ax
+	cmp	vesa_bitsppixel,24
+	jb	@f
+	add	cx,ax
+	cmp	vesa_bitsppixel,32
+	jb	@f
+	add	cx,ax
+@@:	add	cx, vesabyteoffset	; handle being part way through a pixel
+        mov     ax,vxdots               ; this many dots / line
+        mul     dx                      ; times this many lines - ans in dx:ax
+        add     ax,cx                   ; plus this many x-dots
+        adc     dx,0                    ; answer in dx:ax - dl=bank, ax=offset
+        mov     bx,ax                   ; save this in BX
+        cmp     dx,curbk                ; see if bank changed
+        je      same_bank               ; jump if old bank ok
+        mov     ax,dx                   ; newbank expects bank in al
+        call    far ptr newbank
+same_bank:
+        pop     ax                      ; restore AX
+        ret
+VESAtrueaddr    endp
+
+;
 ;       The following 'Super256' code is courtesy of Timothy Wegner.
 ;
 
@@ -2168,6 +2217,42 @@ vesa_gran_offset        dw      0
 vesa_low_window         dw      0
 vesa_high_window        dw      1
 vesa_granularity        db      0       ; BDT VESA Granularity value
+
+istruecolor		dw	0	; set to 0 if VESA truecolor mode
+vesabytes		db	0,0,0	; our true-color pixel
+vesabyteoffset		dw	0	; used in true-color routines
+
+;	the first 40 bytes of the 256-byte VESA mode-info block
+
+vesa_mode_info	dw	0		; mode info: attributes
+vesa_winaattrib	db	0		; Win AA attribs 
+vesa_winbattrib	db	0		; Win BB attribs 
+vesa_wingran	dw	0		; window granularity
+vesa_winsize	dw	0		; window size
+vesa_winaseg	dw	0		; window AA segment
+vesa_winbseg	dw	0		; window BB segment
+vesa_funcptr	dd	0		; bank_switcher
+vesa_bytespscan	dw	0		; bytes per scan line
+vesa_xres	dw	0		; X-resolution
+vesa_yres	dw	0		; Y-resolution
+vesa_xcharsize	db	0		; X charsize
+vesa_ycharsize	db	0		; Y charsize
+vesa_numplanes	db	0		; number of planes
+vesa_bitsppixel	db	0		; bits / pixel
+vesa_numbanks	db	0		; number of banks
+vesa_memmodel	db	0		; memory-model type
+vesa_banksize	db	0		; bank size in KB
+vesa_numpages	db	0		; number of complete images
+vesa_rsvd	db	0		; reserved for page function
+vesa_redsize	db	0		; red mask size
+vesa_redpos	db	0		; red mask position
+vesa_greensize	db	0		; green mask size
+vesa_greenpos	db	0		; green mask position
+vesa_bluesize	db	0		; blue mask size
+vesa_bluepos	db	0		; blue mask position
+vesa_rsvdsize	db	0		; reserved mask size
+vesa_rsvdpos	db	0		; reserved mask position
+vesa_directinfo	db	0		; direct-color-mode attributes
 
         public  curbk
 
@@ -4397,9 +4482,9 @@ setvideomode    proc    uses di si es,argax:word,argbx:word,argcx:word,argdx:wor
         mov     ax,sxdots               ; initially, set the virtual line
         mov     vxdots,ax               ; to be the scan line length
 
-        cmp     dotmode, 29
+        cmp     dotmode, 29		; Targa truecolor mode?
         jne     NotTrueColorMode
-        jmp     TrueColorAuto
+        jmp     TrueColorAuto		; yup.
 NotTrueColorMode:
         cmp     diskflag,1              ; is disk video active?
         jne     nodiskvideo             ;  nope.
@@ -4594,6 +4679,8 @@ VESAmode:                               ; set VESA 16-color mode
         mov     [bankadr],ax
         mov     ax,word ptr vesa_mapper+2
         mov     [bankseg],ax
+        cmp     vesa_bitsppixel,15
+        jae     VESAtruecolormode
 VGAautomode:                            ; set VGA auto-detect mode
         cmp     colors,256              ; 256 colors?
         je      VGAauto256mode          ; just like SuperVGA
@@ -4601,7 +4688,16 @@ VGAautomode:                            ; set VGA auto-detect mode
         jne     xgamode
         cmp     colors,16               ; 16 colors?
         je      vgamode                 ; just like a VGA
-        jmp     dullnormalmode          ; otherwise, use the BIOS
+	jmp     dullnormalmode          ; otherwise, use the BIOS
+
+VESAtruecolormode:
+        mov     istruecolor,1
+	mov	ax, offset VESAtruewrite   ; set up VESA true-color write-a-dot routine	
+	mov	bx, offset VESAtrueread    ; set up VESA true-color read-a-dot routine	
+	mov	cx, offset normaline       ; set up dullnormal linewrite routine	
+	mov	dx, offset normalineread   ; set up dullnormal lineread routine	
+        mov     si,offset swap256          ; set up the swap routine
+        jmp     videomode                  ; return to common code
 
 xgamode:
         mov     ax,offset xga_16write      ; set up XGA write-a-dot routine
@@ -4610,7 +4706,7 @@ xgamode:
         mov     dx,offset normalineread    ; set up the XGA lineread  routine
         mov     si,offset swap256          ; set up the swap routine
         jmp     videomode                  ; return to common code
-
+	
 VGAauto256mode:
         jmp     super256mode            ; just like a SuperVGA
 egamode:
@@ -4911,6 +5007,9 @@ noxga:
         mov     word ptr vesa_bankswitch+2,si
         mov     word ptr vesa_mapper,offset $nobank
         mov     word ptr vesa_mapper+2,seg $nobank
+	mov	vesa_bitsppixel,8
+	mov	istruecolor,0
+	mov	vesabyteoffset,0
         mov     tweakflag,0
 
         cmp     ax,0                    ; TWEAK?:  look for AX==BX==CX==0
@@ -5003,6 +5102,10 @@ setvideobios_doit2:
         int     10h                     ; do it
         cmp     ax,004fh                ; did the call work?
         jne     nogoodvesamode          ;  nope
+	mov	si, offset suffix	; save the first 40 bytes of the mode info
+	mov	di, offset vesa_mode_info	; (the truecolor routines need it)
+	mov	cx,40
+	rep	movsb
         mov     cx, word ptr suffix     ; get the attributes
         test    cx,1                    ; available video mode?
         jz      nogoodvesamode          ; nope.  skip some code
@@ -5028,12 +5131,16 @@ store_vesa_bytes:
 ;       mov     ax,offset swapnormread  ; use the slow swap routine
 ;       mov     word ptr swapsetup,ax   ;  ...
 skipvesafix:
-        mov     cx, word ptr suffix+4   ; get the granularity
+;        mov     cx, word ptr suffix+4   ; get the granularity
+        mov     cx, vesa_wingran        ; get the granularity
         cmp     cl,1                    ; ensure the divide won't blow out
         jb      nogoodvesamode          ;  granularity == 0???
         mov     ax,64                   ;  ...
         div     cl                      ; divide 64K by granularity
         mov     vesa_granularity,al     ; multiply the bank number by this
+	cmp	vesa_bitsppixel,15	; true-color mode?
+	jb	nogoodvesamode
+	mov	istruecolor,1		;  yup
 nogoodvesamode:
         pop     es                      ; restore ES
         mov     ax,4f02h                ; restore the original call
@@ -6329,6 +6436,139 @@ getcolor        proc    uses di si es, xdot:word, ydot:word
         ret                             ; we done.
 getcolor        endp
 
+; ********* Function gettruecolor(xdot, ydot, &red, &green, &blue) **************
+
+;       Return the color on the screen at the (xdot,ydot) point
+
+gettruecolor        proc    uses di si es, xdot:word, ydot:word, red:ptr word, green:ptr word, blue:ptr word
+	cmp	dotwrite,offset VESAtruewrite	; are we in a truecolor mode?
+	je	truecolor		;  yup
+	cmp	colors, 256		; do we at least have a DAC?
+	jb	nodac			;  nope
+	push	ydot			; first get the palette value
+	push	xdot
+	call	getcolor
+	pop	si			; pop the stack
+	pop	si
+	mov	si,ax			; get the palette value
+	add	si,ax
+	add	si,ax
+	mov	ah,0
+	mov	di, red			; get the red color
+	mov	al,dacbox[si]
+	shl	ax,1
+	shl	ax,1
+	mov	[di],ax
+	mov	di, green		; get the green color
+	mov	al,dacbox+1[si]
+	shl	ax,1
+	shl	ax,1
+	mov	[di],ax
+	mov	di, blue		; get the blue color
+	mov	al,dacbox+2[si]
+	shl	ax,1
+	shl	ax,1
+	mov	[di],ax
+	jmp	wedone			
+nodac:	mov	ax,0			; <256 color mode
+	mov	di, red			; return truecolor 0,0,0
+	mov	[di],ax
+	mov	di, green
+	mov	[di],ax
+	mov	di, blue
+	mov	[di],ax
+	jmp	wedone			
+truecolor:
+        mov     ax,0a000h               ; EGA, VGA, MCGA starts here
+        mov     es,ax                   ; save it here during this routine
+        mov     cx,xdot                 ; load up the registers
+        mov     dx,ydot                 ;  for the video routine
+        add     cx,sxoffs               ;  ...
+        add     dx,syoffs               ;  ...
+	mov	vesabyteoffset,0	; next access from the first byte
+        call    VESAtrueread            ; get the first byte
+	mov	vesabytes,al
+        mov     cx,xdot                 ; load up the registers
+        mov     dx,ydot                 ;  for the video routine
+        add     cx,sxoffs               ;  ...
+        add     dx,syoffs               ;  ...
+	mov	vesabyteoffset,1	; next access from the second byte
+        call    VESAtrueread            ; get the second byte
+	mov	vesabytes+1,al
+	cmp	vesa_bitsppixel, 24
+	jb	@f
+        mov     cx,xdot                 ; load up the registers
+        mov     dx,ydot                 ;  for the video routine
+        add     cx,sxoffs               ;  ...
+        add     dx,syoffs               ;  ...
+	mov	vesabyteoffset,2	; next access from the third byte
+        call    VESAtrueread            ; get the third byte
+	mov	vesabytes+2,al
+@@:
+	cmp	vesa_redpos,10		; 5-5-5 style?
+	jne	@f
+	mov	ax,word ptr vesabytes
+	mov	cl,7
+	shr	ax,cl
+	and	ax,248
+	mov	di, red
+	mov	[di],ax
+	mov	ax,word ptr vesabytes
+	mov	cl,2
+	shr	ax,cl
+	and	ax,248
+	mov	di, green
+	mov	[di],ax
+	mov	ax,word ptr vesabytes
+	mov	cl,3
+	shl	ax,cl
+	and	ax,248
+	mov	di, blue
+	mov	[di],ax
+	jmp	wedone
+@@:	cmp	vesa_redpos,11		; 5-6-5 style?
+	jne	@f
+	mov	ax,word ptr vesabytes
+	mov	cl,8
+	shr	ax,cl
+	and	ax,248
+	mov	di, red
+	mov	[di],ax
+	mov	ax,word ptr vesabytes
+	mov	cl,3
+	shr	ax,cl
+	and	ax,252
+	mov	di, green
+	mov	[di],ax
+	mov	ax,word ptr vesabytes
+	mov	cl,3
+	shl	ax,cl
+	and	ax,248
+	mov	di, blue
+	mov	[di],ax
+	jmp	wedone
+@@:	mov	ah, 0			; 8-8-8 (and 8-8-8-8) style
+	mov	al, vesabytes
+	mov	di, red
+	mov	[di],ax
+	mov	al, vesabytes+1
+	mov	di, green
+	mov	[di],ax
+	mov	al, vesabytes+2
+	mov	di, blue
+	mov	[di],ax
+	cmp	vesa_redpos,0
+	je	wedone
+	mov	bh,0
+	mov	bl,vesabytes
+	mov	di, red
+	mov	[di],ax
+	mov	di, blue
+	mov	[di],bx
+wedone:	mov	vesabyteoffset,0	; next access from the first byte
+	ret                             ; we done.
+gettruecolor        endp
+
 ; Fastcall version, called when C programs are compiled by MSC 6.00A:
 
 @getcolor       proc    FORTRAN ; ax=xdot, dx=ydot
@@ -6363,6 +6603,152 @@ putcolor_a      proc    uses di si es, xdot:word, ydot:word, xcolor:word
 ;;;     call    videocleanup            ; perform any video cleanup required
         ret                             ; we done.
 putcolor_a      endp
+
+; ******* Function puttruecolor(xdot, ydot, red, green, blue) *************
+
+;       write the color on the screen at the (xdot,ydot) point
+
+puttruecolor      proc    uses di si es, xdot:word, ydot:word, red:word, green:word, blue:word
+	cmp	dotwrite,offset VESAtruewrite	; are we in a truecolor mode?
+	je	truecolor		;  yup
+	cmp	colors,256		; do we at least have a DAC?
+	jb	wedone			;  nope - ignore this call
+	mov	si,0			; look for the nearest DAC value
+	mov	di,0			; di = closest DAC
+	mov	cx,65535		; cx = closest squared error
+nextentry:
+	mov	bx,0			; bx = this entry's squared error
+	mov	ax,red			; ax = red portion
+	shr	ax,1
+	shr	ax,1
+	mov	dh,0
+	mov	dl,dacbox[si]
+	sub	ax,dx			; ax = (color - DAC color)
+	mov	dx,ax
+	imul	dx			; ax = color squared error
+	add	bx,ax			; bx = total squared error
+	mov	ax,green		; ax = green portion
+	shr	ax,1
+	shr	ax,1
+	mov	dh,0
+	mov	dl,dacbox+1[si]
+	sub	ax,dx			; ax = (color - DAC color)
+	mov	dx,ax
+	imul	dx			; ax = color squared error
+	add	bx,ax			; bx = total squared error
+	mov	ax,blue			; ax = blue portion
+	shr	ax,1
+	shr	ax,1
+	mov	dh,0
+	mov	dl,dacbox+2[si]
+	sub	ax,dx			; ax = (color - DAC color)
+	mov	dx,ax
+	imul	dx			; ax = color squared error
+	add	bx,ax			; bx = total squared error
+	cmp	bx,cx			; new closest value?
+	jae	@f			;  nope
+	mov	di,si			; yes - save this entry
+	mov	cx,bx			;  and its error
+@@:	cmp	cx,0			; did we find a perfect match?
+	je	@f			;  yup - we're done!
+	add	si,3			; move to a new DAC entry
+	cmp	si, 256*3		; are we out of entries?
+	jb	nextentry		;  nope
+@@:	mov	ax,di			; convert DI back into a palette value
+	mov	bx,3			;  by dividing by 3
+	div	bl
+	mov	ah,0			; now call putcolor
+	push	ax			; color
+	push	ydot			; ydot
+	push	xdot			; xdot
+	call	putcolor_a		; do it
+	pop	bx			; pop the stack
+	pop	bx
+	pop	bx
+	jmp	wedone			
+truecolor:
+	mov	word ptr vesabytes,0	; zero out the final data
+	mov	vesabytes+2, 0
+	cmp	vesa_redpos,10		; 5-5-5 style?
+	jne	@f
+	mov	ax,red
+	and	ax,248
+	mov	cx,7
+	shl	ax,cl
+	add	word ptr vesabytes,ax
+	mov	ax,green
+	and	ax,248
+	mov	cx,2
+	shl	ax,cl
+	add	word ptr vesabytes,ax
+	mov	ax,blue
+	and	ax,248
+	mov	cx,3
+	shr	ax,cl
+	add	word ptr vesabytes,ax
+	jmp	doit
+@@:	cmp	vesa_redpos,11		; 5-6-5 style?
+	jne	@f
+	mov	ax,red
+	and	ax,248
+	mov	cx,8
+	shl	ax,cl
+	add	word ptr vesabytes,ax
+	mov	ax,green
+	and	ax,252
+	mov	cx,3
+	shl	ax,cl
+	add	word ptr vesabytes,ax
+	mov	ax,blue
+	and	ax,248
+	mov	cx,3
+	shr	ax,cl
+	add	word ptr vesabytes,ax
+	jmp	doit
+@@:	mov	ax, red			; 8-8-8 (and 8-8-8-8) style
+	mov	vesabytes,al
+	mov	ax, green
+	mov	vesabytes+1,al
+	mov	ax, blue
+	mov	vesabytes+2,al
+	cmp	vesa_redpos,0
+	je	doit
+	mov	ah,vesabytes
+	mov	vesabytes,al
+	mov	vesabytes+2,ah
+doit:
+        mov     ax,0a000h               ; EGA, VGA, MCGA starts here
+        mov     es,ax                   ; save it here during this routine
+	mov	ah,0
+	mov	al, vesabytes
+        mov     cx,xdot                 ; load up the registers
+        mov     dx,ydot                 ;  for the video routine
+        add     cx,sxoffs               ;  ...
+        add     dx,syoffs               ;  ...
+	mov	vesabyteoffset,0	; next access from the first byte
+        call    VESAtruewrite           ; write the byte
+	mov	ah,0
+	mov	al, vesabytes+1
+        mov     cx,xdot                 ; load up the registers
+        mov     dx,ydot                 ;  for the video routine
+        add     cx,sxoffs               ;  ...
+        add     dx,syoffs               ;  ...
+	mov	vesabyteoffset,1	; next access from the second byte
+        call    VESAtruewrite           ; write the byte
+	cmp	vesa_bitsppixel, 24
+	jb	wedone
+	mov	ah,0
+	mov	al, vesabytes+2
+        mov     cx,xdot                 ; load up the registers
+        mov     dx,ydot                 ;  for the video routine
+        add     cx,sxoffs               ;  ...
+        add     dx,syoffs               ;  ...
+	mov	vesabyteoffset,2	; next access from the third byte
+        call    VESAtruewrite           ; write the byte
+wedone:	mov	vesabyteoffset,0	; next access from the first byte
+;;;     call    videocleanup            ; perform any video cleanup required
+        ret                             ; we done.
+puttruecolor      endp
 
 ; Fastcall version, called when C programs are compiled by MSC 6.00A:
 
@@ -7281,3 +7667,4 @@ put_a_char proc character:word
 put_a_char endp
 
         end
+

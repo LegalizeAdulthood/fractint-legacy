@@ -90,9 +90,9 @@ static short curr_size;                 /* The current code size */
 /* The following static variables are used
  * for seperating out codes
  */
-static short navail_bytes;              /* # bytes left in block */
-static short nbits_left;                /* # bits left in current byte */
-static BYTE byte_buff[257];     /* Current block, reuse shared mem */
+static short navail_bytes;      /* # bytes left in block */
+static short nbits_left;        /* # bits left in current byte */
+static BYTE *byte_buff;         /* Current block, reuse shared mem */
 static BYTE *pbytes;            /* Pointer to next byte in block */
 
 static short code_mask[13] = {
@@ -164,11 +164,13 @@ The arrays are actually declared in the assembler source.
  * Returns: 0 if successful, else negative.  (See ERRS.H)
  *
  */
+#ifndef XFRACT
+/* moved sizeofstring here for possible re-use elsewhere */
+short far sizeofstring[MAX_CODES+1];     /* size of string list */
+#endif
 short decoder( short linewidth)
 {
-#ifndef XFRACT
-        static short far sizeofstring[MAX_CODES+1];     /* size of string list */
-#else
+#ifdef XFRACT
         extern int prefix[];
         short sizeofstring[MAX_CODES+1];        /* size of string list */
 #endif
@@ -449,4 +451,11 @@ static short get_next_code()
         nbits_left -= curr_size;
         return((short)(ret_code & code_mask[curr_size]));
 }
+
+/* called in parent reoutine to set byte_buff */
+void set_byte_buff(BYTE *ptr)
+{
+   byte_buff = ptr;
+}
+
 

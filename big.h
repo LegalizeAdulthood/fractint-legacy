@@ -14,8 +14,11 @@
 /* huge pointers is not supported in assembly, only in C           */
 /* uncomment only ONE of these or declare on compiler command line */
 /* #define BIG_NEAR   */
-#define BIG_BASED
-/* #define BIG_FAR    */
+#if defined(_MSC_VER)
+#   define BIG_BASED    
+#elif defined( __BORLANDC__)  
+#   define BIG_FAR    
+#endif
 /* #define BIG_HUGE   */  /* C code only */
 /* #define BIG_ANSI_C */  /* C code only */
 /* In DOS, BIG_ANSI_C uses default pointer for model selected */
@@ -194,23 +197,23 @@ extern bn_t unsafe_div_bn_int(bn_t r, bn_t n, U16 u);
 extern bn_t div_a_bn_int(bn_t r, U16 u);
 
 /* used to be in bigflta.asm or bigfltc.c */
-bf_t clear_bf(bf_t r);
-bf_t copy_bf(bf_t r, bf_t n);
-bf_t floattobf(bf_t r, LDBL f);
-LDBL bftofloat(bf_t n);
-LDBL bntofloat(bn_t n);
-LDBL extract_256(LDBL f, int *exp_ptr);
-LDBL scale_256( LDBL f, int n );
+extern bf_t clear_bf(bf_t r);
+extern bf_t copy_bf(bf_t r, bf_t n);
+extern bf_t floattobf(bf_t r, LDBL f);
+extern LDBL bftofloat(bf_t n);
+extern LDBL bntofloat(bn_t n);
+extern LDBL extract_256(LDBL f, int *exp_ptr);
+extern LDBL scale_256( LDBL f, int n );
 
 /* functions defined in bignum.c */
 #ifdef ACCESS_BY_BYTE
 /* prototypes */
-U32 big_access32(BYTE BIGDIST *addr);
-U16 big_access16(BYTE BIGDIST *addr);
-S16 big_accessS16(S16 BIGDIST *addr);
-U32 big_set32(BYTE BIGDIST *addr, U32 val);
-U16 big_set16(BYTE BIGDIST *addr, U16 val);
-S16 big_setS16(S16 BIGDIST *addr, S16 val);
+extern U32 big_access32(BYTE BIGDIST *addr);
+extern U16 big_access16(BYTE BIGDIST *addr);
+extern S16 big_accessS16(S16 BIGDIST *addr);
+extern U32 big_set32(BYTE BIGDIST *addr, U32 val);
+extern U16 big_set16(BYTE BIGDIST *addr, U16 val);
+extern S16 big_setS16(S16 BIGDIST *addr, S16 val);
 #else
 /* equivalent defines */
 #define big_access32(addr)   (*(U32 BIGDIST *)(addr))
@@ -256,105 +259,105 @@ extern bn_t atan2_bn(bn_t r, bn_t ny, bn_t nx);
 
     /* misc */
 extern int is_bn_zero(bn_t n);
-bn_t floattobn(bn_t r, LDBL f);
+extern bn_t floattobn(bn_t r, LDBL f);
 
 /************/
 /* bigflt.c */
-void bf_hexdump(bf_t r);
-bf_t strtobf(bf_t r, char *s);
-int strlen_needed_bf();
-char *unsafe_bftostr(char *s, int dec, bf_t r);
-char *unsafe_bftostr_e(char *s, int dec, bf_t r);
-char *unsafe_bftostr_f(char *s, int dec, bf_t r);
-bn_t bftobn(bn_t n, bf_t f);
-bn_t bntobf(bf_t f, bn_t n);
-long bftoint(bf_t f);
-bf_t inttobf(bf_t r, long longval);
+extern void bf_hexdump(bf_t r);
+extern bf_t strtobf(bf_t r, char *s);
+extern int strlen_needed_bf();
+extern char *unsafe_bftostr(char *s, int dec, bf_t r);
+extern char *unsafe_bftostr_e(char *s, int dec, bf_t r);
+extern char *unsafe_bftostr_f(char *s, int dec, bf_t r);
+extern bn_t bftobn(bn_t n, bf_t f);
+extern bn_t bntobf(bf_t f, bn_t n);
+extern long bftoint(bf_t f);
+extern bf_t inttobf(bf_t r, long longval);
 
-int sign_bf(bf_t n);
-bf_t abs_bf(bf_t r, bf_t n);
-bf_t abs_a_bf(bf_t r);
-bf_t unsafe_inv_bf(bf_t r, bf_t n);
-bf_t unsafe_div_bf(bf_t r, bf_t n1, bf_t n2);
-bf_t unsafe_sqrt_bf(bf_t r, bf_t n);
-bf_t exp_bf(bf_t r, bf_t n);
-bf_t unsafe_ln_bf(bf_t r, bf_t n);
-bf_t unsafe_sincos_bf(bf_t s, bf_t c, bf_t n);
-bf_t unsafe_atan_bf(bf_t r, bf_t n);
-bf_t unsafe_atan2_bf(bf_t r, bf_t ny, bf_t nx);
+extern int sign_bf(bf_t n);
+extern bf_t abs_bf(bf_t r, bf_t n);
+extern bf_t abs_a_bf(bf_t r);
+extern bf_t unsafe_inv_bf(bf_t r, bf_t n);
+extern bf_t unsafe_div_bf(bf_t r, bf_t n1, bf_t n2);
+extern bf_t unsafe_sqrt_bf(bf_t r, bf_t n);
+extern bf_t exp_bf(bf_t r, bf_t n);
+extern bf_t unsafe_ln_bf(bf_t r, bf_t n);
+extern bf_t unsafe_sincos_bf(bf_t s, bf_t c, bf_t n);
+extern bf_t unsafe_atan_bf(bf_t r, bf_t n);
+extern bf_t unsafe_atan2_bf(bf_t r, bf_t ny, bf_t nx);
 
-bf_t add_bf(bf_t r, bf_t n1, bf_t n2);
-bf_t add_a_bf(bf_t r, bf_t n);
-bf_t sub_bf(bf_t r, bf_t n1, bf_t n2);
-bf_t sub_a_bf(bf_t r, bf_t n);
-bf_t full_mult_bf(bf_t r, bf_t n1, bf_t n2);
-bf_t mult_bf(bf_t r, bf_t n1, bf_t n2);
-bf_t full_square_bf(bf_t r, bf_t n);
-bf_t square_bf(bf_t r, bf_t n);
-bf_t mult_bf_int(bf_t r, bf_t n, U16 u);
-bf_t div_bf_int(bf_t r, bf_t n,  U16 u);
+extern bf_t add_bf(bf_t r, bf_t n1, bf_t n2);
+extern bf_t add_a_bf(bf_t r, bf_t n);
+extern bf_t sub_bf(bf_t r, bf_t n1, bf_t n2);
+extern bf_t sub_a_bf(bf_t r, bf_t n);
+extern bf_t full_mult_bf(bf_t r, bf_t n1, bf_t n2);
+extern bf_t mult_bf(bf_t r, bf_t n1, bf_t n2);
+extern bf_t full_square_bf(bf_t r, bf_t n);
+extern bf_t square_bf(bf_t r, bf_t n);
+extern bf_t mult_bf_int(bf_t r, bf_t n, U16 u);
+extern bf_t div_bf_int(bf_t r, bf_t n,  U16 u);
 
-char *bftostr(char *s, int dec, bf_t r);
-char *bftostr_e(char *s, int dec, bf_t r);
-char *bftostr_f(char *s, int dec, bf_t r);
-bf_t inv_bf(bf_t r, bf_t n);
-bf_t div_bf(bf_t r, bf_t n1, bf_t n2);
-bf_t sqrt_bf(bf_t r, bf_t n);
-bf_t ln_bf(bf_t r, bf_t n);
-bf_t sincos_bf(bf_t s, bf_t c, bf_t n);
-bf_t atan_bf(bf_t r, bf_t n);
-bf_t atan2_bf(bf_t r, bf_t ny, bf_t nx);
-int is_bf_zero(bf_t n);
-int convert_bf(bf_t new, bf_t old, int newbflength, int oldbflength);
+extern char *bftostr(char *s, int dec, bf_t r);
+extern char *bftostr_e(char *s, int dec, bf_t r);
+extern char *bftostr_f(char *s, int dec, bf_t r);
+extern bf_t inv_bf(bf_t r, bf_t n);
+extern bf_t div_bf(bf_t r, bf_t n1, bf_t n2);
+extern bf_t sqrt_bf(bf_t r, bf_t n);
+extern bf_t ln_bf(bf_t r, bf_t n);
+extern bf_t sincos_bf(bf_t s, bf_t c, bf_t n);
+extern bf_t atan_bf(bf_t r, bf_t n);
+extern bf_t atan2_bf(bf_t r, bf_t ny, bf_t nx);
+extern int is_bf_zero(bf_t n);
+extern int convert_bf(bf_t new, bf_t old, int newbflength, int oldbflength);
 
-LDBL extract_value(LDBL f, LDBL b, int *exp_ptr);
-LDBL scale_value( LDBL f, LDBL b , int n );
-LDBL extract_10(LDBL f, int *exp_ptr);
-LDBL scale_10( LDBL f, int n );
+extern LDBL extract_value(LDBL f, LDBL b, int *exp_ptr);
+extern LDBL scale_value( LDBL f, LDBL b , int n );
+extern LDBL extract_10(LDBL f, int *exp_ptr);
+extern LDBL scale_10( LDBL f, int n );
 
-bf10_t unsafe_bftobf10(bf10_t s, int dec, bf_t n);
-bf10_t mult_a_bf10_int(bf10_t s, int dec, U16 n);
-bf10_t div_a_bf10_int (bf10_t s, int dec, U16 n);
-char  *bf10tostr_e(char *s, int dec, bf10_t n);
-char  *bf10tostr_f(char *s, int dec, bf10_t n);
+extern bf10_t unsafe_bftobf10(bf10_t s, int dec, bf_t n);
+extern bf10_t mult_a_bf10_int(bf10_t s, int dec, U16 n);
+extern bf10_t div_a_bf10_int (bf10_t s, int dec, U16 n);
+extern char  *bf10tostr_e(char *s, int dec, bf10_t n);
+extern char  *bf10tostr_f(char *s, int dec, bf10_t n);
 
 /* functions defined in bigfltc.c */
-bf_t norm_bf(bf_t r);
-void norm_sign_bf(bf_t r, int positive);
-S16 adjust_bf_add(bf_t n1, bf_t n2);
-bf_t max_bf(bf_t r);
-int cmp_bf(bf_t n1, bf_t n2);
-int is_bf_neg(bf_t n);
-int is_bf_not_zero(bf_t n);
-bf_t unsafe_add_bf(bf_t r, bf_t n1, bf_t n2);
-bf_t unsafe_add_a_bf(bf_t r, bf_t n);
-bf_t unsafe_sub_bf(bf_t r, bf_t n1, bf_t n2);
-bf_t unsafe_sub_a_bf(bf_t r, bf_t n);
-bf_t neg_bf(bf_t r, bf_t n);
-bf_t neg_a_bf(bf_t r);
-bf_t double_bf(bf_t r, bf_t n);
-bf_t double_a_bf(bf_t r);
-bf_t half_bf(bf_t r, bf_t n);
-bf_t half_a_bf(bf_t r);
-bf_t unsafe_full_mult_bf(bf_t r, bf_t n1, bf_t n2);
-bf_t unsafe_mult_bf(bf_t r, bf_t n1, bf_t n2);
-bf_t unsafe_full_square_bf(bf_t r, bf_t n);
-bf_t unsafe_square_bf(bf_t r, bf_t n);
-bf_t unsafe_mult_bf_int(bf_t r, bf_t n, U16 u);
-bf_t mult_a_bf_int(bf_t r, U16 u);
-bf_t unsafe_div_bf_int(bf_t r, bf_t n,  U16 u);
-bf_t div_a_bf_int(bf_t r, U16 u);
+extern bf_t norm_bf(bf_t r);
+extern void norm_sign_bf(bf_t r, int positive);
+extern S16 adjust_bf_add(bf_t n1, bf_t n2);
+extern bf_t max_bf(bf_t r);
+extern int cmp_bf(bf_t n1, bf_t n2);
+extern int is_bf_neg(bf_t n);
+extern int is_bf_not_zero(bf_t n);
+extern bf_t unsafe_add_bf(bf_t r, bf_t n1, bf_t n2);
+extern bf_t unsafe_add_a_bf(bf_t r, bf_t n);
+extern bf_t unsafe_sub_bf(bf_t r, bf_t n1, bf_t n2);
+extern bf_t unsafe_sub_a_bf(bf_t r, bf_t n);
+extern bf_t neg_bf(bf_t r, bf_t n);
+extern bf_t neg_a_bf(bf_t r);
+extern bf_t double_bf(bf_t r, bf_t n);
+extern bf_t double_a_bf(bf_t r);
+extern bf_t half_bf(bf_t r, bf_t n);
+extern bf_t half_a_bf(bf_t r);
+extern bf_t unsafe_full_mult_bf(bf_t r, bf_t n1, bf_t n2);
+extern bf_t unsafe_mult_bf(bf_t r, bf_t n1, bf_t n2);
+extern bf_t unsafe_full_square_bf(bf_t r, bf_t n);
+extern bf_t unsafe_square_bf(bf_t r, bf_t n);
+extern bf_t unsafe_mult_bf_int(bf_t r, bf_t n, U16 u);
+extern bf_t mult_a_bf_int(bf_t r, U16 u);
+extern bf_t unsafe_div_bf_int(bf_t r, bf_t n,  U16 u);
+extern bf_t div_a_bf_int(bf_t r, U16 u);
 
 /****************************/
 /* bigcmplx.c */
-_CMPLX cmplxbntofloat(_BNCMPLX *s);
-_CMPLX cmplxbftofloat(_BFCMPLX *s);
-_BFCMPLX *cmplxlog_bf(_BFCMPLX *t, _BFCMPLX *s);
-_BFCMPLX *cplxmul_bf( _BFCMPLX *t, _BFCMPLX *x, _BFCMPLX *y);
-_BFCMPLX *ComplexPower_bf(_BFCMPLX *t, _BFCMPLX *xx, _BFCMPLX *yy);
-_BNCMPLX *ComplexPower_bn(_BNCMPLX *t, _BNCMPLX *xx, _BNCMPLX *yy);
-_BNCMPLX *cmplxlog_bn(_BNCMPLX *t, _BNCMPLX *s);
-_BNCMPLX *cplxmul_bn( _BNCMPLX *t, _BNCMPLX *x, _BNCMPLX *y);
+extern _CMPLX cmplxbntofloat(_BNCMPLX *s);
+extern _CMPLX cmplxbftofloat(_BFCMPLX *s);
+extern _BFCMPLX *cmplxlog_bf(_BFCMPLX *t, _BFCMPLX *s);
+extern _BFCMPLX *cplxmul_bf( _BFCMPLX *t, _BFCMPLX *x, _BFCMPLX *y);
+extern _BFCMPLX *ComplexPower_bf(_BFCMPLX *t, _BFCMPLX *xx, _BFCMPLX *yy);
+extern _BNCMPLX *ComplexPower_bn(_BNCMPLX *t, _BNCMPLX *xx, _BNCMPLX *yy);
+extern _BNCMPLX *cmplxlog_bn(_BNCMPLX *t, _BNCMPLX *s);
+extern _BNCMPLX *cplxmul_bn( _BNCMPLX *t, _BNCMPLX *x, _BNCMPLX *y);
 
 #include "biginit.h" /* fractint only */
 

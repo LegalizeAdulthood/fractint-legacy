@@ -723,12 +723,13 @@ exponentiation; x^y is x to the y power.
    (u+iv) * (x+iy) = (ux - vy) + i(vx + uy)
    (u+iv) / (x+iy) = ((ux + vy) + i(vx - uy)) / (x^2 + y^2)
 
-   e^(x+iy)   = (e^x) (cos(y) + i sin(y))
+   e^(x+iy) = (e^x) (cos(y) + i sin(y))
 
-   log(x+iy) = (1/2)log(x*x + y*y) + i(atan(y/x) + 2kPi)
+   log(x+iy) = (1/2)log(x^2 + y^2) + i(atan(y/x) + 2kPi)
       for k = 0, -1, 1, -2, 2, ...
-       (Fractint generally uses only the principle value, k=0. The log
-        function refers to log base e, or ln.)
+      (The log function refers to log base e, or ln. The expression 
+       atan(y/x) is an angle between -pi and pi in the quadrant containing
+       (x,y) implemented in C as the atan2() function.)
 
    z^w = e^(w*log(z))
 
@@ -1027,26 +1028,22 @@ releases with two digit numbers have names such as fraintnn.zip and
 frasrcnn.zip.
 
 On the Internet, try the Noel Giffin's Spanky Fractal Database. Using a
-Web browser, go to \
-
-http://spanky.triumf.ca/pub/fractals/programs/ibmpc/frainnn.zip
-
-where nnn is the release number.
+Web browser, go to: \
+http://spanky.triumf.ca/pub/fractals/programs/ibmpc/frainxxx.zip\
+where xxx is the release number.
 
 Via FTP, login to spanky.triumf.ca as ANONYMOUS, and change directories
-to [pub.fractals.programs.ibmpc], then download frainnn.zip. (The directory
+to [pub.fractals.programs.ibmpc], then download fraixxx.zip. (The directory
 syntax is in VAX format.)
 
-Another site to check out is ftp.cdrom.com.
+Another site to check out is the simtel archive, \
+ftp://ftp.simtel.net/pub/simtelnet/msdos/graphics/fraixxx.zip\
+where xxx is the release number.
 
 Your favorite local BBS probably carries these files as well (although
 perhaps not the latest versions) using naming conventions like FRA*.ZIP.
 
 Then again, if you don't even have a modem...
-
-You can also get a copy of the latest fractint distribution package, source,
-and some fractint-related utilities and files, for $10 from Dietrich
-Wegner, 4714 Rockwood, Houston, TX 77004, USA.
 
 In Europe, the latest versions are available from another Fractint enthusiast,
 Jon Horner - Editor of FRAC'Cetera, a disk-based fractal/chaos resource.
@@ -1122,8 +1119,9 @@ Villanova, PA 19085
 
 Timothy Wegner          [71320,675] on CIS
 4714 Rockwood           twegner@phoenix.net (Internet)
-Houston, TX 77004
-(713) 747-7543
+Houston, TX 77004       (I don't know how much longer I'm keeping
+(713) 747-7543           the phoenix.net address. If it doesn't work,
+                          use 71320.675@compuserve.com)
 
 Jonathan Osuch          [73277,1432] on CIS
 2110 Northview Drive
@@ -1158,11 +1156,6 @@ Laguna Hills, CA, 92656
 John W. Bridges         (Author GRASP/Pictor, Imagetools, PICEM, VGAKIT)
 2810 Serang Place Costa Mesa
 California 92626-4827   [75300,2137] on CIS, GENIE:JBRIDGES
-
-Juan J Buhler           jbuhler@usina.org.ar
-Santa Fe 2227 1P "E"
-(54-1) 84 3528
-Buenos Aires, Argentina
 
 Michael D. Burkey       burkey@sun9.math.utk.edu on Internet
 6600 Crossgate Rd.
@@ -1205,27 +1198,26 @@ Michael L. Kaufman      kaufman@mcs.com
 Chicago, IL 60614
 312-868-0276
 
+George Martin           [76440,1143] on CIS
+155 E. Commerce Street, Suite 103
+Milford, MI 48381
+
 Joe McLain              [75066,1257] on CIS
 McLain Imaging
 2417 Venier
 Costa Mesa, CA 92627
 (714) 642-5219
 
-Bob Montgomery          [73357,3140] on CIS
-(Author of VPIC)
-132 Parsons Road
-Longwood, Fl  32779
-
 Roy Murphy              [76376,721] on CIS
 9050 Ewing Ave.
 Evanston, IL 60203
 
-~OnlineFF
 Ethan Nagel             [71062,3677] on CIS
 4209 San Pedro NE #308
 Albuquerque, NM 87109
 (505) 884-7442
 
+~OnLineFF
 Mark Peterson           [73642,1775] on CIS
 The Yankee Programmer
 405-C Queen St., Suite #181
@@ -1482,7 +1474,7 @@ and the "Fractography" CD by sending $30.00US + $5.00 S&H (in US/Canada) to\
    485 Front Street N, Suite A\
    Issaquah, WA 98027-2900\
 
-Michael Peters (author of PARTOBAT) and Randall Scott have written a fractal
+Michael Peters and Randall Scott have written a fractal
 program called HOP based on the Martin orbit fractals. This program is much
 narrower than Fractint in the kind of thing that it does, but has many more
 animation effects and makes a great screen saver. Michael sent us the
@@ -1490,19 +1482,22 @@ algorithms for the chip, quadruptwo, and threeply fractal types to give us
 a taste. The file is called HOPZIP.EXE in LIB 4 of CompuServe's GRAPHDEV
 forum.
 
-George Martin has written the penultimate formula file organizing program,
+Michael has also written a handy utility called PARTOBAT which creates
+a batch file for generating all the images in a Fractint PAR file.
+
+George Martin has written a useful formula file organizing program,
 distributed as ORGFRM.ZIP along with a comprehensive collection of
 formulas. Thousands of parser formulas have been written by
 Fractint users. A compilation of this formula output is contained in the
 file ORGFRM.ZIP, which is available at the CompuServe site, and which
 constitutes an encyclopedia of formulas written for Fractint. The compilation
-included more than 4,500 formulas, arranged alphabetically by name, and with
+includes more than 4,500 formulas, arranged alphabetically by name, and with
 the original source file shown in each formula by comment. The package includes
 a utility program, orgform.exe, which copies the formulas of ".frm" files into the
 compilation, skipping those formulas which are already included in
 the compilation. Formula writers are urged to consult this compilation in
 order to avoid giving a new formula an existing formula name. George can
-be reached at [76440,1143], or 76440,1143@compuserve.com.
+be reached at [76440,1143], or 76440.1143@compuserve.com.
 
 Noel Giffin (noel@triumf.ca), maintains a terrific web page for Fractint and
 fractals in general at spanky.trumf.ca. Highly recommended. His pages on
@@ -2817,7 +2812,7 @@ TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
  Dan Farmer       [74431,1075] orbits enhancements
  Richard Finegold [76701,153] 8/16/../256-Way Decomposition option
  Frank Fussenegger Mandelbrot speedups
- Sylvie Gallet    [101324,3444] Formula wizard and beta tester
+ Sylvie Gallet    [101324,3444] Formula wizard and complex-to-screen logic
  Mike Gelvin      [73337,520] Mandelbrot speedups
  Luciano Genero   ants options and speedup
  Lawrence Gozum   [73437,2372] Tseng 640x400x256 Video Mode
@@ -2828,6 +2823,7 @@ TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
  Mike Kaufman     [kaufman@mcs.com] mouse support, other features
  Adrian Mariano   [adrian@u.washington.edu] Diffusion & L-Systems
  Charles Marslett [75300,1636] VESA video and IIT math chip support
+ George Martin    [76440,1143] Formula parser improvements
  Joe McLain       [75066,1257] TARGA Support, color-map files
  Bob Montgomery   [73357,3140] (Author of VPIC) Fast text I/O routines
  Bret Mulvey      plasma clouds
@@ -2855,9 +2851,5 @@ TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
  Phil Wilson      [76247,3145] Distance Estimator, Bifurcation fractals
  Nicholas Wilt    Lsystem speedups
  Richard Wilton   Tweaked VGA Video modes
-; Byte Magazine   Tweaked VGA Modes
-; MS-Kermit       Keyboard Routines
-; PC Magazine     Sound Routines
-; PC Tech Journal  CPU, FPU Detectors
 ;
 ;

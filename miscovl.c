@@ -1621,13 +1621,23 @@ void format_vid_table(int choice,char *buf)
 {
    char kname[5];
    char biosflag;
+   int truecolorbits;
    far_memcpy((char far *)&videoentry,(char far *)&vidtbl[entsptr[choice]],
               sizeof(videoentry));
    vidmode_keyname(videoentry.keynum,kname);
    biosflag = (char)((videoentry.dotmode % 100 == 1) ? 'B' : ' ');
-   sprintf(buf,"%-5s %-25s %4d %4d %3d%c %-25s",  /* 72 chars */
-           kname, videoentry.name, videoentry.xdots, videoentry.ydots,
-           videoentry.colors, biosflag, videoentry.comment);
+   sprintf(buf,"%-5s %-25s %4d %4d ",  /* 42 chars */
+           kname, videoentry.name, videoentry.xdots, videoentry.ydots);
+   if((truecolorbits = videoentry.dotmode/1000) == 0)
+      sprintf(buf,"%s%3d",  /* 45 chars */
+           buf, videoentry.colors);
+   else 
+      sprintf(buf,"%s%3s",  /* 45 chars */
+           buf, (truecolorbits == 3)?"64m":
+                (truecolorbits == 2)?"16k":
+                (truecolorbits == 1)?"15k":"???");
+   sprintf(buf,"%s%c %-25s",  /* 72 chars */
+           buf, biosflag, videoentry.comment);
 }
 
 static int check_modekey(int curkey,int choice)

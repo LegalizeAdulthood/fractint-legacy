@@ -17,6 +17,12 @@
 
 
 /* Revision history:  */
+/* 30 Jun 1996 TIW  */
+/*    Removed function names if TESTFP not defined to save memory      */
+/*    Function fStkFloor added to support new 'floor' function         */
+/*    Function fStkCeil  added to support new 'ceil'  function         */
+/*    Function fStkTrunc added to support new 'trunc' function         */
+/*    Function fStkRound added to support new 'round' function         */
 
 /* 15 Feb 1995 CAE  */
 /*    added safety tests to pointer conversion code  */
@@ -147,6 +153,10 @@ OLD_FN  dStkSqrt;
 OLD_FN  dStkASin, dStkACos, dStkASinh, dStkACosh;
 OLD_FN  dStkATanh, dStkATan;
 OLD_FN  dStkCAbs;
+OLD_FN  dStkFloor;
+OLD_FN  dStkCeil;
+OLD_FN  dStkTrunc;
+OLD_FN  dStkRound;
 
 typedef void (near NEW_FN)(void);  /* new 387-only ASM functions  */
 
@@ -204,6 +214,7 @@ NEW_FN  fStkSqrt;
 NEW_FN  fStkASin, fStkACos, fStkASinh, fStkACosh;
 NEW_FN  fStkATanh, fStkATan;
 NEW_FN  fStkCAbs;
+NEW_FN  fStkFloor, fStkCeil, fStkTrunc, fStkRound; /* rounding functions */
 
 /* check to see if a const is being loaded  */
 /* the really awful hack below gets the first char of the name  */
@@ -260,7 +271,7 @@ NEW_FN  fStkCAbs;
          sprintf(cDbgMsg, (y), (p), (q), (r), (s) ); \
          stopmsg((x), cDbgMsg ); \
       }
-
+#define FNME(a,b,c,d,e,f) a,b,c,d,e,f    /* use the function name string */
 #else
 
 #define DBUGMSG(x,y)
@@ -268,7 +279,7 @@ NEW_FN  fStkCAbs;
 #define DBUGMSG2(x,y,p,q)
 #define DBUGMSG3(x,y,p,q,r)
 #define DBUGMSG4(x,y,p,q,r,s)
-
+#define FNAME(a,b,c,d,e,f) b,c,d,e,f    /* don't use the function name string */
 #endif /* TESTFP */
 
 #define FN_LOD            0
@@ -318,16 +329,20 @@ NEW_FN  fStkCAbs;
 #define FN_ATANH         44
 #define FN_ATAN          45
 #define FN_CABS          46
+#define FN_FLOOR         47
+#define FN_CEIL          48
+#define FN_TRUNC         49
+#define FN_ROUND         50
 
 /* number of "old" functions in the table.  */
 /* these are the ones that the parser outputs  */
 
-#define LAST_OLD_FN   FN_CABS
+#define LAST_OLD_FN   FN_ROUND
 #define NUM_OLD_FNS   LAST_OLD_FN + 1
 
 /* total number of functions in the table.  */
 
-#define LAST_FN          FN_CABS
+#define LAST_FN          FN_ROUND
 #define NUM_FNS          LAST_FN + 1
 
 static unsigned char
@@ -349,8 +364,9 @@ static void (near *prevfptr )(void);  /* previous function pointer  */
 /* this table is searched sequentially  */
 struct fn_entry {
 
+#ifdef TESTFP
    char far *fname;  /* function name  */
-
+#endif
    void (far *infn)(void);  /* 'old' function pointer  */
          /* (infn points to an operator fn in parser.c)  */
 
@@ -367,53 +383,57 @@ struct fn_entry {
 
 } static far afe[NUM_OLD_FNS] = {  /* array of function entries  */
 
-   {"Lod",     StkLod,      fStkLod,    0, 2, +2 },          /*  0  */
-   {"Clr",     StkClr,      fStkClr1,   0, 0,  CLEAR_STK },  /*  1  */
-   {"+",       dStkAdd,     fStkAdd,    4, 0, -2 },          /*  2  */
-   {"-",       dStkSub,     fStkSub,    4, 0, -2 },          /*  3  */
-   {"*",       dStkMul,     fStkMul,    4, 2, -2 },          /*  4  */
-   {"/",       dStkDiv,     fStkDiv,    4, 2, -2 },          /*  5  */
-   {"Sto",     StkSto,      fStkSto,    2, 0,  0 },          /*  6  */
-   {"Sqr",     dStkSqr,     fStkSqr,    2, 2,  0 },          /*  7  */
-   {":",       EndInit,     fStkEndInit,0, 0,  CLEAR_STK },  /*  8  */
-   {"Mod",     dStkMod,     fStkMod,    2, 0,  0 },          /*  9  */
-   {"<=",      dStkLTE,     fStkLTE,    4, 0, -2 },          /* 10  */
-   {"Sin",     dStkSin,     fStkSin,    2, 2,  0 },          /* 11  */
-   {"Cos",     dStkCos,     fStkCos,    2, 2,  0 },          /* 12  */
-   {"Sinh",    dStkSinh,    fStkSinh,   2, 2,  0 },          /* 13  */
-   {"Cosh",    dStkCosh,    fStkCosh,   2, 2,  0 },          /* 14  */
-   {"Cosxx",   dStkCosXX,   fStkCosXX,  2, 2,  0 },          /* 15  */
-   {"Tan",     dStkTan,     fStkTan,    2, 2,  0 },          /* 16  */
-   {"Tanh",    dStkTanh,    fStkTanh,   2, 2,  0 },          /* 17  */
-   {"CoTan",   dStkCoTan,   fStkCoTan,  2, 2,  0 },          /* 18  */
-   {"CoTanh",  dStkCoTanh,  fStkCoTanh, 2, 2,  0 },          /* 19  */
-   {"Log",     dStkLog,     fStkLog,    2, 2,  0 },          /* 20  */
-   {"Exp",     dStkExp,     fStkExp,    2, 2,  0 },          /* 21  */
-   {"^",       dStkPwr,     fStkPwr,    4, 2, -2 },          /* 22  */
-   {"<",       dStkLT,      fStkLT,     4, 0, -2 },          /* 23  */
-   {"Flip",    dStkFlip,    fStkFlip,   2, 0,  0 },          /* 24  */
-   {"Real",    dStkReal,    fStkReal,   2, 0,  0 },          /* 25  */
-   {"Imag",    dStkImag,    fStkImag,   2, 0,  0 },          /* 26  */
-   {"Conj",    dStkConj,    fStkConj,   2, 0,  0 },          /* 27  */
-   {"Neg",     dStkNeg,     fStkNeg,    2, 0,  0 },          /* 28  */
-   {"Abs",     dStkAbs,     fStkAbs,    2, 0,  0 },          /* 29  */
-   {"Recip",   dStkRecip,   fStkRecip,  2, 2,  0 },          /* 30  */
-   {"Ident",   StkIdent,    fStkIdent,  2, 0,  0 },          /* 31  */
-   {">",       dStkGT,      fStkGT,     4, 0, -2 },          /* 32  */
-   {">=",      dStkGTE,     fStkGTE,    4, 0, -2 },          /* 33  */
-   {"!=",      dStkNE,      fStkNE,     4, 0, -2 },          /* 34  */
-   {"==",      dStkEQ,      fStkEQ,     4, 0, -2 },          /* 35  */
-   {"&&",      dStkAND,     fStkAND,    4, 0, -2 },          /* 36  */
-   {"||",      dStkOR,      fStkOR,     4, 0, -2 },          /* 37  */
-   {"Zero",    dStkZero,    fStkZero,   2, 0,  0 },          /* 38  */
-   {"Sqrt",    dStkSqrt,    fStkSqrt,   2, 2,  0 },          /* 39  */
-   {"ASin",    dStkASin,    fStkASin,   2, 4,  0 },          /* 40  */
-   {"ACos",    dStkACos,    fStkACos,   2, 4,  0 },          /* 41  */
-   {"ASinh",   dStkASinh,   fStkASinh,  2, 4,  0 },          /* 42  */
-   {"ACosh",   dStkACosh,   fStkACosh,  2, 4,  0 },          /* 43  */
-   {"ATanh",   dStkATanh,   fStkATanh,  2, 4,  0 },          /* 44  */
-   {"ATan",    dStkATan,    fStkATan,   2, 4,  0 },          /* 45  */
-   {"CAbs",    dStkCAbs,    fStkCAbs,   2, 0,  0 }           /* 46  */
+   {FNAME("Lod",     StkLod,      fStkLod,    0, 2, +2) },          /*  0  */
+   {FNAME("Clr",     StkClr,      fStkClr1,   0, 0,  CLEAR_STK) },  /*  1  */
+   {FNAME("+",       dStkAdd,     fStkAdd,    4, 0, -2) },          /*  2  */
+   {FNAME("-",       dStkSub,     fStkSub,    4, 0, -2) },          /*  3  */
+   {FNAME("*",       dStkMul,     fStkMul,    4, 2, -2) },          /*  4  */
+   {FNAME("/",       dStkDiv,     fStkDiv,    4, 2, -2) },          /*  5  */
+   {FNAME("Sto",     StkSto,      fStkSto,    2, 0,  0) },          /*  6  */
+   {FNAME("Sqr",     dStkSqr,     fStkSqr,    2, 2,  0) },          /*  7  */
+   {FNAME(":",       EndInit,     fStkEndInit,0, 0,  CLEAR_STK) },  /*  8  */
+   {FNAME("Mod",     dStkMod,     fStkMod,    2, 0,  0) },          /*  9  */
+   {FNAME("<=",      dStkLTE,     fStkLTE,    4, 0, -2) },          /* 10  */
+   {FNAME("Sin",     dStkSin,     fStkSin,    2, 2,  0) },          /* 11  */
+   {FNAME("Cos",     dStkCos,     fStkCos,    2, 2,  0) },          /* 12  */
+   {FNAME("Sinh",    dStkSinh,    fStkSinh,   2, 2,  0) },          /* 13  */
+   {FNAME("Cosh",    dStkCosh,    fStkCosh,   2, 2,  0) },          /* 14  */
+   {FNAME("Cosxx",   dStkCosXX,   fStkCosXX,  2, 2,  0) },          /* 15  */
+   {FNAME("Tan",     dStkTan,     fStkTan,    2, 2,  0) },          /* 16  */
+   {FNAME("Tanh",    dStkTanh,    fStkTanh,   2, 2,  0) },          /* 17  */
+   {FNAME("CoTan",   dStkCoTan,   fStkCoTan,  2, 2,  0) },          /* 18  */
+   {FNAME("CoTanh",  dStkCoTanh,  fStkCoTanh, 2, 2,  0) },          /* 19  */
+   {FNAME("Log",     dStkLog,     fStkLog,    2, 2,  0) },          /* 20  */
+   {FNAME("Exp",     dStkExp,     fStkExp,    2, 2,  0) },          /* 21  */
+   {FNAME("^",       dStkPwr,     fStkPwr,    4, 2, -2) },          /* 22  */
+   {FNAME("<",       dStkLT,      fStkLT,     4, 0, -2) },          /* 23  */
+   {FNAME("Flip",    dStkFlip,    fStkFlip,   2, 0,  0) },          /* 24  */
+   {FNAME("Real",    dStkReal,    fStkReal,   2, 0,  0) },          /* 25  */
+   {FNAME("Imag",    dStkImag,    fStkImag,   2, 0,  0) },          /* 26  */
+   {FNAME("Conj",    dStkConj,    fStkConj,   2, 0,  0) },          /* 27  */
+   {FNAME("Neg",     dStkNeg,     fStkNeg,    2, 0,  0) },          /* 28  */
+   {FNAME("Abs",     dStkAbs,     fStkAbs,    2, 0,  0) },          /* 29  */
+   {FNAME("Recip",   dStkRecip,   fStkRecip,  2, 2,  0) },          /* 30  */
+   {FNAME("Ident",   StkIdent,    fStkIdent,  2, 0,  0) },          /* 31  */
+   {FNAME(">",       dStkGT,      fStkGT,     4, 0, -2) },          /* 32  */
+   {FNAME(">=",      dStkGTE,     fStkGTE,    4, 0, -2) },          /* 33  */
+   {FNAME("!=",      dStkNE,      fStkNE,     4, 0, -2) },          /* 34  */
+   {FNAME("==",      dStkEQ,      fStkEQ,     4, 0, -2) },          /* 35  */
+   {FNAME("&&",      dStkAND,     fStkAND,    4, 0, -2) },          /* 36  */
+   {FNAME("||",      dStkOR,      fStkOR,     4, 0, -2) },          /* 37  */
+   {FNAME("Zero",    dStkZero,    fStkZero,   2, 0,  0) },          /* 38  */
+   {FNAME("Sqrt",    dStkSqrt,    fStkSqrt,   2, 2,  0) },          /* 39  */
+   {FNAME("ASin",    dStkASin,    fStkASin,   2, 4,  0) },          /* 40  */
+   {FNAME("ACos",    dStkACos,    fStkACos,   2, 4,  0) },          /* 41  */
+   {FNAME("ASinh",   dStkASinh,   fStkASinh,  2, 4,  0) },          /* 42  */
+   {FNAME("ACosh",   dStkACosh,   fStkACosh,  2, 4,  0) },          /* 43  */
+   {FNAME("ATanh",   dStkATanh,   fStkATanh,  2, 4,  0) },          /* 44  */
+   {FNAME("ATan",    dStkATan,    fStkATan,   2, 4,  0) },          /* 45  */
+   {FNAME("CAbs",    dStkCAbs,    fStkCAbs,   2, 0,  0) },          /* 46  */
+   {FNAME("Floor",   dStkFloor,   fStkFloor,  2, 0,  0) },          /* 47  */
+   {FNAME("Ceil",    dStkCeil,    fStkCeil,   2, 0,  0) },          /* 48  */
+   {FNAME("Trunc",   dStkTrunc,   fStkTrunc,  2, 0,  0) },          /* 49  */
+   {FNAME("Round",   dStkRound,   fStkRound,  2, 0,  0) }           /* 50  */
 };
 
 #ifdef COMPILER

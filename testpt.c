@@ -20,23 +20,73 @@ The sample code below is a straightforward Mandelbrot routine.
 
 */
 
+extern void gettruecolor(int, int, int*, int*, int*);
+extern void puttruecolor(int, int, int, int, int);
+extern int  getakey(void);
+
 int teststart()     /* this routine is called just before the fractal starts */
 {
-    return( 0 );
+   extern int debugflag;
+   extern int xdots, ydots, colors;
+
+   /*
+        true-color demo: if debugging flag is 500 and in 256-color mode
+        write out a couple of truecolor patterns, read them in and
+        write them out again in a different location, then wait for
+        a keystroke and clear the screen before generating the
+        actual fractal
+   */
+   if ((debugflag == 500) && (xdots >= 640) && (ydots >= 480) && (colors == 256)) {
+      int xdot, ydot, red, green, blue;
+      for (xdot = 0; xdot <= 255; xdot++) {
+         for (ydot = 0; ydot < 384; ydot++) {
+            red = xdot;
+            if (ydot < 128) {
+               green = 2 * ydot;
+               blue  = 0;
+            }
+            if (ydot >= 128 && ydot < 256) {
+               green = 0;
+               blue  = 2 * (ydot-128);
+            }
+            if (ydot >= 256) {
+               red   = 2 * (ydot - 256);
+               green = 2 * (ydot - 256);
+               blue  = 2 * (ydot - 256);
+            }
+            puttruecolor(xdot, ydot, red, green, blue); 
+         }
+      }
+      for (xdot = 0; xdot <= 255; xdot++) {
+         for (ydot = 0; ydot < 384; ydot++) {
+            gettruecolor(xdot, ydot, &red, &green, &blue);
+            puttruecolor(xdot+256, ydot, red, green, blue); 
+         }
+      }
+      getakey();
+      for (xdot = 0; xdot <= 255; xdot++) {
+         for (ydot = 0; ydot <= 384; ydot++) {
+            puttruecolor(xdot, ydot, 0, 0, 0); 
+            puttruecolor(xdot+256, ydot, 0, 0, 0); 
+         }
+      }
+   }
+
+   return( 0 );
 }
 
 void testend()       /* this routine is called just after the fractal ends */
 {
 }
 
-                /* this routine is called once for every pixel */
-        /* (note: possibly using the dual-pass / solif-guessing options */
+/* this routine is called once for every pixel */
+/* (note: possibly using the dual-pass / solif-guessing options */
 
 int testpt(double initreal,double initimag,double parm1,double parm2,
-           long maxit,int inside)
+long maxit,int inside)
 {
-double oldreal, oldimag, newreal, newimag, magnitude;
-long color;
+   double oldreal, oldimag, newreal, newimag, magnitude;
+   long color;
    oldreal=parm1;
    oldimag=parm2;
    magnitude = 0.0;
@@ -48,7 +98,7 @@ long color;
       oldreal = newreal;
       oldimag = newimag;
       magnitude = newreal * newreal + newimag * newimag;
-      }
-if (color >= maxit) color = inside;
-return((int)color);
+   }
+   if (color >= maxit) color = inside;
+   return((int)color);
 }

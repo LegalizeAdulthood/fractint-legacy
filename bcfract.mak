@@ -30,9 +30,9 @@ Link_Include =  \
  3d.obj \
  ant.obj \
  bigflt.obj \
- bigfltc.obj \
  biginit.obj \
  bignum.obj \
+ bignumc.obj \
  calcfrac.obj \
  decoder.obj \
  diskvid.obj \
@@ -80,8 +80,6 @@ Link_Include =  \
  parserfp.obj \
  prompts1.obj \
  prompts2.obj \
- bigflta.obj \
- bignuma.obj \
  calcmand.obj \
  calmanfp.obj \
  fpu087.obj \
@@ -123,8 +121,6 @@ hc.obj: hc.c helpcom.h
 ant.obj: bcfract.mak bcfract.cfg fractint.hlp ant.c
 
 bigflt.obj: bcfract.mak bcfract.cfg fractint.hlp bigflt.c
-
-bigfltc.obj: bcfract.mak bcfract.cfg fractint.hlp bigfltc.c
 
 biginit.obj: bcfract.mak bcfract.cfg fractint.hlp biginit.c
 
@@ -240,12 +236,12 @@ prompts2.obj: bcfract.mak  bcfract2.cfg prompts2.c
 
 
 
-bigflta.obj: bcfract.mak  bcfract.cfg bigflta.asm
-	$(TASM)  bigflta.ASM,bigflta.OBJ
-
-bignuma.obj: bcfract.mak  bcfract.cfg bignuma.asm
-	$(TASM)  bignuma.ASM,bignuma.OBJ
-
+#bigflta.obj: bcfract.mak  bcfract.cfg bigflta.asm
+#	$(TASM)  bigflta.ASM,bigflta.OBJ
+#
+#bignuma.obj: bcfract.mak  bcfract.cfg bignuma.asm
+#	$(TASM)  bignuma.ASM,bignuma.OBJ
+#
 calcmand.obj: bcfract.mak  bcfract.cfg calcmand.asm
 	$(TASM)  CALCMAND.ASM,CALCMAND.OBJ
 

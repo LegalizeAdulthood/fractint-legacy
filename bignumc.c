@@ -622,7 +622,7 @@ bn_t unsafe_square_bn(bn_t r, bn_t n)
 /* This whole procedure would be a great deal simpler if we could assume that */
 /* rlength < 2*bnlength (that is, not =).  Therefore, we will take the        */
 /* easy way out and call full_square_bn() if it is.                           */
-    if (rlength == bnlength<<1) /* rlength == 2*bnlength */
+    if (rlength == (bnlength<<1)) /* rlength == 2*bnlength */
         return unsafe_full_square_bn(r, n);    /* call full_square_bn() and quit */
 
     if (is_bn_neg(n))  /* don't need to keep track of sign since the */

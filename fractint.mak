@@ -40,6 +40,7 @@ lsys.obj : lsys.c fractint.h lsys.h
 lsysa.obj: lsysa.asm
 
 plot3d.obj : plot3d.c fractint.h fractype.h
+	$(Optnoalias)
 
 3d.obj : 3d.c fractint.h
 

@@ -292,6 +292,22 @@ Press F1 for help, "};
    far_memcpy((char far *)&videoentry,(char far *)&videotable[initmode],
               sizeof(videoentry));
 
+   if (viewwindow) { /* pull image into a view window */
+      if (calc_status != 4) /* if not complete */
+          calc_status = 0;  /* can't resume anyway */
+      if (videoentry.xdots != filexdots) { /* too wierd if not same */
+         viewwindow = viewxdots = viewydots = 0;
+         return(0);
+      }
+      if (viewxdots) {
+         viewreduction = videoentry.xdots / viewxdots;
+         viewxdots = viewydots = 0; /* easier to use auto reduction */
+      }
+      viewreduction = (float)((int)(viewreduction + 0.5)); /* need integer value */
+      skipxdots = skipydots = (short)(viewreduction - 1);
+      return(0);
+   }
+
    skipxdots = skipydots = 0; /* set for no reduction */
    if (videoentry.xdots < filexdots || videoentry.ydots < fileydots) {
       /* set up to load only every nth pixel to make image fit */

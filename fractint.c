@@ -329,7 +329,10 @@ restorestart:
       }
       if (read_overlay() == 0)       /* read hdr, get video mode */
          break;                      /* got it, exit */
-      showfile = -1;                 /* retry */
+      if (browsing) /* break out of infinite loop, but lose your mind */
+         showfile = 1;
+      else
+         showfile = -1;                 /* retry */
       }
 
    helpmode = HELPMENU;                 /* now use this help mode */
@@ -341,7 +344,7 @@ restorestart:
       stacked = 0;
       overlay3d = 0;                    /* forget overlays */
       display3d = 0;                    /* forget 3D */
-      if (calc_status > 0 && calc_status !=2)
+      if (calc_status ==3)
          calc_status = 0;
       resumeflag = 1;
       goto resumeloop;                  /* ooh, this is ugly */

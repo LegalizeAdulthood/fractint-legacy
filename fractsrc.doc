@@ -87,15 +87,12 @@ Warning: FRACTINT.MAK uses the most aggressive optimizations that we *think*
 are safe. Every time Microsoft comes out with a new compiler, something
 usually breaks, and we have to back of of our optimizations a little.
 
-Microsoft C (earlier versions):
-----------------
-Edit MAKEFRAC.BAT: comment out the two "nmk ..." lines and uncomment
-the lines for earlier versions. These probably need some work.
-
 Borland C++ 3.0 and 3.1 Users
 -----------------------------
-See the BC*.* files. We don't claim these are up to date. If you can
-get this to compile under Borland, please send us the files.
+Procedures to compile Fractint using Borland C++ 3.1 are contained in 
+bcfract.doc. No attempt has been made to compile with later versions of 
+Borland; users of these versions are encouraged to submit appropriate 
+project or make files to the authors.
 
 Help System
 ===========

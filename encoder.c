@@ -282,7 +282,7 @@ if(bf_save_len)
    maxstring = min((unsigned int)MAXSTRING,maxstring);
 }
 else
-   maxstring = MAXSTRING;
+   maxstring = (unsigned int)MAXSTRING;
 
 if(initbatch)                   /* flush any impending keystrokes */
    while(keypressed())

@@ -27,7 +27,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <float.h>                              /* TIW 04-22-91 */
+#include <float.h>
 #include <time.h>
 #include "mpmath.h"
 #include "prototyp.h"
@@ -45,6 +45,7 @@ enum MATH_TYPE MathType = D_MATH;
 
 #define MAX_OPS 250
 #define MAX_ARGS 100
+#define MAX_BOXX 8192  /* max size of boxx array */
 
 unsigned Max_Ops  = MAX_OPS;
 unsigned Max_Args = MAX_ARGS;
@@ -117,33 +118,48 @@ int uses_p1, uses_p2, uses_p3;
 
 #define LastSqr v[4].a
 
-static char far * far ErrStrings[] = {   /* TIW 03-31-91 added far */
-   "Should be an Argument",
-   "Should be an Operator",
-   "')' needs a matching '('",
-   "Need more ')'",
-   "Undefined Operator",
-   "Undefined Function",
-   "More than one ','",
-   "Table overflow"
-};
+#if (_MSC_VER >= 700)
+#pragma code_seg ("parser1_text")     /* place following in an overlay */
+#endif
 
-unsigned SkipWhiteSpace(char *Str) {
-   unsigned n, Done;
+#define NO_MATCH_RIGHT_PAREN                       8
+#define NO_LEFT_BRACKET_FIRST_LINE                 9
+#define UNEXPECTED_EOF                            10
+#define INVALID_SYM_USING_NOSYM                   11
+#define FORMULA_TOO_LARGE                         12
+#define INSUFFICIENT_MEM_FOR_TYPE_FORMULA         13
+#define COULD_NOT_OPEN_FILE_WHERE_FORMULA_LOCATED 14
 
-   for(Done = n = 0; !Done; n++) {
-      switch(Str[n]) {
-      case ' ':
-      case '\t':
-      case '\n':
-      case '\r':
-         break;
-      default:
-         Done = 1;
-      }
-   }
-   return(n - 1);
+static char far *ParseErrs(int which)
+{
+   int lasterr;
+   static FCODE e0[] = {"Should be an Argument"};
+   static FCODE e1[] = {"Should be an Operator"};
+   static FCODE e2[] = {"')' needs a matching '('"};
+   static FCODE e3[] = {"Need more ')'"};
+   static FCODE e4[] = {"Undefined Operator"};
+   static FCODE e5[] = {"Undefined Function"};
+   static FCODE e6[] = {"More than one ','"};
+   static FCODE e7[] = {"Table overflow"};
+   static FCODE e8[] = {"Didn't find matching ')'"};
+   static FCODE e9[] = {"No '{' found on first line"};
+   static FCODE e10[] = {"Unexpected EOF!"};
+   static FCODE e11[] = {"Invalid symmetry declared, will use NOSYM"};
+   static FCODE e12[] = {"Formula is too large"};
+   static FCODE e13[] = {"Insufficient memory to run fractal type 'formula'"};
+   static FCODE e14[] = {"Could not open file where formula located"};
+   static FCODE e15[] = {"Invalid ParseErrs code"}; /* last one */
+   static FCODE * far ErrStrings[] = 
+     {e0,e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15};
+   lasterr = sizeof(ErrStrings)/sizeof(ErrStrings[0]) - 1;
+   if(which > lasterr)
+     which = lasterr;
+   return((char far *)ErrStrings[which]);
 }
+
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 /* use the following when only float functions are implemented to
    get MP math and Integer math */
@@ -421,6 +437,101 @@ void lStkConj(void) {
 #endif
 
 void (*StkConj)(void) = dStkConj;
+
+void dStkFloor(void) {
+   Arg1->d.x = floor(Arg1->d.x);
+   Arg1->d.y = floor(Arg1->d.y);
+}
+
+#ifndef XFRACT
+void mStkFloor(void) {
+   mStkFunct(dStkFloor);   /* call lStk via dStk */
+}
+
+void lStkFloor(void) {
+   /* 
+    * Kill fractional part. This operation truncates negative numbers 
+    * toward negative infinity as desired.
+    */
+   Arg1->l.x = (Arg1->l.x) >> bitshift;
+   Arg1->l.y = (Arg1->l.y) >> bitshift;
+   Arg1->l.x = (Arg1->l.x) << bitshift;
+   Arg1->l.y = (Arg1->l.y) << bitshift;
+}
+#endif
+
+void (*StkFloor)(void) = dStkFloor;
+
+void dStkCeil(void) {
+   Arg1->d.x = ceil(Arg1->d.x);
+   Arg1->d.y = ceil(Arg1->d.y);
+}
+
+#ifndef XFRACT
+void mStkCeil(void) {
+   mStkFunct(dStkCeil);   /* call lStk via dStk */
+}
+
+void lStkCeil(void) {
+   /* the shift operation does the "floor" operation, so we 
+      negate everything before the operation */
+   Arg1->l.x = (-Arg1->l.x) >> bitshift;
+   Arg1->l.y = (-Arg1->l.y) >> bitshift;
+   Arg1->l.x = -((Arg1->l.x) << bitshift);
+   Arg1->l.y = -((Arg1->l.y) << bitshift);
+}
+#endif
+
+void (*StkCeil)(void) = dStkCeil;
+
+void dStkTrunc(void) {
+   Arg1->d.x = (int)(Arg1->d.x);
+   Arg1->d.y = (int)(Arg1->d.y);
+}
+
+#ifndef XFRACT
+void mStkTrunc(void) {
+   mStkFunct(dStkTrunc);   /* call lStk via dStk */
+}
+
+void lStkTrunc(void) {
+   /* shifting and shifting back truncates positive numbers,
+      so we make the numbers positive */
+   int signx, signy;
+   signx = sign(Arg1->l.x);
+   signy = sign(Arg1->l.y);
+   Arg1->l.x = labs(Arg1->l.x);
+   Arg1->l.y = labs(Arg1->l.y);
+   Arg1->l.x = (Arg1->l.x) >> bitshift;
+   Arg1->l.y = (Arg1->l.y) >> bitshift;
+   Arg1->l.x = (Arg1->l.x) << bitshift;
+   Arg1->l.y = (Arg1->l.y) << bitshift;
+   Arg1->l.x = signx*Arg1->l.x;
+   Arg1->l.y = signy*Arg1->l.y;
+}
+#endif
+
+void (*StkTrunc)(void) = dStkTrunc;
+
+void dStkRound(void) {
+   Arg1->d.x = floor(Arg1->d.x+.5);
+   Arg1->d.y = floor(Arg1->d.y+.5);
+}
+
+#ifndef XFRACT
+void mStkRound(void) {
+   mStkFunct(dStkRound);   /* call lStk via dStk */
+}
+
+void lStkRound(void) {
+   /* Add .5 then truncate */
+   Arg1->l.x += (1L<<bitshiftless1);
+   Arg1->l.y += (1L<<bitshiftless1);
+   lStkFloor();
+}
+#endif
+
+void (*StkRound)(void) = dStkRound;
 
 void dStkZero(void) {
    Arg1->d.y = Arg1->d.x = 0.0;
@@ -1047,7 +1158,6 @@ void lStkATanh(void) {
 void (*StkATanh)(void) = dStkATanh;
 
 void dStkSqrt(void) {
- /*  Sqrtz(Arg1->d, &(Arg1->d)); */
    Arg1->d = ComplexSqrtFloat(Arg1->d.x, Arg1->d.y);
 }
 
@@ -1386,6 +1496,23 @@ void EndInit(void) {
 #pragma code_seg ("parser1_text")     /* place following in an overlay */
 #endif
 
+unsigned SkipWhiteSpace(char *Str) {
+   unsigned n, Done;
+
+   for(Done = n = 0; !Done; n++) {
+      switch(Str[n]) {
+      case ' ':
+      case '\t':
+      case '\n':
+      case '\r':
+         break;
+      default:
+         Done = 1;
+      }
+   }
+   return(n - 1);
+}
+
 /* detect if constant is part of a (a,b) construct */
 static int isconst_pair(char *Str) {
    int n,j;
@@ -1531,6 +1658,10 @@ struct FNCT_LIST far FnctList[] = {   /* TIW 03-31-91 added far */
    s_atanh, &StkATanh,   /* TIW 11-26-94 */
    s_sqrt,  &StkSqrt,    /* TIW 11-26-94 */
    s_cabs,  &StkCAbs,    /* TIW 11-26-94 */
+   s_floor, &StkFloor,   /* TIW 06-30-96 */
+   s_ceil,  &StkCeil,    /* TIW 06-30-96 */
+   s_trunc, &StkTrunc,   /* TIW 06-30-96 */
+   s_round, &StkRound,   /* TIW 06-30-96 */
 };
 
 void NotAFnct(void) { }
@@ -1640,10 +1771,8 @@ static int ParseStr(char *Str, int pass) {
          ((char far *)typespecific_workarea + total_formula_mem-sizeof(struct PEND_OP) * Max_Ops);
    else
       o = (struct PEND_OP far *)farmemalloc(sizeof(struct PEND_OP) * (long)Max_Ops);
-
    if(!e || !o || !typespecific_workarea) {
-      static char far msg[]={"Insufficient memory to run fractal type 'formula'"};
-      stopmsg(0,msg);
+      stopmsg(0,ParseErrs(INSUFFICIENT_MEM_FOR_TYPE_FORMULA));
       return(1);
    }
    switch(MathType) {
@@ -1694,6 +1823,10 @@ static int ParseStr(char *Str, int pass) {
       StkCAbs = dStkCAbs;      /* TIW 11-25-94 */
       StkSqrt = dStkSqrt;      /* TIW 11-25-94 */
       StkZero = dStkZero;      /* JCO 12-31-94 */
+      StkFloor = dStkFloor;    /* TIW 06-30-96 */
+      StkCeil = dStkCeil;      /* TIW 06-30-96 */
+      StkTrunc = dStkTrunc;    /* TIW 06-30-96 */
+      StkRound = dStkRound;    /* TIW 06-30-96 */
       break;
 #ifndef XFRACT
    case M_MATH:
@@ -1742,6 +1875,10 @@ static int ParseStr(char *Str, int pass) {
       StkCAbs = mStkCAbs;      /* TIW 11-25-94 */
       StkSqrt = mStkSqrt;      /* TIW 11-25-94 */
       StkZero = mStkZero;      /* JCO 12-31-94 */
+      StkFloor = mStkFloor;    /* TIW 06-30-96 */
+      StkCeil = mStkCeil;      /* TIW 06-30-96 */
+      StkTrunc = mStkTrunc;    /* TIW 06-30-96 */
+      StkRound = mStkRound;    /* TIW 06-30-96 */
       break;
    case L_MATH:
       Delta16 = bitshift - 16;
@@ -1794,6 +1931,10 @@ static int ParseStr(char *Str, int pass) {
       StkCAbs = lStkCAbs;      /* TIW 11-25-94 */
       StkSqrt = lStkSqrt;      /* TIW 11-25-94 */
       StkZero = lStkZero;      /* JCO 12-31-94 */
+      StkFloor = lStkFloor;    /* TIW 06-30-96 */
+      StkCeil = lStkCeil;      /* TIW 06-30-96 */
+      StkTrunc = lStkTrunc;    /* TIW 06-30-96 */
+      StkRound = lStkRound;    /* TIW 06-30-96 */
       break;
 #endif
    }
@@ -2041,8 +2182,8 @@ static int ParseStr(char *Str, int pass) {
          }
          break;
       default:
-         if(isalnum(Str[n]) || Str[n] == '.') {
-            while(isalnum(Str[n+1]) || Str[n+1] == '.')
+         if(isalnum(Str[n]) || Str[n] == '.' || Str[n] == '_') {
+            while(isalnum(Str[n+1]) || Str[n+1] == '.' || Str[n+1] == '_')
                n++;
             if(!ExpectingArg) {
                SyntaxErr = 1;
@@ -2111,11 +2252,11 @@ static int ParseStr(char *Str, int pass) {
          if (n)
             strcat(msgbuf,"\n");
 #ifndef XFRACT
-         sprintf(&msgbuf[strlen(msgbuf)], "Error(%d):  %Fs\n  ", e[n].s, /*TIW 03-31-91 added %Fs*/
-            ErrStrings[e[n].s]);
+         sprintf(&msgbuf[strlen(msgbuf)], "Error(%d):  %Fs\n  ", e[n].s, 
+            ParseErrs(e[n].s));
 #else
          sprintf(&msgbuf[strlen(msgbuf)], "Error(%d):  %s\n  ", e[n].s,
-            ErrStrings[e[n].s]);
+            ParseErrs(e[n].s));
 #endif
          j = 24;
          if ((i = e[n].n - j) < 0) {
@@ -2321,124 +2462,171 @@ char *FormStr;
 #pragma code_seg ("parser1_text")     /* place following in an overlay */
 #endif
 
-char *FindFormula(char *Str) {
-   char *FormulaStr = (char *)0;
-   char StrBuff[201];      /* PB, to match a safety fix in parser */
-   /* MCP, changed to an automatic variable */
-   char fullfilename[100]; /* BDT Full file name */
-   unsigned Done;
+char *PrepareFormula(FILE * File) {
+
+    /* GGM 5-23-96: replaces FindFormula(). This function sets the
+       symmetry and converts a formula into a string  with no spaces,
+       and one comma after each expression except where the ':' is placed
+       and except the final expression in the formula. The open file passed
+       as an argument is open in "rb" mode and is positioned at the first
+       letter of the name of the formula to be prepared. This function
+       is called from RunForm() below.
+    */
+
+   FILE *debug_fp = NULL;
+   char *FormulaStr = NULL;
+   char *StrBuff = (char *)boxx;
+   int Done;
+   int array_pos;
    int c;
-   FILE *File;
+   int message_code = 0;
+   int not_a_repeat = 1;
 
-   findpath(FormFileName, fullfilename);  /* BDT get full path name */
+   static char far last_formula_file[FILE_MAX_PATH];
+   static char far last_formula_name[ITEMNAMELEN+1];
 
-   symmetry = 0;
-   if((File = fopen(fullfilename, "rt")) != NULL) { /* BDT use variable files */
-      while(StrBuff[0]=0,/* TIW 04-22-91 */ fscanf(File, "%200[^ ;\n\t({]", StrBuff) != EOF) {
-         if(!stricmp(StrBuff, Str) || !Str[0]) {
-            while((c = getc(File)) != EOF) {
-               if(c == '(') {
-                  StrBuff[0]=0; /* TIW 04-22-91 */
-                  fscanf(File, "%200[^)]", StrBuff);
-                  despace(StrBuff); /* squeeze out spaces */
-                  for(n = 0; SymStr[n].s[0]; n++) {
-                     if(!stricmp(SymStr[n].s, StrBuff)) {
-                        symmetry = SymStr[n].n;
-                        break;
-                     }
-                  }
-                  if(!SymStr[n].s[0]) {
-                     sprintf(fullfilename,"Undefined symmetry:\n  %.76s",
-                        StrBuff);
-                     stopmsg(0,fullfilename); /* PB printf -> stopmsg */
-                     FormulaStr = (char *)0;  /* PB 910511 */
-Exit:
-                     fclose(File);
-                     return(FormulaStr);
-                  }
-               }
-               else if(c == '{')
-                  break;
-            }
+   /*Test for a repeat*/
+   if(strlen(FormName) > ITEMNAMELEN)
+      FormName[ITEMNAMELEN] = '\0';
+   if(!far_strnicmp(last_formula_file, FormFileName, FILE_MAX_PATH-1) && 
+      !far_strnicmp(last_formula_name, FormName,     ITEMNAMELEN))
+      not_a_repeat = 0;
+   far_strncpy(last_formula_file, FormFileName, FILE_MAX_PATH-1);
+   far_strncpy(last_formula_name, FormName, ITEMNAMELEN);
 
-            /* MCP 4-9-91, Strip the comments inside the formula.  Might
-                           as well allow unlimited formula lengths while
-                           we're at it.
-            */
-
-            FormulaStr = (char *)boxx;
-            n = Done = 0;
-            while(!Done) {
-               switch(c = getc(File)) {
-                  static char far msg[]={"Unexpected EOF:  missing a '}'"};
-               case EOF:
-UnexpectedEOF:
-                  stopmsg(0, msg);
-                  FormulaStr = (char *)0;
-                  goto Exit;
-               case '}':
-                  FormulaStr[n++] = 0;
-                  Done = 1;
-                  break;
-               case ';':
-                  while((c = getc(File)) != '\n') {
-                     if(c == EOF)
-                        goto UnexpectedEOF;
-                  }
-                  FormulaStr[n++] = ',';
-                  break;
-               case ' ':                     /* Also strip out the
-                                                   white spaces */
-
-               case '\t':
-                  break;
-               case '\n':
-                  FormulaStr[n++] = ',';
-                  break;
-               default:
-                  FormulaStr[n++] = (char)c;
-               }
-               if (n >= 8192) { /* PB 4-9-91, added safety test */
-                  static char far msg[]={"Definition too large, missing a '}'?"};
-                  stopmsg(0, msg);
-                  FormulaStr = (char *)0;
-                  goto Exit;
-               }
-            }
-            goto Exit;
-         }
-         else /* TW 5-31-94 add comments support */
+   Done = symmetry = 0;
+   StrBuff[0]='\0';
+   while((c = getc(File)) != '{' && c != '\032' && c != EOF)
+   {
+      if(c == '(') /* start of symmetry option */
+      {
+         array_pos = 0;
+         while((c = getc(File)) != ')' && c != '{' && c != '\r' && c != '\n'
+                && c != '\032' && c != EOF && array_pos < MAX_BOXX - 1)
+            StrBuff[array_pos++] = (char)c;
+         if (c == '{' || c == '\r' || c == '\n' || array_pos >= MAX_BOXX - 1)
          {
-            c = getc(File);
-            if( c != ';' && c != EOF)
-               ungetc(c,File);
-            else if(c == EOF)
-               goto UnexpectedEOF;
-            else /* skip comment */
-               while((c = getc(File)) != '\n') {
-                  if(c == EOF)
-                     goto UnexpectedEOF;
+            Done = 1; /* didn't find matching ')' */
+            message_code = NO_MATCH_RIGHT_PAREN;
+            break;
+         }
+         else if (c == '\032' || c == EOF)
+            break;  /* message_code and Done will be set after end of loop*/
+         else       /* ')' is all that's left*/
+         {
+            StrBuff[array_pos] = '\0';
+            despace(StrBuff); /* squeeze out spaces */
+            for(array_pos = 0; SymStr[array_pos].s[0]; array_pos++)
+            {
+               if(!stricmp(SymStr[array_pos].s, StrBuff))
+               {
+                  symmetry = SymStr[array_pos].n;
+                  break;
                }
+            }
+            if(SymStr[array_pos].s[0] == '\0')
+                  message_code = INVALID_SYM_USING_NOSYM;
          }
-
-         StrBuff[0]=0;  /* TIW 04-22-91 */
-         fscanf(File, "%200[ \n\t({]", StrBuff);
-         if(StrBuff[strcspn(StrBuff, "{")]) {
-            do /* TW 5-31-94 add EOF loop exit */
-               fscanf(File, "%200[^}]", StrBuff);
-            while((c=getc(File)) != '}' && c != EOF);
+         /*symmetry set - go to beginning of formula*/
+         while( (c = getc(File)) != '{' && c != '\r' && c != '\n'
+                                        && c != '\032' && c != EOF)
+            ;
+         if (c == '\r' || c == '\n')
+         {
+            Done = 1;
+            message_code = NO_LEFT_BRACKET_FIRST_LINE;
          }
+         break;
       }
-#if 0 /* error message now in find_file_item in MISCRES.C TW 5-31-94 */
-      sprintf(fullfilename, "Formula \"%s\" not found", Str);
-      stopmsg(0,fullfilename);      /* PB printf -> stopmsg */
-#endif
-      FormulaStr = (char *)0;       /* PB 910511 */
-      goto Exit;
    }
-   sprintf(fullfilename, "Unable to open %s", FormFileName);
-   stopmsg(0,fullfilename);      /* PB printf -> stopmsg */
-   return((char *)0);            /* PB 910511 */
+
+   if (c == '\032' || c == EOF)
+   {
+      Done = 1;
+      message_code = UNEXPECTED_EOF;
+   }
+   if(not_a_repeat && debugflag == 96 && Done == 0)
+   {
+      if((debug_fp = fopen("debugfrm.txt","at")) != NULL)
+      {
+         fprintf(debug_fp,"%s\n",FormName);
+         if(symmetry != 0)
+            fprintf(debug_fp,"   %s\n",StrBuff);
+         else if (message_code == INVALID_SYM_USING_NOSYM)
+#ifndef XFRACT
+            fprintf(debug_fp,"%Fs\n",ParseErrs(message_code));
+#else
+            fprintf(debug_fp,"%s\n",ParseErrs(message_code));
+#endif
+      }
+   }
+
+   if(Done)
+      FormulaStr = NULL;
+   else
+      FormulaStr = (char *)boxx;
+   array_pos = 0;
+   while(!Done)
+   {
+      switch(c = getc(File))
+      {
+         case ' ': case '\t':
+            break;
+         case '}':
+            if(array_pos>0 && FormulaStr[array_pos-1] == ',')
+               array_pos--;
+            FormulaStr[array_pos] = '\0';
+            Done = 1;
+            break;
+         case ';':
+            while((c = getc(File)) != '\n' && c != '\r')
+               ;              /* GGM - fall through is intentional*/
+         case '\n': case '\r': case ',':
+            if(array_pos>0 && FormulaStr[array_pos-1] != ',' && FormulaStr[array_pos-1] != ':')
+               FormulaStr[array_pos++] = ',';
+            break;
+         case ':':
+            /*
+            GGM 5/23/96 - comma before a  colon is eliminated to avoid
+            a needless error message later
+            */
+            if(array_pos>0)
+               if(FormulaStr[array_pos-1] == ',')
+                  array_pos--;
+            FormulaStr[array_pos++] = ':';
+            break;
+         case '\032': case EOF:
+            Done = 1;
+            message_code = UNEXPECTED_EOF;
+            FormulaStr = NULL;
+            break;
+         default:
+            FormulaStr[array_pos++] = (char)c;
+            break;
+      }
+      if (array_pos >= MAX_BOXX)
+      {
+         Done = 1;
+         message_code = FORMULA_TOO_LARGE;
+         FormulaStr = NULL;
+      }
+   }
+
+   if(debug_fp != NULL && FormulaStr != NULL)
+      fprintf(debug_fp,"   %s\n",FormulaStr);
+   if(debug_fp != NULL)
+      fclose(debug_fp);
+
+   /*print error messages - bad sym printed only if first time through*/
+   if(message_code == INVALID_SYM_USING_NOSYM)
+   {
+      if(not_a_repeat)
+         stopmsg(0,ParseErrs(INVALID_SYM_USING_NOSYM));
+   }
+   else if (message_code)
+      stopmsg(0,ParseErrs(message_code));
+
+   return FormulaStr;
 }
 
 int BadFormula(void) {
@@ -2450,6 +2638,9 @@ int BadFormula(void) {
 }
 
 int RunForm(char *Name) {  /*  returns 1 if an error occurred  */
+
+   FILE * entry_file = NULL;
+
    /*  CAE changed fn 12 July 1993 to fix problem when formula not found  */
 
    /*  first set the pointers so they point to a fn which always returns 1  */
@@ -2461,26 +2652,35 @@ int RunForm(char *Name) {  /*  returns 1 if an error occurred  */
    }
 
    /* TW 5-31-94 add search for FRM files in directory */
-   find_file_item(FormFileName,Name,NULL);
+   if (find_file_item(FormFileName,Name,NULL))
+      return 1;
+   /* GGM 5-23-96 open file here for preparing formula string */
+   if((entry_file = fopen(FormFileName, "rb")) == NULL) {
+      stopmsg(0, ParseErrs(COULD_NOT_OPEN_FILE_WHERE_FORMULA_LOCATED));
+      return 1;
+   }
 
-   if((FormStr = FindFormula(Name)) != NULL ){
-      /*  formula was found  */
+   scan_entries(entry_file, NULL, Name); /*GGM 5-23-96 this positions
+                                           the file pointer to the
+                                           first letter of the name
+                                           of the entry*/
+   FormStr = PrepareFormula(entry_file);
+   fclose(entry_file);
+   if(FormStr)  /*  No errors while making string */
+   {
       parser_allocate();  /*  ParseStr() will test if this alloc worked  */
-      if (ParseStr(FormStr,1)){
-         /*  parse failed, don't change fn pointers  */
-         return 1;
-      }
-      else {
+      if (ParseStr(FormStr,1))
+         return 1;   /*  parse failed, don't change fn pointers  */
+      else
+      {
          /*  parse succeeded so set the pointers back to good functions  */
          curfractalspecific->per_pixel = form_per_pixel;
          curfractalspecific->orbitcalc = Formula;
          return 0;
       }
    }
-   else {
-      /*  formula not found, leave pointers set to BadFormula  */
-      return 1;                    /* PB, msg moved to FindFormula */
-   }
+   else
+      return 1;   /* error in making string*/
 }
 
 int fpFormulaSetup(void) {
@@ -2633,3 +2833,4 @@ void free_workarea()
    pfls = (struct fls far * )0;   /* CAE fp */
    total_formula_mem = 0;
 }
+

@@ -480,3 +480,4 @@ void plot_setup()
         spindac(0,1); /* load it, but don't spin */
     }
 }
+

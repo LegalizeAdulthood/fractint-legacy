@@ -529,7 +529,7 @@ void SetupLogTable(void) {
 long logtablecalc(long citer) {
    long ret = 0;
 
-   if (LogFlag == 0) /* Oops, how did we get here? */
+   if (LogFlag == 0 && !rangeslen) /* Oops, how did we get here? */
       return(citer);
    if (LogTable && !Log_Calc)
       return(LogTable[(long)min(coloriter, MaxLTSize)]);

@@ -57,9 +57,12 @@ int gifview()
    BYTE buffer[16];
    unsigned top, left, width, finished;
    char temp1[81];
-
+   BYTE byte_buf[257]; /* for decoder */
    int status;
    int i, j, k, planes;
+
+   /* using stack for decoder byte buf rather than static mem */
+   set_byte_buff(byte_buf);
 
    status = 0;
 

@@ -55,6 +55,7 @@ timer.
 3870	fractint.c	set fpu to max 387 iit off
 3872	fractint.c	set fpu to max 387 iit on
 4000	miscres.c	turn on math error message (off otherwise)
+4010    miscres.c	use pre-19.3 centermag conversion.
 8088	general.asm	set cpu = 86, ie dont use 32 bit stuff
 8088	fractint.c	set cpu = 86, (case in general.asm is redundant?)
 9002-9100 fractint.c	reduce video_type to (debug-9000)/2 if init was higher

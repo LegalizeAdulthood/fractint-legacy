@@ -2447,8 +2447,9 @@ complex with an imaginary value of zero.
           1          sin(), cos(), sinh(), cosh(), cosxx(), tan(), cotan(),
                      tanh(), cotanh(), sqr(), log(), exp(), abs(), conj(),
                      real(), imag(), flip(), fn1(), fn2(), fn3(), fn4(),
-                     srand(), asin(), asinh(), acos(), acosh(), atan(),
-                     atanh(), sqrt(), cabs()
+                     srand(), asin(), asinh(), acos(), acosh(), atan(), 
+                     atanh(), sqrt(), cabs(), floor(), ceil(), trunc(), 
+                     round()
           2          - (negation), ^ (power)
           3          * (multiplication), / (division)
           4          + (addition), - (subtraction)
@@ -2485,6 +2486,10 @@ others that are not conventional.
             e.g. (4,5) would become (5,4)
  ident()  - identity function. Leaves the value of the argument unchanged,
             acting like a "z" term in a formula.
+ floor()  - greatest integer less than the argument
+ ceil()   - least integer greater than the argument
+ trunc()  - truncate fraction part toward zero
+ round()  - round to nearest integer 
 ~Format+
 
 The formulas are performed using either integer or floating point

@@ -212,3 +212,120 @@ Sliced-Tomato      { ; Par and Image Copyright 1995 by Lee H. Skinner
   1xt1xs1xr2<16>oz0oTC<8>v_Iv_Iw`Jw`KxaK<11>sSKrRJrQK<11>hB_g9af8be6df6a<6\
   >m4G cyclerange=2/255
   }
+
+Graphs             { ; Better than a graphic calculator!
+                     ; (c) Sylvie Gallet [101324,3444], 1996
+  reset=1940 type=formula formulafile=fractint.frm formulaname=Graph
+  function=sin/abs/ceil/log passes=1 center-mag=0/0/0.2
+  params=0.002/0.001 float=y maxiter=99 inside=255
+  colors=000hhhzK0zzz0zKzzzzzzzzz0Kzzzz<5>zzzww0zzz<236>zzz000
+  }
+
+G-3-03-M           { ; Uses the new round function.
+                     ; (c) Sylvie Gallet [101324,3444], 1996
+  reset=1940 type=formula formulafile=fractint.frm formulaname=G-3-03-M
+  function=sinh/atanh passes=1
+  center-mag=-0.292907/-0.345016/0.1164033/1/44.999 params=10/0/5/15
+  float=y outside=atan decomp=256 periodicity=0
+  colors=bbb<11>xxx<30>N22L00M11<30>xxx<31>3D8<11>OVQQWSSYUUZWW`Y<4>cgeehf\
+  gjhilj<7>xxx<31>33D<18>bbdddeffghhi<8>zzz<32>333<18>```
+  cyclerange=0/255
+  }
+
+Spirals            { ; Uses the new trunc function.
+                     ; (c) Sylvie Gallet [101324,3444], 1996
+  reset=1940 type=lambda(fn||fn) function=sin/trunc passes=1
+  center-mag=+0.00682136237476394/-0.00456388921647477/0.9998262
+  params=1/0.1/1 float=y maxiter=1023 inside=bof61 symmetry=origin
+  colors=Z4EY2ER0F<6>WjtXqzWmv<12>P00<37>G00G10G10G20H20<26>MG1MG1NF1<12>R\
+  H2RH2SH2TI2TI2<6>YK2ZL3ZL5<3>XODXOFXPF<7>dYJ<3>tf9<4>vl4<2>gcTa``XYhRVqT\
+  Wq<7>jdpmfophp<2>wmszotznp<10>vX4sW4qU4oT4<2>dJ4`G5XD5T96S96<7>IB7HB7HB7\
+  <3>HE9HF9HG9IG9JH9<13>LS9MT9OV9<2>Ub9<7>ld8nd8qe7sf7<19>_6D
+  cyclerange=0/255
+  }
+
+jdsg4101           { ; 1600 x 1200 These images are resolution dependent. All
+                     ; Par and Image Copyright 1996 by Lee H. Skinner
+                     ; time: 13mins 38s at 1600x1200 on a Pentium 166
+  reset=1930 type=formula formulafile=fractint.frm
+  formulaname=JD-SG-04-1 passes=1
+  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
+  params=0.75/0/2/0/1600/0 float=y maxiter=1023 inside=0 logmap=yes
+  symmetry=none
+  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
+  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
+  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
+  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
+  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
+  }
+
+jdsg4103           { ; 320 x 200   6 pars use the same parameters and palette,
+                     ; Par and Image Copyright 1996 by Lee H. Skinner
+                     ; Formula by Jim Deutch and Sylvie Gallet
+  reset=1930 type=formula formulafile=fractint.frm
+  formulaname=JD-SG-04-1 passes=1
+  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
+  params=0.75/0/2/0/320/0 float=y maxiter=1023 inside=0 logmap=yes
+  symmetry=none
+  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
+  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
+  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
+  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
+  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
+  }
+
+jdsg4105           { ; 640 x 480   p3 = horizontal resolution.
+                     ; Par and Image Copyright 1996 by Lee H. Skinner
+  reset=1930 type=formula formulafile=fractint.frm
+  formulaname=JD-SG-04-1 passes=1
+  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
+  params=0.75/0/2/0/640/0 float=y maxiter=1023 inside=0 logmap=yes
+  symmetry=none
+  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
+  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
+  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
+  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
+  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
+  }
+
+jdsg4106           { ; 800 x 600        Par and Image Copyright 1996
+                     ; Par and Image Copyright 1996 by Lee H. Skinner
+  reset=1930 type=formula formulafile=fractint.frm
+  formulaname=JD-SG-04-1 passes=1
+  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
+  params=0.75/0/2/0/800/0 float=y maxiter=1023 inside=0 logmap=yes
+  symmetry=none
+  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
+  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
+  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
+  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
+  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
+  }
+
+jdsg4107           { ; 1024 x 768             by Lee H. Skinner
+                     ; Par and Image Copyright 1996 by Lee H. Skinner
+  reset=1930 type=formula formulafile=fractint.frm
+  formulaname=JD-SG-04-1 passes=1
+  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
+  params=0.75/0/2/0/1024/0 float=y maxiter=1023 inside=0 logmap=yes
+  symmetry=none
+  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
+  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
+  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
+  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
+  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
+  }
+
+jdsg4109           { ; 1280 x 1024         Formula by Sylvie Gallet
+                     ; Par and Image Copyright 1996 by Lee H. Skinner
+  reset=1930 type=formula formulafile=fractint.frm
+  formulaname=JD-SG-04-1 passes=1
+  center-mag=-0.21379120971899780/+0.65418802540150260/902.2811
+  params=0.75/0/2/0/1280/0 float=y maxiter=1023 inside=0 logmap=yes
+  symmetry=none
+  colors=000ylPwl7<9>xi9xiAxiAxhAxhAXMVCNDO00c20zb90FY0`Tz00h7BQFM0_KOEzzz\
+  XbU6d000hzxhB<7>zeDzzr<4>V0_A0fmkInf9lN0f`EYaSPaOGbJ<6>8KJ6HJ6HM<3>3H`2I\
+  d1Hc0Fb<6>6FW7EV7EV7EU<22>F97F96G85G74<3>I00<11>ZC3`D3aE3cF4eI4gL4<6>ug1\
+  zj1yn0<20>zqzz00<6>umptuxrnv<5>e6d<10>x14z00z10<13>sSCrUDrVDrWD<11>vj9vk\
+  9wm8wo8xq9zuA<17>zaay_cy``<9>yk7yl4xl5wl7wl7 cyclerange=2/255
+  }

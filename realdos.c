@@ -25,7 +25,7 @@ static int menu_checkkey(int curkey,int choice);
 /* uncomment following for production version */
 /* #define PRODUCTION */
 
-int release=1930; /* this has 2 implied decimals; increment it every synch */
+int release=1940;  /* this has 2 implied decimals; increment it every synch */
 int patchlevel=0; /* patchlevel for DOS version */
 #ifdef XFRACT
 int xrelease=300;
@@ -1656,6 +1656,7 @@ int showvidlength()
    return(sz);
 }
 
+
 int load_fractint_cfg(int options)
 {
    /* Reads fractint.cfg, loading videoinfo entries into extraseg. */
@@ -1674,6 +1675,7 @@ int load_fractint_cfg(int options)
    int commas[10];
    int textsafe2;
    char tempstring[150];
+   int truecolorbits; 
 
    vidtbl = MK_FP(extraseg,0);
    cfglinenums = (int far *)(&vidtbl[MAXVIDEOMODES]);
@@ -1720,6 +1722,24 @@ int load_fractint_cfg(int options)
       xdots       = atoi(&tempstring[commas[6]]);
       ydots       = atoi(&tempstring[commas[7]]);
       colors      = atoi(&tempstring[commas[8]]);
+      if(colors == 16 && strchr(strlwr(&tempstring[commas[8]]),'m'))
+      {
+         colors = 256;
+         truecolorbits = 3; /* 48 bits */
+      }
+      else if(colors == 64 && strchr(&tempstring[commas[8]],'k'))
+      {
+         colors = 256;
+         truecolorbits = 2; /* 16 bits */
+      }
+      else if(colors == 32 && strchr(&tempstring[commas[8]],'k'))
+      {
+         colors = 256;
+         truecolorbits = 1; /* 15 bits */
+      }
+      else
+         truecolorbits = 0;
+
       textsafe2   = dotmode / 100;
       dotmode    %= 100;
       if (j != 9 ||
@@ -1741,7 +1761,7 @@ int load_fractint_cfg(int options)
       vident->videomodebx = bx;
       vident->videomodecx = cx;
       vident->videomodedx = dx;
-      vident->dotmode     = textsafe2 * 100 + dotmode;
+      vident->dotmode     = truecolorbits * 1000 + textsafe2 * 100 + dotmode;
       vident->xdots       = xdots;
       vident->ydots       = ydots;
       vident->colors      = colors;

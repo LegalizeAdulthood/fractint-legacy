@@ -17,7 +17,7 @@
    { Introduction }                         { Distribution of Fractint }
    { Conditions on Use }                    { Contacting the Authors }
    { Getting Started }                      { The Stone Soup Story }
-   { New Features in Version 19.3 }         { A Word About the Authors }
+   { New Features in Version 19.4 }         { A Word About the Authors }
                                           { Other Fractal Products }
    { Display Mode Commands }
    { Color Cycling Commands }               { Fractint on Unix }
@@ -38,7 +38,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New Features in Version 19.3", FF}
+{     , 0, "New Features in Version 19.4", FF}
 {     , 0, "Introduction", "Conditions on Use", FF}
 
 {1.   , 0, Fractint Commands, FF}
@@ -264,7 +264,61 @@ integrated documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in Version 19.3
+~Topic=New Features in Version 19.4
+Version 19.4 is a bug-fix release for version 19.3 based on the developer's
+  version 19.30 patch 18. But a few new features did slip in when we weren't
+  looking.
+
+New functions are now available for type=formula and general function 
+  variable use. They are the rounding functions: floor(), ceil(), trunc(), 
+  and round() 
+
+New larger showdot "turtle" to enable better seeing which pixel is currently
+  being calculated. The syntax is showdot=<color>/<size>, but the color 
+  parameter can now be one of auto, bright, medium, and dark in addition to
+  the previously-supported color number value.
+
+The <g> command now remembers the last command.
+
+Added the ability to load images into a view window.  This can be used
+  with the browser to browse images larger than the current image.
+
+Added George Martin's new integrated entry-finding code. Fractint is now 
+  more tolerant of text between entries, and the internal code is much
+  cleaner than before.
+
+Added Bert Tyler's new VESA truecolor video drivers. These don't do anything 
+  yet; we've just added the video drivers for testing. Work goes on ...\
+  To test out the new modes, try fractint debug=500 type=test and select 
+  a new truecolor mode. They only work with video boards having VESA 
+  truecolor support. Some "non-standard VESA" modes (an unfortunate
+  oxymoron if there ever was one) can also be supported by editing 
+  FRACTINT.CFG. These vendor-specific "VESA" modes tend to make Bert, 
+  our video expert, real grumpy ...
+
+Now for the squashed bugs report:
+
+Ranges is working again.
+
+Fixed a browser bug that caused a crash when the browser cross-hairs
+  become too small.
+
+Fixed a bug which put the browser into an infinite loop if the history
+  feature was used to try and access a deleted or renamed image that was
+  still in the history stack.
+
+Fixed bug that caused any command with greater than 16 parameters to fail,
+  most notably textcolors and ranges.
+
+Fixed a center-mag<->corners conversion bug that occurred with rotated images.
+  arbitrary precision also (test with debug=3200). 
+ 
+Fixed bug that allowed the matherr debugging file to grow arbitrarily large.
+  Matherr file is limited to 100 messages for each fractal. 
+
+Fixed bug that affected some Icons3d types, which were broken due to a 
+  very subtle bug in apparently good code caused compiler optimizer.
+
 Version 19.3 is a bug-fix release for version 19.2 based on the developer's
   version 19.21 patch 30.
 

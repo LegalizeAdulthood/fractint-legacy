@@ -161,8 +161,8 @@ void cvtcentermag(double *Xctr, double *Yctr, LDBL *Magnification, double *Xmagf
    double Width, Height;
    double a, b; /* bottom, left, diagonal */
    double a2, b2, c2; /* squares of above */
-   double tmpx, tmpy, tmpa; /* temporary x, y, angle */
-
+   double tmpx1, tmpx2, tmpy1, tmpy2, tmpa; /* temporary x, y, angle */
+  
    /* simple normal case first */
    if (xx3rd == xxmin && yy3rd == yymin)
    { /* no rotation or skewing, but stretching is allowed */
@@ -174,47 +174,82 @@ void cvtcentermag(double *Xctr, double *Yctr, LDBL *Magnification, double *Xmagf
       *Xmagfactor =  Height / (DEFAULTASPECT * Width);
       *Rotation = 0.0;
       *Skew = 0.0;
-      if (*Magnification < 0)
-      {
-         *Magnification = -*Magnification;
-         *Rotation += 180;
       }
-      return;
-   }
-
-   /* set up triangle ABC, having sides abc */
-   /* side a = bottom, b = left, c = diagonal not containing (x3rd,y3rd) */
-   tmpx = xxmax - xx3rd;
-   tmpy = yymin - yy3rd;
-   a2 = tmpx*tmpx + tmpy*tmpy;
-   a = sqrt(a2);
-   *Rotation = -rad_to_deg(atan2( tmpy, tmpx )); /* negative for image rotation */
-
-   tmpx = xxmin - xx3rd;
-   tmpy = yymax - yy3rd;
-   b2 = tmpx*tmpx + tmpy*tmpy;
-   b = sqrt(b2);
-
-   tmpx = xxmax - xxmin;
-   tmpy = yymax - yymin;
-   c2 = tmpx*tmpx + tmpy*tmpy;
-
-   tmpa = acos((a2+b2-c2)/(2*a*b)); /* save tmpa for later use */
-   *Skew = 90 - rad_to_deg(tmpa);
-
-   *Xctr = (xxmin + xxmax)/2;
-   *Yctr = (yymin + yymax)/2;
-
-   Height = b * sin(tmpa);
-   *Magnification  = 2/Height; /* 1/(h/2) */
-   *Xmagfactor = Height / (DEFAULTASPECT * a);
-   if (*Magnification < 0)
+   else
+   {
+      /* set up triangle ABC, having sides abc */
+      /* side a = bottom, b = left, c = diagonal not containing (x3rd,y3rd) */
+      tmpx1 = xxmax - xxmin;
+      tmpy1 = yymax - yymin;
+      c2 = tmpx1*tmpx1 + tmpy1*tmpy1;
+   
+      tmpx1 = xxmax - xx3rd;
+      tmpy1 = yymin - yy3rd;
+      a2 = tmpx1*tmpx1 + tmpy1*tmpy1;
+      a = sqrt(a2);
+      *Rotation = -rad_to_deg(atan2( tmpy1, tmpx1 )); /* negative for image rotation */
+   
+      tmpx2 = xxmin - xx3rd;
+      tmpy2 = yymax - yy3rd;
+      b2 = tmpx2*tmpx2 + tmpy2*tmpy2;
+      b = sqrt(b2);
+   
+      tmpa = acos((a2+b2-c2)/(2*a*b)); /* save tmpa for later use */
+      *Skew = 90 - rad_to_deg(tmpa);
+   
+      *Xctr = (xxmin + xxmax)/2;
+      *Yctr = (yymin + yymax)/2;
+   
+      Height = b * sin(tmpa);
+   
+      *Magnification  = 2/Height; /* 1/(h/2) */
+      *Xmagfactor = Height / (DEFAULTASPECT * a);
+   
+      /* if vector_a cross vector_b is negative */
+      /* then adjust for left-hand coordinate system */
+      if ( tmpx1*tmpy2 - tmpx2*tmpy1 < 0 && debugflag != 4010)
       {
+         *Skew = -*Skew;
+         *Xmagfactor = -*Xmagfactor;
+         *Magnification = -*Magnification;
+      }
+   }
+   /* just to make par file look nicer */
+   if (*Magnification < 0)
+   {
       *Magnification = -*Magnification;
       *Rotation += 180;
-      }
+   }
+#ifdef DEBUG
+   {
+      double txmin, txmax, tx3rd, tymin, tymax, ty3rd;
+      double error;
+      txmin = xxmin;
+      txmax = xxmax;
+      tx3rd = xx3rd;
+      tymin = yymin;
+      tymax = yymax;
+      ty3rd = yy3rd;
+      cvtcorners(*Xctr, *Yctr, *Magnification, *Xmagfactor, *Rotation, *Skew);
+      error = sqr(txmin - xxmin) +
+              sqr(txmax - xxmax) +
+              sqr(tx3rd - xx3rd) +
+              sqr(tymin - yymin) +
+              sqr(tymax - yymax) +
+              sqr(ty3rd - yy3rd);
+      if(error > .001)
+         showcornersdbl("cvtcentermag problem");
+      xxmin = txmin;
+      xxmax = txmax;
+      xx3rd = tx3rd;
+      yymin = tymin;
+      yymax = tymax;
+      yy3rd = ty3rd;         
+   } 
+#endif
    return;
 }
+
 
 /* convert center/mag to corners */
 void cvtcorners(double Xctr, double Yctr, LDBL Magnification, double Xmagfactor, double Rotation, double Skew)
@@ -279,7 +314,7 @@ void cvtcentermagbf(bf_t Xctr, bf_t Yctr, LDBL *Magnification, double *Xmagfacto
    LDBL Width, Height;
    LDBL a, b; /* bottom, left, diagonal */
    LDBL a2, b2, c2; /* squares of above */
-   LDBL tmpx, tmpy;
+   LDBL tmpx1, tmpx2, tmpy, tmpy1, tmpy2 ;
    double tmpa; /* temporary x, y, angle */
    bf_t bfWidth, bfHeight;
    bf_t bftmpx, bftmpy;
@@ -291,7 +326,7 @@ void cvtcentermagbf(bf_t Xctr, bf_t Yctr, LDBL *Magnification, double *Xmagfacto
    /* simple normal case first */
    /* if (xx3rd == xxmin && yy3rd == yymin) */
    if(!cmp_bf(bfx3rd, bfxmin) && !cmp_bf(bfy3rd, bfymin))
-      { /* no rotation or skewing, but stretching is allowed */
+   { /* no rotation or skewing, but stretching is allowed */
       bfWidth  = alloc_stack(bflength+2);
       bfHeight = alloc_stack(bflength+2);
       /* Width  = xxmax - xxmin; */
@@ -310,73 +345,79 @@ void cvtcentermagbf(bf_t Xctr, bf_t Yctr, LDBL *Magnification, double *Xmagfacto
       *Xmagfactor =  (double)(Height / (DEFAULTASPECT * Width));
       *Rotation = 0.0;
       *Skew = 0.0;
-      if (*Magnification < 0)
-         {
-         *Magnification = -*Magnification;
-         *Rotation += 180;
-         }
-      restore_stack(saved);
-      return;
-      }
+   }
+   else
+   {
+      bftmpx = alloc_stack(bflength+2);
+      bftmpy = alloc_stack(bflength+2);
+   
+      /* set up triangle ABC, having sides abc */
+      /* side a = bottom, b = left, c = diagonal not containing (x3rd,y3rd) */
+      /* IMPORTANT: convert from bf AFTER subtracting */
+   
+      /* tmpx = xxmax - xxmin; */
+      sub_bf(bftmpx, bfxmax, bfxmin);
+      tmpx1 = bftofloat(bftmpx);
+      /* tmpy = yymax - yymin; */
+      sub_bf(bftmpy, bfymax, bfymin);
+      tmpy1 = bftofloat(bftmpy);
+      c2 = tmpx1*tmpx1 + tmpy1*tmpy1;
+   
+      /* tmpx = xxmax - xx3rd; */
+      sub_bf(bftmpx, bfxmax, bfx3rd);
+      tmpx1 = bftofloat(bftmpx);
+   
+      /* tmpy = yymin - yy3rd; */
+      sub_bf(bftmpy, bfymin, bfy3rd);
+      tmpy1 = bftofloat(bftmpy);
+      a2 = tmpx1*tmpx1 + tmpy1*tmpy1;
+      a = sqrtl(a2);
+   
+      /* divide tmpx and tmpy by |tmpx| so that double version of atan2() can be used */
+      /* atan2() only depends on the ratio, this puts it in double's range */
+      signx = sign(tmpx1);
+      if(signx)
+         tmpy = tmpy1/tmpx1 * signx;    /* tmpy = tmpy / |tmpx| */
+      *Rotation = (double)(-rad_to_deg(atan2( (double)tmpy, signx ))); /* negative for image rotation */
+   
+      /* tmpx = xxmin - xx3rd; */
+      sub_bf(bftmpx, bfxmin, bfx3rd);
+      tmpx2 = bftofloat(bftmpx);
+      /* tmpy = yymax - yy3rd; */
+      sub_bf(bftmpy, bfymax, bfy3rd);
+      tmpy2 = bftofloat(bftmpy);
+      b2 = tmpx2*tmpx2 + tmpy2*tmpy2;
+      b = sqrtl(b2);
+   
+      tmpa = acos((double)((a2+b2-c2)/(2*a*b))); /* save tmpa for later use */
+      *Skew = 90 - rad_to_deg(tmpa);
+   
+      /* these are the only two variables that must use big precision */
+      /* *Xctr = (xxmin + xxmax)/2; */
+      add_bf(Xctr, bfxmin, bfxmax);
+      half_a_bf(Xctr);
+      /* *Yctr = (yymin + yymax)/2; */
+      add_bf(Yctr, bfymin, bfymax);
+      half_a_bf(Yctr);
+   
+      Height = b * sin(tmpa);
+      *Magnification  = 2/Height; /* 1/(h/2) */
+      *Xmagfactor = (double)(Height / (DEFAULTASPECT * a));
 
-   bftmpx = alloc_stack(bflength+2);
-   bftmpy = alloc_stack(bflength+2);
-
-   /* set up triangle ABC, having sides abc */
-   /* side a = bottom, b = left, c = diagonal not containing (x3rd,y3rd) */
-   /* IMPORTANT: convert from bf AFTER subtracting */
-   /* tmpx = xxmax - xx3rd; */
-   sub_bf(bftmpx, bfxmax, bfx3rd);
-   tmpx = bftofloat(bftmpx);
-   /* tmpy = yymin - yy3rd; */
-   sub_bf(bftmpy, bfymin, bfy3rd);
-   tmpy = bftofloat(bftmpy);
-   a2 = tmpx*tmpx + tmpy*tmpy;
-   a = sqrtl(a2);
-
-   /* divide tmpx and tmpy by |tmpx| so that double version of atan2() can be used */
-   /* atan2() only depends on the ratio, this puts it in double's range */
-   signx = sign(tmpx);
-   if(signx)
-      tmpy /= tmpx * signx;       /* tmpy = tmpy / |tmpx| */
-   *Rotation = (double)(-rad_to_deg(atan2( (double)tmpy, signx ))); /* negative for image rotation */
-
-   /* tmpx = xxmin - xx3rd; */
-   sub_bf(bftmpx, bfxmin, bfx3rd);
-   tmpx = bftofloat(bftmpx);
-   /* tmpy = yymax - yy3rd; */
-   sub_bf(bftmpy, bfymax, bfy3rd);
-   tmpy = bftofloat(bftmpy);
-   b2 = tmpx*tmpx + tmpy*tmpy;
-   b = sqrtl(b2);
-
-   /* tmpx = xxmax - xxmin; */
-   sub_bf(bftmpx, bfxmax, bfxmin);
-   tmpx = bftofloat(bftmpx);
-   /* tmpy = yymax - yymin; */
-   sub_bf(bftmpy, bfymax, bfymin);
-   tmpy = bftofloat(bftmpy);
-   c2 = tmpx*tmpx + tmpy*tmpy;
-
-   tmpa = acos((double)((a2+b2-c2)/(2*a*b))); /* save tmpa for later use */
-   *Skew = 90 - rad_to_deg(tmpa);
-
-   /* these are the only two variables that must be to big precision */
-   /* *Xctr = (xxmin + xxmax)/2; */
-   add_bf(Xctr, bfxmin, bfxmax);
-   half_a_bf(Xctr);
-   /* *Yctr = (yymin + yymax)/2; */
-   add_bf(Yctr, bfymin, bfymax);
-   half_a_bf(Yctr);
-
-   Height = b * sin(tmpa);
-   *Magnification  = 2/Height; /* 1/(h/2) */
-   *Xmagfactor = (double)(Height / (DEFAULTASPECT * a));
-   if (*Magnification < 0)
+      /* if vector_a cross vector_b is negative */
+      /* then adjust for left-hand coordinate system */
+      if ( tmpx1*tmpy2 - tmpx2*tmpy1 < 0 && debugflag != 4010)
       {
+         *Skew = -*Skew;
+         *Xmagfactor = -*Xmagfactor;
+         *Magnification = -*Magnification;
+      }
+   }
+   if (*Magnification < 0)
+   {
       *Magnification = -*Magnification;
       *Rotation += 180;
-      }
+   }
    restore_stack(saved);
    return;
 }
@@ -561,67 +602,7 @@ void (*dtrig1)(void) = dStkSqr;
 void (*dtrig2)(void) = dStkSinh;
 void (*dtrig3)(void) = dStkCosh;
 
-struct trig_funct_lst trigfn[] =
-/* changing the order of these alters meaning of *.fra file */
-/* maximum 6 characters in function names or recheck all related code */
-{
-#ifndef XFRACT
-   {s_sin,   lStkSin,   dStkSin,   mStkSin   },
-   {s_cosxx, lStkCosXX, dStkCosXX, mStkCosXX },
-   {s_sinh,  lStkSinh,  dStkSinh,  mStkSinh  },
-   {s_cosh,  lStkCosh,  dStkCosh,  mStkCosh  },
-   {s_exp,   lStkExp,   dStkExp,   mStkExp   },
-   {s_log,   lStkLog,   dStkLog,   mStkLog   },
-   {s_sqr,   lStkSqr,   dStkSqr,   mStkSqr   },
-   {s_recip, lStkRecip, dStkRecip, mStkRecip }, /* from recip on new in v16 */
-   {s_ident, StkIdent,  StkIdent,  StkIdent  },
-   {s_cos,   lStkCos,   dStkCos,   mStkCos   },
-   {s_tan,   lStkTan,   dStkTan,   mStkTan   },
-   {s_tanh,  lStkTanh,  dStkTanh,  mStkTanh  },
-   {s_cotan, lStkCoTan, dStkCoTan, mStkCoTan },
-   {s_cotanh,lStkCoTanh,dStkCoTanh,mStkCoTanh},
-   {s_flip,  lStkFlip,  dStkFlip,  mStkFlip  },
-   {s_conj,  lStkConj,  dStkConj,  mStkConj  },
-   {s_zero,  lStkZero,  dStkZero,  mStkZero  },
-   {s_asin,  lStkASin,  dStkASin,  mStkASin  },
-   {s_asinh, lStkASinh, dStkASinh, mStkASinh },
-   {s_acos,  lStkACos,  dStkACos,  mStkACos  },
-   {s_acosh, lStkACosh, dStkACosh, mStkACosh },
-   {s_atan,  lStkATan,  dStkATan,  mStkATan  },
-   {s_atanh, lStkATanh, dStkATanh, mStkATanh },
-   {s_cabs,  lStkCAbs,  dStkCAbs,  mStkCAbs  },
-   {s_abs,   lStkAbs,   dStkAbs,   mStkAbs   },
-   {s_sqrt,  lStkSqrt,  dStkSqrt,  mStkSqrt  },
-#else
-   {s_sin,   dStkSin,   dStkSin,   dStkSin   },
-   {s_cosxx, dStkCosXX, dStkCosXX, dStkCosXX },
-   {s_sinh,  dStkSinh,  dStkSinh,  dStkSinh  },
-   {s_cosh,  dStkCosh,  dStkCosh,  dStkCosh  },
-   {s_exp,   dStkExp,   dStkExp,   dStkExp   },
-   {s_log,   dStkLog,   dStkLog,   dStkLog   },
-   {s_sqr,   dStkSqr,   dStkSqr,   dStkSqr   },
-   {s_recip, dStkRecip, dStkRecip, dStkRecip }, /* from recip on new in v16 */
-   {s_ident, StkIdent,  StkIdent,  StkIdent  },
-   {s_cos,   dStkCos,   dStkCos,   dStkCos   },
-   {s_tan,   dStkTan,   dStkTan,   dStkTan   },
-   {s_tanh,  dStkTanh,  dStkTanh,  dStkTanh  },
-   {s_cotan, dStkCoTan, dStkCoTan, dStkCoTan },
-   {s_cotanh,dStkCoTanh,dStkCoTanh,dStkCoTanh},
-   {s_flip,  dStkFlip,  dStkFlip,  dStkFlip  },
-   {s_conj,  dStkConj,  dStkConj,  dStkConj  },
-   {s_zero,  dStkZero,  dStkZero,  dStkZero  },
-   {s_asin,  dStkASin,  dStkASin,  dStkASin  },
-   {s_asinh, dStkASinh, dStkASinh, dStkASinh },
-   {s_acos,  dStkACos,  dStkACos,  dStkACos  },
-   {s_acosh, dStkACosh, dStkACosh, dStkACosh },
-   {s_atan,  dStkATan,  dStkATan,  dStkATan  },
-   {s_atanh, dStkATanh, dStkATanh, dStkATanh },
-   {s_cabs,  dStkCAbs,  dStkCAbs,  dStkCAbs  },
-   {s_abs,   dStkAbs,   dStkAbs,   dStkAbs   },
-   {s_sqrt,  dStkSqrt,  dStkSqrt,  dStkSqrt  },
-#endif
-};
-int numtrigfn = sizeof(trigfn)/sizeof(struct trig_funct_lst);
+/* struct trig_funct_lst trigfn[]  was moved to prompts1.c */
 
 void showtrig(char *buf) /* return display form of active trig functions */
 {
@@ -813,8 +794,6 @@ int tab_display_2(char *msg)
    sprintf(msg,"Sizeof fractalspecific array %d",
       num_fractal_types*(int)sizeof(struct fractalspecificstuff));
    putstring(s_row++,2,C_GENERAL_HI,msg);
-   sprintf(msg,"checkcurdir %d",checkcurdir);
-   putstring(s_row++,2,C_GENERAL_HI,msg);
    sprintf(msg,"calc_status %d pixel [%d,%d]",calc_status,col,row);
    putstring(s_row++,2,C_GENERAL_HI,msg);
    sprintf(msg,"total_formula_mem %ld Max_Ops (posp) %u Max_Args (vsp) %u Used_extra %u",
@@ -825,7 +804,11 @@ int tab_display_2(char *msg)
    putstring(s_row++,2,C_GENERAL_HI,msg);
    sprintf(msg,"xdots %d ydots %d sxdots %d sydots %d",xdots,ydots,sxdots,sydots);
    putstring(s_row++,2,C_GENERAL_HI,msg);
-   sprintf(msg,"maxit %ld realcoloriter %ld orbitptr %d",maxit,realcoloriter,orbit_ptr);
+   sprintf(msg,"xxstart %d xxstop %d yystart %d yystop %d ",
+      xxstart,xxstop,yystart,yystop);
+   putstring(s_row++,2,C_GENERAL_HI,msg);
+   sprintf(msg,"ixstart %d ixstop %d iystart %d iystop %d ",
+      ixstart,ixstop,iystart,iystop);
    putstring(s_row++,2,C_GENERAL_HI,msg);
 
    putstringcenter(24,0,80,C_GENERAL_LO,spressanykey1);
@@ -1472,7 +1455,7 @@ int file_gets(char *buf,int maxlen,FILE *infile)
    return len;
 }
 
-int first_err = 1;
+int matherr_ct = 0;
 
 #ifndef XFRACT
 #ifdef WINFRACT
@@ -1482,24 +1465,24 @@ int win_matherr( struct exception *except )
 int _cdecl matherr( struct exception *except )
 #endif
 {
-    static FCODE msg[]={"Math error, but we'll try to keep going"};
-    if(first_err)
+    if(debugflag != 0)
     {
-       if(debugflag == 4000 || debugflag == 3200)stopmsg(0,msg);
-       first_err = 0;
-    }
-    if(debugflag)
-    {
-       static int ct = 0;
        static FILE *fp=NULL;
+       static FCODE msg[]={"Math error, but we'll try to keep going"};
+       if(matherr_ct++ == 0)
+          if(debugflag == 4000 || debugflag == 3200)
+             stopmsg(0,msg);
        if(fp==NULL)
           fp = fopen("matherr","w");
-       if(ct++ < 100)
+       if(matherr_ct < 100)
        {
-          fprintf(fp,"err:  %d\nname: %s\narg:  %e\n",
-                  except->type, except->name, except->arg1);
+          fprintf(fp,"err #%d:  %d\nname: %s\narg:  %e\n",
+                  matherr_ct, except->type, except->name, except->arg1);
           fflush(fp);
        }
+       else
+          matherr_ct = 100;
+
     }
     if( except->type == DOMAIN )
     {

@@ -49,7 +49,9 @@ int     stoppass=0;             /* stop at this guessing pass early */
 int     pseudox=0;              /* xdots to use for video independence */
 int     pseudoy=0;              /* ydots to use for video independence */
 int     bfdigits=0;             /* digits to use (force) for bf_math */
-int     showdot;                /* color to show crawling graphics cursor */
+int     showdot=-1;             /* color to show crawling graphics cursor */
+int     sizedot;                /* size of dot crawling cursor */
+char    autoshowdot=0;          /* dark, medium, bright */
 char    start_showorbit=0;      /* show orbits on at start of fractal */
 char    temp1[256];             /* temporary strings        */
 char    readname[FILE_MAX_PATH];/* name of fractal input file */
@@ -130,7 +132,7 @@ long    LogFlag;                /* Logarithmic palette flag: 0 = no */
 BYTE exitmode = 3;      /* video mode on exit */
 
 char    ai_8514;        /* Flag for using 8514a afi JCO 4/11/92 */
-int     Log_Fly_Calc;   /* calculate logmap on-the-fly */
+int     Log_Fly_Calc = 0;   /* calculate logmap on-the-fly */
 
 int        bios_palette;        /* set to 1 to force BIOS palette updates */
 int        escape_exit;         /* set to 1 to avoid the "are you sure?" screen */
@@ -369,7 +371,7 @@ char s_xaxis[] =            "xaxis";
 char s_xyadjust[] =         "xyadjust";
 char s_xyaxis[] =           "xyaxis";
 char s_xyshift[] =          "xyshift";
-char s_yaxis [] =                "yaxis";
+char s_yaxis [] =           "yaxis";
 char s_sin [] =             "sin";
 char s_sinh [] =            "sinh";
 char s_cos [] =             "cos";
@@ -384,6 +386,10 @@ char s_fn2 [] =             "fn2";
 char s_fn3 [] =             "fn3";
 char s_fn4 [] =             "fn4";
 char s_flip [] =            "flip";
+char s_floor [] =           "floor";
+char s_ceil [] =            "ceil";
+char s_trunc [] =           "trunc";
+char s_round [] =           "round";
 char s_tan [] =             "tan";
 char s_tanh [] =            "tanh";
 char s_cotan [] =           "cotan";
@@ -394,7 +400,7 @@ char s_recip [] =           "recip";
 char s_ident [] =           "ident";
 char s_zero [] =            "zero";
 char s_asin [] =            "asin";
-char s_asinh [] =            "asinh";
+char s_asinh [] =           "asinh";
 char s_acos [] =            "acos";
 char s_acosh [] =           "acosh";
 char s_atanh [] =           "atanh";
@@ -960,9 +966,12 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
          }
       if (totparms == 0) numval = NONNUMERIC;
       i = -1;
-      charval[totparms] = *argptr;                      /* first letter of value  */
-      if (charval[totparms] == 'n') yesnoval[totparms] = 0;
-      if (charval[totparms] == 'y') yesnoval[totparms] = 1;
+      if(totparms < 16)
+      {
+         charval[totparms] = *argptr;                      /* first letter of value  */
+         if (charval[totparms] == 'n') yesnoval[totparms] = 0;
+         if (charval[totparms] == 'y') yesnoval[totparms] = 1;
+      }
       j=0;
       if (sscanf(argptr,"%c%c",(char *)&j,&tmpc) > 0    /* NULL entry */
       && ((char)j == '/' || (char)j == '=') && tmpc == '/') {
@@ -1135,7 +1144,7 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
 #endif
          }
       if (strcmp(variable,s_makepar) == 0) {
-         char *slash, *dot, *next=NULL;
+         char *slash, *next=NULL;
          if(totparms < 1 || totparms > 2)
             goto badarg;
          if((slash = strchr(value,'/')) != NULL)
@@ -1145,7 +1154,7 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
          }
 
          strcpy(CommandFile,value);
-         if((dot = strchr(CommandFile,'.')) == NULL)
+         if(strchr(CommandFile,'.') == NULL)
             strcat(CommandFile,".par");
          if(next == NULL)
             extract_filename(CommandName,readname);
@@ -2139,9 +2148,28 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       }
 
    if (strcmp(variable,s_showdot) == 0) {
-      showdot=numval;
-      if(showdot<0)
-         showdot=0;
+      showdot = 15;
+      if(totparms > 0)
+      {
+         autoshowdot = (char)0;
+         if(isalpha(charval[0]))
+         {
+            if(strchr("abdm",(int)charval[0]) != NULL)
+               autoshowdot = charval[0];
+            else
+               goto badarg;
+         }
+         else   
+         {
+            showdot=numval;
+            if(showdot<0)
+               showdot=-1;
+         }
+         if(totparms > 1 && intparms > 0)
+            sizedot = intval[1];
+         if(sizedot < 0)
+            sizedot = 0;   
+      }      
       return 0;
       }
 

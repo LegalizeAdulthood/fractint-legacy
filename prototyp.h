@@ -86,7 +86,7 @@ extern  int    cdecl far_strlen( char far *);
 extern  int    cdecl far_strnicmp(char far *, char far *,int);
 extern  void   cdecl far_strcpy( char far *, char far *);
 extern  int    cdecl far_strcmp( char far *, char far *);
-extern  void   cdecl far_stricmp(char far *, char far *);
+extern  int    cdecl far_stricmp(char far *, char far *);
 extern  void   cdecl far_strcat( char far *, char far *);
 extern  void   cdecl far_memset( VOIDFARPTR , int      , int);
 extern  void   cdecl far_memcpy( VOIDFARPTR , VOIDFARPTR , int);
@@ -195,6 +195,8 @@ extern void   cdecl home(void);
 extern BYTE far *cdecl  findfont(int);
 extern int _fastcall getcolor(int, int);
 extern void _fastcall putcolor_a(int, int, int);
+extern void gettruecolor(int, int, int*, int*, int*);
+extern void puttruecolor(int, int, int, int, int);
 extern int  out_line(BYTE *, int);
 extern void   (*swapsetup)(void);
 
@@ -281,6 +283,7 @@ extern void dopause(int);
 /*  decoder -- C file prototypes */
 
 extern short decoder(short );
+extern void set_byte_buff(BYTE *ptr);
 
 /*  diskvid -- C file prototypes */
 
@@ -372,8 +375,8 @@ extern void _fastcall noplot(int ,int ,int );
 extern void fractal_floattobf(void);
 extern void adjust_cornerbf(void);
 extern char *typehasparm(int,int);
-extern void fill_dx_array();
-extern void fill_lx_array();
+extern void fill_dx_array(void);
+extern void fill_lx_array(void);
 extern int snd_open(void);
 extern void w_snd(int);
 extern void snd_time_write(void);
@@ -585,6 +588,7 @@ extern int mandphoenix_per_pixel(void);
 /*  fractint -- C file prototypes */
 
 extern void main(int argc,char **argv );
+extern int elapsed_time(int);
 
 /*  framain2 -- C file prototypes */
 
@@ -962,6 +966,18 @@ extern void lStkCAbs(void );
 extern void dStkSqrt(void );
 extern void mStkSqrt(void );
 extern void lStkSqrt(void );
+extern void dStkFloor(void );
+extern void mStkFloor(void );
+extern void lStkFloor(void );
+extern void dStkCeil(void );
+extern void mStkCeil(void );
+extern void lStkCeil(void );
+extern void dStkTrunc(void );
+extern void mStkTrunc(void );
+extern void lStkTrunc(void );
+extern void dStkRound(void );
+extern void mStkRound(void );
+extern void lStkRound(void );
 extern void (*mtrig0)(void);
 extern void (*mtrig1)(void);
 extern void (*mtrig2)(void);

@@ -1,0 +1,44 @@
+The following describes compiling Fractint from the command line
+using make files, or from the IDE using project files. These procedures
+work with Borland 3.1.
+
+The command line procedures assume that all the files are in a 
+subdirectory of your BORLANDC directory, at the same level as INCLUDE 
+and LIB. Delete the supplied .obj files first; you will need TASM to 
+complete the compile.
+
+Command Line Compile
+====================
+
+Just type BCAUTO.
+
+The following files are supplied in connection with the command line compile:
+
+BCAUTO.BAT
+BCLINKF.BAT
+BCMAKALL.BAT
+BCFRACT.CFG
+BCFRACT2.CFG
+BCFRACT.LNK
+BCHC.LNK
+BCFRACT.MAK
+BCFRACT.BAT
+
+
+IDE Compile
+===========
+
+   1. From the IDE, open hc.prj and compile it.
+   2. Run hc.exe from the IDE (the command line argument "/c" is preselected).
+   3. Open fractint.prj and compile it.
+   4. Exit the IDE, and run hc.exe with the switch /a (this step is
+        optional).
+
+Note - The .prj files assume that include and library files are in the default
+c:\borlandc directories created upon installation of BC++ 3.1. If you have a
+different configuration, you may need to edit the .prj files accordingly.
+
+Tim Wegner
+George Martin
+
+7/19/96

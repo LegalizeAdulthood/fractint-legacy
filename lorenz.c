@@ -77,8 +77,6 @@ static int  ifs2d(void);
 static int  ifs3d(void);
 static int  ifs3dlong(void);
 static int  ifs3dfloat(void);
-static double determinant(double mat[3][3]);
-static int  solve3x3(double mat[3][3],double vec[3],double ans[3]);
 static int  l_setup_convert_to_screen(struct l_affine *);
 static void setupmatrix(MATRIX);
 static int  long3dviewtransf(struct long3dvtinf *inf);
@@ -134,47 +132,8 @@ int projection = 2; /* projection plane - default is to plot x-y */
 /*                 zoom box conversion functions                  */
 /******************************************************************/
 
-static double determinant(double mat[3][3]) /* determinant of 3x3 matrix */
-{
-   /* calculate determinant of 3x3 matrix */
-   return(mat[0][0]*mat[1][1]*mat[2][2] +
-          mat[0][2]*mat[1][0]*mat[2][1] +
-          mat[0][1]*mat[1][2]*mat[2][0] -
-          mat[2][0]*mat[1][1]*mat[0][2] -
-          mat[1][0]*mat[0][1]*mat[2][2] -
-          mat[0][0]*mat[1][2]*mat[2][1]);
-
-}
-
-static int solve3x3(double mat[3][3],double vec[3],double ans[3])
-/* solve 3x3 inhomogeneous linear equations */
-{
-   /* solve 3x3 linear equation [mat][ans] = [vec] */
-   double denom;
-   double tmp[3][3];
-   int i;
-   denom = determinant(mat);
-   if(fabs(denom) < DBL_EPSILON) /* test if can solve */
-   {
-     /* stopmsg(0,"determin 0"); */
-     return(-1);
-   }
-   memcpy(tmp,mat,sizeof(double)*9);
-   for(i=0;i<3;i++)
-   {
-      tmp[0][i] = vec[0];
-      tmp[1][i] = vec[1];
-      tmp[2][i] = vec[2];
-      ans[i]  =  determinant(tmp)/denom;
-      tmp[0][i] = mat[0][i];
-      tmp[1][i] = mat[1][i];
-      tmp[2][i] = mat[2][i];
-    }
-    return(0);
-}
-
-
-/* Conversion of complex plane to screen coordinates for rotating zoom box.
+/* 
+   Conversion of complex plane to screen coordinates for rotating zoom box.
    Assume there is an affine transformation mapping complex zoom parallelogram
    to rectangular screen. We know this map must map parallelogram corners to
    screen corners, so we have following equations:
@@ -192,48 +151,86 @@ static int solve3x3(double mat[3][3],double vec[3],double ans[3])
       then we just apply the transformation to each orbit value.
 */
 
+/* 
+   Thanks to Sylvie Gallet for the following. The original code for
+   setup_convert_to_screen() solved for coefficients of the 
+   complex-plane-to-screen transformation using a very straight-forward
+   application of determinants to solve a set of simulataneous
+   equations. The procedure was simple and general, but inefficient. 
+   The inefficiecy wasn't hurting anything because the routine was called 
+   only once per image, bit it seemed positively sinful to use it
+   because the code that follows is SO much more compact, at the
+   expense of being less general. Here are sylvie's notes. I have further
+   optimized the code a slight bit. 
+                                               Tim Wegner
+                                               July, 1996
+  Sylvie's notes, slightly editedm follow:
+  
+  You don't need 3x3 determinates to solve these sets of equations because
+  the unknowns e and f have the same coefficient: 1.
+
+  First set of 3 equations:
+     a*xxmin+b*yymax+e == 0
+     a*xx3rd+b*yy3rd+e == 0
+     a*xxmax+b*yymin+e == xdots-1
+  To make things easy to read, I just replace xxmin, xxmax, xx3rd by x1,
+  x2, x3 (ditto for yy...) and xdots-1 by xd.
+
+     a*x1 + b*y2 + e == 0    (1)
+     a*x3 + b*y3 + e == 0    (2)
+     a*x2 + b*y1 + e == xd   (3)
+
+  I subtract (1) to (2) and (3):
+     a*x1      + b*y2      + e == 0   (1)
+     a*(x3-x1) + b*(y3-y2)     == 0   (2)-(1)
+     a*(x2-x1) + b*(y1-y2)     == xd  (3)-(1)
+
+  I just have to calculate a 2x2 determinate:
+     det == (x3-x1)*(y1-y2) - (y3-y2)*(x2-x1)
+
+  And the solution is:
+     a = -xd*(y3-y2)/det
+     b =  xd*(x3-x1)/det
+     e = - a*x1 - b*y2
+
+The same technique can be applied to the second set of equations:
+
+   c*xxmin+d*yymax+f == 0
+   c*xx3rd+d*yy3rd+f == ydots-1
+   c*xxmax+d*yymin+f == ydots-1
+
+   c*x1 + d*y2 + f == 0    (1)
+   c*x3 + d*y3 + f == yd   (2)
+   c*x2 + d*y1 + f == yd   (3)
+
+   c*x1      + d*y2      + f == 0    (1)
+   c*(x3-x2) + d*(y3-y1)     == 0    (2)-(3)
+   c*(x2-x1) + d*(y1-y2)     == yd   (3)-(1)
+
+   det == (x3-x2)*(y1-y2) - (y3-y1)*(x2-x1)
+
+   c = -yd*(y3-y1)/det
+   d =  yd*(x3-x2))det
+   f = - c*x1 - d*y2
+
+        -  Sylvie
+*/
+
 int setup_convert_to_screen(struct affine *scrn_cnvt)
 {
-   /* we do this twice - rather than having six equations with six unknowns,
-      everything partitions to two sets of three equations with three
-      unknowns. Nice, because who wants to calculate a 6x6 determinant??
-    */
-   double mat[3][3];
-   double vec[3];
-   /*
-      first these equations - solve for a,b,e
-      a*xxmin+b*yymax+e == 0        (upper left)
-      a*xx3rd+b*yy3rd+e == 0        (lower left)
-      a*xxmax+b*yymin+e == xdots-1  (lower right)
-   */
-   mat[0][0] = xxmin;
-   mat[0][1] = yymax;
-   mat[0][2] = 1.0;
-   mat[1][0] = xx3rd;
-   mat[1][1] = yy3rd;
-   mat[1][2] = 1.0;
-   mat[2][0] = xxmax;
-   mat[2][1] = yymin;
-   mat[2][2] = 1.0;
-   vec[0]    = 0.0;
-   vec[1]    = 0.0;
-   vec[2]    = (double)(xdots-1);
+   double det, xd, yd;
 
-   if(solve3x3(mat,vec, &(scrn_cnvt->a)))
+   if((det = (xx3rd-xxmin)*(yymin-yymax) + (yymax-yy3rd)*(xxmax-xxmin))==0)
       return(-1);
-   /*
-      now solve these:
-      c*xxmin+d*yymax+f == 0
-      c*xx3rd+d*yy3rd+f == ydots-1
-      c*xxmax+d*yymin+f == ydots-1
-      (mat[][] has not changed - only vec[])
-   */
-   vec[0]    = 0.0;
-   vec[1]    = (double)(ydots-1);
-   vec[2]    = (double)(ydots-1);
+   xd = dxsize/det;   
+   yd = dysize/det;   
+   scrn_cnvt->a =  xd*(yymax-yy3rd);
+   scrn_cnvt->b =  xd*(xx3rd-xxmin);
+   scrn_cnvt->e = -scrn_cnvt->a*xxmin - scrn_cnvt->b*yymax;
 
-   if(solve3x3(mat,vec, &scrn_cnvt->c))
-      return(-1);
+   scrn_cnvt->c =  yd*(yymin-yy3rd);
+   scrn_cnvt->d =  yd*(xx3rd-xxmax);
+   scrn_cnvt->f = -scrn_cnvt->c*xxmin - scrn_cnvt->d*yymax;
    return(0);
 }
 
@@ -250,7 +247,6 @@ static int l_setup_convert_to_screen(struct l_affine *l_cvt)
    /* MCP 7-7-91 */
    return(0);
 }
-
 
 /******************************************************************/
 /*   setup functions - put in fractalspecific[fractype].per_image */
@@ -2596,3 +2592,4 @@ static void _fastcall plothist(int x, int y, int color)
     if (color<colors)
         putcolor(x,y,color);
 }
+

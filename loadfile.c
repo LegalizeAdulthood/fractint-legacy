@@ -895,6 +895,7 @@ static char paramsOK( struct fractal_info * );
 static char typeOK( struct fractal_info *, struct ext_blk_3 * );
 static char functionOK( struct fractal_info *, int );
 static void unflip( int );
+static void check_history( char *, char * );
 
 char browsename[13]; /* name for browse file */
 int coords_flipped;
@@ -909,16 +910,20 @@ static void _fastcall near exp_seek(int page)   /* expanded mem seek */
    }
 #endif
 
+/* here because must be visible inside several routines */
+static struct affine *cvt; 
+
 /* fgetwindow reads all .GIF files and draws window outlines on the screen */
 int fgetwindow(void)
   {
+    struct affine stack_cvt;
     struct fractal_info read_info;
     struct ext_blk_2 blk_2_info;
     struct ext_blk_3 blk_3_info;
     struct ext_blk_4 blk_4_info;
     struct ext_blk_5 blk_5_info;
     time_t thistime,lastime;
-    char mesg[40],newname[60];
+    char mesg[40],newname[60],oldname[60];
     int c,i,index,done,wincount,toggle,color_of_box;
     struct window far *winlist; /* that _should_ do! */
     char drive[FILE_MAX_DRIVE];
@@ -985,6 +990,9 @@ int fgetwindow(void)
 
 common_okend:
 #endif
+     /* set up complex-plane-to-screen transformation */
+     cvt = &stack_cvt; /* use stack */
+     setup_convert_to_screen(cvt);
 
      /* steal an array */
      winlist = (struct window far *)MK_FP(extraseg,BROWSE_DATA);
@@ -992,7 +1000,9 @@ common_okend:
    if (sxdots + sydots > 4096)
       vid_too_big = 2;
       /* 4096 = 10240/2.5 based on size of boxx+boxy+boxvalues */
-
+     /* don't think this logic is needed */
+     if(debugflag == 626)
+     {
      coords_flipped = 0;
      if (sxmin > sxmax && symin > symax) /* flip x and y */
         coords_flipped = 1;
@@ -1001,7 +1011,7 @@ common_okend:
      else if (symin > symax) /* flip y */
         coords_flipped = 3;
      unflip(coords_flipped); /* put coords in correct order */
-
+     }
      find_special_colors();
      color_of_box = color_medium;
      rescan:  /* entry for changed browse parms */
@@ -1220,6 +1230,9 @@ common_okend:
           if ( !unlink(tmpmask)) {
           /* do a rescan */
           done = 3;
+            far_strcpy(oldname,winlist[index].name);
+            tmpmask[0] = '\0';
+            check_history(oldname,tmpmask);
             break;
             }
           else if( errno == EACCES ) {
@@ -1262,6 +1275,8 @@ common_okend:
           else {
            splitpath(newname,NULL,NULL,fname,ext);
            makepath(tmpmask,NULL,NULL,fname,ext);
+           far_strcpy(oldname,winlist[index].name);
+           check_history(oldname,tmpmask);
            far_strcpy(winlist[index].name,tmpmask);
            }
          showtempmsg(winlist[index].name);
@@ -1293,7 +1308,7 @@ common_okend:
     /* now clean up memory (and the screen if necessary) */
     cleartempmsg();
     for (index=wincount-1;index>=0;index--){ /* don't need index, reuse it */
-       if (done > 1 && done < 4 && (winlist[index].boxcount > 0)) {
+       if (done >= 1 && done < 4 && (winlist[index].boxcount > 0)) {
           boxcount = winlist[index].boxcount;
 #ifndef XFRACT
            if (emmhandle != 0){  /* Expanded memory browse? */
@@ -1347,8 +1362,9 @@ common_okend:
  emmhandle = xmmhandle = 0;
  charbuf   = NULL;
 #endif
- unflip(coords_flipped);
-return(c);
+ if(debugflag == 626)
+    unflip(coords_flipped);
+ return(c);
 }
 
 static void drawindow(int colour,struct window far *info)
@@ -1387,6 +1403,7 @@ static void drawindow(int colour,struct window far *info)
     }
     else { /* draw crosshairs */
     cross_size = ydots / 45;
+    if (cross_size < 2) cross_size = 2;
     itr.x = itl.x - cross_size;
     itr.y = itl.y;
     ibl.y = itl.y - cross_size;
@@ -1397,40 +1414,14 @@ static void drawindow(int colour,struct window far *info)
    }
 }
 
+/* maps points onto view screen*/
 static void transform(struct dblcoords *point)
-{ /* maps points onto view screen*/
-  double theta1,theta2,theta3,scalex,scaley,hypot;
-
-/* sqr() defined in fractint.h */
-
-  scaley=ydots/(sqrt(sqr(xx3rd-xxmin)+sqr(yymax-yy3rd)));
-  scalex=xdots/(sqrt(sqr(xxmax-xx3rd)+sqr(yymin-yy3rd)));
-
-  theta1=atan2(point->y-yy3rd,point->x-xx3rd);
-  theta2=atan2(yymin-yy3rd,xxmax-xx3rd);
-  theta3=theta2+theta1; /* calculate angle of point from corner of screen */
-
-  hypot=sqrt(sqr(point->x-xx3rd)+sqr(point->y-yy3rd));
-
-  point->x=hypot*cos(theta3)*scalex;
-  point->y=ydots-(hypot*sin(theta3)*scaley);
-
-  switch(coords_flipped)
-  {
-  case 0:            /* no flip needed, exit */
-      break;
-  case 1:            /* reverse X and Y axis */
-      point->x = xdots - point->x;
-      point->y = ydots - point->y;
-      break;
-  case 2:            /* reverse X-axis */
-      point->x = xdots - point->x;
-      break;
-  case 3:            /* reverse Y-axis */
-      point->y = ydots - point->y;
-      break;
-  }
-   }
+{
+  double tmp_pt_x;
+  tmp_pt_x = cvt->a * point->x + cvt->b * point->y + cvt->e;
+  point->y = cvt->c * point->x + cvt->d * point->y + cvt->f;
+  point->x = tmp_pt_x;
+}
 
 static char is_visible_window( struct fractal_info *info )
 {
@@ -1575,6 +1566,23 @@ static void unflip ( int axis )
       xx3rd = sx3rd = txmin;
       yy3rd = sy3rd = tymax;
       break;
+   }
+}
+
+static void check_history ( char *oldname, char *newname )
+{
+int i;
+
+/* file_name_stack[] is maintained in framain2.c.  It is the history */
+/*  file for the browser and holds a maximum of 16 images.  The history */
+/*  file needs to be adjusted if the rename or delete functions of the */
+/*  browser are used. */
+/* name_stack_ptr is also maintained in framain2.c.  It is the index into */
+/*  file_name_stack[]. */
+
+   for (i=0;i<name_stack_ptr;i++) {
+      if (stricmp(file_name_stack[i],oldname) == 0) /* we have a match */
+         strcpy(file_name_stack[i],newname);    /* insert the new name */
    }
 }
 

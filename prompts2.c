@@ -592,12 +592,11 @@ int get_cmd_string()
    char msg[sizeof(o_msg)];
    int oldhelpmode;
    int i;
-   char cmdbuf[61];
+   static char cmdbuf[61];
 
    far_strcpy(msg,o_msg);
    oldhelpmode = helpmode;
    helpmode = HELPCOMMANDS;
-   cmdbuf[0] = 0;
    i = field_prompt(0,msg,NULL,cmdbuf,60,NULL);
    helpmode = oldhelpmode;
    if (i >= 0 && cmdbuf[0] != 0)
