@@ -1021,11 +1021,11 @@ extern int get_rds_params(void);
 extern int starfield(void);
 extern int get_a_number(double *, double *);
 extern int lccompare(VOIDFARPTR, VOIDFARPTR);
-extern int isagif(char *, int, int);
 extern int dir_open(char *, char *, int, int);
 extern int dir_remove(char *,char *);
 extern FILE *dir_fopen(char *, char *, char *);
 extern void extract_filename(char *, char *);
+extern char *has_ext(char *source);
 
 /*  realdos -- C file prototypes */
 

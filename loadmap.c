@@ -32,8 +32,9 @@ FILE * f;
 unsigned	r, g, b, index;
 char	line[160];
 char	temp[81];
-	strcpy (temp,fn);
-	if (strchr(temp,'.') == NULL) /* Did name have an extension? */
+	strcpy(temp,MAP_name); 
+        merge_pathnames(temp,fn,0);
+	if (has_ext(temp) == NULL) /* Did name have an extension? */
 		strcat(temp,".map");  /* No? Then add .map */
 	findpath( temp, line);	      /* search the dos path */
 	f = fopen( line, "r" );

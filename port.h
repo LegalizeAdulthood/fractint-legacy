@@ -232,7 +232,4 @@
 #define cosl            cos
 #endif
 
-/* 730 digits for DOS, only limits are memory and LDBL_MAX_10_EXP */
-#define MAX_BF_DIGITS   730
-
 #endif  /* PORT_H */

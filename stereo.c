@@ -11,7 +11,9 @@
       19 July 94 - Added calibration bars, get_min_max()             TW
       24 Sep  94 - Added image save/restore, color cycle, and save   TW
       28 Sep  94 - Added image map                                   TW
-
+      20 Mar  95 - Fixed endless loop bug with bad depth values      TW
+      23 Mar  95 - Allow arbitrary dimension image maps              TW
+      
       (TW is Tim Wegner, PDL is Paul de Leeuw)
 */
 
@@ -157,13 +159,14 @@ int outline_stereo(BYTE * pixels, int linelen)
    int i, j, x, s; 
    int far *same;
    int far *colour;
-   /* avoid first part of extraseg used in DECODER.C */
-   same   = (int far *)MK_FP(extraseg,(MAX_CODES+1)*sizeof(short));
+   if((Y) >= ydots)
+      return(1);
+   same   = (int far *)MK_FP(extraseg,0);
    colour = &same[ydots];
 
-   for (x = 0; x < linelen; ++x)
+   for (x = 0; x < xdots; ++x)
       same[x] = x;
-   for (x = 0; x < linelen; ++x)
+   for (x = 0; x < xdots; ++x)
    {
       if(REVERSE)
          SEP = GROUND - (int) (DEPTH * (getdepth(x, Y) - MINC) / MAXCC);
@@ -179,9 +182,12 @@ int outline_stereo(BYTE * pixels, int linelen)
       }
       i = x - (SEP + (SEP & Y & 1)) / 2;
       j = i + SEP;
-      if (0 <= i && j < linelen)
+      if (0 <= i && j < xdots)
       {
-         for (s = same[i]; s != i && s != j; s = same[i])
+         /* there are cases where next never terminates so we timeout */
+         int ct = 0; 
+         for (s = same[i]; s != i && s != j && ct++ < xdots; s = same[i])
+         {
             if (s > j)
             {
                same[i] = j;
@@ -190,14 +196,15 @@ int outline_stereo(BYTE * pixels, int linelen)
             }
             else
                i = s;
+         }      
          same[i] = j;
       }
    }
-   for (x = linelen - 1; x >= 0; x--)
+   for (x = xdots - 1; x >= 0; x--)
    {
       if (same[x] == x)
          /* colour[x] = rand()%colors; */
-         colour[x] = (int)pixels[x];
+         colour[x] = (int)pixels[x%linelen];
       else
          colour[x] = colour[same[x]];
       putcolor(x, Y, colour[x]);
@@ -226,7 +233,7 @@ int do_AutoStereo(void)
    /* following two lines re-use existing arrays in Fractint */
    int far *same;
    int far *colour;
-   same   = (int far *)MK_FP(extraseg,(MAX_CODES+1)*sizeof(short));
+   same   = (int far *)MK_FP(extraseg,0);
    colour = &same[ydots];
    
    pv = &v;   /* set static vars to stack structure */
@@ -279,11 +286,12 @@ int do_AutoStereo(void)
    if(image_map)
    {
       outln = outline_stereo;
-      if(gifview())
-      {
-         ret = 1;
-         goto exit_stereo;
-      }   
+      while((Y) < ydots)
+         if(gifview())
+         {
+            ret = 1;
+            goto exit_stereo;
+         }   
    }
    else
    {

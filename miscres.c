@@ -45,15 +45,16 @@ void findpath(char far *filename, char *fullpathname) /* return full pathnames *
    char ext[FILE_MAX_EXT];
    char temp_path[FILE_MAX_PATH];
 
-   /* first try current directory */
    splitpath(filename ,NULL,NULL,fname,ext);
    makepath(temp_path,""   ,"" ,fname,ext);
-   if(access(temp_path,0)==0) {   /* file exists */
+
+   if(checkcurdir != 0 && access(temp_path,0)==0) {   /* file exists */
       strcpy(fullpathname,temp_path);
       return;
    }
 
    far_strcpy(temp_path,filename);   /* avoid side effect changes to filename */
+
    if (temp_path[0] == SLASHC || (temp_path[0] && temp_path[1] == ':')) {
       if(access(temp_path,0)==0) {   /* file exists */
          strcpy(fullpathname,temp_path);
@@ -475,16 +476,16 @@ void cvtcornersbf(bf_t Xctr, bf_t Yctr, LDBL Magnification, double Xmagfactor, d
 void updatesavename(char *filename) /* go to the next file name */
 {
    char *save, *hold;
-   char name[80],suffix[80];
-   char *dotptr;
+   char name[80];
+   char drive[FILE_MAX_DRIVE];
+   char dir[FILE_MAX_DIR];
+   char fname[FILE_MAX_FNAME];
+   char ext[FILE_MAX_EXT];
 
-   strcpy(name,filename);
+   splitpath(filename ,drive,dir,fname,ext);
+   makepath(name,""   ,"" ,fname,ext);
+
    suffix[0] = 0;
-   if ((dotptr = strrchr(name,'.')) != NULL
-     && dotptr > strrchr(name,SLASHC)) {
-      strcpy(suffix,dotptr);
-      *dotptr = 0;
-      }
 
    hold = name + strlen(name) - 1; /* start at the end */
    while(hold >= name && (*hold == ' ' || isdigit(*hold))) /* skip backwards */
@@ -504,8 +505,8 @@ void updatesavename(char *filename) /* go to the next file name */
    else
       save = hold;
    sprintf(save,"%d",atoi(hold)+1); /* increment the number */
-   strcpy(filename,name);
-   strcat(filename,suffix);
+   splitpath(name ,NULL,NULL,fname,ext);
+   makepath(filename,drive,dir,fname,ext);
 }
 
 int check_writefile(char *name,char *ext)
@@ -513,15 +514,23 @@ int check_writefile(char *name,char *ext)
  /* after v16 release, change encoder.c to also use this routine */
    char openfile[80];
    char opentype[20];
-   int i;
+ /* int i; */
+   char *period;
 nextname:
    strcpy(openfile,name);
    strcpy(opentype,ext);
+#if 0   
    for (i = 0; i < (int)strlen(openfile); i++)
       if (openfile[i] == '.') {
 	 strcpy(opentype,&openfile[i]);
 	 openfile[i] = 0;
 	 }
+#endif
+   if((period = has_ext(openfile)) != NULL)
+   {
+      strcpy(opentype,period);
+      *period = 0;
+   }   	 
    strcat(openfile,opentype);
    if (access(openfile,0) != 0) /* file doesn't exist */
    {
@@ -807,6 +816,10 @@ int tab_display_2(char *msg)
    sprintf(msg,"Sizeof fractalspecific array %d",
       num_fractal_types*(int)sizeof(struct fractalspecificstuff));
    putstring(row++,2,C_GENERAL_HI,msg);
+   sprintf(msg,"checkcurdir %d",checkcurdir);
+   putstring(row++,2,C_GENERAL_HI,msg);
+   sprintf(msg,"calc_status %d",calc_status);
+   putstring(row++,2,C_GENERAL_HI,msg);
 
    putstringcenter(24,0,80,C_GENERAL_LO,spressanykey1);
    key=getakeynohelp();
@@ -1006,8 +1019,11 @@ top:
 	 }
       }
    putstring(row,2,C_GENERAL_MED,scalculation_time);
-   sprintf(msg,"%3ld:%02ld:%02ld.%02ld", calctime/360000L,
-	  (calctime%360000L)/6000, (calctime%6000)/100, calctime%100);
+   if (calctime >= 0)
+      sprintf(msg,"%3ld:%02ld:%02ld.%02ld", calctime/360000L,
+             (calctime%360000L)/6000, (calctime%6000)/100, calctime%100);
+   else
+      sprintf(msg," A Really Long Time!!! (> 24.855 days)");
    putstring(-1,-1,C_GENERAL_HI,msg);
    /* XXX */
 
@@ -1058,7 +1074,7 @@ top:
 #endif
       putstring(-1,11,C_GENERAL_HI,msg);
       putstring(++row,2,C_GENERAL_MED,sxmag);
-      sprintf(msg,"%11.5f   ",Xmagfactor);
+      sprintf(msg,"%11.4f   ",Xmagfactor);
       putstring(-1,-1,C_GENERAL_HI,msg);
       putstring(-1,-1,C_GENERAL_MED,srot);
       sprintf(msg,"%9.3f   ",Rotation);
@@ -1095,7 +1111,7 @@ top:
 #endif
       putstring(-1,-1,C_GENERAL_HI,msg);
       putstring(++row,2,C_GENERAL_MED,sxmag);
-      sprintf(msg,"%11.5f   ",Xmagfactor);
+      sprintf(msg,"%11.4f   ",Xmagfactor);
       putstring(-1,-1,C_GENERAL_HI,msg);
       putstring(-1,-1,C_GENERAL_MED,srot);
       sprintf(msg,"%9.3f   ",Rotation);
@@ -1404,12 +1420,13 @@ static int find_one_file_item(char *filename,char *itemname,FILE **infile)
    char fname[FILE_MAX_FNAME];
    char ext[FILE_MAX_EXT];
 
-   /* first try current directory */
    splitpath(filename ,NULL,NULL,fname,ext);
    makepath(fullpathname,""   ,"" ,fname,ext);
-   if(access(fullpathname,0)!=0)   /* not in current dir */
-      strcpy(fullpathname,filename);   
 
+   /* first try current directory */
+   if(checkcurdir == 0 || access(fullpathname,0) != 0)
+      strcpy(fullpathname,filename);   
+   
    /* now binary node as of 2/95 TW */
    if ((*infile = fopen(fullpathname,"rb")) == NULL) {
        return(-1);
@@ -1554,4 +1571,3 @@ double fixtan( double x )
 #define tan fixtan
 #endif
 #endif
-

@@ -713,11 +713,13 @@ nonmax3:
 	cmp	ax,0			;  ...
 	je	notakey3			; nope.  proceed
 	mov	cx,-1
-	jmp	short end16bit
+	jmp	short end16bitgotkey	; cx set, jump to end
 notakey3:
 	jmp	start16bit		; try, try again.
 
 end16bit:				; we done.
+	xor	cx,cx			; no key so zero cx
+end16bitgotkey:				; jump here if key
 	ret
 code16bit	endp
 
@@ -858,7 +860,7 @@ code32bit	proc near
 
 nextit:	mov	ax,word ptr y		; ax=low(y)
 	mov	di,word ptr y+2 	; di=high(y)
-	square done0	;square y and quit via done0 if it overflows
+	square done1	;square y and quit via done1 if it overflows
 	mov	si,ax		; square returns results in dx,ax
 	mov	bp,dx		; save y*y in bp,si
 	mov	ax,word ptr x
@@ -872,9 +874,11 @@ nextit:	mov	ax,word ptr y		; ax=low(y)
 				;NOTE: The original code tests against lm
 				;here, but as lm=4<<29 this is the same
 				;as testing for signed overflow
-done4:	add	sp,4			; discard saved value of |x| fg 31
-done2:	add	sp,4			; discard saved value of |y| fg 31
-done0: pop	bp			; restore saved bp
+done4:	add	sp,4		; discard saved value of |x| fg 31
+done2:	add	sp,4		; discard saved value of |y| fg 31
+done1:	xor	cx,cx  		; no key exit, zero cx  
+done0:				; exit here if key hit
+	pop	bp		; restore saved bp
 	ret
 
 ;---------------------------------------------------------------------------
@@ -921,7 +925,7 @@ tryagain:
 	adc	ax,cx		;Answer-low
 	adc	dx,bp		;Answer-high
 				;NOTE: The answer is 0..3.9999 in fg29
-	js	done0		;Overflow if high bit set
+	js	done1		;Overflow if high bit set
 	or	bl,bl		; ZERO IF NONE OR BOTH X , Y NEG
 	jz	signok		; ONE IF ONLY ONE OF X OR Y IS NEG
 	not	ax		; negate result
@@ -932,7 +936,7 @@ tryagain:
 signok:
 	add	ax,word ptr linity
 	adc	dx,word ptr linity+2	; dx,ax = 2(X*Y)+B
-	jo	done0
+	jo	done1
 	mov	word ptr y,ax		; save the new value of y
 	mov	word ptr y+2,dx 	;  ...
 	mov	dx,word ptr oldcoloriter+2	; recall the old color
@@ -953,9 +957,9 @@ chkkey4:
 	pop	bx
 	pop	cx
 	cmp	ax,0			;  ...
-	je	notakey4			; nope.  proceed
+	je	notakey4		; nope.  proceed
 	mov	cx,-1
-	jmp	done0
+	jmp	done0			; cx set, jump to very end
 notakey4:
 
 chkmaxit:

@@ -113,6 +113,7 @@ void fractal_floattobf(void)
 
 void calcfracinit(void) /* initialize a *pile* of stuff for fractal calculation */
 {
+   int tries = 0;
    int i, gotprec;
    double ftemp;
    coloriter=oldcoloriter = 0L;
@@ -380,19 +381,39 @@ expand_retry:
             accurate, but it is kept because it is used to determine
             the limit of resolution */
 	 for (i = 1; i < xdots; i++ ) {
-	    dx0[i] = (double)(dx0[i-1] + delxx);
-	    dy1[i] = (double)(dy1[i-1] - delyy2);
+	    dx0[i] = (double)(dx0[i-1] + (double)delxx);
+	    dy1[i] = (double)(dy1[i-1] - (double)delyy2);
 	    }
 	 for (i = 1; i < ydots; i++ ) {
-	    dy0[i] = (double)(dy0[i-1] - delyy);
-	    dx1[i] = (double)(dx1[i-1] + delxx2);
+	    dy0[i] = (double)(dy0[i-1] - (double)delyy);
+	    dx1[i] = (double)(dx1[i-1] + (double)delxx2);
 	    }
          if(bf_math == 0) /* redundant test, leave for now */
          {
+            double Xctr, Yctr, Xmagfactor, Rotation, Skew;
+            LDBL Mag;
+            int dec;
+            cvtcentermag(&Xctr, &Yctr, &Mag, &Xmagfactor, &Rotation, &Skew);
+
+            /* 4 digits of padding sounds good */
+            /* keep this aligned with CMDFILES.C */
+            dec = getpower10(Mag) + 4; 
+
+            /* following is the old logic for detecting failure of double
+               precision. It has two advantages: it is independent of the
+               representation of numbers, and it is sensitive to resolution
+               (allows depper zooms at lower resolution. However it fails
+               for rotations of exactly 90 degrees, so we added a safety net
+               by using the magnification */
+            if(++tries < 2) /* for safety */
+            {
+            static FCODE err[] = {"precision-detection error"};
+            if(tries > 1) stopmsg(0, err);
 	    if (   ratio_bad(dx0[xdots-1]-xxmin,xxmax-xx3rd)
                 || ratio_bad(dy0[ydots-1]-yymax,yy3rd-yymax)
                 || ratio_bad(dx1[ydots-1],      xx3rd-xxmin)
-                || ratio_bad(dy1[xdots-1],      yymin-yy3rd)) 
+                || ratio_bad(dy1[xdots-1],      yymin-yy3rd)
+                || (xxmax==xx3rd && yy3rd==yymax && dec > DBL_DIG+1)) 
 	    {
                if(curfractalspecific->flags & BF_MATH)
                {
@@ -400,7 +421,8 @@ expand_retry:
  	          goto init_restart;
 	       }   
 	       goto expand_retry;
-	    }
+	    } /* end if ratio_bad etc. */
+	    } /* end if tries < 2 */
 	 } /* end if bf_math == 0 */  
 
          /* if long double available, this is more accurate */
@@ -480,13 +502,27 @@ static double _fastcall fudgetodouble(long l)
 void adjust_cornerbf(void)
 {
    /* make edges very near vert/horiz exact, to ditch rounding errs and */
-   /* to avoid problems when delta per axis makes too large a ratio	*/
+   /* to avoid problems when delta per axis makes too large a ratio     */
+   double ftemp;
+   double Xmagfactor, Rotation, Skew;
+   LDBL Magnification;
+
    bf_t bftemp, bftemp2;
    bf_t btmp1;
    int saved; saved = save_stack();
    bftemp  = alloc_stack(rbflength+2);
    bftemp2 = alloc_stack(rbflength+2);
    btmp1  =  alloc_stack(rbflength+2);
+
+   /* While we're at it, let's adjust the Xmagfactor as well */
+   /* use bftemp, bftemp2 as bfXctr, bfYctr */
+   cvtcentermagbf(bftemp, bftemp2, &Magnification, &Xmagfactor, &Rotation, &Skew);
+   ftemp = fabs(Xmagfactor);
+   if (ftemp != 1 && ftemp >= (1-aspectdrift) && ftemp <= (1+aspectdrift))
+      {
+      Xmagfactor = sign(Xmagfactor);
+      cvtcornersbf(bftemp, bftemp2, Magnification, Xmagfactor, Rotation, Skew);
+      }
 
    /* ftemp=fabs(xx3rd-xxmin); */
    abs_a_bf(sub_bf(bftemp,bfx3rd,bfxmin)); 
@@ -532,6 +568,7 @@ void adjust_cornerbf(void)
       /* yy3rd = yymax; */
       copy_bf(bfy3rd, bfymax);
 
+
    restore_stack(saved);
 }
 
@@ -540,6 +577,17 @@ void adjust_corner(void)
    /* make edges very near vert/horiz exact, to ditch rounding errs and */
    /* to avoid problems when delta per axis makes too large a ratio	*/
    double ftemp,ftemp2;
+   double Xctr, Yctr, Xmagfactor, Rotation, Skew;
+   LDBL Magnification;
+
+   /* While we're at it, let's adjust the Xmagfactor as well */
+   cvtcentermag(&Xctr, &Yctr, &Magnification, &Xmagfactor, &Rotation, &Skew);
+   ftemp = fabs(Xmagfactor);
+   if (ftemp != 1 && ftemp >= (1-aspectdrift) && ftemp <= (1+aspectdrift))
+      {
+      Xmagfactor = sign(Xmagfactor);
+      cvtcorners(Xctr, Yctr, Magnification, Xmagfactor, Rotation, Skew);
+      }
 
    if( (ftemp=fabs(xx3rd-xxmin)) < (ftemp2=fabs(xxmax-xx3rd)) ) {
       if (ftemp*10000 < ftemp2 && yy3rd != yymax)
@@ -548,7 +596,6 @@ void adjust_corner(void)
 
    if (ftemp2*10000 < ftemp && yy3rd != yymin)
       xx3rd = xxmax;
-
 
    if( (ftemp=fabs(yy3rd-yymin)) < (ftemp2=fabs(yymax-yy3rd)) ) {
       if (ftemp*10000 < ftemp2 && xx3rd != xxmax)
@@ -885,6 +932,9 @@ static void _fastcall smallest_add_bf(bf_t num)
 
 static int _fastcall ratio_bad(double actual, double desired)
 {  double ftemp;
+   ftemp = 0;
+   if (desired != 0 && debugflag != 3400)
+      ftemp = actual / desired;
    if (desired != 0 && debugflag != 3400)
       if ((ftemp = actual / desired) < 0.95 || ftemp > 1.05)
 	 return(1);

@@ -880,6 +880,7 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
    int firstparm =0;
    int lastparm  = MAXPARAMS;
    double oldparam[MAXPARAMS];
+   int fkeymask = 0x40;
    oldbailout = bailout;
    if(fractype==JULIBROT || fractype==JULIBROTFP)
       julibrot = 1;
@@ -891,22 +892,24 @@ int get_fract_params(int caller)	/* prompt for type-specific parms */
      && fractalspecific[i].name[0] != '*')
       curtype = i;
    curfractalspecific = &fractalspecific[curtype];
-#if 0
-   if (curtype == IFS || curtype == IFS3D) {
-      ret = ((caller) ? edit_ifs_params() : 0);
-      goto gfp_exit;
-      }
-#endif
    tstack[0] = 0;
    if ((i = curfractalspecific->helpformula) < -1) {
       if (i == -2) { /* special for formula */
 	 filename = FormFileName;
 	 entryname = FormName;
 	 }
-      else {	 /* -3, special for lsystem */
+      else if (i == -3)  {	 /* special for lsystem */
 	 filename = LFileName;
 	 entryname = LName;
 	 }
+      else if (i == -4)  {	 /* special for ifs */
+	 filename = IFSFileName;
+	 entryname = IFSName;
+	 }
+      else { /* this shouldn't happen */
+         filename = NULL;
+         entryname = NULL;
+      }   	 
       if (find_file_item(filename,entryname,&entryfile) == 0) {
 	 load_entry_text(entryfile,tstack,16);
 	 fclose(entryfile);
@@ -1166,12 +1169,18 @@ gfp_top:
       sprintf(msg,"Julibrot Parameters (orbit= %s)",juliorbitname);
    else
       sprintf(msg,"Parameters for fractal type %s",typename);
-   far_strcat(msg,"\n(Press F6 for corner parameters)");
+   if(bf_math == 0)
+   {
+      static FCODE msg1[] = {"\n(Press F6 for corner parameters)"};
+      far_strcat(msg,msg1);
+   }
+   else
+      fkeymask = 0;
    for(;;)
    {
       oldhelpmode = helpmode;
       helpmode = curfractalspecific->helptext;
-      i = fullscreen_prompt(msg,promptnum,choices,paramvalues,0x40,tstack);
+      i = fullscreen_prompt(msg,promptnum,choices,paramvalues,fkeymask,tstack);
       helpmode = oldhelpmode;
       if (i < 0) 
       {
@@ -1183,8 +1192,9 @@ gfp_top:
       }
       if (i != F6) 
          break;
-      if (get_corners() > 0)
-	 ret = 1;
+      if(bf_math == 0)
+         if (get_corners() > 0)
+	    ret = 1;
      }
      promptnum = 0;
      for ( i = firstparm; i < numparams+firstparm; i++) 

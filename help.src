@@ -17,7 +17,7 @@
    { Introduction }                         { Distribution of Fractint }
    { Conditions on Use }                    { Contacting the Authors }
    { Getting Started }                      { The Stone Soup Story }
-   { New Features in Version 19.0 }         { A Word About the Authors }
+   { New Features in Version 19.1 }         { A Word About the Authors }
                                           { Other Fractal Products }
    { Display Mode Commands }                
    { Color Cycling Commands }               { Fractint on Unix }               
@@ -38,7 +38,7 @@
 ;
 ;
 ~DocContents
-{     , 0, "New Features in Version 19.0", FF}
+{     , 0, "New Features in Version 19.1", FF}
 {     , 0, "Introduction", "Conditions on Use", FF}
 
 {1.   , 0, Fractint Commands, FF}
@@ -262,7 +262,73 @@ documentation file software was written by Ethan Nagel.
 ;
 ;
 ;
-~Topic=New Features in Version 19.0
+~Topic=New Features in Version 19.1
+Version 19.1 is a bug-fix release for version 19.0. Changes from 19.0 
+  to 19.1 include:
+
+Disabled the F6 (corners) key when in the parameters screen (<z>) for 
+  arbitrary precision. 
+
+IFS formulas now show in <z> screen.
+
+Allow RDS image maps of arbitrary dimensions.
+
+Touched up Mandelbrot/Julia <Space> toggle logic.
+
+Fractint now remembers map name, and uses the mapfile path correctly, and
+  now allows periods in directory names.
+
+Fixed tab bug that caused problems when interrupting a restore of an 
+  arbitrary precision image.
+ 
+Repaired savename logic. No longer show (usually truncated) full path of
+  the saved file in the screen.
+
+Fixed double to arbitrary precision transition with 90 degree images. (This
+  only failed before when the image was rotated exactly 90 degrees.)
+
+Corrected docs directory errors that reported several commands such as
+  PARDIR= that were not implemented. Documented the color cycling HOME 
+  function.
+
+Fixed Mandelbrot/Julia types with bailout less than 4 (try it, results
+  are interesting!)
+
+Fixed browser delete feature which left a box on the screen after deleting 
+  and exiting browser feature.
+
+More changes in filename processing logic.  ".\\" is now recognized as the
+  current directory and is expanded to its full path name.  It is now possible,
+  although not recommended, to designate the root directory of a disk as the
+  desired search directory.
+
+Fixed integer math Mandelbrot bug for 286 or lower machines.
+
+Fixed problem of reading some Lsys files incorrectly (distribution
+  PENROSE.L file was broken unless first line was commented.)
+
+Fixed problem that caused endless loop in RDS with bad input values.
+
+Made reading the current directory first optional, added the new 
+  curdir=yes command for times when you want to use current directory
+  files. 
+
+Fixed problem with complexpower() function ("x^y" formula operator) in 
+  the case where x == 0. (Note that formulas where 0^0 appears for every 
+  every pixel are considered broken and no promises made.) 
+
+Prevented aspect ratio drift as you zoom. If you want to make tiny 
+  adjustments, use new ASPECTDRIFT=0 command.
+
+Inside=bof60 and bof61 options now work correctly with the formula parser.
+
+We discovered the calculation time is no good after 24 days, so instead of the
+  time you will now get the message "A Really Long Time!!! (> 24.855 days)". 
+  We thought you'd like to know ... A prize for the first person who actually 
+  *sees* this message!
+
+A summary of features new with 19.0 begins on next page.
+~FF
 New arbitrary precision math allows types mandelbrot, julia, manzpower, and 
   julzpower to zoom to 10^1600. See {Arbitrary Precision and Deep Zooming}
 
@@ -289,11 +355,12 @@ Increased maximum iterations to 2,147,483,647 and maximum bailout to 2,100,000,0
 
 New path/directory management. Fractint now remembers the pathname of 
   command-line filenames. This means that you can specifiy directories where 
-  your files reside in SSTOOLS.INI. 
+  your files reside in SSTOOLS.INI. In what follows, <path> can be a directory,
+  a filename, or a full path.
 
   File                      SSTOOLS.INI Command       Comments\
   ==========================================================================\
-  PAR directory             parmfile=<path>           new command\
+  PAR directory             parmfile=<path>\
   GIF files for reading     filename=<path>\
   MAP files                 map=<path>\
   Autokey files             autokeyname=<path>\
@@ -303,7 +370,7 @@ New path/directory management. Fractint now remembers the pathname of
   Lsystem file              lfile=<path>\
   IFS file                  ifsfile=<path>\
   Miscellaneous files       workdir=<path>\           new command\
-  Temporary files           tmpdir=<path>\            new command\
+  Temporary files           tempdir=<path>\           new command\
 
   If the directories do not exist, Fractint gives an error message on runup 
   with the option to continue. 
@@ -363,8 +430,6 @@ Increased maximum number of files listed by <r> command to 2977 from 300.
 Added outside=atan option.
 
 Added faster auto logmap logic.
-
-Fractint Version 19.0 is based on Developer's version 18.28 patch 8.
 ;
 ;
 
@@ -1630,6 +1695,9 @@ Bring up a HELP screen with commands specific to color cycling mode.
 <Esc>\
 Leave color-cycling mode.
 
+<Home>\
+Restore original palette.
+
 <+> or <->\
 Begin cycling the palette by shifting each color to the next "contour."
 <+> cycles the colors in one direction, <-> in the other.
@@ -1700,6 +1768,7 @@ file (.MAP assumed).  See {Palette Maps}.
   F1		   HELP! (Enter help mode and display this screen)
   Esc		   Exit from color-cycling mode
   + or -	   (re)-set the direction of the color-cycling
+  Home		   Restore original palette
 ~Doc-
   \27 \26	       (re)-set the direction of the color-cycling (just like +/-)
   \24 \25	       SpeedUp/SlowDown the color cycling process
@@ -1982,8 +2051,8 @@ mode:
   !		   Swap red and green columns
   @		   Swap green and blue columns
   #		   Swap red and blue columns
-  f                Enter Palette-Editing Mode.  See {Palette Editing Commands}
-                   for details.
+  f                Toggle Freestyle Palette-Editing Mode.  See 
+                   {Palette Editing Commands} for details.
 ;
 ;
 ; Fractal Types:

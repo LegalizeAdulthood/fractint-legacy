@@ -1105,8 +1105,9 @@ Breadth first, Depth first (left or negative first), Depth first (right
 or positive first), and completely at random.  It turns out that most 
 traversal methods lead to the same or similar pictures, but that how the
 image evolves as the orbits trace it out differs wildly depending on the
-traversal method chosen.  As far as I know, this fact is an original 
-discovery, and this version of FRACTINT is its first publication.
+traversal method chosen.  As far as we know, this fact is an original 
+discovery by Michael Snyder, and version 18.2 of FRACTINT was its first 
+publication.
 
 Pick a Julia constant such as Z(0) = (-.74543, .11301), the popular
 Seahorse Julia, and try drawing it first Breadth first, then Depth first

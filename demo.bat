@@ -26,20 +26,20 @@ if errorlevel 0 goto end
 goto top
 
 :advanced
-fractint autokey=play autokeyname=advanced.key sound=off
+fractint savename=.\ filename=.\ curdir=yes @demo.par/Mandel_Demo autokey=play autokeyname=advanced.key
 goto top
 :newin19
-fractint autokey=play autokeyname=new19.key sound=off
+fractint savename=.\ filename=.\ curdir=yes @demo.par/Mandel_Demo autokey=play autokeyname=new19.key
 del new19???.gif
 goto top
 :basic
-fractint autokey=play autokeyname=basic.key sound=off
+fractint savename=.\ filename=.\ curdir=yes @demo.par/Mandel_Demo autokey=play autokeyname=basic.key
 del basic001.gif
 goto top
 :allthree
-fractint autokey=play autokeyname=basic.key sound=off
-fractint autokey=play autokeyname=new19.key sound=off
-fractint autokey=play autokeyname=advanced.key sound=off
+fractint savename=.\ filename=.\ curdir=yes @demo.par/Mandel_Demo autokey=play autokeyname=basic.key
+fractint savename=.\ filename=.\ curdir=yes @demo.par/Mandel_Demo autokey=play autokeyname=new19.key
+fractint savename=.\ filename=.\ curdir=yes @demo.par/Mandel_Demo autokey=play autokeyname=advanced.key
 del basic001.gif
 del new19???.gif
 goto top

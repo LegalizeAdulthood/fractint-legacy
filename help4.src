@@ -26,7 +26,6 @@
 ~Format-
 {Startup Parameters}
   @filename[/setname]	   Process commands from a file
-  pardir=directory         Set directory to search for command files
   [filename=]filename	   Start with this saved file (one saved by FRACTINT
 			   or a generic GIF file [treated as a plasma cloud])
   batch=yes		   Batch mode run (display image, save-to-disk, exit)
@@ -38,6 +37,10 @@
                            number stores more images but uses more memory.
   tempdir=directory        Place temporary files here
   workdir=directory        Directory for miscellaneous written files
+  curdir=yes|no            When set to yes, Fractint checks current directory 
+                           before default directory when opening files. Use 
+                           this command when testing temporary .FRM, .L, etc. 
+                           files in the current directory.
 ~FF
 {Calculation Mode Parameters}
   passes=1|2|3|g|b|t	   Select Single-Pass, Dual-Pass, Triple-Pass
@@ -103,7 +106,10 @@
 			   of checking (default 1, higher is more stringent)
 			   'show' or a neg value colors 'caught' points white.
   rseed=nnnnn		   Random number seed, for reproducable Plasma Clouds
-  showdot=nn		   Colors the current dot being calculated color nn.
+  showdot=nn               Colors the current dot being calculated color nn.
+  aspectdrift=nn           How much the aspect ratio can vary from normal due
+                           to zooming and still be assumed to be the normal
+                           aspect. (default is 0.01)
 
 {Color Parameters}
   inside=nnn|maxiter|zmag|bof60|bof61|epscr|star|per
@@ -385,10 +391,6 @@ line, as Fractint is not clever enough to deal with multiple indirection.
 Like @FILENAME, but reads a named group of parameters from a parameter
 file.  See {"Parameter Files and the <@> Command"}.
 
-PARDIR=[directory]\
-This command sets the directory where Fractint will look for the .PAR 
-command files read with the @FILENAME/GROUPNAME command.
-
 TEMPDIR=[directory]\
 This command allows to specify the directory where Fractint writes temporary
 files.
@@ -404,6 +406,16 @@ the starting point, bypassing the initial information screens. The
 filetype is optional and defaults to .GIF. Non-Fractint GIF files are
 restored as fractal type "plasma".\
 On the DOS command line you may omit FILENAME= and just give the file name.
+
+CURDIR=yes\
+Fractint uses directories set by various commands, possibly in the 
+SSTOOLS.INI file. Uf you want to try out some files in the current directory,
+such as a modified copy of FRACTINT.FRM, you won't Fractint to read the copy
+in your official FRM directory. Setting curdir=yes at the command line will 
+cause Fractint to look in the current directory for requested files first 
+before looking in the default directory set by the other commands. Warning: 
+<tab> screen may not reflect actual file opened in cases where the file was 
+opened in the DOS current directory. 
 
 BATCH=yes\
 See {Batch Mode}.
@@ -629,6 +641,14 @@ alone generate, will have to wait for "FRACTINT: The 3-MB Doc File."
 SHOWDOT=<nn>\
 Colors the pixel being calculated color <nn>. Useful for very slow
 fractals for showing you the calculation status.
+
+ASPECTDRIFT=<nn>\
+When zooming in or out, the aspect ratio (the width to height ratio) can
+change slightly due to rounding and the noncontinuous nature of pixels.
+If the aspect changes by a factor less than <nn>, then the aspect is set
+to it's normal value, making the center-mag Xmagfactor parameter equal to 1.
+(see CENTER-MAG above.)  The default is 0.01.  A larger
+value adjusts more often.  A value of 0 does no adjustment at all.
 ;
 ;
 ~Topic=Color Parameters
@@ -864,6 +884,12 @@ screen.  Added at the request of Ward Christensen.  It's his funeral <grin>.
 ;
 ~Topic=File Parameters
 
+In Fractint you can use various filename variables to specify files, set
+default directories, or both. For example, in the SAVENAME description below, 
+[name] can be a filename, a directory name, or a fully qualified pathname 
+plus filename. You can specify default directories using these variables
+in your SSTOOLS.INI file.
+
 SAVENAME=[name]\
 Set the filename to use when you <S>ave a screen. The default filename is
 FRACT001. The .GIF extension is optional (Example: SAVENAME=myfile)
@@ -878,7 +904,7 @@ SAVETIME=nnn\
 Tells Fractint to automatically do a save every nnn minutes while a
 calculation is in progress.  This is mainly useful with long batches - see
 {Batch Mode}.
-
+~ONLINEFF
 GIF87a=YES\
 Backward-compatibility switch to force creation of GIF files in the GIF87a
 format. As of version 14, Fractint defaults to the new GIF89a format which

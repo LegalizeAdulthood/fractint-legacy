@@ -754,7 +754,7 @@ int get_rds_params(void) {
       uvalues[k++].type = 'y';
 
 
-      if(isagif(stereomapname,xdots,ydots))
+      if(*stereomapname != 0)
       {
          char *p;
          uvalues[k].uval.ch.val = reuse;
@@ -798,9 +798,9 @@ int get_rds_params(void) {
             reuse = 0;   
          if(image_map && !reuse)
          {
-            static FCODE tmp[] = {"Select an Imagemap File\n(showing only "};
+            static FCODE tmp[] = {"Select an Imagemap File"};
             /* rds3 only a convenient buffer */
-            sprintf(rds3,"%Fs %dx%d GIFs)",(char far *)tmp,xdots,ydots);
+            far_strcpy(rds3,tmp);
             if(getafilename(rds3,masks[1],stereomapname))
                continue;
          }            
@@ -1081,45 +1081,6 @@ char far *far_strrchr(char far *str, char c)
       return(&str[len]);
 }
 
-/* returns 1 if name a GIF with dimensions x,y */
-int isagif(char *name, int x, int y)
-{
-   BYTE buffer[13];
-   FILE *fp;
-   int width, height, i;
- 
-   if(name == NULL)
-      return(0);
-   if(*name == 0)
-      return(0);      
-   if((fp = fopen(name,"rb"))==NULL)
-      return(0);
-   /* Get the screen description */
-   for (i = 0; i < 13; i++)
-   {
-      int tmp;
-      buffer[i] = (BYTE)(tmp = getc(fp));
-      if (tmp < 0)
-      {
-         fclose(fp);
-         return(0);
-      }
-   }
-   fclose(fp);
-   width  = buffer[6] | (buffer[7] << 8);
-   height = buffer[8] | (buffer[9] << 8);
-
-   if(strncmp((char *)buffer,"GIF87a",3) || 
-      buffer[3] < '0' || buffer[3] > '9' ||
-      buffer[4] < '0' || buffer[4] > '9' ||
-      buffer[5] < 'A' || buffer[5] > 'z' ||
-      width != x || 
-      height != y )
-      return(0);
-   else
-      return(1);
-}
-
 static int speedstate;
 int getafilename(char *hdg,char *template,char *flname)
 {
@@ -1153,12 +1114,14 @@ int getafilename(char *hdg,char *template,char *flname)
    int options = 8;
 
    rds = (stereomapname == flname)?1:0;
+#if 0
    if(rds)
    {
       setclear();
       sprintf(speedstr,"Scanning for %dx%d file names...",xdots,ydots);
       putstringcenter(0,0,80,C_GENERAL_INPUT,speedstr);
-   }     
+   }
+#endif        
    /* steal existing array for "choices" */
    choices = (struct CHOICE far *far*)MK_FP(extraseg,0);
    choices[0] = (struct CHOICE far *)(choices + MAXNUMFILES+1);
@@ -1254,12 +1217,9 @@ retry_dir:
                splitpath(DTA.filename,NULL,NULL,fname,ext);
                /* just using speedstr as a handy buffer */
                makepath(speedstr,drive,dir,fname,ext);
-               if(isagif(speedstr,xdots,ydots))
-               {
-                  strlwr(DTA.filename);
-	          far_strncpy(choices[++filecount]->name,DTA.filename,13);
-	          choices[filecount]->type = 0;
-               }
+               strlwr(DTA.filename);
+	       far_strncpy(choices[++filecount]->name,DTA.filename,13);
+               choices[filecount]->type = 0;
 	    }
 	    else
 	    {
@@ -1844,6 +1804,8 @@ gc_loop:
       yymax	    = curfractalspecific->ymax;
       if (viewcrop && finalaspectratio != screenaspect)
 	 aspectratio_crop(screenaspect,finalaspectratio);
+      if(bf_math != 0)
+         fractal_floattobf();
       goto gc_loop;
       }
 
@@ -2041,6 +2003,10 @@ get_brws_restart:
 
 #define GETPATH (mode < 2) 
 
+#ifndef XFRACT
+#include <direct.h>
+#endif
+
 /* copies the proposed new filename to the fullpath variable */
 /* does not copy directories for PAR files (modes 2 and 3)   */
 /* attempts to extract directory and test for existence (modes 0 and 1) */
@@ -2053,6 +2019,7 @@ int merge_pathnames(char *oldfullpath, char *newfilename, int mode)
    char dir[FILE_MAX_DIR];
    char fname[FILE_MAX_FNAME];
    char ext[FILE_MAX_EXT];
+   char temp_path[FILE_MAX_PATH];
 
    char drive1[FILE_MAX_DRIVE];
    char dir1[FILE_MAX_DIR];
@@ -2062,15 +2029,37 @@ int merge_pathnames(char *oldfullpath, char *newfilename, int mode)
    /* no dot or slash so assume a file */
    if(strchr(newfilename,'.')==NULL && strchr(newfilename,SLASHC) == NULL)  
       isafile=1;
+   if((isadir = isadirectory(newfilename)) != 0)
+      fix_dirname(newfilename);
+#if 0
    /* if slash by itself, it's a directory */
    if(strcmp(newfilename,SLASH)==0)
       isadir = 1;
+#endif
 #ifndef XFRACT
    /* if drive, colon, slash, is a directory */
    if(strlen(newfilename) == 3 && 
            newfilename[1] == ':' && 
            newfilename[2] == SLASHC)
       isadir = 1;
+   /* if drive, colon, with no slash, is a directory */
+   if(strlen(newfilename) == 2 && 
+           newfilename[1] == ':') {
+      newfilename[2] = SLASHC;
+      newfilename[3] = 0;
+      isadir = 1;
+      }
+   /* if dot, slash, its the current directory, set up full path */
+   if(newfilename[0] == '.' &&
+           newfilename[1] == SLASHC) {
+      temp_path[0] = (char)('a' + _getdrive() - 1);
+      temp_path[1] = ':';
+      temp_path[2] = 0;
+      expand_dirname(newfilename,temp_path);
+      strcat(temp_path,newfilename);
+      strcpy(newfilename,temp_path);
+      isadir = 1;
+      }
 #endif
    /* check existence */
    if(isadir==0 || isafile==1)
@@ -2124,6 +2113,21 @@ void extract_filename(char *target, char *source)
    splitpath(source,NULL,NULL,fname,ext);
    makepath(target,"","",fname,ext);
 }
+
+/* tells if filename has extension */
+/* returns pointer to period or NULL */
+char *has_ext(char *source)
+{
+   char fname[FILE_MAX_FNAME];
+   char ext[FILE_MAX_EXT];
+   char *ret = NULL;
+   splitpath(source,NULL,NULL,fname,ext);
+   if(ext != NULL)
+      if(*ext != 0)
+         ret = strrchr(source,'.');
+   return(ret);   
+}
+
 
 /* I tried heap sort also - this is faster! */
 void shell_sort(void far *v1, int n, unsigned sz, int (__cdecl *fct)(VOIDFARPTR arg1,VOIDFARPTR arg2))

@@ -74,7 +74,7 @@ int gifview()
       strcpy(temp1,stereomapname);
    else
       strcpy(temp1,readname);
-   if (strchr(temp1,'.') == NULL) {
+   if (has_ext(temp1) == NULL) {
       strcat(temp1,DEFAULTFRACTALTYPE);
       if ((fpin = fopen(temp1,"rb")) != NULL) {
 	 fclose(fpin);

@@ -413,8 +413,9 @@ start Fractint with the debug=3200 command-line option. With the exception
 of mandel and manzpower perturbations, values that would normally be entered 
 in the Parameters and Coordinates screens need to be entered using the 
 command-line interface or .par files.  Other known things that do not yet 
-work with arbitrary precision are: biomorph, decomp, distance, inversion, 
-Julia-Mandel switch, history, orbit-in-window, and the browse feature.
+work with arbitrary precision are: biomorph, decomp, distance estimator, 
+inversion, Julia-Mandel switch, history, orbit-in-window, and the browse 
+feature.
 ;
 ;
 ~Topic=The Fractint "Fractal Engine" Architecture
@@ -2810,6 +2811,7 @@ TETRATE PARAMS=nnn      TETRATE BAILOUT=nnn+3
  Herb Savage      [75260,217] 'inside=bof60', 'inside=bof61' options
  Ken Shirriff     shirriff@sprite.berkeley.edu Quaternions, CA, Xfract port
  Lee Skinner      [75450,3631] Tetrate fractal types and more
+ Michael Snyder   [75300,642] julia inverse and Julia-In-A-Window using MIIM
  Dean Souleles    [75115,1671] Hercules Support
  Kurt Sowa        [73467,2013] Color Printer Support
  Hugh Steele      cyclerange feature

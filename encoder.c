@@ -112,6 +112,7 @@ int savetodisk(char *filename)	/* save-to-disk routine */
    char tmpmsg[41]; /* before openfile in case of overrun */
    char openfile[80], openfiletype[10];
    char tmpfile[80];
+    char *period;
    int newfile;
    int i, j, outcolor1, outcolor2, interrupted;
 restart:
@@ -124,11 +125,19 @@ restart:
    strcpy(openfiletype,DEFAULTFRACTALTYPE);/* determine the file extension */
    if (save16bit)
       strcpy(openfiletype,".pot");
+#if 0
+   /* this logic fails if directory name hhas period */      
    for (i = 0; i < (int)strlen(openfile); i++)
       if (openfile[i] == '.') {
          strcpy(openfiletype,&openfile[i]);
          openfile[i] = 0;
          }
+#endif
+   if((period = has_ext(openfile)) != NULL)
+   {
+      strcpy(openfiletype,period);
+      *period = 0;
+   }   
    if (resave_flag != 1)
       updatesavename(filename); /* for next time */
 
@@ -242,7 +251,8 @@ restart:
    if (timedsave == 0) {
       buzzer(0);
       if (initbatch == 0) {
-         sprintf(tmpmsg," File saved as %s ",openfile);
+         extract_filename(tmpfile,openfile);
+         sprintf(tmpmsg," File saved as %s ",tmpfile);
          texttempmsg(tmpmsg);
          }
       }

@@ -715,14 +715,13 @@ int main_menu_switch(int *kbdchar, int *frommandel, int *kbdmore, char *stacked,
 	    }
 	    else
 	    {
-	       double ccreal, ccimag;
-	       ccreal = (curfractalspecific->xmax - curfractalspecific->xmin) / 2;
-	       ccimag = (curfractalspecific->ymax - curfractalspecific->ymin) / 2;
-	       xxmin = xx3rd = param[0] - ccreal;
-	       xxmax = param[0] + ccreal;
-	       yymin = yy3rd = param[1] - ccimag;
-	       yymax = param[1] + ccimag;
+	       xxmin = xx3rd = curfractalspecific->xmin;
+	       xxmax = curfractalspecific->xmax;
+	       yymin = yy3rd = curfractalspecific->ymin;
+	       yymax = curfractalspecific->ymax;
 	    }
+            SaveC.x = param[0];
+	    SaveC.y = param[1];
 	    param[0] = 0;
 	    param[1] = 0;
 	    zoomoff = 1;

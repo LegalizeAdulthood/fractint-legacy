@@ -84,14 +84,15 @@ int	finattract;		/* finite attractor logic */
 int	display3d;		/* 3D display flag: 0 = OFF */
 int	overlay3d;		/* 3D overlay flag: 0 = OFF */
 int	init3d[20];		/* '3d=nn/nn/nn/...' values */
+int	checkcurdir;		/* flag to check current dir for files */
 int	initbatch;		/* 1 if batch run (no kbd)  */
 int	initsavetime;		/* autosave minutes	    */
 _CMPLX  initorbit;		/* initial orbitvalue */
 char	useinitorbit;		/* flag for initorbit */
 int	initmode;		/* initial video mode	    */
 int	initcyclelimit; 	/* initial cycle limit	    */
-BYTE usemag;			/* use center-mag corners   */
-long	bailout;		/* user input bailout value */
+BYTE    usemag;                 /* use center-mag corners   */
+long    bailout;                /* user input bailout value */
 enum bailouts bailoutest;	/* test used for determining bailout */
 double	inversion[3];		/* radius, xcenter, ycenter */
 int	rotate_lo,rotate_hi;	/* cycling color range	    */
@@ -108,7 +109,9 @@ char	dontreadcolor=0;	/* flag for reading color from GIF */
 int Targa_Out = 0;
 char	colorfile[FILE_MAX_PATH];/* from last <l> <s> or colors=@filename */
 int functionpreloaded; /* if function loaded for new bifs, JCO 7/5/92 */
-float	screenaspect = DEFAULTASPECT;	/* aspect ratio of the screen */
+float   screenaspect = DEFAULTASPECT;   /* aspect ratio of the screen */
+float   aspectdrift = DEFAULTASPECTDRIFT;  /* how much drift is allowed and */
+                                           /* still forced to screenaspect  */
 
 /* TARGA+ variables */
 int	TPlusFlag;		/* Use the TARGA+ if found  */
@@ -208,6 +211,7 @@ char s_adapter[] =          "adapter";
 char s_afi[] =              "afi";
 char s_ambient[] =          "ambient";
 char s_askvideo[] =         "askvideo";
+char s_aspectdrift[] =      "aspectdrift";
 char s_autokey[] =          "autokey";
 char s_autokeyname[] =      "autokeyname";
 char s_background[] =       "background";
@@ -231,6 +235,7 @@ char s_crlf[] =             "crlf";
 char s_crop[] =             "crop";
 char s_cyclelimit[] =       "cyclelimit";
 char s_cyclerange[] =       "cyclerange";
+char s_curdir[] =           "curdir";
 char s_debug[] =            "debug";
 char s_debugflag[] =        "debugflag";
 char s_decomp[] =           "decomp";
@@ -453,7 +458,7 @@ int cmdfiles(int argc,char **argv)
       if (curarg[0] != '@') {           /* simple command? */
 	 if (strchr(curarg,'=') == NULL) { /* not xxx=yyy, so check for gif */
 	    strcpy(tempstring,curarg);
-	    if (strchr(curarg,'.') == NULL)
+	    if (has_ext(curarg) == NULL)
 	       strcat(tempstring,".gif");
 	    if ((initfile = fopen(tempstring,"rb")) != NULL) {
 	       fread(tempstring,6,1,initfile);
@@ -564,6 +569,7 @@ static void initvars_restart()		/* <ins> key init */
    soundflag = -1;			/* sound is on		     */
    basehertz = 440;			/* basic hertz rate	     */
    initbatch = 0;			/* not in batch mode	     */
+   checkcurdir = 0;			/* flag to check current dire for files */
    initsavetime = 0;			/* no auto-save 	     */
    initmode = -1;			/* no initial video mode     */
    viewwindow = 0;			/* no view window	     */
@@ -680,7 +686,7 @@ static void initvars_fractal()		/* init vars affecting calculation */
       farmemfree((char far *)ranges);
       rangeslen = 0;
       }
-   usemag = 0;				/* use corners, not center-mag */
+   usemag = 0;                          /* use corners, not center-mag */
 
    colorstate = colorpreloaded = 0;
    rotate_lo = 1; rotate_hi = 255;	/* color cycling default range */
@@ -1133,7 +1139,7 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
 
    if (strcmp(variable,s_filename) == 0) {      /* filename=?     */
       int existdir;
-      if (charval == '.') {
+      if (charval == '.' && value[1] != SLASHC) {
 	 if (valuelen > 4) goto badarg;
 	 gifmask[0] = '*';
 	 gifmask[1] = 0;
@@ -1813,6 +1819,13 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       }
    }
 
+   if (strcmp(variable,s_aspectdrift) == 0 ) {  /* aspectdrift=? */
+      if(floatparms != 1 || floatval[0] < 0)
+	 goto badarg;
+      aspectdrift = (float)floatval[0];
+      return 1;
+      }
+
    if (strcmp(variable,s_invert) == 0) {        /* invert=?,?,? */
       if (totparms != floatparms || (totparms != 1 && totparms != 3))
 	 goto badarg;
@@ -2407,6 +2420,11 @@ int cmdarg(char *curarg,int mode) /* process a single argument */
       return 2;
       }
 
+   if (strcmp(variable,s_curdir) == 0) {         /* curdir= */
+      if (yesnoval < 0) goto badarg;
+      checkcurdir = yesnoval;
+      return 0;
+      }
 
 badarg:
    argerror(curarg);

@@ -639,6 +639,7 @@ int do_fractal_routines(double cr, double ci, int (*func)(void))
    return(ret);
 }
 
+_CMPLX SaveC = {-3000.0, -3000.0};
 
 void Jiim(int which)         /* called by fractint */
 {
@@ -665,7 +666,6 @@ void Jiim(int which)         /* called by fractint */
    double aspect;
    static int randir = 0;
    static int rancnt = 0;
-   static _CMPLX SaveC = {-3000.0, -3000.0};
    int actively_computing = 1;
    int first_time = 1;
    int old_debugflag;

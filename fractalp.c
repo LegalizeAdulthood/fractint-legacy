@@ -397,12 +397,12 @@ struct fractalspecificstuff far fractalspecific[]=
    Mandel4Fractal,   julia_per_pixel, JulialongSetup,StandardFractal,	 STDBAILOUT,
 
    "ifs",color_method,ES,ES,ES,0,0,0,0,
-   HT_IFS, -1, NOGUESS+NOTRACE+NORESUME+WINFRAC+INFCALC,
+   HT_IFS, -4, NOGUESS+NOTRACE+NORESUME+WINFRAC+INFCALC,
    (float)-8.0, (float)8.0, (float)-1.0, (float)11.0, 16, NOFRACTAL, NOFRACTAL, NOFRACTAL,  NOSYM,
    NULL,	  NULL,      StandaloneSetup, ifs,    NOBAILOUT,
 
    t_ifs3d,color_method,ES,ES,ES,0,0,0,0,
-   HT_IFS, -1, NOGUESS+NOTRACE+NORESUME+WINFRAC+PARMS3D+INFCALC,
+   HT_IFS, -4, NOGUESS+NOTRACE+NORESUME+WINFRAC+PARMS3D+INFCALC,
    (float)-11.0, (float)11.0, (float)-11.0, (float)11.0, 16, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM,
    NULL,	  NULL,      StandaloneSetup, ifs,    NOBAILOUT,
 

@@ -238,7 +238,7 @@ prompt_user:
          break;
 
       far_strcpy(CommandFile, inpcommandfile);
-      if (strchr(CommandFile, '.') == NULL)
+      if (has_ext(CommandFile) == NULL)
          strcat(CommandFile, ".par");   /* default extension .par */
       far_strcpy(CommandName, inpcommandname);
       far_strcpy(CommandComment1, inpcomment1);
@@ -590,19 +590,30 @@ static void write_batch_parms(char *colorinf,int maxcolor)
 #else
          put_parm("/%.7lg",Magnification); /* precision of magnification not critical, but magnitude is */
 #endif
-         /* round to avoid ugly decimals, precision here is not critical */
-         Xmagfactor = (long)(Xmagfactor * 1e5 + 0.5)/1e5;
-         Rotation   = (long)(Rotation   * 1e4 + 0.5)/1e4;
-         Skew       = (long)(Skew       * 1e4 + 0.5)/1e4;
+         /* Round to avoid ugly decimals, precision here is not critical */
+         /* Don't round Xmagfactor if it's small */
+         if (fabs(Xmagfactor) > 0.5) /* or so, exact value isn't important */
+            Xmagfactor = (sign(Xmagfactor) * (long)(fabs(Xmagfactor) * 1e4 + 0.5)) / 1e4;
+         /* Just truncate these angles.  Who cares about 1/1000 of a degree */
+         Rotation   = (long)(Rotation   * 1e3)/1e3;
+         Skew       = (long)(Skew       * 1e3)/1e3;
          if (Xmagfactor != 1 || Rotation != 0 || Skew != 0)
-         { /* only put what is necessary */
-            put_float(1,Xmagfactor,5);
+         { /* Only put what is necessary */
+            /* The difference with Xmagfactor is that it is normally */
+            /* near 1 while the others are normally near 0 */
+            if (fabs(Xmagfactor) >= 1)
+               put_float(1,Xmagfactor,5); /* put_float() uses %g */
+            else /* abs(Xmagfactor) is < 1 */
+               put_float(1,Xmagfactor,4); /* put_float() uses %g */
             if (Rotation != 0 || Skew != 0)
             {
-               put_float(1,Rotation,4);
+               /* Use precision=6 here.  These angle have already been rounded        */
+               /* to 3 decimal places, but angles like 123.456 degrees need 6         */
+               /* sig figs to get 3 decimal places.  Trailing 0's are dropped anyway. */
+               put_float(1,Rotation,6);
                if (Skew != 0)
                {
-                  put_float(1,Skew,4);
+                  put_float(1,Skew,6);
                }
             }
          }

@@ -449,8 +449,11 @@ void load_palette(void)
    i = getafilename("Select a MAP File",mapmask,filename);
    unstackscreen();
    if (i >= 0)
+   {
       if (ValidateLuts(filename) == 0)
 	 memcpy(olddacbox,dacbox,256*3);
+      merge_pathnames(MAP_name,filename,0);
+   }
    helpmode = oldhelpmode;
 }
 

@@ -1498,8 +1498,7 @@ if (help_file == -1)		/* look for FRACTINT.HLP */
    if ( find_file("fractint.hlp", path) )
       {
 #ifdef __TURBOC__
-      if ( (help_file = open(path, O_RDONLY|O_BINARY|O_DENYWRITE)) !=
- )
+      if ( (help_file = open(path, O_RDONLY|O_BINARY|O_DENYWRITE)) != -1 )
 #else
       if ( (help_file = open(path, O_RDONLY|O_BINARY)) != -1 )
 #endif

@@ -70,6 +70,7 @@ typedef char * USEGTYPE;
 #define MAXPARAMS 10		/* maximum number of parameters */
 #define MAXPIXELS 2048		/* Maximum pixel count across/down the screen */
 #define DEFAULTASPECT ((float)0.75)/* Assumed overall screen dimensions, y/x  */
+#define DEFAULTASPECTDRIFT ((float)0.02) /* drift of < 2% is forced to 0% */
 
 struct videoinfo {		/* All we need to know about a Video Adapter */
 	char	name[26];	/* Adapter name (IBM EGA, etc)		*/

@@ -195,7 +195,7 @@ short decoder( short linewidth)
 	BYTE out_value;
 
 #ifndef XFRACT
-	sizeofstring = (short far *)MK_FP(extraseg, 0);
+	sizeofstring = (short far *)MK_FP(extraseg, ENDVID);
 #endif
 	/* Initialize for decoding a new image...
 	*/

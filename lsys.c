@@ -131,13 +131,12 @@ static int _fastcall readLSystemFile(char *str)
       return -1;
    while ((c = fgetc(infile)) != '{')
       if (c == EOF) return -1;
-
    maxangle=0;
    for(linenum=0;linenum<MAXRULES;++linenum) ruleptrs[linenum]=NULL;
    rulind= &ruleptrs[1];
    msgbuf[0]=(char)(linenum=0);
 
-   while(file_gets(inline,160,infile))  /* Max line length 160 chars */
+   while(file_gets(inline,160,infile) > -1)  /* Max line length 160 chars */
    {
       linenum++;
       if ((word = strchr(inline,';')) != NULL) /* strip comment */

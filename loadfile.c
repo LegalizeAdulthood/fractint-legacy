@@ -53,7 +53,7 @@ int read_overlay()	/* read overlay/3D files, if reqr'd */
    oldfloatflag = usr_floatflag;
    loaded3d = 0;
 
-   if(strchr(readname,'.') == NULL)
+   if(has_ext(readname) == NULL)
       strcat(readname,".gif");
 
    if(find_fractal_info(readname,&read_info,&blk_2_info,&blk_3_info,
@@ -1007,21 +1007,8 @@ int fgetwindow(void)
 	  splitpath(winlist[index].name,NULL,NULL,fname,ext);
 	  makepath(tmpmask,drive,dir,fname,ext);
 	  if ( !unlink(tmpmask)) {
-	    /* erase box */
-	    boxcount = winlist[index].boxcount;
-	    far_memcpy(boxx,winlist[index].savebox,boxcount);
-	    far_memcpy(boxy,winlist[index].savebox+boxcount,boxcount);
-	    far_memcpy(boxvalues,winlist[index].savebox+boxcount*2,boxcount);
-	    boxcount >>= 1;
-	    clearbox();
-	    winlist[index].boxcount = -1;
-	    if (wincount == 1){
-	       done = 1;
-	       break;
-	    }
-	    index++;
-	    if (index >= wincount) index = 0;
-	    showtempmsg(winlist[index].name);
+          /* do a rescan */
+          done = 3;
 	    break;
 	    }
 	  else if( errno == EACCES ) {

@@ -22,10 +22,10 @@
 
 static int menu_checkkey(int curkey,int choice);
 
-/* uncomment following for book version */
-/* #define WAITE */
+/* uncomment following for production version */
+/* #define PRODUCTION */
 
-int release=1900; /* this has 2 implied decimals; increment it every synch */
+int release=1910; /* this has 2 implied decimals; increment it every synch */
 int patchlevel=0; /* patchlevel for DOS version */
 #ifdef XFRACT
 int xrelease=300;
@@ -58,8 +58,10 @@ static char far s_errorstart[] = {"*** Error during startup:"};
 #endif
 static char far s_escape_cancel[] = {"Escape to cancel, any other key to continue..."};
 static char far s_anykey[] = {"Any key to continue..."};
+#ifndef PRODUCTION
 static char far s_custom[] = {"Customized Version"}; 
-static char far s_notpublic[] = {"Not for Public Release"}; 
+static char far s_notpublic[] = {"Not for Public Release"};
+#endif
 int stopmsg (int flags, char far *msg)
 {
    int ret,toprow,color,savelookatmouse;
@@ -303,9 +305,6 @@ void helptitle()
    release=1900;
    patchlevel = 0;
 #endif
-   /*
-   sprintf(msg,"Special FRACTINT Version %d.%01d",release/100,(release%100)/10);
-   */
    sprintf(msg,"FRACTINT Version %d.%01d",release/100,(release%100)/10);
    if (release%10) {
       sprintf(buf,"%01d",release%10);
@@ -326,13 +325,18 @@ void helptitle()
 #endif
 #endif
 /* uncomment next for production executable: */
-   /* return; */ 
+#ifdef PRODUCTION
+    return;
    /*NOTREACHED*/
+#else   
    if (debugflag == 3002) return;
-/* putstring(0,2,C_TITLE_DEV,"Development Version"); */
-/* replace above by next after creating production release, for release source */
+#ifdef DEVELOPMENT   
+   putstring(0,2,C_TITLE_DEV,"Development Version"); 
+#else
    putstring(0,3,C_TITLE_DEV, s_custom); 
-   putstring(0,55,C_TITLE_DEV,s_notpublic); 
+#endif   
+   putstring(0,55,C_TITLE_DEV,s_notpublic);
+#endif
 }
 
 
@@ -1187,7 +1191,9 @@ static int menu_checkkey(int curkey,int choice)
    /* We use F2 for shift-@, annoyingly enough */
    if (testkey == F2) return(0-testkey);
 #endif
-   if (strchr("@txyzgvir3dj",testkey) || testkey == INSERT
+   if(testkey == '2')
+      testkey = '@';
+   if (strchr("#@txyzgvir3dj",testkey) || testkey == INSERT
      || testkey == ESC || testkey == DELETE)
       return(0-testkey);
    if (menutype) {

@@ -1056,9 +1056,9 @@ RecipNotOk:
       jne          domainok            ; nope
       cmp          _debugflag, 94      ; user wants old pwr?
       je           domainok            ; yup
-      POP_STK      2                   ; clear two numbers
-      fldz
-      fldz
+      POP_STK      4                   ; clear stack completely
+      fldz                             ; 0
+      fldz                             ; 0 0 
       EXIT_OPER    Pwr                 ; return (0,0)
    PARSALIGN
 domainok:
