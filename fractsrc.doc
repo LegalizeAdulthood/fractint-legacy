@@ -29,9 +29,13 @@ of work.
 Quick-C:
 ========
 
-We've gotten word that as of version 9.0, FRACTINT is now too big for
-the interactive Quick-C environment.  You apparantly have to use the
-command-line variant of Quick-C these days.
+As of version 9.0, FRACTINT is just too big for the interactive Quick-C
+(QC) environment.  You have to use the command-line variant of Quick-C
+(QCL) these days (which even works, now - we chopped up the large routine
+in FRACTINT.C that was choking Quick-C).  To convert the MAKEfiles to use
+Quick-C rather than "regular" C, edit FRACTINT.MAK, comment out the third
+line (the one that goes " cl /AM ...") and un-comment out the second line
+(the one that goes " qcl /AM ..."). 
 
 Turbo-C and TASM
 ================
@@ -63,12 +67,15 @@ to look:
 
 FRACTINT.C	- The main routine.  Nothing special here.
 FRACTINT.H	- General Include file.  Nothing special here, either.
+PROMPTS.C	- The full-screen prompting code (using support routines
+		  in VIDEO.ASM)
 
 FRACTALS.C,	- Most of the fractal-specific code.  If you want to know
 CALCFRAC.C	  how a fractal is calculated, look in here.  Specific
 		  speed-em-up support for special fractal types is in...
 CALCMAND.ASM	- Mandelbrot/Julia set calculations.
 NEWTON.ASM	- Newton calculations
+JB.C 		- "Julibrot" fractal type calculations
 TESTPT.C	- "Roll-your-own" fractal routine
 MPMATH_C.C,	- Mark Peterson's "fast-math" support routines.
 MPMATH_A.ASM,	  (this stuff puts some of the routines supplied by your

@@ -26,6 +26,7 @@ extern int bailout;
 extern char far plasmamessage[];
 long lmagnitud, llimit, llimit2, lclosenuff,l16triglim;
 struct complex init,tmp,old,new,saved;
+extern struct lcomplex lold;
 extern double tempsqrx,tempsqry;
 extern long ltempsqrx,ltempsqry;
 extern int biomorph;
@@ -35,7 +36,7 @@ extern int basin;
 int color, oldcolor, oldmax, oldmax10, row, col, passes;
 int iterations, invert;
 double f_radius,f_xcenter, f_ycenter; /* for inversion */
-double far *dx0, far *dy0;
+extern double far *dx0, far *dy0;
 long XXOne, FgOne, FgTwo, LowerLimit;
 
 extern int LogFlag;
@@ -47,6 +48,8 @@ extern double inversion[];	    /* inversion radius, f_xcenter, f_ycenter */
 extern int	xdots, ydots;		/* coordinates of dots on the screen  */
 extern int	colors;				/* maximum colors available */
 extern int	inside;				/* "inside" color to use    */
+double min_orbit;               /* orbit value closest to origin */
+int    min_index;				/* iteration of min_orbit */
 extern int	maxit;				/* try this many iterations */
 extern int	fractype;			/* fractal type */
 extern int	numpasses;			/* 0 = 1 pass, 1 = double pass */
@@ -60,7 +63,7 @@ extern int decomp[];
 
 extern double	param[];		/* parameters */
 extern double	potparam[];		/* potential parameters */
-extern long	lx0[], ly0[];		/* X, Y points */
+extern long	far *lx0, far *ly0;		/* X, Y points */
 extern long	delx,dely;			/* X, Y increments */
 extern long	fudge;				/* fudge factor (2**n) */
 extern int	bitshift;			/* bit shift for fudge */
@@ -78,10 +81,11 @@ static    unsigned char top;   /* flag to indicate top of calcfract */
 static    unsigned char c;
 static	  int i;
 
-double xxmin,xxmax,yymin,yymax; /* corners */
+extern double xxmin,xxmax,yymin,yymax; /* corners */
 struct complex lambda;
 double deltaX, deltaY;
 double magnitude, rqlim, rqlim2;
+extern int bof_pp60_61;
 int XXdots, YYdots; /* local dots */
 extern struct complex parm;
 int (*calctype)();
@@ -101,7 +105,7 @@ int	ixstart, ixstop, iystart, iystop;	/* (for CALCMAND) start, stop here */
 int	symmetry;			/* symmetry flag for calcmand()	*/
 int	guessing;			/* solid-guessing flag for calcmand() */
 
-static	int	integerfractal;		/* TRUE if fractal uses integer math */
+extern	int	integerfractal;		/* TRUE if fractal uses integer math */
 
 /* -------------------------------------------------------------------- */
 /*		These variables are external for speed's sake only	*/
@@ -114,9 +118,12 @@ extern double floatmin, floatmax;
 
 int StandardFractal();
 
+extern int display3d;
 
 calcfract()
 {
+   display3d = 0;
+
    orbit_color = 15;
    top     = 1;
    if(fp_pot)
@@ -138,27 +145,16 @@ calcfract()
 
    basin = 0;
    
-   xxmin  = (double)lx0[      0] / fudge;  
-   xxmax  = (double)lx0[xdots-1] / fudge;
-   yymax  = (double)ly0[      0] / fudge;
-   yymin  = (double)ly0[ydots-1] / fudge;
-   deltaX = (double)lx0[      1] / fudge - xxmin;
-   deltaY = yymax - (double)ly0[      1] / fudge;
-
+   if (integerfractal) {
+      deltaX = (double)lx0[      1] / fudge - xxmin;
+      deltaY = yymax - (double)ly0[      1] / fudge;
+   } else {
+      deltaX = dx0[      1] - xxmin;
+      deltaY = yymax - dy0[      1];
+   }
+   
    parm.x  = param[0];
    parm.y  = param[1];
-
-   if(extraseg)
-   {
-#ifdef __TURBOC__
-      dx0 = MK_FP(extraseg,0);
-#else
-      FP_SEG(dx0)=extraseg;
-      FP_OFF(dx0)=0;
-#endif
-   }else
-      return(-1);
-   dy0 = dx0 + MAXPIXELS;
 
    if(fabs(potparam[0]) > 0.0)
       potflag = 1;
@@ -194,17 +190,6 @@ calcfract()
    if(colors < 16)
        orbit_color = 1;
 
-   integerfractal = fractalspecific[fractype].isinteger;
-   if ((!integerfractal) || invert)
-   {
-      /* set up dx0 and dy0 analogs of lx0 and ly0 in Bert's "extra" segment */
-      /* put fractal parameters in doubles */
-      for(i=0;i<xdots;i++)
-         dx0[i] = (double)lx0[i] / fudge;
-      for(i=0;i<ydots;i++)
-        dy0[i] = (double)ly0[i] / fudge;
-   }
-
    if (integerfractal)	 	/* the bailout limit can't be too high here */
       if (rqlim > 127.0) rqlim = 127.0;
    if(inversion[0] != 0.0)
@@ -231,7 +216,8 @@ calcfract()
       invert = 3; /* so values will not be changed if we come back */
    }
 
-   setsymmetry(fractalspecific[fractype].symmetry);
+   if(fractalspecific[fractype].symmetry != SETUP_SYM)
+      setsymmetry(fractalspecific[fractype].symmetry);
 
    if (potfile[0] != 0) 			/* potential file? */
    {
@@ -260,6 +246,8 @@ calcfract()
    /* per_image routine is run here */   
    if (fractalspecific[fractype].per_image())  /* a stand-alone type? */
    {
+      if(fractalspecific[fractype].symmetry == SETUP_SYM)
+         setsymmetry(symmetry);
       /* fractal routine (usually StandardFractal) is run here */
       if(solidguessing) 	/* use std solid-guessing? */
          timer(solidguess,0);
@@ -358,6 +346,11 @@ StandardFractal()
             savedand = 1;		/* begin checking every other cycle */
             savedincr = 1;		/* start checking the very first time */
             
+            if(bof_pp60_61)
+            {
+               magnitude = lmagnitud = 0;
+               min_orbit = 100000.0;
+            }   
             fractalspecific[fractype].per_pixel(); /* initialize the calculations */
             while (++color < maxit)
             {
@@ -365,6 +358,25 @@ StandardFractal()
                /* input in "old" -- output in "new" */
 
                if(fractalspecific[fractype].orbitcalc()) break;
+               
+               if(bof_pp60_61)
+               {
+                  if(integerfractal)
+                  {
+                     if(lmagnitud == 0) 
+                        lmagnitud = multiply(lnew.x,lnew.x,fudge) +
+                                    multiply(lnew.y,lnew.y,fudge);
+                     magnitude = lmagnitud;
+                     magnitude = magnitude/fudge;
+                  }
+                  else if(magnitude == 0.0)
+                     magnitude = sqr(new.x) + sqr(new.y);
+                  if(magnitude < min_orbit)
+                  {
+                     min_orbit = magnitude;
+                     min_index = color +1;
+                  }
+               }
                if(show_orbit) 
                {
                   if (! integerfractal)
@@ -646,8 +658,18 @@ StandardFractal()
 			      color = biomorph;
             }
             
-            if(oldcolor >= maxit && inside >= 0) /* really color, not oldcolor */
-               color = inside;
+            if(oldcolor >= maxit) /* really color, not oldcolor */
+            {
+               if(bof_pp60_61 == 60)
+                  color = sqrt(min_orbit)*75;
+               else if(bof_pp60_61 == 61)
+                  color = min_index;
+               else if(inside >= 0)
+                  color = inside;
+               else if(inside == -1)
+                  color = maxit;
+            }
+
             if(LogFlag)
                color = LogTable[color];
 
@@ -953,13 +975,24 @@ plot_orbit(real,imag,color)
 double real,imag;
 int color;
 {
-  long ix,iy;
+  int i, j;
   if((real < xxmin) || (real > xxmax) || (imag < yymin) || (imag > yymax))
      return(0);
-  /* convert to longs */
-  ix = real * fudge;
-  iy = imag * fudge;
-  iplot_orbit(ix,iy,color);
+  i = (real - xxmin)/deltaX;
+  j = ydots - (imag - yymin)/deltaY;
+
+  /* save orbit value */
+  if( 0 <= i && i < xdots && 0 <= j && j < ydots && orbit_ptr < 1000)
+  {
+     if(color == -1)
+     {
+        *(save_orbit + orbit_ptr++) = i; 
+        *(save_orbit + orbit_ptr++) = j; 
+        putcolor(i,j,getcolor(i,j)^orbit_color);
+     }
+     else
+        putcolor(i,j,color);
+  }
 }  
 scrub_orbit()
 {

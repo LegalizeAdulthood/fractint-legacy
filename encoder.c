@@ -153,7 +153,7 @@ if (colors > 2) {
 	outcolor1 = 2;
 	outcolor2 = 3;
 	}
-if (numsaves && 1 == 0) {		/* reverse the colors on alt saves */
+if ((numsaves & 1) == 0) {		/* reverse the colors on alt saves */
 	i = outcolor1;
 	outcolor1 = outcolor2;
 	outcolor2 = i;
@@ -262,6 +262,10 @@ for (ydot = 0; ydot < ydots; ydot++) {	/* scan through the dots */
 			}
 		}
 	if (dotmode != 11)			/* supress this on disk-video */
+		if ((ydot & 4) == 0) {
+			if (++outcolor1 >= colors) outcolor1 = 0;
+			if (++outcolor2 >= colors) outcolor2 = 0;
+			}
 		for (i = 0; 250*i < xdots; i++) {	/* display vert status bars */
 			putcolor(      i,ydot,outcolor1);	/*   (this is NOT   */
 			putcolor(xdots-1-i,ydot,outcolor2);	/*    GIF-related)  */

@@ -7,6 +7,7 @@
 fract.exe : 3D.OBJ \
 	CALCFRAC.OBJ \
 	FRACTALS.OBJ \
+	PROMPTS.OBJ \
 	CONFIG.OBJ \
 	DECODER.OBJ \
 	DISKVID.OBJ \
@@ -27,14 +28,18 @@ fract.exe : 3D.OBJ \
 	YOURVID.OBJ \
 	CMDFILES.OBJ \
 	PRINTER.OBJ \
+	PARSER.OBJ \
 	MPMATH_C.OBJ \
 	MPMATH_A.OBJ \
+	LORENZ.OBJ \
+	PLOT3D.OBJ \
 	FPU387.OBJ \
 	FPU087.OBJ \
+	JB.OBJ \
 	TGAVIEW.OBJ \
 	F16.OBJ \
 	targa.obj loadmap.obj tgasubs.obj 
- tlink /v @tc.lnk
+ tlink /c /v @tc.lnk
  tdstrip -s fractint
 
 fractint.obj : fractint.c fractint.h

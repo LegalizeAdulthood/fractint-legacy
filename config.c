@@ -132,6 +132,7 @@ struct fractal_info *info;
    info->xdots = rows;
    info->ydots = cols;
    info->colors = colors;
+   info->version = 0;
 
    /* zero means we won */
    fclose(fp);

@@ -62,6 +62,9 @@ Double      DQ        ?
 fg2MP086    PROC     x:DWORD, fg:WORD
    mov   ax, WORD PTR [x]
    mov   dx, WORD PTR [x+2]
+   mov   cx, ax
+   or    cx, dx
+   jz    ExitFg2MP
 
    mov   cx, 1 SHL 14 + 30
    sub   cx, fg
@@ -82,6 +85,7 @@ BitScanRight:
    or    dx, dx
    jns   BitScanRight
 
+ExitFg2MP:
    mov   Ans.Exp, cx
    mov   WORD PTR Ans.Mant+2, dx
    mov   WORD PTR Ans.Mant, ax
@@ -964,6 +968,12 @@ fg2MP386    PROC     x:DWORD, fg:WORD
    mov   edx, x
 
    or    edx, edx
+   jnz   ChkNegMP
+
+   mov   bx, dx
+   jmp   StoreAns
+
+ChkNegMP:
    jns   BitScanRight
 
    or    bh, 80h
@@ -976,6 +986,7 @@ BitScanRight:
    sub   bx, cx
    shl   edx, cl
 
+StoreAns:
    mov   Ans.Exp, bx
    mov   Ans.Mant, edx
 .8086

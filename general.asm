@@ -67,6 +67,8 @@ ENDIF
         ; this get's rid of TURBO-C fixup errors
 
         extrn   help:far		; help code (in help.c)
+	extrn	tab_display:far		; TAB display (in fractint.c)
+	extrn	adapter_detect:far	; video adapter detector (in video.asm)
 
 .DATA
 
@@ -79,6 +81,7 @@ ENDIF
 
 ; ************************ Public variables *****************************
 
+public		lx0, ly0		; used by lots of routines
 public		cpu			; used by 'calcmand'
 public		fpu			; will be used by somebody someday
 public		lookatmouse		; used by 'calcfrac'
@@ -91,7 +94,6 @@ public		overflow		; Mul, Div overflow flag: 0 means none
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
 
-public		lx0,ly0				; used by FRACTINT, CALCFRAC
 public		prefix, suffix, dstack, decoderline	; Used by the Decoder
 public		strlocn, teststring		; used by the Encoder
 public		boxx, boxy, boxvalues		; zoom-box arrays
@@ -102,18 +104,15 @@ public		paldata, stbuff			; 8514A arrays, (FR8514A.ASM)
 
 ; ************************* "Shared" array areas **************************
 
-lx0		dd	0		; 8K X-pixel value array
-prefix		dw	4096 dup(0)	; 8K Decoder array
-
-ly0		dd	0		; 8K y-pixel value array
 suffix		dw	2048 dup(0)	; 4K Decoder array
 dstack		dw	2048 dup(0)	; 4K Decoder array
 
-strlocn		dw	0		; 10K Encoder array
 olddacbox	db	0		; (256*3) temporary dacbox values
+strlocn		dw	0		; 10K Encoder array
+prefix		dw	0		; 8K Decoder array
 boxx		dw	2048 dup(0)	; (previous) box data points - x axis
-decoderline	db	0		; 2K Decoder array
 boxy		dw	2048 dup(0)	; (previous) box data points - y axis
+decoderline	db	2048 dup(0)	; 4K Decoder array
 boxvalues	db	2048 dup(0)	; 2K of (previous) box color values
 
 diskline	db	0		; 2K Diskvideo array
@@ -137,6 +136,11 @@ keybuffer	dw	0		; real small keyboard buffer
 
 delayloop	dw	32		; delay loop value
 delaycount	dw	0		; number of delay "loops" per ms.
+
+lx0			dw	offset	lxarray
+			dw	seg	lxarray
+ly0			dw	offset	lyarray
+			dw	seg	lyarray
 
 ;	"buzzer()" codes:  strings of two-word pairs 
 ;		(frequency in cycles/sec, delay in milliseconds)
@@ -165,6 +169,9 @@ lookatmouse	dw	0		; if 0, ignore non-button mouse mvment
 
 
 .CODE
+	ALIGN	4
+lxarray	dd	2048 dup(0)		; array of 2K X co-ordinates
+lyarray	dd	2048 dup(0)		; array of 2K Y co-ordinates
 
 ; *************** Function toextra(tooffset,fromaddr, fromcount) *********
 
@@ -599,10 +606,11 @@ divide		endp
 ;	'keypressed()' returns a zero if no keypress is outstanding,
 ;	and the value that 'getakey()' will return if one is.  Note
 ;	that you must still call 'getakey()' to flush the character.
-;	As a sidebar function, calls 'help()' if appropriate.
+;	As a sidebar function, calls 'help()' if appropriate, or
+;	'tab_display()' if appropriate.
 ;	Think of 'keypressed()' as a super-'kbhit()'.
 
-keypressed	proc
+keypressed	proc	uses di si es
 keypressed1:
 	cmp	keybuffer,0			; is a keypress stacked up?
 	jne	keypressed3			;  yup. use it.
@@ -613,16 +621,16 @@ keypressed1:
  	call	msemvd				; key pressed on the mouse?
  	jc	keypressed2			; yes.  handle it.
 	cmp	lookatmouse,0			; look for mouse movement?
-	je	keypressed5			; nope.  return: no action.
+	je	keypressed99			; nope.  return: no action.
  	call	chkmse				; was the mouse moved
- 	jnc	keypressed5			; nope.  return: no action.
+ 	jnc	keypressed99			; nope.  return: no action.
 keypressed2:
 	call	far ptr getakey			; get the keypress code
 	mov	keybuffer,ax			; and save the result.
 keypressed3:
 	mov	ax,keybuffer			; return the keypress code.
 	cmp	helpmode,1			; is this HELPAUTHORS mode?
-	je	keypressed5			;  yup.  forget help.
+	je	keypressed99			;  yup.  forget help.
 	cmp	ax,'h'				; help called?
 	je	keypressed4			;  ...
 	cmp	ax,'H'				; help called?
@@ -634,14 +642,18 @@ keypressed3:
 	jmp	keypressed5			; no help asked for.
 keypressed4:
 	mov	keybuffer,0			; say no key hit
-	push	es				; save a few registers
 	mov	ax,2				; ask for general help
 	push	ax				;  ...
 	call	far ptr help			; help!
 	mov	keybuffer,ax			; save the result
 	pop	ax				; returned value
-	pop	es				; restore some registers
+	jmp	keypressed99
 keypressed5:
+	cmp	ax,9				; TAB key hit?
+	jne	keypressed99			; nope.  no TAB display.
+	mov	keybuffer,0			; say no key hit
+	call	far ptr tab_display		; show the TAB status
+keypressed99:
 	mov	ax,keybuffer			; return keypress, if any
 	ret
 keypressed	endp
@@ -832,6 +844,8 @@ initasmvarsgo:
 	pop	ax			; restore the stack
 	pop	ax			;  ...
 	mov	extraseg,dx		; save the results here.
+
+	call	adapter_detect		; call the video adapter detector
 
 	push	es			; save ES for a tad
 	mov	ax,0			; reset ES to BIOS data area

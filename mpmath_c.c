@@ -46,21 +46,21 @@ struct MP MPabs(struct MP x) {
 struct MPC MPCsqr(struct MPC x) {
    struct MPC z;
 
-   z.r = pMPsub(pMPmul(x.r, x.r), pMPmul(x.i, x.i));
-   z.i = pMPmul(x.r, x.i);
-   z.i.Exp++;
+	z.x = pMPsub(pMPmul(x.x, x.x), pMPmul(x.y, x.y));
+	z.y = pMPmul(x.x, x.y);
+	z.y.Exp++;
    return(z);
 }
 
 struct MP MPCmod(struct MPC x) {
-   return(pMPadd(pMPmul(x.r, x.r), pMPmul(x.i, x.i)));
+	return(pMPadd(pMPmul(x.x, x.x), pMPmul(x.y, x.y)));
 }
 
 struct MPC MPCmul(struct MPC x, struct MPC y) {
    struct MPC z, t;
 
-   z.r = pMPsub(pMPmul(x.r, y.r), pMPmul(x.i, y.i));
-   z.i = pMPadd(pMPmul(x.r, y.i), pMPmul(x.i, y.r));
+	z.x = pMPsub(pMPmul(x.x, y.x), pMPmul(x.y, y.y));
+	z.y = pMPadd(pMPmul(x.x, y.y), pMPmul(x.y, y.x));
    return(z);
 }
 
@@ -68,25 +68,25 @@ struct MPC MPCdiv(struct MPC x, struct MPC y) {
    struct MP mod;
 
    mod = MPCmod(y);
-   y.i.Exp ^= 0x8000;
-   y.r = pMPdiv(y.r, mod);
-   y.i = pMPdiv(y.i, mod);
+	y.y.Exp ^= 0x8000;
+	y.x = pMPdiv(y.x, mod);
+	y.y = pMPdiv(y.y, mod);
    return(MPCmul(x, y));
 }
 
 struct MPC MPCadd(struct MPC x, struct MPC y) {
    struct MPC z;
 
-   z.r = pMPadd(x.r, y.r);
-   z.i = pMPadd(x.i, y.i);
+	z.x = pMPadd(x.x, y.x);
+	z.y = pMPadd(x.y, y.y);
    return(z);
 }
 
 struct MPC MPCsub(struct MPC x, struct MPC y) {
    struct MPC z;
 
-   z.r = pMPsub(x.r, y.r);
-   z.i = pMPsub(x.i, y.i);
+	z.x = pMPsub(x.x, y.x);
+	z.y = pMPsub(x.y, y.y);
    return(z);
 }
 
@@ -102,13 +102,13 @@ struct MPC MPCpow(struct MPC x, int exp) {
       z = MPCone;
    exp >>= 1;
    while(exp) {
-      zz.r = pMPsub(MPmul(x.r, x.r), pMPmul(x.i, x.i));
-      zz.i = pMPmul(x.r, x.i);
-      zz.i.Exp++;
+		zz.x = pMPsub(MPmul(x.x, x.x), pMPmul(x.y, x.y));
+		zz.y = pMPmul(x.x, x.y);
+		zz.y.Exp++;
       x = zz;
       if(exp & 1) {
-         zz.r = pMPsub(pMPmul(z.r, x.r), pMPmul(z.i, x.i));
-         zz.i = pMPadd(pMPmul(z.r, x.i), pMPmul(z.i, x.r));
+			zz.x = pMPsub(pMPmul(z.x, x.x), pMPmul(z.y, x.y));
+			zz.y = pMPadd(pMPmul(z.x, x.y), pMPmul(z.y, x.x));
          z = zz;
       }
       exp >>= 1;
@@ -119,10 +119,10 @@ struct MPC MPCpow(struct MPC x, int exp) {
 int MPCcmp(struct MPC x, struct MPC y) {
    struct MPC z;
 
-   if(pMPcmp(x.r, y.r) || pMPcmp(x.i, y.i)) {
-      z.r = MPCmod(x);
-      z.i = MPCmod(y);
-      return(pMPcmp(z.r, z.i));
+	if(pMPcmp(x.x, y.x) || pMPcmp(x.y, y.y)) {
+		z.x = MPCmod(x);
+		z.y = MPCmod(y);
+		return(pMPcmp(z.x, z.y));
    }
    else
       return(0);
@@ -131,16 +131,16 @@ int MPCcmp(struct MPC x, struct MPC y) {
 struct complex MPC2cmplx(struct MPC x) {
    struct complex z;
 
-   z.x = *pMP2d(x.r);
-   z.y = *pMP2d(x.i);
+	z.x = *pMP2d(x.x);
+	z.y = *pMP2d(x.y);
    return(z);
 }
 
 struct MPC cmplx2MPC(struct complex z) {
    struct MPC x;
 
-   x.r = pd2MP(z.x);
-   x.i = pd2MP(z.y);
+	x.x = pd2MP(z.x);
+	x.y = pd2MP(z.y);
    return(x);
 }
 
@@ -207,6 +207,8 @@ struct complex ComplexPower(struct complex x, struct complex y) {
 
 #ifndef TESTING_MATH
 
+#include "fractint.h"
+
 extern double param[];
 extern struct complex old, new, init;
 extern double threshold, roverd, d1overd, dx0[], dy0[];
@@ -222,8 +224,6 @@ extern void (*plot)(int x, int y, int Color);
 extern int  xdots, ydots;     /* coordinates of dots on the screen  */
 extern int  colors;           /* maximum colors available */
 extern int  maxit;
-extern char far *farmemalloc(long bytestoalloc);
-extern void farmemfree(char far *farptr);
 
 char far *LogTable = (char far *)0;
 extern int LogFlag;
@@ -271,7 +271,7 @@ long far ExpFloat14(long x) {
 
 extern struct complex tmp;
 extern int color, colors;
-double X_TwoPi;
+double TwoPi;
 struct complex temp, t2, BaseLog;
 struct complex cdegree = { 3.0, 0.0 },
                croot   = { 1.0, 0.0 };
@@ -286,7 +286,7 @@ int ComplexNewtonSetup(void) {
       cdegree.x = param[0];
       cdegree.y = param[1];
       FPUcplxlog(&croot, &BaseLog);
-      X_TwoPi = asin(1.0) * 4;
+      TwoPi = asin(1.0) * 4;
    }
    return(1);
 }
@@ -340,7 +340,7 @@ int ComplexBasin(void) {
          old.y = 0.0;
       FPUcplxlog(&old, &temp);
       FPUcplxmul(&temp, &cdegree, &tmp);
-      mod = tmp.y/X_TwoPi;
+      mod = tmp.y/TwoPi;
       color = (int)mod;
       if(fabs(mod - color) > 0.5) {
          if(mod < 0.0)
@@ -360,6 +360,31 @@ int ComplexBasin(void) {
 
    FPUcplxmul(&temp, &cdegree, &t2);
    FPUcplxdiv(&tmp, &t2, &old);
+   return(0);
+}
+
+void fullscreen_prompt(int startrow, int numprompts, char *prompts[], 
+   double values[]);
+int get_fracttype(int t);
+
+static int Distribution = 30, Offset = 0, Slope = 25, f;
+static long con;
+
+int Starfield(void) {
+   int c;
+
+   plasma();
+   Distribution = (int)param[1];
+   con = (long)(param[2] / 100 * (1L << 16));
+   Slope = (int)param[3];
+   for(row = 0; row < ydots; row++) {
+      for(col = 0; col < xdots; col++) {
+         if(check_key())
+            return(-1);
+         c = getcolor(col, row);
+         putcolor(col, row, GausianNumber(c, colors));
+      }
+   }
    return(0);
 }
 

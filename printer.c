@@ -131,7 +131,8 @@ void Print_Screen()
                         Printer_printf(LPTn,"\x1B*t%iR\x1B*r0A",res);  /* HP */
                         break;
                 case 2:
-                        Printer_printf(LPTn,"\x1B\x33\x19");          /* IBM */
+/*                        Printer_printf(LPTn,"\x1B\x33\x19");          IBM */
+                        Printer_printf(LPTn,"\x1B\x33\x18");          /* IBM */
                         break;
         }
 

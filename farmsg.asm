@@ -29,6 +29,12 @@ helpmessagecycling	dw	offset  helpmessagecycling1
 			dw	seg     helpmessagecycling2
 			dw	0,0
 
+helpmessagexhair	dw	offset  helpmessagexhair1
+			dw	seg     helpmessagexhair1
+			dw	offset  helpmessagexhair2
+			dw	seg     helpmessagexhair2
+			dw	0,0
+
 helpmessagemouse	dw	offset  helpmessagemouse1
 			dw	seg     helpmessagemouse1
 			dw	0,0
@@ -41,6 +47,8 @@ helpmessagecmdline	dw	offset  helpmessagecmdline1
 			dw	seg     helpmessagecmdline3
 			dw	offset  helpmessagecmdline4
 			dw	seg     helpmessagecmdline4
+			dw	offset  helpmessagecmdline5
+			dw	seg     helpmessagecmdline5
 			dw	0,0
 
 helpmessagefractals	dw	offset  helpmessagefractals1
@@ -59,6 +67,8 @@ helpmessagefractals	dw	offset  helpmessagefractals1
 			dw	seg     helpmessagefractals7
 			dw	offset  helpmessagefractals8
 			dw	seg     helpmessagefractals8
+			dw	offset  helpmessagefractals9
+			dw	seg     helpmessagefractals9
 			dw	0,0
 
 helpmessageformoreinfo	dw	offset  helpmessageformoreinfo1
@@ -73,6 +83,7 @@ helpmessageformoreinfo	dw	offset  helpmessageformoreinfo1
 	public	helpmessagemenu
 	public	helpmessagemain
 	public	helpmessagecycling
+	public	helpmessagexhair
 	public	helpmessagemouse
 	public	helpmessagecmdline
 	public	helpmessagefractals
@@ -90,16 +101,16 @@ helpmessageformoreinfo	dw	offset  helpmessageformoreinfo1
 
 	public	initifs, initifs3d
 
-helpmessagetitle	db	"FRACTINT    Version 11.0"
+helpmessagetitle	db	"FRACTINT    Version 12.0"
  db 13,10,0
 
 helpmessageauthors	db	13,10
  db "------------------  Primary Authors (this changes over time)  -----------------",13,10
  db "Bert Tyler      - Programmer-Type obsessed with mind-numbing speed...",13,10
  db "                  Compuserve (CIS) ID: [73477,433]   BIX ID: btyler",13,10
- db "Timothy Wegner  - Mathematician-Type obsessed with fractals and options...",13,10
+ db "Timothy Wegner  - Mathematician-Type obsessed with 3D and endless options...",13,10
  db "                  CIS ID: [71320,675]   Internet: twegner@mwunix.mitre.org",13,10
- db "Mark Peterson   - Mathematician-Type obsessed with fractal types AND speed...",13,10
+ db "Mark Peterson   - Mathematician-Type obsessed with fractal types and speed...",13,10
  db "                  CIS ID: [70441,3353]",13,10
  db "---------  Contributing Authors (SPACEBAR toggles scrolling off/on)  ----------",13,10
  db 13,10
@@ -128,14 +139,18 @@ helpmessagecredits	db	32
  db "Lee Crocker     - [73407,2030] Fast Newton, Inversion, Decomposition..",13,10
  db "Monte Davis     - [71450,3542] Documentation",13,10
  db "Richard Finegold- [76701,153] 8/16/../256-Way Decomposition option",13,10
- db "Mike Kaufman    - mouse support, other features",13,10
+ db "Lawrence Gozum  - [73437,2372] Tseng 640x400x256 Video Mode",13,10
+ db "Mike Kaufman    - [71610,431] mouse support, other features",13,10
  db "Joe McLain      - [75066,1257] TARGA Support, color-map files",13,10
  db "Bob Montgomery  - [73357,3140] (Author of VPIC) Fast text I/O routines",13,10
  db "Bret Mulvey     - plasma clouds",13,10
- db "Marc Reinig     - [72410,77] 3D 'Preview' option",13,10
+ db "Marc Reinig     - [72410,77] Lots of 3D options",13,10
  db "Kyle Powell     - [76704,12] 8514/A Support",13,10
  db "Matt Saucier    - [72371,3101] Printer Support",13,10
+ db "Herb Savage     - [71640,455] 'inside=bof60', 'inside=bof61' options",13,10
  db "Dean Souleles   - [75115,1671] Hercules Support",13,10
+ db "Scott Taylor    - [72401,410] type=formula 'Scott...' formulas",13,10
+ db "Paul Varner     - [73237,411] Floating-point fractal algorithms",13,10
  db "Dave Warker     - Integer Mandelbrot Fractals concept",13,10
  db "Phil Wilson     - [76247,3145] Distance Estimator, Bifurcation fractals",13,10
  db "Richard Wilton  - Tweaked VGA Video modes",13,10
@@ -147,18 +162,19 @@ helpmessagecredits	db	32
  db 0
 
 helpmessagemenu	db	13,10
- db 13,10,13,10
+ db 13,10
  db "The following help screens are available",13,10
  db 13,10
  db "1   - Commands available at the initial Credits Screen and main command level",13,10,13,10
  db "2   - Commands available at the Color-Cycling command level",13,10,13,10
- db "3   - Using FRACTINT with a mouse",13,10,13,10
+ db "3   - Commands available at the Cross-Hair command level",13,10,13,10
  db "4   - The SSTOOLS.INI file and Command-Line arguments",13,10,13,10
  db "5   - Descriptions of currently available fractal types",13,10,13,10
  db "6   - List of Available Video Modes and the keys that select them",13,10
  db "      ( >>> and if you're at the initial Credits Screen, NO FRACTAL IMAGES",13,10
  db "      are going to get drawn UNTIL AFTER you select a video mode <<< )",13,10,13,10
  db "7   - Contacting the authors / obtaining the latest versions of FRACTINT",13,10,13,10
+ db "8   - Using FRACTINT with a mouse",13,10,13,10
  db "Please press one of the above keys (or press ESCAPE to exit Help Mode)"
  db 0
 
@@ -214,13 +230,13 @@ helpmessagemain3	db	13,10
  db "* f or F            toggle the floating-point option ON or OFF.  The",13,10
  db "                    TAB key display will indicate so if it's ON.",13,10
  db "                    See FRACTINT.DOC for details.",13,10
- db "  q or Q            apply Decomposition (2, 4, or 8-way) to the current",13,10
+ db "  q or Q            apply Decomposition (2, 4, .. 256-way) to the current",13,10
  db "                    fractal image.  See FRACTINT.DOC for details.",13,10
+ db "  a or A            Convert the current image into a fractal 'starfield'",13,10
+ db "                    (the 'astrologer' option).",13,10
  db "* Insert            Restart the program (at the credits screen)",13,10
  db "* d or D            Shell to DOS (type 'exit' at the DOS prompt to return)",13,10
  db "* Delete or Esc     Stop the program and return to MSDOS",13,10
- db 13,10
- db 13,10
  db 13,10
  db 13,10
  db 13,10
@@ -261,7 +277,47 @@ helpmessagecycling2	db	13,10
  db "                   filetype is .MAP), and load the palette from that map file",13,10
  db "  s or S           pause, prompt for a palette map filename (default",13,10
  db "                   filetype is .MAP), and save the palette to that map file",13,10
+ db "* x or X           Enter Cross-hair palette-manipulation mode, where you can",13,10
+ db "                   modify the screen colors a palette at a time (see the",13,10
+ db "                   Cross-Hair Help screen for details)",13,10
  db "  (any other key)  Exit Color-Cycling and return to main command level",13,10
+ db 0
+
+helpmessagexhair1	db	13,10
+ db "Command Keys that are available in Cross-Hair mode (which is the mode you",13,10
+ db "are in if you have hit the 'x' key in Color-Cycling mode and are now",13,10
+ db "looking at a screen with a white overscan (border) area and a Cross-Hair",13,10
+ db "cursor on the screen).  Cross-Hair mode is available only on VGA systems.",13,10
+ db 13,10
+ db "  h or H or ?      HELP! (Enter help mode and display this screen)",13,10
+ db "  Cursor Keys      Move the cross-hair cursor around the screen.  The",13,10
+ db "                   Control-Cursor keys move the cross-hair around faster.",13,10 
+ db "                   A mouse can also be used to move around, in which case",13,10
+ db "                   holding down the right button speeds up cursor movement",13,10
+ db "  r or g or b or   Lower (lower case) or Raise (upper case) the Red, Green,",13,10
+ db "  R or G or B      or Blue component of the palette color of the pixel",13,10
+ db "                   in the center of the Cross-Hair cursor (and all of the",13,10
+ db "                   other pixels that use the same palette value)",13,10
+ db "  + or -           Change the RGB values of the palette of the pixel in",13,10
+ db "                   the center of the Cross-Hair cursor (and all of its",13,10
+ db "                   sister pixels) to that of the next higher (or lower)",13,10
+ db "                   palette value.  Useful for 'erasing' bands of color.",13,10 
+ db 0
+
+helpmessagexhair2	db	13,10
+ db "Command Keys that are available in Cross-Hair mode (which is the mode you",13,10
+ db "are in if you have hit the 'x' key in Color-Cycling mode and are now",13,10
+ db "looking at a screen with a white overscan (border) area and a Cross-Hair",13,10
+ db "cursor on the screen).  Cross-Hair mode is available only on VGA systems.",13,10
+ db 13,10
+ db "  PageUp or PageDown Change the palette value (color) of the Cross-Hair",13,10
+ db "                   Cursor.  Useful when the cursor gets 'lost'.",13,10
+ db "                   Holding down the Left mouse-button and moving the",13,10
+ db "                   mouse forward and backward also changes the cursor color.",13,10
+ db "  Enter            'Do-Nothing' key, added just to keep from accidentally",13,10
+ db "                   exiting Cross-Hair mode by pressing both mouse buttons",13,10
+ db "                   simultaneously",13,10
+ db "  (any other key)  Exit Cross-Hair mode and return to Color-Cycling mode",13,10
  db 0
 
 helpmessagemouse1	db	13,10
@@ -323,18 +379,20 @@ helpmessagecmdline2	db	13,10
  db "batch=yes                  Batch mode run (display image, save-to-disk, exit)",13,10
  db "batch=config               Batch mode run to generate a 'fractint.cfg' file",13,10
  db "cyclelimit=nnn             color-cycler speed-limit (1 to 256, default = 55)",13,10
+ db "float=yes                  For some functions changes from integer math to fp",13,10
  db "ifs=filename               Define an IFS map for the Barnsley IFS fractals",13,10
  db "                           Read the IFS section of FRACTINT.DOC for details",13,10
  db "printer=type[/res[/lpt#]]  Set the printer type (HP-Laserjet, IBM, Epson),",13,10
  db "                           dots/inch, and port# (1-3 for LPTn, 11-14 for COMn)",13,10
- db "sound=off                  (nobody ever plays with fractals at work, do they?)",13,10
  db 0
 
 helpmessagecmdline3	db	13,10
  db "The initialization variables available, and their formats are:",13,10
  db 13,10
- db "3d=[nn[/nn[/nn]]]...       Generate 'filename' (above) as a 3D image using",13,10
- db "                           'nn/nn...' as default answers to the 3D prompts",13,10
+; db "3d=[nn[/nn[/nn]]]...       Generate 'filename' (above) as a 3D image using",13,10
+; db "                           'nn/nn...' as default answers to the 3D prompts",13,10
+ db "preview=yes                Turns on 3D 'preview' default mode",13,10
+ db "showbox=yes                Turns on 3D 'showbox' default mode",13,10
  db "sphere=yes                 Turns on 3D sphere mode",13,10
  db "longitude=nn/nn            Longitude minumim and maximum",13,10
  db "latitude=nn/nn             Latitude minimum and maximum",13,10
@@ -353,22 +411,39 @@ helpmessagecmdline3	db	13,10
  db 0
 
 helpmessagecmdline4	db	13,10
- db "float=yes                  For some functions changes from integer math to fp",13,10
- db "rseed=nnnnn                Forces the random-number 'seed' for Plasma",13,10
- db "                           clouds (so they are reproducable).  The 'rseed='",13,10
+ db "The initialization variables available, and their formats are:",13,10
+ db 13,10
+ db "coarse=nnn                 Sets Preview 'coarseness' default value",13,10
+ db "stereo=nnn                 Sets Stereo (R/B 3D) option:  0 = none,",13,10
+ db "                           1 = alternate, 2 = superimpose, 3 = photo",13,10
+ db "interocular=nnn            Sets 3D Interocular distance default value",13,10
+ db "converge=nnn               Sets 3D Convergence default value",13,10
+ db "crop=nnn/nnn/nnn/nnn       Sets 3D red-left, red-right, blue-left,",13,10
+ db "                           and blue-right cropping default valuess",13,10
+ db "bright=nnn/nnn             Sets 3D red and blue brightness defaults,",13,10
+ db "xyadjust=nnn/nnn           Sets 3D X and Y adjustment defaults,",13,10
+ db "rseed=nnnnn                Forces reproducable Plasma Clouds.  The 'rseed='",13,10
  db "                           value is listed as part of the <TAB> display",13,10
- db "decomp=nn[/nnnnn]          'Binary Decomposition' toggle.  First value 2 or 4,",13,10
+ db "decomp=nn[/nnnnn]          'Decomposition' toggle.  First value 2 to 256,",13,10
  db "                           2nd is bailout limit.  See FRACTINT.DOC for details",13,10
  db "biomorph=nnn               Turns on Biomorph Coloring (use with the mansinzexpd",13,10
  db "                           and Julsinzexpd fractal types)",13,10
  db "bailout=nnnn               Use this as the iteration bailout value (rather than",13,10
  db "                           the default value of [for most fractal types] 4.0)",13,10
+ db 0
+
+helpmessagecmdline5	db	13,10
  db "symmetry=xxxx              Force symmetry to None, Xaxis, Yaxis, XYaxis,",13,10
  db "                           Origin, or Pi symmetry.  Useful for debugging.",13,10
+ db "formulafile=filename       Find the 'type=formula' fractals in this file",13,10
+ db "                           instead of the default file (FRACTINT.FRM).",13,10
+ db "formulaname=formulaname    Have the 'type=formula' fractals use this",13,10
+ db "                           formula (instead of the first one in the file).",13,10
  db "askvideo=no                Disable 'Is This Mode OK?' prompt if you have a ",13,10
  db "                           FRACTINT.CFG file restricted to legal video modes.",13,10
  db "    ;                      indicates the rest of the line is a comment",13,10
  db "                           (IE, 'fractint type=plasma ; use plasma clouds')",13,10
+ db "sound=off                  (nobody ever plays with fractals at work, do they?)",13,10
  db 0
 
 helpmessagefractals1	db	13,10
@@ -537,6 +612,14 @@ helpmessagefractals8	db	13,10
  db "lorenz3d  =  3D Lorenz attractor with 3D perspective.  Run this while",13,10
  db "             using the transformation option of the E(dit) command",13,10
  db "             to change your perspective.",13,10
+ db "formula   =  Formula interpreter - write your own formulas as text files!",13,10
+ db "             See FRACTINT.DOC for instructions on using this one.",13,10
+ db 0
+
+helpmessagefractals9	db	13,10
+ db "julibrot  =  'Julibrot' 4-dimensional fractals.  Read FRACTINT.DOC for",13,10
+ db "             an description of these fractals (and a description of",13,10
+ db "             the prompts involved in invoking them).",13,10
  db 0
 
 helpmessageformoreinfo1	db	13,10
@@ -587,8 +670,8 @@ runningontarga		db	13,10
 plasmamessage		db	13,10
  db 13,10
  db "I'm sorry, but because of their random-screen-access algorithms, Plasma",13,10
- db "Clouds and Barnsley IFS fractal images cannot be created using an",13,10
- db "Expanded-Memory or Disk-based 'Video' mode.",13,10
+ db "Clouds and Barnsley IFS fractal images cannot be created using a",13,10
+ db "Disk-based 'Video' mode.",13,10
  db 13,10
  db "Also, Plasma Clouds can currently only be run in a 4-or-more-color video",13,10
  db "mode (and color-cycled only on VGA adapters [or EGA adapters in their",13,10

@@ -1,4 +1,4 @@
-;	Generic assembler routines having to do with video adapters
+;	Generic assembler routines having to do with video adapter
 ;
 ; ---- Video Routines 
 ;
@@ -19,6 +19,7 @@
 ;	spindac()
 ;	asmdotwrite		(called by CALCMAND.ASM using registers)
 ;	asmvideocleanup			""
+;	adapter_detect
 ;
 ; ---- Help (Video) Support
 ;
@@ -49,6 +50,8 @@ ENDIF
         extrn   readdisk:far            ; read  disk-video routine
         extrn   writedisk:far           ; write disk-video routine
         extrn   enddisk:far             ; end   disk-video routine
+
+	extrn	buzzer:far		; nyaah, nyaah message
 
 ; TARGA 28 May 80 - j mclain
         extrn   StartTGA  :far		; start	TARGA
@@ -81,33 +84,9 @@ ENDIF
 
 	extrn	oktoprint: word		; flag: == 1 if printf() will work
 	extrn	videoentry:byte		; video table entry flag
-	extrn	dotmode: word		; video mode:
-;						1 = use the BIOS (yuck)
-;						2 = use EGA/VGA style
-;						3 = use MCGA style
-;						4 = use Tseng 256 color
-;						5 = use Paradise 256 color
-;						6 = use Video 7 256 color
-;						7 = MVGA 256 color
-;						9 = use TARGA
-;						10= Hercules
-;						11= "disk" video
-;						12= 8514/A 
-;						13= CGA 4,2-color
-;						14= Tandy-1000 (someday)
-;						15= use Trident 256 color
-;						16= use Chips & Tech 256 color
-;						17= use ATI VGA Wonder 256 color
-;						18= use Everex 256 color
-;						19= use roll-your-own
-;						    (see YOURVID.C)
-;						20= use ATI 1024  16 color
-;						21= use tseng     16 color
-;						22= use trident   16 color
-;						23= use video7    16 color
-;						24= use paradise  16 color
-;						25= use chipstech 16 color
-;						26= use everex    16 color
+	extrn	dotmode: word		; video mode (see the comments
+					; in front of the internal video
+					; table for legal dot modes)
 
 	extrn	xdots:word, ydots:word	; number of dots across and down
 	extrn	maxit:word, colors:word	; maximum iterations, colors
@@ -126,6 +105,8 @@ ENDIF
 	extrn	cpu:word		; CPU type (86, 186, 286, or 386)
 	extrn	extraseg:word		; location of the EXTRA segment
 
+	extrn	suffix:word		; (safe place during video-mode switches)
+
 ; ************************ Public variables *****************************
 
 public		andcolor		; used by 'calcmand'
@@ -135,12 +116,14 @@ public		dacbox			; GIF saves use this
 public		daclearn, daccount	; Rotate may want to use this
 public		rowcount		; row-counter for decoder and out_line
 public		reallyega		; "really an EGA" (faking a VGA) flag
+public		video_type		; video adapter type
 
 ;		arrays declared here, used elsewhere
 ;		arrays not used simultaneously are deliberately overlapped
 
 ; ************************ Internal variables *****************************
 
+goodmode	dw	0		; if non-zero, OK to read/write pixels
 dotwrite	dw	0		; write-a-dot routine:  mode-specific
 dotread		dw	0		; read-a-dot routine:   mode-specific
 linewrite	dw	0		; write-a-line routine: mode-specific
@@ -164,6 +147,7 @@ daclearn	db	0		; 0 if "learning" DAC speed
 dacnorm		db	0		; 0 if "normal" DAC update
 daccount	dw	0		; DAC registers to update in 1 pass
 dacbox		db	773 dup(0)	; DAC goes here
+saved_dacreg	dw	0ffffh,0,0,0	; saved DAC register goes here
 
 rowcount	dw	0		; row-counter for decoder and out_line
 
@@ -172,6 +156,25 @@ videoax		dw	0		; graphics mode values: ax
 videobx		dw	0		; graphics mode values: bx
 videocx		dw	0		; graphics mode values: cx
 videodx		dw	0		; graphics mode values: dx
+
+video_type	dw	0		; video adapter type.  Legal values:
+					;   0  = not yet determined
+					;   1  = Hercules (not yet checked)
+					;   2  = CGA
+					;   3  = EGA
+					;   4  = VGA
+					;   5  = VESA (not yet checked)
+					;  11  = 8514/A (not yet checked)
+					;  12  = TIGA   (not yet checked)
+					;  13  = TARGA  (not yet checked)
+video_entries	dw	0		; offset into video_entries table
+video_bankadr	dw	0		; offset  of  video_banking routine
+video_bankseg	dw	0		; segment of  video_banking routine
+
+badvideomsg	db	13,10
+		db	"That video mode is not available with your adapter."
+		db	13,10
+		db	"Please select another video mode.$"
 
 ; ******************* "Tweaked" VGA mode variables ************************
 
@@ -311,6 +314,11 @@ tweaktype	dw	0			; 8 or 9 (320x400 or 360x480)
 
 .code
 
+video_requirements	dw	0		; minimal video_type req'd
+	dw	1, 3, 4, 4, 4, 4, 4, 4, 1, 1	; dotmodes  1 - 10
+	dw	1, 4, 2, 1, 4, 4, 4, 4, 1, 4	; dotmodes 11 - 20
+	dw	4, 4, 4, 4, 4, 4, 4, 4, 4, 4	; dotmodes 21 - 30
+
 videotable	db	0	; video table actually starts on the NEXT byte
 
 ;	Feel free to add your favorite video adapter to the following table.
@@ -344,6 +352,16 @@ videotable	db	0	; video table actually starts on the NEXT byte
 ;		23) SuperVGA 1024x768x16 mode for the Video 7 Chipset
 ;		24) SuperVGA 1024x768x16 mode for the Paradise Chipset
 ;		25) SuperVGA 1024x768x16 mode for the Chips & Tech Chipset
+;		26) SuperVGA 1024x768x16 mode for the Everex Chipset
+;		27) SuperVGA Auto-Detect mode
+;		28) VESA modes
+
+;	(Several entries have been commented out - they should/did work,
+;	but are handled by alternative entries.  Where multiple SuperVGA
+;	entries are covered by a single SuperVGA Autodetect mode, the
+;	individual modes have been commented out.  Where a SuperVGA
+;	Autodetect mode covers only one brand of adapter, the Autodetect
+;	mode has been commented out to avoid confusion.)
 
 ;               |--Adapter/Mode-Name------|-------Comments-----------|
 
@@ -372,48 +390,70 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	   0h,   0,   0,   9,   7, 320, 400, 256
 	db	"IBM VGA (non-std/no text) Register Compatibles ONLY "
 	dw	   0h,   0,   0,   8,   7, 360, 480, 256
-	db	"8514/A Low  Res           Requires IBM's HDIDLOAD   "
+	db	"SuperVGA/VESA Autodetect  Works with most SuperVGA  "
+	dw	    0,   0,   0,   0,  27, 800, 600,  16
+	db	"SuperVGA/VESA Autodetect  Works with most SuperVGA  "
+	dw	    0,   0,   0,   0,  27,1024, 768,  16
+	db	"SuperVGA/VESA Autodetect  Works with most SuperVGA  "
+	dw	    0,   0,   0,   0,  27, 640, 400, 256
+	db	"SuperVGA/VESA Autodetect  Works with most SuperVGA  "
+	dw	    0,   0,   0,   0,  27, 640, 480, 256
+	db	"SuperVGA/VESA Autodetect  Works with most SuperVGA  "
+	dw	    0,   0,   0,   0,  27, 800, 600, 256
+;	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
+;	dw	4f02h,102h,   0,   0,  28, 800, 600,  16
+;	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
+;	dw	4f02h,104h,   0,   0,  28,1024, 768,  16
+	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
+	dw	4f02h,106h,   0,   0,  28,1280,1024,  16
+;	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
+;	dw	4f02h,100h,   0,   0,  28, 640, 400, 256
+;	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
+;	dw	4f02h,101h,   0,   0,  28, 640, 480, 256
+;	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
+;	dw	4f02h,103h,   0,   0,  28, 800, 600, 256
+	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
+	dw	4f02h,105h,   0,   0,  28,1024, 768, 256
+	db	"VESA Standard interface   OK: Andy Fu - Chips&Tech  "
+	dw	4f02h,107h,   0,   0,  28,1280,1024, 256
+	db	"8514/A Low  Res           Requires IBM's HDILOAD    "
 	dw	   3h,   0,   0,   1,  12, 640, 480, 256
-	db	"8514/A High Res           Requires IBM's HDIDLOAD   "
+	db	"8514/A High Res           Requires IBM's HDILOAD    "
 	dw	   3h,   0,   0,   1,  12,1024, 768, 256
-	db	"8514/A Low  W/Border      Requires IBM's HDIDLOAD   "
+	db	"8514/A Low  W/Border      Requires IBM's HDILOAD    "
 	dw	   3h,   0,   0,   1,  12, 632, 474, 256
-	db	"8514/A High W/Border      Requires IBM's HDIDLOAD   "
+	db	"8514/A High W/Border      Requires IBM's HDILOAD    "
 	dw	   3h,   0,   0,   1,  12,1016, 762, 256
-	db	"VESA Standard interface   UNTESTED: may not work    "
-	dw	  6ah,   0,   0,   0,   2, 800, 600,  16
-	db	"COMPAQ Portable 386       OK: Michael Kaufman       "
-	dw	  40h,   0,   0,   0,   1, 640, 400,   2
 	db	"Video-7 Vram VGA          OK: Ira Emus              "
 	dw	6f05h, 60h,   0,   0,   2, 752, 410,  16
 	db	"Video-7 Vram VGA          OK: Ira Emus              "
 	dw	6f05h, 61h,   0,   0,   2, 720, 540,  16
-	db	"Video-7 Vram VGA          OK: Ira Emus              "
-	dw	6f05h, 62h,   0,   0,   2, 800, 600,  16
+;	db	"Video-7 Vram VGA          OK: Ira Emus              "
+;	dw	6f05h, 62h,   0,   0,   2, 800, 600,  16
 	db	"Video-7 Vram VGA          OK: Ira Emus              "
 	dw	6f05h, 63h,   0,   0,   1,1024, 768,   2
 	db	"Video-7 Vram VGA          OK: Ira Emus              "
 	dw	6f05h, 64h,   0,   0,   1,1024, 768,   4
-	db	"Video-7 Vram VGA w/512K   OK: Sandy & Frank Lozier  "
-	dw	6f05h, 65h,   0,   0,  23,1024, 768,  16
-	db	"Video-7 Vram VGA          OK: Michael Kaufman       "
-	dw	6f05h, 66h,   0,   0,   6, 640, 400, 256
-	db	"Video-7  w/512K           OK: Greg Reznick          "
-	dw	6f05h, 67h,   0,   0,   6, 640, 480, 256
+;	db	"Video-7 Vram VGA w/512K   OK: Sandy & Frank Lozier  "
+;	dw	6f05h, 65h,   0,   0,  23,1024, 768,  16
+;	db	"Video-7 Vram VGA          OK: Michael Kaufman       "
+;	dw	6f05h, 66h,   0,   0,   6, 640, 400, 256
+;	db	"Video-7  w/512K           OK: Greg Reznick          "
+;	dw	6f05h, 67h,   0,   0,   6, 640, 480, 256
 	db	"Video-7  w/512K           OK: Greg Reznick          "
 	dw	6f05h, 68h,   0,   0,   6, 720, 540, 256
-	db	"Video-7  w/512K           OK: Greg Reznick          "
-	dw	6f05h, 69h,   0,   0,   6, 800, 600, 256
-	db	"Tseng SuperVGA tweaked    (adds missing Tseng mode) "
-	dw	   0h,   0,   0,  10,   4, 640, 400, 256
-	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
-	dw	  2eh,   0,   0,   0,   4, 640, 480, 256
-	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
-	dw	  29h,   0,   0,   0,   2, 800, 600,  16
-	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
-	dw	  30h,   0,   0,   0,   4, 800, 600, 256
-	db	"Orchid/STB/GENOA/SIGMA    OK: Timothy Wegner        "
-	dw	  37h,   0,   0,   0,  21,1024, 768,  16
+;	db	"Video-7  w/512K           OK: Greg Reznick          "
+;	dw	6f05h, 69h,   0,   0,   6, 800, 600, 256
+;	db	"Tseng SuperVGA tweaked    (adds missing Tseng mode) "
+;	dw	   0h,   0,   0,  10,   4, 640, 400, 256
+;	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
+;	dw	  2eh,   0,   0,   0,   4, 640, 480, 256
+;	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
+;	dw	  29h,   0,   0,   0,   2, 800, 600,  16
+;	db	"Orchid/STB/GENOA/SIGMA    OK: Monte Davis           "
+;	dw	  30h,   0,   0,   0,   4, 800, 600, 256
+;	db	"Orchid/STB/GENOA/SIGMA    OK: Timothy Wegner        "
+;	dw	  37h,   0,   0,   0,  21,1024, 768,  16
 	db	"GENOA/STB                 OK: Timothy Wegner        "
 	dw	  2dh,   0,   0,   0,   4, 640, 350, 256
 	db	"GENOA                     OK: Timothy Wegner        "
@@ -423,49 +463,75 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	db	"GENOA                     OK: Timothy Wegner        "
 	dw	  7ch,   0,   0,   0,   2, 512, 512,  16
 	db	"GENOA                     OK: Timothy Wegner        "
-	dw	  7dh,   0,   0,   0,   4, 512, 512, 256
+ 	dw	  7dh,   0,   0,   0,   4, 512, 512, 256
 	db	"STB                       UNTESTED: may not work    "
 	dw	  36h,   0,   0,   0,   1, 960, 720,  16
-	db	"Everex EVGA               OK: Travis Harrison       "
-	dw	  70h,   0,   0,   0,   2, 640, 480,  16
+;	db	"Everex EVGA               OK: Travis Harrison       "
+;	dw	  70h,   0,   0,   0,   2, 640, 480,  16
 	db	"Everex EVGA               OK: Travis Harrison       "
 	dw	  70h,  1h,   0,   0,   2, 752, 410,  16
-	db	"Everex EVGA               OK: Travis Harrison       "
-	dw	  70h,  2h,   0,   0,   2, 800, 600,  16
+;	db	"Everex EVGA               OK: Travis Harrison       "
+;	dw	  70h,  2h,   0,   0,   2, 800, 600,  16
 	db	"Everex EVGA               OK: Travis Harrison       "
 	dw	  70h, 11h,   0,   0,   1,1280, 350,   4
 	db	"Everex EVGA               OK: Travis Harrison       "
 	dw	  70h, 12h,   0,   0,   1,1280, 600,   4
 	db	"Everex EVGA               UNTESTED: may not work    "
 	dw	  70h, 13h,   0,   0,  18, 640, 350, 256
-	db	"Everex EVGA               UNTESTED: may not work    "
-	dw	  70h, 14h,   0,   0,  18, 640, 400, 256
+;	db	"Everex EVGA               UNTESTED: may not work    "
+;	dw	  70h, 14h,   0,   0,  18, 640, 400, 256
 	db	"Everex EVGA               UNTESTED: may not work    "
 	dw	  70h, 15h,   0,   0,  18, 512, 480, 256
 	db	"ATI EGA Wonder            OK: Garrett Wollman       "
 	dw	  51h,   0,   0,   0,   1, 640, 480,  16
 	db	"ATI EGA Wonder            OK: Garrett Wollman       "
 	dw	  52h,   0,   0,   0,   1, 800, 560,  16
-	db	"ATI VGA Wonder            OK: Henry So              "
-	dw	  54h,   0,   0,   0,   2, 800, 600,  16
-	db	"ATI VGA Wonder            OK: Mark Peterson         "
-	dw	  61h,   0,   0,   0,  17, 640, 400, 256
-	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
-	dw	  62h,   0,   0,   0,  17, 640, 480, 256
-	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
-	dw	  63h,   0,   0,   0,  17, 800, 600, 256
-	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
-	dw	  65h,   0,   0,   0,  20,1024, 768,  16
+;	db	"ATI VGA Wonder            OK: Henry So              "
+;	dw	  54h,   0,   0,   0,   2, 800, 600,  16
+;	db	"ATI VGA Wonder            OK: Mark Peterson         "
+;	dw	  61h,   0,   0,   0,  17, 640, 400, 256
+;	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
+;	dw	  62h,   0,   0,   0,  17, 640, 480, 256
+;	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
+;	dw	  63h,   0,   0,   0,  17, 800, 600, 256
+;	db	"ATI VGA Wonder (512K)     OK: Mark Peterson         "
+;	dw	  65h,   0,   0,   0,  20,1024, 768,  16
 	db	"Paradise EGA-480          UNTESTED: may not work    "
 	dw	  50h,   0,   0,   0,   1, 640, 480,  16
-	db	"Pdise/AST/COMPAQ VGA      OK: Tom Devlin            "
-	dw	  5eh,   0,   0,   0,   5, 640, 400, 256
-	db	"Pdise/AST/COMPAQ VGA      OK: Phil Wilson           "
-	dw	  5fh,   0,   0,   0,   5, 640, 480, 256
-	db	"Pdise/AST/COMPAQ VGA      OK: by Chris Green        "
-	dw	  58h,   0,   0,   0,   2, 800, 600,  16
+;	db	"Pdise/AST/COMPAQ VGA      OK: Tom Devlin            "
+;	dw	  5eh,   0,   0,   0,   5, 640, 400, 256
+;	db	"Pdise/AST/COMPAQ VGA      OK: Phil Wilson           "
+;	dw	  5fh,   0,   0,   0,   5, 640, 480, 256
+;	db	"Pdise/AST/COMPAQ VGA      OK: by Chris Green        "
+;	dw	  58h,   0,   0,   0,   2, 800, 600,  16
 	db	"Pdise/AST/COMPAQ VGA      OK: Phil Wilson           "
 	dw	  59h,   0,   0,   0,   1, 800, 600,   2
+;	db	"TRIDENT Chipset           OK: Warren Gold           "
+;	dw	  5bh,   0,   0,   0,   2, 800, 600,  16
+;	db	"TRIDENT Chipset           OK: Warren Gold           "
+;	dw	  5ch,   0,   0,   0,  15, 640, 400, 256
+;	db	"TRIDENT Chipset           OK: Warren Gold           "
+;	dw	  5dh,   0,   0,   0,  15, 640, 480, 256
+;	db	"TRIDENT Chipset           OK: Warren Gold           "
+;	dw	  5eh,   0,   0,   0,  15, 800, 600, 256
+;	db	"TRIDENT Chipset           OK: Larry Rosen           "
+;	dw	  5fh,   0,   0,   0,  22,1024, 768,  16
+;	db	"Chips & Tech Chipset      OK: Andy Fu               "
+;	dw	  78h,   0,   0,   0,  16, 640, 400, 256
+;	db	"Chips & Tech Chipset      OK: Andy Fu               "
+;	dw	  79h,   0,   0,   0,  16, 640, 480, 256
+;	db	"Chips & Tech Chipset      OK: Andy Fu               "
+;	dw	  7bh,   0,   0,   0,  16, 800, 600, 256
+;	db	"Chips & Tech Chipset      OK: Andy Fu               "
+;	dw	  70h,   0,   0,   0,   2, 800, 600,  16
+;	db	"Chips & Tech Chipset      UNTESTED: May not work    "
+;	dw	  72h,   0,   0,   0,  25,1024, 768,  16
+	db	"GENOA Super EGA           UNTESTED: May not work    "
+	dw	  73h,   0,   0,   0,   2, 640, 480,  16
+	db	"GENOA Super EGA           UNTESTED: May not work    "
+	dw	  79h,   0,   0,   0,   2, 800, 600,  16
+	db	"COMPAQ Portable 386       OK: Michael Kaufman       "
+	dw	  40h,   0,   0,   0,   1, 640, 400,   2
 	db	"Tandy 1000 16 Clr LoRez   OK: Tom Price             "
 	dw	   8h,   0,   0,   0,   1, 160, 200,  16
 	db	"Tandy 1000 16 Color CGA   OK: Tom Price             "
@@ -484,28 +550,16 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	dw	   0h,   0,   0,   0,   9, 512, 342, 256
 	db	"TARGA 256 Color 4 x 5     OK: Bruce Goren           "
 	dw	   0h,   0,   0,   0,   9, 512, 384, 256
-	db	"TRIDENT Chipset           OK: Warren Gold           "
-	dw	  5bh,   0,   0,   0,   2, 800, 600,  16
-	db	"TRIDENT Chipset           OK: Warren Gold           "
-	dw	  5ch,   0,   0,   0,  15, 640, 400, 256
-	db	"TRIDENT Chipset           OK: Warren Gold           "
-	dw	  5dh,   0,   0,   0,  15, 640, 480, 256
-	db	"TRIDENT Chipset           OK: Warren Gold           "
-	dw	  5eh,   0,   0,   0,  15, 800, 600, 256
-	db	"TRIDENT Chipset           UNTESTED: May not work    "
-	dw	  5fh,   0,   0,   0,  22,1024, 768,  16
-	db	"Chips & Tech Chipset      OK: Andy Fu               "
-	dw	  78h,   0,   0,   0,  16, 640, 400, 256
-	db	"Chips & Tech Chipset      OK: Andy Fu               "
-	dw	  79h,   0,   0,   0,  16, 640, 480, 256
-	db	"Chips & Tech Chipset      OK: Andy Fu               "
-	dw	  7bh,   0,   0,   0,  16, 800, 600, 256
-	db	"Chips & Tech Chipset      OK: Andy Fu               "
-	dw	  70h,   0,   0,   0,   2, 800, 600,  16
-	db	"Chips & Tech Chipset      UNTESTED: May not work    "
-	dw	  72h,   0,   0,   0,  25,1024, 768,  16
 	db	"Hercules Graphics         OK: Timothy Wegner        "
 	dw	   8h,   0,   0,   0,  10, 720, 348,   2
+	db	"Genoa Super EGA Hirez+    UNTESTED: May not work    "
+	dw	  75h,   0,   0,   0,   2, 640, 528,  16
+	db	"Genoa Super EGA Hirez+    UNTESTED: May not work    "
+	dw	  77h,   0,   0,   0,   2, 752, 410,  16
+	db	"Genoa Super EGA Hirez+    UNTESTED: May not work    "
+	dw	  79h,   0,   0,   0,   2, 800, 600,  16
+	db	"Genoa Super EGA Hirez+    UNTESTED: May not work    "
+	dw	  7bh,   0,   0,   0,   2, 912, 480,  16
 	db	"Disk/RAM 'Video'          Full-Page Epson @  60DPI  "
 	dw	   3h,   0,   0,   0,  11, 768, 480,   2
 	db	"Disk/RAM 'Video'          Full-Page Epson @ 120DPI  "
@@ -549,7 +603,7 @@ videotable	db	0	; video table actually starts on the NEXT byte
 	db	"END                       Must be the END of list   "
 	dw	   0h,   0,   0,   0,   0,   0,   0,  0
 
-	db	680 dup(0)		; room for 10 more video modes
+	db	68*20 dup(0)		; room for 20 more video modes
 
 .code
 
@@ -625,6 +679,15 @@ asmvideocleanup	endp
 ;		AL = The Color (returned on reads, sent on writes)
 ;		CX = The X-Location of the Pixel
 ;		DX = The Y-Location of the Pixel
+
+nullwrite	proc	near		; "do-nothing" write
+	ret
+nullwrite	endp
+
+nullread	proc	near		; "do-nothing" read
+	mov	ax,0			; "return" black pixels
+	ret
+nullread	endp
 
 normalwrite	proc	near		; generic write-a-dot routine
 	mov	ah,12			; write the dot (al == color)
@@ -1009,40 +1072,149 @@ super256addr	endp
 ;          2) deleted "end"
 ;       Integrated by Tim Wegner 8/15/89 
 ;	(switched to John's 9/7/89 version on 9/10/89 - Bert)
+;	(switched to John's 1/5/90 version on 1/9/90  - Bert)
+;	((added logic for various resolution on 9/10/90 - Bert)
+;	[ and had to add '@codesize' equate for some reason (??) - Bert]
 ;        
+     
+;	.MODEL medium,c
+@codesize	equ	1	; ??? shouldn't have to DO this!!!
 
 ;
-;	Copyright 1988,89 John Bridges
+;	Copyright 1988,89,90 John Bridges
 ;	Free for use in commercial, shareware or freeware applications
 ;
-;	BANKS.ASM
-;
+;	SVGAMODE.ASM
 ;
 .data
 
-	public	curbk
+OSEG	equ	SS:			;segment override for variable access
 
-curbk	dw	0ffffh		;current bank number
+bankadr	dw	offset $nobank
+if @codesize
+bankseg	dw	seg $nobank
+endif
 
+vesa_granularity	db	0	; BDT VESA Granularity value
+vesa_bankswitch		dd	0	; BDT VESA Bank-Switching Routine
 
-	public	tseng,trident,video7,paradise,chipstech,ativga,everex
+	public	curbk,maxx,maxy
 
-tseng	dw	0
-trident	dw	0
+curbk	dw	0
+maxx	dw	640
+maxy	dw	480
+
+	public	vga512
+
+vga512	dw	0
+
+	public	cirrus,video7,tseng,paradise,chipstech,trident
+	public	ativga,everex,aheada,aheadb
+
+cirrus	dw	0
 video7	dw	0
+tseng	dw	0
 paradise dw	0
 chipstech dw	0
+trident	dw	0
 ativga	dw	0
 everex	dw	0
+aheada	dw	0
+aheadb	dw	0
+
+		; this part is new - Bert 
+.code
+
+vesa_entries	dw	0
+	dw	 640, 400,256, 4f02h,100h
+	dw	 640, 480,256, 4f02h,101h
+	dw	 800, 600, 16, 4f02h,102h
+	dw	 800, 600,256, 4f02h,103h
+	dw	1024, 768, 16, 4f02h,104h
+	dw	1024, 768,256, 4f02h,105h
+	dw	1280,1024, 16, 4f02h,106h
+	dw	1280,1024,256, 4f02h,107h
+ahead_entries	dw	0
+	dw	 800, 600, 16, 06ah,0
+	dw	 800, 600, 16, 071h,0
+	dw	1024, 768, 16, 074h,0
+	dw	 640, 400,256, 060h,0
+	dw	 640, 480,256, 061h,0
+	dw	 800, 600,256, 062h,0
+ati_entries	dw	0
+	dw	 800, 600, 16, 054h,0
+	dw	1024, 768, 16, 065h,0ffh	; (non-standard mode flag)
+	dw	 640, 400,256, 061h,0
+	dw	 640, 480,256, 062h,0
+	dw	 800, 600,256, 063h,0
+chips_entries	dw	0
+	dw	 800, 600, 16, 070h,0
+	dw	1024, 768, 16, 072h,0
+	dw	 640, 400,256, 078h,0
+	dw	 640, 480,256, 079h,0
+	dw	 800, 600,256, 07bh,0
+everex_entries	dw	0
+	dw	 752, 410, 16, 070h,01h
+	dw	 800, 600, 16, 070h,02h
+	dw	1280, 350,  4, 070h,11h
+	dw	1280, 600,  4, 070h,12h
+	dw	 640, 350,256, 070h,13h
+	dw	 640, 400,256, 070h,14h
+	dw	 512, 480,256, 070h,15h
+	dw	1024, 768, 16, 070h,20h
+	dw	 640, 480,256, 070h,30h
+	dw	 800, 600,256, 070h,31h
+paradise_entries	dw	0
+	dw	 800, 600,  2, 059h,0
+	dw	 800, 600, 16, 058h,0
+	dw	 640, 400,256, 05eh,0
+	dw	 640, 480,256, 05fh,0
+	dw	1024, 768, 16, 05dh,0
+trident_entries	dw	0
+	dw	 800, 600, 16, 05bh,0
+	dw	1024, 768, 16, 05fh,0
+	dw	 640, 400,256, 05ch,0
+	dw	 640, 480,256, 05dh,0
+	dw	 800, 600,256, 05eh,0
+tseng_entries	dw	0
+	dw	 800, 600, 16, 029h,0
+	dw	1024, 768, 16, 037h,0
+	dw	 640, 350,256, 02dh,0
+	dw	 640, 400,256, 0,0feh	; (non-standard mode flag)
+	dw	 640, 480,256, 02eh,0
+	dw	 720, 512,256, 02fh,0
+	dw	 800, 600,256, 030h,0
+video7_entries	dw	0
+	dw	 752, 410, 16, 6f05h,60h
+	dw	 720, 540, 16, 6f05h,61h
+	dw	 800, 600, 16, 6f05h,62h
+	dw	1024, 768,  2, 6f05h,63h
+	dw	1024, 768,  4, 6f05h,64h
+	dw	1024, 768, 16, 6f05h,65h
+	dw	 640, 400,256, 6f05h,66h
+	dw	 640, 480,256, 6f05h,67h
+	dw	 720, 540,256, 6f05h,68h
+	dw	 800, 600,256, 6f05h,69h
+no_entries	dw	0
+	dw	 320, 200,256, 13h,0
+	dw	 640, 480, 16, 12h,0
+	dw	0
 
 .code
 
 newbank	proc			;bank number is in AX
 	cli
-	mov	[curbk],ax
-	cmp	[tseng],0
-	jz	nots
-	push	ax		;Tseng
+	mov	OSEG[curbk],ax
+if @codesize
+	call	dword ptr OSEG[bankadr]
+else
+	call	word ptr OSEG[bankadr]
+endif
+	ret
+newbank	endp
+
+$tseng	proc		;Tseng
+	push	ax
 	push	dx
 	and	al,7
 	mov	ah,al
@@ -1057,12 +1229,11 @@ newbank	proc			;bank number is in AX
 	pop	dx
 	pop	ax
 	ret
+$tseng	endp
 
-nots:	cmp	[trident],0
-	jz	notri
-	push	ax		;Trident
+$trident proc		;Trident
+	push	ax
 	push	dx
-		
 	mov	dx,3ceh		;set page size to 64k
 	mov	al,6
 	out	dx,al
@@ -1081,7 +1252,7 @@ nots:	cmp	[trident],0
 	in	al,dx
 	dec	dl
 
-	mov	ah,byte ptr [curbk]
+	mov	ah,byte ptr OSEG[curbk]
 	xor	ah,2
 	mov	dx,3c4h
 	mov	al,0eh
@@ -1090,10 +1261,10 @@ nots:	cmp	[trident],0
 	pop	dx
 	pop	ax
 	ret
+$trident endp
 
-notri:	cmp	[video7],0
-	jz	nov7
-	push	ax		;Video 7
+$video7 proc		;Video 7
+	push	ax
 	push	dx
 	push	cx
 ; Video-7 1024x768x16 mode patch (thanks to Frank Lozier 11/8/89).
@@ -1141,16 +1312,16 @@ video7xx:
 	pop	dx
 	pop	ax
 	ret
+$video7 endp
 	
-nov7:	cmp	[paradise],0
-	jz	nopd
-	push	ax		;Paradise
+$paradise proc		;Paradise
+	push	ax
 	push	dx
 	mov	dx,3ceh
 	mov	ax,50fh		;turn off write protect on VGA registers
 	out	dx,ax
-	mov	ah,byte ptr [curbk]
-	shl	ah,1		;change 64k bank number into 4k bank number
+	mov	ah,byte ptr OSEG[curbk]
+	shl	ah,1
 	shl	ah,1
 	shl	ah,1
 	shl	ah,1
@@ -1160,23 +1331,21 @@ nov7:	cmp	[paradise],0
 	pop	dx
 	pop	ax
 	ret
+$paradise endp
 
-nopd:	cmp	[chipstech],0
-	jz	noct
-	push	ax		;Chips & Tech
+$chipstech proc		;Chips & Tech
+	push	ax
 	push	dx
-
-;	mov     dx,46e8h	;place chip in setup mode
-;	mov     ax,1eh
-;	out     dx,ax
-;	mov     dx,103h		;enable extended registers
-;	mov     ax,0080
-;	out     dx,ax
-;	mov     dx,46e8h	;bring chip out of setup mode
-;	mov     ax,0eh
-;	out     dx,ax
-
-	mov	ah,byte ptr [curbk]
+	mov     dx,46e8h	;place chip in setup mode
+	mov     ax,1eh
+	out     dx,ax
+	mov     dx,103h		;enable extended registers
+	mov     ax,0080h	; (patched per JB's msg - Bert)
+	out     dx,ax
+	mov     dx,46e8h	;bring chip out of setup mode
+	mov     ax,0eh
+	out     dx,ax
+	mov	ah,byte ptr OSEG[curbk]
 	shl	ah,1		;change 64k bank number into 16k bank number
 	shl	ah,1
 	mov	al,10h
@@ -1186,10 +1355,10 @@ nopd:	cmp	[chipstech],0
 	pop	dx
 	pop	ax
 	ret
+$chipstech endp
 
-noct:	cmp	[ativga],0
-	jz	noati
-	push	ax		;ATI VGA Wonder
+$ativga proc		;ATI VGA Wonder
+	push	ax
 	push	dx
 	mov	ah,al
 	mov	dx,1ceh
@@ -1207,13 +1376,12 @@ noct:	cmp	[ativga],0
 	pop	dx
 	pop	ax
 	ret
+$ativga endp
 
-noati:	cmp	[everex],0
-	jz	noev
-	push	ax		;Everex
-	push	cx
+$everex proc		;Everex
+	push	ax
 	push	dx
-	sti
+	push	cx
 	mov	cl,al
 	mov	dx,3c4h
 	mov	al,8
@@ -1235,14 +1403,419 @@ noati:	cmp	[everex],0
 	jc	nob2
 	or	al,20h
 nob2:	out	dx,al
-	pop	dx
+	sti
 	pop	cx
+	pop	dx
 	pop	ax
 	ret
+$everex endp
 
-noev:	sti
+$aheada	proc
+	push	ax
+	push	dx
+	push	cx
+	mov	ch,al
+        mov     dx,3ceh		;Enable extended registers
+        mov     ax,200fh
+        out     dx,ax
+	mov	dl,0cch		;bit 0
+	in	al,dx
+	mov	dl,0c2h
+	and	al,11011111b
+	shr	ch,1
+	jnc	temp_1
+	or	al,00100000b
+temp_1:	out	dx,al
+	mov	dl,0cfh		;bits 1,2,3
+	mov	al,0
+	out	dx,al
+	inc	dx
+	in	al,dx
+	dec	dx
+	and	al,11111000b
+	or	al,ch
+	mov	ah,al
+	mov	al,0
+	out	dx,ax
+	sti
+	pop	cx
+	pop	dx
+	pop	ax
 	ret
-newbank	endp
+$aheada	endp
+
+$aheadb	proc
+	push	ax
+	push	dx
+	push	cx
+	mov	ch,al
+        mov     dx,3ceh		;Enable extended registers
+        mov     ax,200fh
+        out     dx,ax
+	mov	ah,ch
+	mov	cl,4
+	shl	ah,cl
+	or	ah,ch
+	mov	al,0dh
+	out	dx,ax
+	sti
+	pop	cx
+	pop	dx
+	pop	ax
+	ret
+$aheadb	endp
+
+$vesa	proc				; VESA bank switching
+	push	ax
+	push	bx
+	push	cx
+	push	dx
+	mul	vesa_granularity	; Adjust for the granularity factor
+	mov	dx,ax			; Select window position
+	mov	ax,4f05h		; VESA window control command
+	mov	bx,0			; select window (bank) sub-command
+;	int	10h			; do it!
+	call	dword ptr vesa_bankswitch  ; do it!
+	sti
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
+	ret
+$vesa	endp
+
+$nobank	proc
+	sti
+	ret
+$nobank	endp
+
+
+whichvga proc	uses si
+	mov	ax,4f00h		; check for VESA adapter
+	push	ds			; set ES == DS
+	pop	es			;  ...
+	mov	di, offset dacbox	; answer goes here (a safe place)
+	int	10h			; do it.
+	cmp	ax,004fh		; successful response?
+	jne	notvesa			; nope.  Not a VESA adapter
+
+	cmp	byte ptr 0[di],'V'	; string == 'VESA'?
+	jne	notvesa			; nope.  Not a VESA adapter
+	cmp	byte ptr 1[di],'E'	; string == 'VESA'?
+	jne	notvesa			; nope.  Not a VESA adapter
+	cmp	byte ptr 2[di],'S'	; string == 'VESA'?
+	jne	notvesa			; nope.  Not a VESA adapter
+	cmp	byte ptr 3[di],'A'	; string == 'VESA'?
+	jne	notvesa			; nope.  Not a VESA adapter
+	mov	video_entries, offset vesa_entries
+	mov	[bankadr],offset $vesa
+if @codesize
+	mov	[bankseg],seg $vesa
+endif
+	jmp	fini
+notvesa:
+	mov	si,1
+	mov	ax,0c000h
+	mov	es,ax
+	cmp	word ptr es:[40h],'13'
+	jnz	noati
+	mov	[ativga],1
+	mov	video_entries, offset ati_entries	; Bert
+	mov	[bankadr],offset $ativga
+if @codesize
+	mov	[bankseg],seg $ativga
+endif
+	cli
+	mov	dx,1ceh
+	mov	al,0bbh
+	out	dx,al
+	inc	dl
+	in	al,dx
+	sti
+	and	al,20h
+	jz	no512
+	mov	[vga512],1
+no512:	jmp	fini
+
+noati:	mov	ax,7000h		;Test for Everex
+	xor	bx,bx
+	cld
+	int	10h
+	cmp	al,70h
+	jnz	noev
+	mov	[everex],1
+	mov	video_entries, offset everex_entries	; Bert
+	mov	[bankadr],offset $everex
+if @codesize
+	mov	[bankseg],seg $everex
+endif
+	and	ch,11000000b
+	jz	temp_2	
+	mov	[vga512],1
+temp_2:	and	dx,0fff0h
+	cmp	dx,6780h
+	jz	yeste
+	cmp	dx,2360h
+	jnz	note
+yeste:	mov	[trident],1
+	mov	video_entries, offset trident_entries	; Bert
+	mov	[bankadr],offset $trident
+if @codesize
+	mov	[bankseg],seg $trident
+endif
+note:	jmp	fini
+
+noev:	mov	dx,3c4h			;Test for Trident
+	mov	al,0bh
+	out	dx,al
+	inc	dl
+	in	al,dx
+	cmp	al,0fh
+	ja	notri
+	cmp	al,2
+	jb	notri
+	mov	[trident],1
+	mov	video_entries, offset trident_entries	; Bert
+	mov	[bankadr],offset $trident
+if @codesize
+	mov	[bankseg],seg $trident
+endif
+	mov	[vga512],1
+	jmp	fini
+
+notri:	mov	ax,6f00h		;Test for Video 7
+	xor	bx,bx
+	cld
+	int	10h
+	cmp	bx,'V7'
+	jnz	nov7
+	mov	[video7],1
+	mov	video_entries, offset video7_entries	; Bert
+	mov	[bankadr],offset $video7
+if @codesize
+	mov	[bankseg],seg $video7
+endif
+	mov	ax,6f07h
+	cld
+	int	10h
+	and	ah,7fh
+	cmp	ah,1
+	jbe	temp_3
+	mov	[vga512],1
+temp_3:	jmp	fini
+
+nov7:	call	$cirrus			;Test for Cirrus
+	cmp	[cirrus],0
+	je	noci
+	jmp	fini
+
+noci:	mov	dx,3ceh			;Test for Paradise
+	mov	al,9			;check Bank switch register
+	out	dx,al
+	inc	dx
+	in	al,dx
+	dec	dx
+	or	al,al
+	jnz	nopd
+
+	mov	ax,50fh			;turn off write protect on VGA registers
+	out	dx,ax
+	mov	dx,offset $pdrsub
+	mov	cx,1
+	call	$chkbk
+	jc	nopd			;if bank 0 and 1 same not paradise
+	mov	[paradise],1
+	mov	video_entries, offset paradise_entries	; Bert
+	mov	[bankadr],offset $paradise
+if @codesize
+	mov	[bankseg],seg $paradise
+endif
+;	mov	cx,64
+;	call	$chkbk
+;	jc	temp_4			;if bank 0 and 64 same only 256k
+	mov	[vga512],1
+temp_4:	jmp	fini
+
+nopd:	mov	ax,5f00h		;Test for Chips & Tech
+	xor	bx,bx
+	cld
+	int	10h
+	cmp	al,5fh
+	jnz	noct
+	mov	[chipstech],1
+	mov	video_entries, offset chips_entries	; Bert
+	mov	[bankadr],offset $chipstech
+if @codesize
+	mov	[bankseg],seg $chipstech
+endif
+	cmp	bh,1
+	jb	temp_5
+	mov	[vga512],1
+temp_5:
+	jmp	fini
+
+noct:	mov	dx,3cdh			;Test for Tseng
+	in	al,dx
+	and	al,00111111b		;check bank switch register
+	jnz	nots
+
+	mov	[tseng],1
+	mov	video_entries, offset tseng_entries	; Bert
+	mov	[bankadr],offset $tseng
+if @codesize
+	mov	[bankseg],seg $tseng
+endif
+	mov	[vga512],1
+	jmp	short fini
+nots:	
+        mov     dx,3ceh		;Test for Above A or B chipsets
+        mov     ax,200fh
+        out     dx,ax
+        inc	dx
+        in      al,dx
+	cmp	al,21h
+	jz	verb
+	cmp	al,20h
+	jnz	noab
+	mov	[aheada],1
+	mov	video_entries, offset ahead_entries	; Bert
+	mov	[bankadr],offset $aheada
+if @codesize
+	mov	[bankseg],seg $aheada
+endif
+	mov	[vga512],1
+	jmp	short fini
+
+verb:	mov	[aheadb],1
+	mov	video_entries, offset ahead_entries	; Bert
+	mov	[bankadr],offset $aheadb
+if @codesize
+	mov	[bankseg],seg $aheadb
+endif
+	mov	[vga512],1
+	jmp	short fini
+noab:	mov	si,0
+
+fini:	mov	ax,si
+	ret
+whichvga endp
+
+
+$cirrus	proc	near
+	mov	dx,3d4h		; assume 3dx addressing
+	mov	al,0ch		; screen a start address hi
+	out	dx,al		; select index
+	inc	dx		; point to data
+	mov	ah,al		; save index in ah
+	in	al,dx		; get screen a start address hi
+	xchg	ah,al		; swap index and data
+	push	ax		; save old value
+	push	dx		; save crtc address
+	xor	al,al		; clear crc
+	out	dx,al		; and out to the crtc
+
+	mov	al,1fh		; Eagle ID register
+	dec	dx		; back to index
+	out	dx,al		; select index
+	inc	dx		; point to data
+	in	al,dx		; read the id register
+	mov	bh,al		; and save it in bh
+
+	mov	cl,4		; nibble swap rotate count
+	mov	dx,3c4h		; sequencer/extensions
+	mov	bl,6		; extensions enable register
+
+	ror	bh,cl		; compute extensions disable value
+	mov	ax,bx		; extensions disable
+	out	dx,ax		; disable extensions
+	inc	dx		; point to data
+	in	al,dx		; read enable flag
+	or	al,al		; disabled ?
+	jnz	exit		; nope, not an cirrus
+
+	ror	bh,cl		; compute extensions enable value
+	dec	dx		; point to index
+	mov	ax,bx		; extensions enable
+	out	dx,ax		; enable extensions
+	inc	dx		; point to data
+	in	al,dx		; read enable flag
+	cmp	al,1		; enabled ?
+	jne	exit		; nope, not an cirrus
+	mov	[cirrus],1
+	mov	video_entries, offset no_entries	; Bert
+	mov	[bankadr],offset $nobank
+if @codesize
+	mov	[bankseg],seg $nobank
+endif
+exit:	pop	dx		; restore crtc address
+	dec	dx		; point to index
+	pop	ax		; recover crc index and data
+	out	dx,ax		; restore crc value
+	ret
+$cirrus	endp
+
+$chkbk	proc	near		;paradise bank switch check
+	mov	di,0b800h
+	mov	es,di
+	xor	di,di
+	mov	bx,1234h
+	call	$gochk
+	jnz	nopd
+	mov	bx,4321h
+	call	$gochk
+	jnz	nopd
+	clc
+	ret
+nopd:	stc
+	ret
+$chkbk	endp
+
+$gochk	proc	near
+	push	si
+	mov	si,bx
+
+	mov	al,cl
+	call	dx
+	xchg	bl,es:[di]
+	mov	al,ch
+	call	dx
+	xchg	bh,es:[di]
+
+	xchg	si,bx
+
+	mov	al,cl
+	call	dx
+	xor	bl,es:[di]
+	mov	al,ch
+	call	dx
+	xor	bh,es:[di]
+
+	xchg	si,bx
+
+	mov	al,ch
+	call	dx
+	mov	es:[di],bh
+	mov	al,cl
+	call	dx
+	mov	es:[di],bl
+
+	mov	al,0
+	call	dx
+	or	si,si
+	pop	si
+	ret
+$gochk	endp
+
+
+$pdrsub	proc	near		;Paradise
+	push	dx
+	mov	ah,al
+	mov	dx,3ceh
+	mov	al,9
+	out	dx,ax
+	pop	dx
+	ret
+$pdrsub	endp
 
 videowrite	proc	near		; your-own-video write routine
 	push	es			; save registers around the call
@@ -1521,6 +2094,55 @@ hgcend		proc	near		; hercules end routine
 	ret				; we done.
 hgcend		endp
 
+; **************** video adapter detection routine ***********************
+;
+;	This routine performs a few quick checks on the type of
+;	video adapter installed.  It leaves its results in the
+;	encoded variable "video_type", and fills in a few bank-switching
+;	routines along the way.
+;
+
+
+adapter_detect	proc	far		; video adapter detection routine
+	mov	video_type,2		; set the video type: CGA
+	mov	ax,[bankadr]		; Initialize the bank-switching 
+	mov	video_bankadr,ax	;  logic to the do-nothing routine
+	mov	ax,[bankseg]		;  ...
+	mov	video_bankseg,ax	;  ...
+	mov	bx,0			; clear out all of the 256-mode flags
+	mov	tseng,bx		;  ...
+	mov	trident,bx		;  ...
+	mov	video7,bx		;  ...
+	mov	paradise,bx		;  ...
+	mov	chipstech,bx		;  ...
+	mov	ativga,bx		;  ...
+	mov	everex,bx		;  ...
+	mov	cirrus,bx		;  ...
+	mov	aheada,bx		;  ...
+	mov	aheadb,bx		;  ...
+	mov	[bankadr],offset $nobank
+	mov	[bankseg],seg $nobank
+	mov	video_entries, offset no_entries	; ...
+	mov	ah,12h			; look for an EGA
+	mov	bl,10h			;  by using an EGA-specific call
+	int	10h			;  ...
+	cmp	bl,10h			; was BL modified?
+	je	adapter_detect_99	;  nope.  Not an EGA
+	mov	video_type,3		; set the video type: EGA
+	mov	ax,1a00h		; look for a VGA
+	int	10h			;  by using a VGA-specific call
+	cmp	al,1ah			; was AL modified?
+	jne	adapter_detect_99	;  nope.  Not a VGA
+	mov	video_type,4		; set the video type: VGA
+	call	whichvga		; autodetect which VGA is there
+	mov	ax,[bankadr]		; save the results
+	mov	video_bankadr,ax	;  ...
+	mov	ax,[bankseg]		;  ...
+	mov	video_bankseg,ax	;  ...
+
+adapter_detect_99:
+	ret
+adapter_detect	endp
 
 ; **************** internal Write-a-line routines ***********************
 ;
@@ -1860,6 +2482,59 @@ drawbox	endp
 ;	genuine VGA or register compatable adapter and program the registers
 ;	directly using the coded value in DX)
 
+setdacfortext	proc	
+	cmp	loadPalette,1		; palette override?
+	jne	return			;  nope.
+	cmp	video_type,4		; VGA or better?
+	jb	return			;  nope
+	mov	ax,1015h		; read a specific DAC register
+	mov	bx,0			;  background color
+	mov	cx,0ffffh		; stuff an invalid value into CX
+	int	10h			;  do it
+	mov	saved_dacreg,cx		; save the DAC register
+	mov	saved_dacreg+2,dx	;  ..
+	mov	ax,1015h		; read a specific DAC register
+	mov	bx,7			;  foreground color
+	mov	cx,0ffffh		; stuff an invalid value into CX
+	int	10h			;  do it
+	mov	saved_dacreg+4,cx	; save the DAC register
+	mov	saved_dacreg+6,dx	;  ..
+	mov	ax,1010h		; write a specific DAC register
+	mov	bx,0			;  background color
+	mov	cx,0000h		; restore the DAC register
+	mov	dx,0000h		;  ..
+	int	10h			;  do it
+	mov	ax,1010h		; write a specific DAC register
+	mov	bx,7			; foreground color
+	mov	cx,2a2ah		; restore the DAC register
+	mov	dx,2a2ah		;  ..
+	int	10h			;  do it
+return:
+	ret
+setdacfortext	endp
+
+setdacforgraphics	proc
+	cmp	loadPalette,1		; palette override?
+	jne	return			;  nope.
+	cmp	video_type,4		; VGA or better?
+	jb	return			;  nope
+	cmp	saved_dacreg,0ffffh	; valid saved-DAC value?
+	je	return			;  nope
+	mov	ax,1010h		; write a specific DAC register
+	mov	bx,0			;  background color
+	mov	cx,saved_dacreg		; restore the DAC register
+	mov	dx,saved_dacreg+2	;  ..
+	int	10h			;  do it
+	mov	ax,1010h		; write a specific DAC register
+	mov	bx,7			;  foreground color
+	mov	cx,saved_dacreg+4	; restore the DAC register
+	mov	dx,saved_dacreg+6	;  ..
+	int	10h			;  do it
+	mov	saved_dacreg,0ffffh	; invalidate the saved_dac
+return:
+	ret
+setdacforgraphics	endp
+
 setvideomode	proc	uses di si es,argax:word,argbx:word,argcx:word,argdx:word
 
 	cmp	videoflag,1		; say, was the last video your-own?
@@ -1888,7 +2563,17 @@ no8514:
 	jne	noHGC			; nope
 	call	hgcend
 	mov	HGCflag, 0
+	cmp	argax,3			; klooge: Hercules => text?
+	jne	noHGC
+	mov	dotmode,0		; reset the DOTmode for BIOS
 noHGC:
+	mov	oktoprint,1		; say it's OK to use printf()
+	mov	goodmode,1		; assume a good video mode
+	mov	ax,video_bankadr	; restore the results of 'whichvga()'
+	mov	[bankadr],ax		;  ...
+	mov	ax,video_bankseg	;  ...
+	mov	[bankseg],ax		;  ...
+
 	mov	ax,argax		; load up for the interrupt call
 	mov	bx,argbx		;  ...
 	mov	cx,argcx		;  ...
@@ -1900,16 +2585,22 @@ noHGC:
 	mov	videodx,dx		;  ...
 
 	call	setvideo		; call the internal routine first
-					; prepare special video-mode speedups
-	mov	bx,0			; clear out all of the 256-mode flags
-	mov	tseng,bx		;  ...
-	mov	trident,bx		;  ...
-	mov	video7,bx		;  ...
-	mov	paradise,bx		;  ...
-	mov	chipstech,bx		;  ...
-	mov	ativga,bx		;  ...
-	mov	everex,bx		;  ...
-	mov	oktoprint,1		; say it's OK to use printf()
+
+	cmp	goodmode,0		; is it still a good video mode?
+	jne	videomodeisgood		; yup.
+	mov	ax,2			; call the buzzer
+	push	ax
+	call	buzzer
+	pop	ax
+	mov	ah,9			; display an error message
+	mov	dx, offset badvideomsg	
+	int	21h
+	mov	ax,offset nullwrite	; set up null write-a-dot routine
+	mov	bx,offset mcgaread	; set up null read-a-dot  routine
+	mov	cx,offset normaline 	; set up normal linewrite routine
+	jmp	videomode		; return to common code
+
+videomodeisgood:
 	mov	bx,dotmode		; set up for a video table jump
 	cmp	bx,30			; are we within the range of dotmodes?
 	jbe	videomodesetup		; yup.  all is OK
@@ -1944,11 +2635,12 @@ videomodetable 	dw	offset dullnormalmode	; mode 0
 	dw	offset video716mode	; mode 23
 	dw	offset paradise16mode	; mode 24
 	dw	offset chipstech16mode	; mode 25
-	dw	offset dullnormalmode	; mode 26
-	dw	offset dullnormalmode	; mode 27
-	dw	offset dullnormalmode	; mode 28
+	dw	offset everex16mode	; mode 26
+	dw	offset VGAautomode	; mode 27
+	dw	offset VESAmode		; mode 28
 	dw	offset dullnormalmode	; mode 29
 	dw	offset dullnormalmode	; mode 30
+	dw	offset dullnormalmode	; mode 31
 
 dullnormalmode:
 	mov	ax,offset normalwrite	; set up the BIOS write-a-dot routine
@@ -1962,22 +2654,45 @@ mcgamode:
 	jmp	videomode		; return to common code
 tseng16mode:
         mov     tseng,1			; set chipset flag
+	mov	[bankadr],offset $tseng
+	mov	[bankseg],seg $tseng
         jmp	vgamode		; set ega/vga functions
 trident16mode:
         mov     trident,1		; set chipset flag
+	mov	[bankadr],offset $trident
+	mov	[bankseg],seg $trident
         jmp	vgamode
 video716mode:
         mov     video7,1		; set chipset flag
+	mov	[bankadr],offset $video7
+	mov	[bankseg],seg $video7
         jmp	vgamode
 paradise16mode:
         mov     paradise,1		; set chipset flag
+	mov	[bankadr],offset $paradise
+	mov	[bankseg],seg $paradise
         jmp	vgamode
 chipstech16mode:
         mov     chipstech,1		; set chipset flag
+	mov	[bankadr],offset $chipstech
+	mov	[bankseg],seg $chipstech
         jmp	vgamode
 everex16mode:
         mov     everex,1		; set chipset flag
+	mov	[bankadr],offset $everex
+	mov	[bankseg],seg $everex
         jmp	vgamode
+VESAmode:				; set VESA 16-color mode
+	mov	[bankadr],offset $vesa
+	mov	[bankseg],seg $vesa
+VGAautomode:				; set VGA auto-detect mode
+	cmp	colors,256		; 256 colors?
+	je	VGAauto256mode		; just like SuperVGA
+	cmp	colors,16		; 16 colors?
+	je	vgamode			; just like a VGA
+ 	jmp	dullnormalmode		; otherwise, use the BIOS
+VGAauto256mode:
+	jmp	super256mode		; just like a SuperVGA
 egamode:
 vgamode:
 	mov	ax,offset vgawrite	; set up EGA/VGA write-a-dot routine.
@@ -1986,24 +2701,44 @@ vgamode:
 	jmp	videomode		; return to common code
 tseng256mode:
 	mov	tseng,1			; set chipset flag
+	mov	[bankadr],offset $tseng
+	mov	[bankseg],seg $tseng
  	jmp	super256mode		; set super VGA linear memory functions 
 paradise256mode:
 	mov	paradise,1		; set chipset flag
+	mov	[bankadr],offset $paradise
+	mov	[bankseg],seg $paradise
  	jmp	super256mode		; set super VGA linear memory functions 
 video7256mode:
 	mov	video7,	1		; set chipset flag
+	mov	[bankadr],offset $video7
+	mov	[bankseg],seg $video7
  	jmp	super256mode		; set super VGA linear memory functions 
 trident256mode:
 	mov	trident,1		; set chipset flag
+	mov	[bankadr],offset $trident
+	mov	[bankseg],seg $trident
  	jmp	super256mode		; set super VGA linear memory functions 
 chipstech256mode:
 	mov	chipstech,1		; set chipset flag
+	mov	[bankadr],offset $chipstech
+	mov	[bankseg],seg $chipstech
  	jmp	super256mode		; set super VGA linear memory functions 
 ati256mode:
 	mov	ativga,1		; set chipset flag
+	mov	[bankadr],offset $ativga
+	mov	[bankseg],seg $ativga
  	jmp	super256mode		; set super VGA linear memory functions 
 everex256mode:
 	mov	everex,1		; set chipset flag
+	mov	[bankadr],offset $everex
+	mov	[bankseg],seg $everex
+ 	jmp	super256mode		; set super VGA linear memory functions 
+VGA256automode:				; Auto-detect SuperVGA
+ 	jmp	super256mode		; set super VGA linear memory functions 
+VESA256mode:				; set VESA 256-color mode
+	mov	[bankadr],offset $vesa
+	mov	[bankseg],seg $vesa
  	jmp	super256mode		; set super VGA linear memory functions 
 super256mode:
 	mov	ax,offset super256write	; set up superVGA write-a-dot routine
@@ -2096,27 +2831,148 @@ setvideoslow:
 
 	call	far ptr loaddac		; load the video dac, if we can
 
+	cmp	loadPalette,1		; palette override?
+	jne	textorgraphics		;  nope.
+	cmp	videoax,3		; klooge:  text (3,0,0,0) mode?
+	jne	nottextmode		;  nope.
+	cmp	videodx,0		;  ...
+	jne	nottextmode		;  nope.
+	call	far ptr setdacfortext	; setup the DAC for text mode
+	jmp	short textorgraphics	; jump to common code
+nottextmode:
+	call	far ptr setdacforgraphics ; setup the DAC for graphics mode
+textorgraphics:
+
 	ret
 setvideomode	endp
 
 setvideo	proc	near		; local set-video more
 
 	cmp	ax,0			; TWEAK?:  look for AX==BX==CX==0
+
 	jne	short setvideobios	;  ...
 	cmp	bx,0			;  ...
 	jne	short setvideobios	;  ...
 	cmp	cx,0			;  ...
-	je	short setvideoregs	;  ...
+	jne	short setvideobios	;  ...
+
+	cmp	dotmode, 27		; check for auto-detect modes
+	je	setvideoauto1
+
+	cmp	dotmode, 20		; check for auto-detect modes
+	je	setvideoauto1
+
+	cmp	dotmode, 4		; check for auto-detect modes
+	je	setvideoauto1
+
+	cmp	dotmode, 28		; check for auto-detect modes
+	je	setvideoauto1
+
+	jmp	setvideoregs		; anything else - assume register tweak
+
+setvideoauto1:
+	jmp	setvideoauto		; stupid short 'je' instruction!!
 
 setvideobios:
+	cmp	ax,3			; text mode?
+	je	setvideobios_doit	;  yup.  Just do it.
+	cmp	ax,6			; text mode?
+	je	setvideobios_doit	;  yup.  Just do it.
+	mov	si,dotmode		; compare the dotmode against
+	mov	di,video_type		; the video type
+	add	si,si			; (convert to a word pointer)
+	cmp	cs:video_requirements[si],di
+	ja	setvideoerror		;  yup.  Error.
+setvideobios_doit:
 	call	maybeor			; maybe or AL or (for Video-7s) BL
 	push	bp			; some BIOS's don't save this
 	int	10h			; do it via the BIOS.
 	pop	bp			; restore the saved register
-	jmp	setvideoreturn		;  and return.
+	cmp	dotmode,28		; VESA mode?
+	jne	setvideobios_worked	;  Nope. Return.
+	cmp	ah,0			; did it work?
+	jne	setvideoerror		;  Nope. Failed.
+	mov	vesa_granularity,1	; say use 64K granules
+	push	es			; set ES == DS
+	mov	ax,ds			;  ...
+	mov	es,ax			;  ...
+	mov	ax,4f01h		; ask about this video mode
+	mov	cx,bx			;  this mode
+	mov	di, offset suffix	; (a safe spot for 256 bytes)
+	int	10h			; do it
+;	mov	cx, word ptr suffix	; get the attributes
+;	test	cx,1			; available video mode?
+;	jz	nogoodvesamode		; nope.  skip some code
+	mov	cx, word ptr suffix+12	; get the Bank-switching routine
+	mov	word ptr vesa_bankswitch, cx  ;  ...
+	mov	cx, word ptr suffix+14	;   ...
+	mov	word ptr vesa_bankswitch+2, cx  ;  ...
+	mov	cx, word ptr suffix+4	; get the granularity
+	cmp	cl,1			; ensure the divide won't blow out
+	jb	nogoodvesamode		;  granularity == 0???
+	mov	ax,64			;  ...
+	div	cl			; divide 64K by granularity
+	mov	vesa_granularity,al	; multiply the bank number by this
+nogoodvesamode:
+	pop	es			; restore ES
+	mov	ax,4f02h		; restore the original call
+setvideobios_worked:
+	jmp	setvideoreturn		;  Return.
+
+setvideoerror:				; oops.  No match found.
+	mov	goodmode,0		; note that the video mode is bad
+	mov	ax,3			; switch to text mode
+	jmp	setvideobios_doit
+
+setvideoauto:
+	mov	si, video_entries	; look for the correct resolution
+	sub	si,8			; get a running start
+setvideoloop:
+	add	si,10			; get next entry
+	mov	ax,cs:0[si]		; check X-res
+	cmp	ax,0			; anything there?
+	je	setvideoerror		; nope.  No match
+	cmp	ax,xdots
+	jne	setvideoloop
+	mov	ax,cs:2[si]		; check Y-res
+	cmp	ax,ydots
+	jne	setvideoloop
+	mov	ax,cs:4[si]		; check Colors
+	cmp	ax,colors
+	jne	setvideoloop
+	mov	ax,cs:6[si]		; got one!  Load AX
+	mov	bx,cs:8[si]		;           Load BX
+	cmp	bx,0ffh			; ATI 1024x768x16 special?
+	jne	notatimode
+	mov	dotmode,20		; Convert to ATI specs
+	mov	al,65h
+	mov	bx,0
+	jmp	setvideobios
+notatimode:
+	cmp	bx,0feh			; Tseng 640x400x256 special?
+	jne	nottsengmode
+	mov	ax,0			; convert to Tseng specs
+	mov	bx,0
+	mov	cx,0
+	mov	dx,10
+	mov	dotmode,4
+	jmp	setvideoregs
+nottsengmode:
+	cmp	ax,4f02h		; VESA mode?
+	jne	notvesamode
+	mov	dotmode,28		; convert to VESA specs
+	jmp	setvideobios
+notvesamode: 
+	jmp	setvideobios
 
 setvideoregs:				; assume genuine VGA and program regs
-
+	mov	si, dotmode		; compare the dotmode against
+	mov	di,video_type		; the video type
+	add	si,si			; (convert to a word pointer)
+	cmp	cs:video_requirements[si],di
+	jbe	setvideoregs_doit	;  good value.  Do it.
+	jmp	setvideoerror		;  bad value.  Error.
+setvideoregs_doit:
 	mov	si,dx			; get the video table offset
 	shl	si,1			;  ...
 	mov	si,word ptr tweaks[si]	;  ...
@@ -2251,13 +3107,18 @@ setvideoreturn:
 setvideo	endp
 
 maybeor	proc	near			; or AL or BL for mon-destr switch
+	cmp	ah,4fh			; VESA special mode?
+	je	maybeor2		;  yup.  Do this one different
 	cmp	ah,6fh			; video-7 special mode?
 	je	maybeor1		;  yup.  do this one different
 	or	al,orvideo		; normal non-destructive switch
-	jmp	short maybeor2		; we done.
+	jmp	short maybeor99		; we done.
 maybeor1:
 	or	bl,orvideo		; video-7 switch
+	jmp	short maybeor99
 maybeor2:
+	or	bh,orvideo		; VESA switch
+maybeor99:
 	ret				; we done.
 maybeor	endp
 
@@ -2302,7 +3163,7 @@ setfortextcganoherc:
 	cld				; clear the direction flag
 	rep	movsw			;  save them.
 	pop	ds			; restore DS
-	cmp	dotmode, 10		;check for Hercules-specific dotmode
+	cmp	ydots,348		;check for Hercules-specific dotmode
 	jne	tnotHGC
 	cmp	HGCflag, 0	 	;check HGC active flag
 	je	dosettext
@@ -2370,7 +3231,7 @@ gnot8514:
 	cmp	videoax,7		;  ...
 	ja	setforgraphicsnocga	;  not this one
 setforgraphicscga:
-	cmp	dotmode, 10		;check for Hercules-specific dotmode
+	cmp	ydots,348		;check for Hercules-specific dotmode
 	jne	tnotHGC2		;  (nope.  dull-normal stuff)
 	call	hgcstart		; Initialize the HGC card
 	mov	HGCflag,1		; flag "HGC-end" needed.
@@ -2623,8 +3484,10 @@ out_line	endp
 ;    Written for the A86 assembler (which has much less 'red tape' than MASM)
 ;    by Bob Montgomery, Orlando, Fla.             7-11-88
 ;    Adapted for MASM 5.1 by Tim Wegner          12-11-89  
+;    Furthur mucked up to handle graphics
+;       video modes by Bert Tyler                 1-07-90
      
-.model medium,c
+; .model medium,c
 
 ;-----------------------------------------------------------------
 .data
@@ -2632,12 +3495,41 @@ out_line	endp
 extrn     video_seg:word     ;Segment for video memory defined in C code.
 extrn     crtcols:word       ;Columns/row
 extrn     crtrows:word
+extrn     isatextmode:word   ; 1 if text mode, 0 if graphice mode
+
 ;-----------------------------------------------------------------
 
 .code
 
 putstring	proc uses es di si, row:word, col:word, attr:word, string:word, divider:word
 
+     cmp  isatextmode,1       ; are we in a text mode?
+     je   put_text            ; yup.  do it quickly.
+
+put_graphics:
+     push ds                  ; get address of text string
+     pop  es                  ;  segment into ES
+     mov  dx,col              ; get location of string
+     mov  cx,row
+     mov  dh,cl
+     mov  si,string           ; find out how long the string is
+     mov  cx,0
+put_loop:
+     lodsb                    ; are we at the zero yet?
+     inc  cx
+     cmp  al,0 
+     jne  put_loop            ; nope.  Try again.
+     dec  cx
+     mov  bx,attr             ; get the string attribute
+     mov  ax,1300h            ; set up the BIOS call
+     mov  bh,0
+     push bp                  ; ??? the BIOS call uses BP!!
+     mov  bp,string           ; put the string address into BP
+     int  10h                 ; invoke the BIOS
+     pop  bp                  ; restore BP
+     jmp  B3                  ; we done.
+
+put_text:
      mov  ax,row              ;Get starting row
      mov  cx,crtcols         ;Multiply by 2 x bytes/row (char & attr bytes)
      shl  cx,1

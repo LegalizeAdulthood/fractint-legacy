@@ -10,7 +10,7 @@ restructurings.
 The Fractal-specific routines are divided into three categories:
 
 1. Routines that are called once-per-orbit to calculate the orbit
-   value. These have names live "XxxxFractal", and their function
+   value. These have names like "XxxxFractal", and their function
    pointers are stored in fractalspecific[fractype].orbit_calc. EVERY 
    new fractal type needs one of these. Return 0 to continue iterations,
    1 if we're done. Results for integer fractals are left in 'lnew.x' and 
@@ -126,10 +126,30 @@ an appropriate setup, per_image, per_pixel, and orbit routines.
 #define MPNEWTON          66 
 #define MPNEWTBASIN       67 
 #define COMPLEXNEWTON     68
+#define COMPLEXBASIN      69
 
 /* DEFINITIONS PRIOR TO THIS POINT ARE FROZEN BY THE VERSION 11.0 RELEASE! */
 
+#define COMPLEXMARKSMAND  70
+#define COMPLEXMARKSJUL   71
+#define FORMULA           72
+#define FFORMULA          73
+#define SIERPINSKIFP      74
+#define LAMBDAFP          75
+#define BARNSLEYM1FP      76
+#define BARNSLEYJ1FP      77
+#define BARNSLEYM2FP      78
+#define BARNSLEYJ2FP      79
+#define BARNSLEYM3FP      80
+#define BARNSLEYJ3FP      81
+#define MANDELLAMBDAFP    82
+#define JULIBROT          83
+
+/* DEFINITIONS PRIOR TO THIS POINT ARE FROZEN BY THE VERSION 12.0 RELEASE! */
+
+
 #define NEWTONDEGREELIMIT  100
+extern int xshift, yshift;
 extern void draw_line(int,int,int,int,int);
 long Exp086(long);
 double fmod(double,double);
@@ -152,7 +172,7 @@ double floatmin,floatmax;
 double roverd, d1overd, threshold;
 long lroverd,ld1overd, lthreshold;
 int switchedtofloat;
-extern struct complex init,tmp,old,new,saved;
+extern struct complex init,tmp,old,new,saved,ComplexPower();
 struct complex  staticroots[16]; /* roots array for degree 16 or less */
 struct complex  *roots = staticroots;
 struct MPC      *MPCroots;
@@ -161,12 +181,17 @@ extern int iterations, invert;
 extern double far *dx0, far *dy0;
 extern long XXOne, FgOne, FgTwo, LowerLimit;
 struct complex one;
+struct complex pwr;
+struct complex Coefficient;
 
 extern void (*plot)();
 
 extern int	xdots, ydots;		/* coordinates of dots on the screen  */
 extern int	colors;				/* maximum colors available */
 extern int	inside;				/* "inside" color to use    */
+extern int  bof_pp60_61;        /* "Beauty of Fractals pp. 60/61 flag */ 
+extern int  min_index;          /* iteration for min_orbit */
+extern double min_orbit;        /* orbit value closest to origin */
 extern int	maxit;				/* try this many iterations */
 extern int	fractype;			/* fractal type */
 extern int	numpasses;			/* 0 = 1 pass, 1 = double pass */
@@ -177,7 +202,7 @@ extern	int	diskvideo;			/* for disk-video klooges */
 
 extern double	param[];		/* parameters */
 extern double	potparam[];		/* potential parameters */
-extern long	lx0[], ly0[];		/* X, Y points */
+extern long	far *lx0, far *ly0;		/* X, Y points */
 extern long	delx,dely;			/* X, Y increments */
 extern long	fudge;				/* fudge factor (2**n) */
 extern int	bitshift;			/* bit shift for fudge */
@@ -195,7 +220,7 @@ extern char potfile[];          /* potential filename */
 #define conjugate(pz)   ((pz)->y = 0.0 - (pz)->y)
 #define distance(z1,z2)  (sqr((z1).x-(z2).x)+sqr((z1).y-(z2).y))
 #define pMPsqr(z) (pMPmul((z),(z)))
-#define MPdistance(z1,z2)  (pMPadd(pMPsqr(pMPsub((z1).r,(z2).r)),pMPsqr(pMPsub((z1).i,(z2).i))))
+#define MPdistance(z1,z2)  (pMPadd(pMPsqr(pMPsub((z1).x,(z2).x)),pMPsqr(pMPsub((z1).y,(z2).y))))
 
 double twopi = PI*2.0;
 static int c_exp;
@@ -226,6 +251,7 @@ double siny,cosy,sinhy,coshy;
 double tmpexp;
 double tempsqrx,tempsqry;
 
+double foldxinitx,foldyinity,foldxinity,foldyinitx;
 long oldxinitx,oldyinity,oldxinity,oldyinitx;
 long modulusinit;
 long ltmp1,ltmp2,ltmp3;
@@ -239,9 +265,14 @@ extern int NewtonFractal2(); /* Lee Crocker's Newton code */
 
 /* these are in mpmath_c.c */
 extern int ComplexNewtonSetup(void);
-extern int ComplexNewton(void), ComplexBasin(void);
+extern int ComplexNewton(void), ComplexBasin(void), MarksCplxMand(void);
+extern int MarksCplxMandperp(void);
 complex_mult(struct complex arg1,struct complex arg2,struct complex *pz);
 complex_div(struct complex arg1,struct complex arg2,struct complex *pz);
+
+/* these are in (I think) JB.C */
+extern int Std4dFractal(), JulibrotSetup(), jb_per_pixel();
+
 
 /* -------------------------------------------------------------------- */
 /*		Stand-alone routines											*/
@@ -265,22 +296,11 @@ floatlorenz()
    x = 1;  /* initial conditions */
    y = 1;
    z = 1;
-   if(param[0] > 0 && param[0] <= .05)
-     dt = param[0];
-   else
-     dt = .02; /* time step */
-   if(param[1])
-      a = param[1];
-   else
-      a = 5;
-   if(param[2])
-      b = param[2];
-   else
-      b = 15;
-   if(param[3])
-      c = param[3];
-   else
-      c = 1;
+   
+   dt = fractalspecific[fractype].paramvalue[0];
+   a  = fractalspecific[fractype].paramvalue[1];
+   b  = fractalspecific[fractype].paramvalue[2];
+   c  = fractalspecific[fractype].paramvalue[3];
          
    /* precalculations for speed */
    adt = a*dt;
@@ -324,6 +344,7 @@ floatlorenz()
    }
    return(0); 
 }
+
 longlorenz() 
 {
    int count;
@@ -347,27 +368,18 @@ longlorenz()
    x = fudge;  /* initial conditions */
    y = fudge;
    z = fudge;
-   if(param[0] > 0 && param[0] <= .05)
-     dt = param[0]*fudge;
-   else
-     dt = .02*fudge; /* time step */
-   if(param[1])
-      a = param[1];
-   else
-      a = 5;
-   if(param[2])
-      b = param[2];
-   else
-      b = 15;
-   if(param[3])
-      c = param[3];
-   else
-      c = 1;
-   
+
+   /* for speed am assuming a,b,c are integers (they are not fudged) */
+   dt = fractalspecific[fractype].paramvalue[0] * fudge;
+   a  = fractalspecific[fractype].paramvalue[1];
+   b  = fractalspecific[fractype].paramvalue[2];
+   c  = fractalspecific[fractype].paramvalue[3];
+
    /* precalculations for speed */
    adt = a*dt;
    bdt = b*dt;
    cdt = c*dt;
+
    while(1)
    {
       if (++count > 1000) 
@@ -408,238 +420,7 @@ longlorenz()
 }
 
 /* this ought to be combined with ifs3d */
-lorenz3dlong()
-{
-   unsigned count;
-   long dx,dy,dz,x,y,z,dt,a,b,c;
-   long adt,bdt,cdt,xdt,ydt;
-   int oldcol,oldrow;
-   long delx,dely;
-      
-   double tmpx, tmpy, tmpz;
-   extern VECTOR view;
-   long iview[3];         /* perspective viewer's coordinates */      
-   long tmp;   
-   long maxifs[3];
-   long minifs[3];
-   extern int init3d[];
-   unsigned long maxct,ct;
-   register int col;
-   register int row;
-   register int color;
-
-   long localifs[NUMIFS][IFS3DPARM];        /* local IFS values */
-   long newx,newy,newz,r,sum, xmin, xmax, ymin, ymax;
-    
-   int i,j,k;
-
-   /* 3D viewing stuff */
-   MATRIX doublemat;           /* transformation matrix */
-   long longmat[4][4];         /* long version of matrix */
-   long ifsvect[3];	           /* interated function orbit value */
-   long viewvect[3];        /* orbit transformed for viewing */
-
-   /*
-   printf("xrot %d yrot %d zrot %d \nxshift %d yshift %d perspective %d\n",
-             XROT,YROT,ZROT,XSHIFT,YSHIFT,ZVIEWER);
-   */
-   oldcol = oldrow = -1;
-   color = 2;
-   fudge = 1L << bitshift;
-
-   delx = deltaX*fudge;
-   dely = deltaY*fudge;
-      
-   for(i=0;i<3;i++)
-   {
-      minifs[i] =  1L << 30;
-      maxifs[i] = -minifs[i];
-   }
-   
-   /* build transformation matrix */
-   identity (doublemat);
-
-   /* apply rotations - uses the same rotation variables as line3d.c */
-   xrot ((double)XROT / 57.29577,doublemat);
-   yrot ((double)YROT / 57.29577,doublemat);
-   zrot ((double)ZROT / 57.29577,doublemat);
-
-   /* apply scale */
-   scale((double)XSCALE/100.0,(double)YSCALE/100.0,(double)ROUGH/100.0,doublemat);
-
-   if(!ZVIEWER)
-      trans((double)XSHIFT*(xxmax-xxmin)/100.0,(double)YSHIFT*(yymax-yymin)/100.0,0.0,doublemat);
-
-   /* copy xform matrix to long for for fixed point math */
-   for (i = 0; i < 4; i++)
-   for (j = 0; j < 4; j++)
-      longmat[i][j] = doublemat[i][j] * fudge;
-
-   if(diskvideo)		/* this would KILL a disk drive! */
-   {
-	  setvideomode(3,0,0,0);
-	  buzzer(2);
-	  helpmessage(plasmamessage);
-	  return(-1);
-   }
-
-   for (i = 0; i < NUMIFS; i++)    /* fill in the local IFS array */
-   for (j = 0; j < IFS3DPARM; j++)
-         localifs[i][j] = initifs3d[i][j] * fudge;
-
-   xmin  = xxmin*fudge;   
-   xmax  = xxmax*fudge;
-   ymax  = yymax*fudge;
-   ymin  = yymin*fudge;
-
-   x = fudge;  /* initial conditions */
-   y = fudge;
-   z = fudge;
-   if(param[0] > 0 && param[0] <= .05)
-     dt = param[0]*fudge;
-   else
-     dt = .02*fudge; /* time step */
-   if(param[1])
-      a = param[1];
-   else
-      a = 5;
-   if(param[2])
-      b = param[2];
-   else
-      b = 15;
-   if(param[3])
-      c = param[3];
-   else
-      c = 1;
-   
-   /* precalculations for speed */
-   adt = a*dt;
-   bdt = b*dt;
-   cdt = c*dt;
-
-   ifsvect[0] = x;
-   ifsvect[1] = y;
-   ifsvect[2] = z;
-   
-   /* make maxct a function of screen size               */
-   /* 1k times maxit at EGA resolution seems about right */
-   maxct = (float)maxit*(1024.0*xdots*ydots)/(640.0*350.0); 
-   ct = 0L;
-   while(ct++ < maxct) /* loop until keypress or maxit */ 
-   {
-      if (++count > 1000) 
-      {        /* time to switch colors? */
-         count = 0;
-         if (++color >= colors)   /* another color to switch to? */
-              color = 1;        /* (don't use the background color) */
-      }
-      if(check_key())
-         return(-1);
-
-      x = ifsvect[0];
-      y = ifsvect[1];
-      z = ifsvect[2];
-
-      xdt = multiply(x,dt,bitshift);
-      ydt = multiply(y,dt,bitshift);
-      dx  = -multiply(adt,x,bitshift) + multiply(adt,y,bitshift);
-      dy  =  multiply(bdt,x,bitshift) -ydt -multiply(z,xdt,bitshift);
-      dz  = -multiply(cdt,z,bitshift) + multiply(x,ydt,bitshift);
-
-      x += dx;
-      y += dy;
-      z += dz;
-
-      ifsvect[0] = x;
-      ifsvect[1] = y;
-      ifsvect[2] = z;
-
-
-      /* 3D VIEWING TRANSFORM */
-      longvmult(ifsvect,longmat,viewvect, bitshift);
-
-      /* find minz and maxz */
-      if( ZVIEWER && ct <= 100) /* waste this many points to find minz and maxz */
-      {
-         for(i=0;i<3;i++)
-            if ((tmp = viewvect[i]) < minifs[i])
-               minifs[i] = tmp;
-            else if (tmp > maxifs[i])
-               maxifs[i] = tmp;
-         if(ct == 100)
-         {
-            /* set of view vector */
-            for(i=0;i<2;i++)
-               iview[i] = (maxifs[i]+minifs[i])/2;
-      
-            /* z value of user's eye - should be more negative than extreme 
-               negative part of image */
-            iview[2] = (long)((minifs[2]-maxifs[2])*(double)ZVIEWER/100.0);
-
-            /*
-            printf("min %ld max %ld iview[2] %d\n",minifs[2],maxifs[2],iview[2]);
-            getch();
-            */ 
-
-            /* translate back exactly amount so maximum values are non-positive */
-            tmpx = ((double)XSHIFT*(xmax-xmin))/(100.0*fudge);
-            tmpy = ((double)YSHIFT*(ymax-ymin))/(100.0*fudge);
-            tmpz = -((double)maxifs[2]);
-            tmpz *= 1.1;
-            tmpz /= fudge; 
-            trans(tmpx,tmpy,tmpz,doublemat); 
-            
-            for(i=0;i<3;i++)
-            {
-               view[i] = iview[i];
-               view[i] /= fudge;
-            } 
-   
-            /* copy xform matrix to long for for fixed point math */
-            for (i = 0; i < 4; i++)
-            for (j = 0; j < 4; j++)
-               longmat[i][j] = doublemat[i][j] * fudge;
-         }
-      }      
-      
-      /* apply perspective if requested */
-      if(ZVIEWER && ct > 100)
-      {
-         if(debugflag==22 || ZVIEWER < 100) /* use float for small persp */
-         {
-            /* use float perspective calc */
-            VECTOR tmpv;
-            for(i=0;i<3;i++)
-            {
-               tmpv[i] = viewvect[i];
-               tmpv[i] /= fudge;
-            } 
-            perspective(tmpv);
-            for(i=0;i<3;i++)
-               viewvect[i] = tmpv[i]*fudge;
-         }
-         else
-            longpersp(viewvect,iview,bitshift);
-      }
-            
-      /* plot if inside window */
-      if ( viewvect[0] > xmin && viewvect[0] < xmax 
-        && viewvect[1] > ymin && viewvect[1] < ymax && ct > 100 )
-      {
-         col =          (( viewvect[0]-xmin) / delx);
-         row = YYdots - (( viewvect[1]-ymin) / dely);
-         if(oldcol != -1)
-            draw_line(col,row,oldcol,oldrow,color&(colors-1));
-         else            
-            (*plot)(col,row,color&(colors-1));
-         oldcol = col;
-         oldrow = row;    
-      }
-      else
-         oldrow = oldcol = -1;
-   }
-   return(0);
-}
+extern int lorenz3dlong();
 
 ifs()            /* IFS logic shamelessly converted to integer math */
 {
@@ -653,6 +434,8 @@ ifs()            /* IFS logic shamelessly converted to integer math */
    long x,y,newx,newy,r,sum, xmin, xmax, ymin, ymax, tempr;
 
    int i,j,k;
+
+   srand(1);
    
    if(diskvideo) {		/* this would KILL a disk drive! */
 	setvideomode(3,0,0,0);
@@ -722,361 +505,7 @@ ifs()            /* IFS logic shamelessly converted to integer math */
    return(0);
 }
 
-ifs3d()
-{
-   if(floatflag)
-      return(ifs3dfloat()); /* double version of ifs3d */
-   else
-      return(ifs3dlong());  /* long version of ifs3d   */
-}
-
-/* double version - mainly for testing */
-ifs3dfloat()
-{
-   double tmp;   
-   VECTOR minifs;
-   VECTOR maxifs;
-   unsigned long maxct,ct;
-   register int col;
-   register int row;
-   register int color;
-
-   double newx,newy,newz,r,sum;
-    
-   int i,k;
-
-   /* 3D viewing stuff */
-   MATRIX doublemat;           /* transformation matrix */
-   VECTOR ifsvect;	           /* interated function orbit value */
-   VECTOR viewvect;        /* orbit transformed for viewing */
-   /*
-   printf("xrot %d yrot %d zrot %d \nxshift %d yshift %d perspective %d\n",
-             XROT,YROT,ZROT,XSHIFT,YSHIFT,ZVIEWER);
-   */
-   for(i=0;i<3;i++)
-   {
-      minifs[i] =  100000.0; /* impossible value */
-      maxifs[i] = -100000.0;
-   }
-   
-   /* build transformation matrix */
-   identity (doublemat);
-
-   /* apply rotations - uses the same rotation variables as line3d.c */
-   xrot ((double)XROT / 57.29577,doublemat);
-   yrot ((double)YROT / 57.29577,doublemat);
-   zrot ((double)ZROT / 57.29577,doublemat);
-   /*
-   scale((double)XSCALE/100.0,(double)YSCALE/100.0,(double)ROUGH/100.0,doublemat);
-   */
-   if(!ZVIEWER)
-      trans((double)XSHIFT*(xxmax-xxmin)/100.0,(double)YSHIFT*(yymax-yymin)/100.0,0.0,doublemat);
-
-   if(diskvideo)		/* this would KILL a disk drive! */
-   {
-	  setvideomode(3,0,0,0);
-	  buzzer(2);
-	  helpmessage(plasmamessage);
-	  return(-1);
-   }
-
-   ifsvect[0] = 0;
-   ifsvect[1] = 0;
-   ifsvect[2] = 0;
-   
-   /* make maxct a function of screen size               */
-   /* 1k times maxit at EGA resolution seems about right */
-   maxct = (double)maxit*(1024.0*xdots*ydots)/(640.0*350.0); 
-   ct = 0L;
-   while(ct++ < maxct) /* loop until keypress or maxit */ 
-   {
-      if (ct & 127)           /* reduce the number of keypress checks */
-         if( check_key() )    /* keypress bails out */
-            return(-1);
-      r = rand();        /* generate fudged random number between 0 and 1 */
-      r /= 32767;
-
-      /* pick which iterated function to execute, weighted by probability */
-      sum = initifs3d[0][12];
-      k = 0;
-      while ( sum < r)
-      {
-         k++;
-         sum += initifs3d[k][12];
-         if (initifs3d[k+1][12] == 0) break;    /* for safety */
-      }
-
-      /* calculate image of last point under selected iterated function */
-      newx = initifs3d[k][0] * ifsvect[0] +
-             initifs3d[k][1] * ifsvect[1] +
-             initifs3d[k][2] * ifsvect[2] + initifs3d[k][9];
-      newy = initifs3d[k][3] * ifsvect[0] +
-             initifs3d[k][4] * ifsvect[1] +
-             initifs3d[k][5] * ifsvect[2] + initifs3d[k][10];
-      newz = initifs3d[k][6] * ifsvect[0] +
-             initifs3d[k][7] * ifsvect[1] +
-             initifs3d[k][8] * ifsvect[2] + initifs3d[k][11];
-            
-      ifsvect[0] = newx;
-      ifsvect[1] = newy;
-      ifsvect[2] = newz;
-
-      /* 3D VIEWING TRANSFORM */
-      vmult(ifsvect,doublemat,viewvect);
-
-      /* find minz and maxz */
-      if(ZVIEWER && ct <= 100) /* waste this many points to find minz and maxz */
-      {
-         for(i=0;i<3;i++)
-            if ((tmp = viewvect[i]) < minifs[i])
-               minifs[i] = tmp;
-            else if (tmp > maxifs[i])
-               maxifs[i] = tmp;
-         if(ct == 100)
-         {
-            /* set of view vector */
-            for(i=0;i<2;i++)
-               view[i] = (maxifs[i]+minifs[i])/2.0;
-      
-            /* z value of user's eye - should be more negative than extreme 
-               negative part of image */
-            view[2] = (minifs[2]-maxifs[2])*(double)ZVIEWER/100.0;
-
-            /* translate back exactly amount so maximum values are non-positive */
-            trans((double)XSHIFT*(xxmax-xxmin)/100.0,(double)YSHIFT*(yymax-yymin)/100.0,-maxifs[2],doublemat); 
-/*
-            printf("minx %lf maxx %lf\n",minifs[0],maxifs[0]);
-            printf("miny %lf maxy %lf\n",minifs[1],maxifs[1]);
-            printf("minz %lf maxz %lf\n",minifs[2],maxifs[2]);
-            printf("view %lf %lf %lf\n",view[0],view[1],view[2]); */
-         }
-      }      
-      
-      /* apply perspective if requested */
-      if(ZVIEWER)
-         perspective(viewvect);
-
-      /* plot if inside window */
-      if ( viewvect[0] > xxmin && viewvect[0] < xxmax 
-        && viewvect[1] > yymin && viewvect[1] < yymax && ct > 100 )
-      {
-         col =          (( viewvect[0]-xxmin) / deltaX);
-         row = YYdots - (( viewvect[1]-yymin) / deltaY);
-         /* color is count of hits on this pixel */
-         color = getcolor(col,row)+1;
-         if( color < colors ) /* color sticks on last value */
-            (*plot)(col,row,color);
-      }
-   } /* end while */
-   return(0);
-}
-ifs3dlong()
-{
-   int bitshift;   /* want these local */
-   long fudge;
-   long delx,dely;
-      
-   double tmpx, tmpy, tmpz;
-   extern VECTOR view;
-   long iview[3];         /* perspective viewer's coordinates */      
-   long tmp;   
-   long maxifs[3];
-   long minifs[3];
-   extern int init3d[];
-   unsigned long maxct,ct;
-   register int col;
-   register int row;
-   register int color;
-
-   long localifs[NUMIFS][IFS3DPARM];        /* local IFS values */
-   long newx,newy,newz,r,sum, xmin, xmax, ymin, ymax, tempr;
-    
-   int i,j,k;
-
-   /* 3D viewing stuff */
-   MATRIX doublemat;           /* transformation matrix */
-   long longmat[4][4];         /* long version of matrix */
-   long ifsvect[3];	           /* interated function orbit value */
-   long viewvect[3];        /* orbit transformed for viewing */
-
-   /*
-   printf("xrot %d yrot %d zrot %d \nxshift %d yshift %d perspective %d\n",
-             XROT,YROT,ZROT,XSHIFT,YSHIFT,ZVIEWER);
-   */
-   bitshift = 16;
-   fudge = 1L << bitshift;
-
-   delx = deltaX*fudge;
-   dely = deltaY*fudge;
-      
-   for(i=0;i<3;i++)
-   {
-      minifs[i] =  1L << 30;
-      maxifs[i] = -minifs[i];
-   }
-   
-   /* build transformation matrix */
-   identity (doublemat);
-
-   /* apply rotations - uses the same rotation variables as line3d.c */
-   xrot ((double)XROT / 57.29577,doublemat);
-   yrot ((double)YROT / 57.29577,doublemat);
-   zrot ((double)ZROT / 57.29577,doublemat);
-
-   /* apply scale */
-   scale((double)XSCALE/100.0,(double)YSCALE/100.0,(double)ROUGH/100.0,doublemat);
-
-   if(!ZVIEWER)
-      trans((double)XSHIFT*(xxmax-xxmin)/100.0,(double)YSHIFT*(yymax-yymin)/100.0,0.0,doublemat);
-
-   /* copy xform matrix to long for for fixed point math */
-   for (i = 0; i < 4; i++)
-   for (j = 0; j < 4; j++)
-      longmat[i][j] = doublemat[i][j] * fudge;
-
-   if(diskvideo)		/* this would KILL a disk drive! */
-   {
-	  setvideomode(3,0,0,0);
-	  buzzer(2);
-	  helpmessage(plasmamessage);
-	  return(-1);
-   }
-
-   for (i = 0; i < NUMIFS; i++)    /* fill in the local IFS array */
-   for (j = 0; j < IFS3DPARM; j++)
-         localifs[i][j] = initifs3d[i][j] * fudge;
-
-   xmin  = xxmin*fudge;   
-   xmax  = xxmax*fudge;
-   ymax  = yymax*fudge;
-   ymin  = yymin*fudge;
-
-   tempr = fudge / 32767;        /* find the proper rand() fudge */
-
-   ifsvect[0] = 0;
-   ifsvect[1] = 0;
-   ifsvect[2] = 0;
-   
-   /* make maxct a function of screen size               */
-   /* 1k times maxit at EGA resolution seems about right */
-   maxct = (float)maxit*(1024.0*xdots*ydots)/(640.0*350.0); 
-   ct = 0L;
-   while(ct++ < maxct) /* loop until keypress or maxit */ 
-   {
-      if (ct & 127)           /* reduce the number of keypress checks */
-         if( check_key() )    /* keypress bails out */
-            return(-1);
-      r = rand();        /* generate fudged random number between 0 and 1 */
-      r *= tempr;
-
-      /* pick which iterated function to execute, weighted by probability */
-      sum = localifs[0][12];
-      k = 0;
-      while ( sum < r)
-      {
-         k++;
-         sum += localifs[k][12];
-         if (localifs[k+1][12] == 0) break;    /* for safety */
-      }
-
-      /* calculate image of last point under selected iterated function */
-      newx = multiply(localifs[k][0], ifsvect[0], bitshift) +
-             multiply(localifs[k][1], ifsvect[1], bitshift) +
-             multiply(localifs[k][2], ifsvect[2], bitshift) + localifs[k][9];
-      newy = multiply(localifs[k][3], ifsvect[0], bitshift) +
-             multiply(localifs[k][4], ifsvect[1], bitshift) +
-             multiply(localifs[k][5], ifsvect[2], bitshift) + localifs[k][10];
-      newz = multiply(localifs[k][6], ifsvect[0], bitshift) +
-             multiply(localifs[k][7], ifsvect[1], bitshift) +
-             multiply(localifs[k][8], ifsvect[2], bitshift) + localifs[k][11];
-            
-      ifsvect[0] = newx;
-      ifsvect[1] = newy;
-      ifsvect[2] = newz;
-
-
-      /* 3D VIEWING TRANSFORM */
-      longvmult(ifsvect,longmat,viewvect, bitshift);
-
-      /* find minz and maxz */
-      if( ZVIEWER && ct <= 100) /* waste this many points to find minz and maxz */
-      {
-         for(i=0;i<3;i++)
-            if ((tmp = viewvect[i]) < minifs[i])
-               minifs[i] = tmp;
-            else if (tmp > maxifs[i])
-               maxifs[i] = tmp;
-         if(ct == 100)
-         {
-            /* set of view vector */
-            for(i=0;i<2;i++)
-               iview[i] = (maxifs[i]+minifs[i])/2;
-      
-            /* z value of user's eye - should be more negative than extreme 
-               negative part of image */
-            iview[2] = (long)((minifs[2]-maxifs[2])*(double)ZVIEWER/100.0);
-
-            /*
-            printf("min %ld max %ld iview[2] %d\n",minifs[2],maxifs[2],iview[2]);
-            getch();
-            */ 
-
-            /* translate back exactly amount so maximum values are non-positive */
-            tmpx = ((double)XSHIFT*(xmax-xmin))/(100.0*fudge);
-            tmpy = ((double)YSHIFT*(ymax-ymin))/(100.0*fudge);
-            tmpz = -((double)maxifs[2]);
-            tmpz *= 1.1;
-            tmpz /= fudge; 
-            trans(tmpx,tmpy,tmpz,doublemat); 
-            
-            for(i=0;i<3;i++)
-            {
-               view[i] = iview[i];
-               view[i] /= fudge;
-            } 
-   
-            /* copy xform matrix to long for for fixed point math */
-            for (i = 0; i < 4; i++)
-            for (j = 0; j < 4; j++)
-               longmat[i][j] = doublemat[i][j] * fudge;
-         }
-      }      
-      
-      /* apply perspective if requested */
-      if(ZVIEWER && ct > 100)
-      {
-         if(debugflag==22 || ZVIEWER < 100) /* use float for small persp */
-         {
-            /* use float perspective calc */
-            VECTOR tmpv;
-            for(i=0;i<3;i++)
-            {
-               tmpv[i] = viewvect[i];
-               tmpv[i] /= fudge;
-            } 
-            perspective(tmpv);
-            for(i=0;i<3;i++)
-               viewvect[i] = tmpv[i]*fudge;
-         }
-         else
-            longpersp(viewvect,iview,bitshift);
-      }
-            
-      /* plot if inside window */
-      if ( viewvect[0] > xmin && viewvect[0] < xmax 
-        && viewvect[1] > ymin && viewvect[1] < ymax && ct > 100 )
-      {
-         col =          (( viewvect[0]-xmin) / delx);
-         row = YYdots - (( viewvect[1]-ymin) / dely);
-
-         /* color is count of hits on this pixel */
-         color = getcolor(col,row)+1;
-         if( color < colors ) /* color sticks on last value */
-            (*plot)(col,row,color);
-      }
-   }
-   return(0);
-}
+int ifs3d();
 
 /* START Phil Wilson's Code */
 
@@ -1376,7 +805,7 @@ static void verhulst( double rate )  /* P. F. Verhulst (1845) */
 #define FLOATBAILOUT()   \
    tempsqrx = sqr(new.x);\
    tempsqry = sqr(new.y);\
-   if((tempsqrx + tempsqry) >= rqlim) return(1);\
+   if((magnitude = tempsqrx + tempsqry) >= rqlim) return(1);\
    old = new;
 
 #define LONGBAILOUT()   \
@@ -1523,8 +952,8 @@ z_to_the_z(struct complex *z, struct complex *out)
     /* log(x + iy) = 1/2(log(x*x + y*y) + i(arc_tan(y/x)) */
     tmp1.x = .5*log(sqr(z->x)+sqr(z->y));
     
-    /* the labs in next line added to prevent discontinuity in image */
-    tmp1.y = atan(labs(z->y/z->x));
+    /* the fabs in next line added to prevent discontinuity in image */
+    tmp1.y = atan(fabs(z->y/z->x));
 
     /* log(z)*z */
     tmp2.x = tmp1.x * z->x - tmp1.y * z->y;
@@ -1633,7 +1062,7 @@ int bitshift;
    return(overflow);
 }
 
-#define MPCmod(x) (pMPadd(pMPmul((x).r, (x).r), pMPmul((x).i, (x).i)))
+#define MPCmod(m) (pMPadd(pMPmul((m).x, (m).x), pMPmul((m).y, (m).y)))
 struct MPC mpcold, mpcnew, mpctmp, mpctmp1;
 struct MP mproverd, mpd1overd, mpthreshold,sqrmpthreshold;
 struct MP mpt2;
@@ -1646,11 +1075,11 @@ int MPCNewtonFractal()
     MPOverflow = 0;
     mpctmp   = MPCpow(mpcold,degree-1); 
 
-    mpcnew.r = pMPsub(pMPmul(mpctmp.r,mpcold.r),pMPmul(mpctmp.i,mpcold.i));
-    mpcnew.i = pMPadd(pMPmul(mpctmp.r,mpcold.i),pMPmul(mpctmp.i,mpcold.r));
+    mpcnew.x = pMPsub(pMPmul(mpctmp.x,mpcold.x),pMPmul(mpctmp.y,mpcold.y));
+    mpcnew.y = pMPadd(pMPmul(mpctmp.x,mpcold.y),pMPmul(mpctmp.y,mpcold.x));
 
-    mpctmp1.r = pMPsub(mpcnew.r, MPCone.r);
-    mpctmp1.i = pMPsub(mpcnew.i, MPCone.i);
+    mpctmp1.x = pMPsub(mpcnew.x, MPCone.x);
+    mpctmp1.y = pMPsub(mpcnew.y, MPCone.y);
 
     if(pMPcmp(MPCmod(mpctmp1),mpthreshold)< 0)
     {
@@ -1673,17 +1102,17 @@ int MPCNewtonFractal()
        return(1);
     }   
 
-    mpcnew.r = pMPadd(pMPmul(mpd1overd,mpcnew.r),mproverd);
-    mpcnew.i = pMPmul(mpcnew.i,mpd1overd);
+    mpcnew.x = pMPadd(pMPmul(mpd1overd,mpcnew.x),mproverd);
+    mpcnew.y = pMPmul(mpcnew.y,mpd1overd);
 
     mpt2 = MPCmod(mpctmp);
     mpt2 = pMPdiv(mpone,mpt2);
     
-    mpcold.r = pMPmul(mpt2,(pMPadd(pMPmul(mpcnew.r,mpctmp.r),pMPmul(mpcnew.i,mpctmp.i))));
-    mpcold.i = pMPmul(mpt2,(pMPsub(pMPmul(mpcnew.i,mpctmp.r),pMPmul(mpcnew.r,mpctmp.i))));
+    mpcold.x = pMPmul(mpt2,(pMPadd(pMPmul(mpcnew.x,mpctmp.x),pMPmul(mpcnew.y,mpctmp.y))));
+    mpcold.y = pMPmul(mpt2,(pMPsub(pMPmul(mpcnew.y,mpctmp.x),pMPmul(mpcnew.x,mpctmp.y))));
 
-    new.x = *pMP2d(mpcold.r);
-    new.y = *pMP2d(mpcold.i);
+    new.x = *pMP2d(mpcold.x);
+    new.y = *pMP2d(mpcold.y);
     return(MPOverflow);
 }
 
@@ -1722,6 +1151,34 @@ Barnsley1Fractal()
    return(0);
 }
 
+Barnsley1FPFractal() 
+{
+   /* Barnsley's Mandelbrot type M1 from "Fractals
+   Everywhere" by Michael Barnsley, p. 322 */ 
+
+   /* calculate intermediate products */
+   foldxinitx = old.x * floatparm->x;
+   foldyinity = old.y * floatparm->y;
+   foldxinity = old.x * floatparm->y;
+   foldyinitx = old.y * floatparm->x;
+   /* orbit calculation */                  
+   if(old.x >= 0) 
+   {
+      new.x = (foldxinitx - floatparm->x - foldyinity);               
+      new.y = (foldyinitx - floatparm->y + foldxinity);
+   }
+   else 
+   {
+      new.x = (foldxinitx + floatparm->x - foldyinity);               
+      new.y = (foldyinitx + floatparm->y + foldxinity);               
+   }
+   FLOATBAILOUT();
+   return(0);
+}
+
+
+
+
 Barnsley2Fractal() 
 {
    /* An unnamed Mandelbrot/Julia function from "Fractals
@@ -1748,11 +1205,50 @@ Barnsley2Fractal()
    return(0);
 }
 
+Barnsley2FPFractal() 
+{
+   /* An unnamed Mandelbrot/Julia function from "Fractals
+   Everywhere" by Michael Barnsley, p. 331, example 4.2 */
+    
+   /* calculate intermediate products */
+   foldxinitx = old.x * floatparm->x;
+   foldyinity = old.y * floatparm->y;
+   foldxinity = old.x * floatparm->y;
+   foldyinitx = old.y * floatparm->x;
+
+   /* orbit calculation */                  
+   if(foldxinity + foldyinitx >= 0) 
+   {
+      new.x = foldxinitx - floatparm->x - foldyinity;               
+      new.y = foldyinitx - floatparm->y + foldxinity;               
+   }
+   else 
+   {
+      new.x = foldxinitx + floatparm->x - foldyinity;               
+      new.y = foldyinitx + floatparm->y + foldxinity;               
+   }
+   FLOATBAILOUT();
+   return(0);
+}
+
 JuliafpFractal() 
 {
    /* floating point version of classical Mandelbrot/Julia */
    new.x = tempsqrx - tempsqry + floatparm->x;
    new.y = 2.0 * old.x * old.y + floatparm->y;
+   FLOATBAILOUT();
+   return(0);
+}
+
+LambdaFPFractal() 
+{
+   /* variation of classical Mandelbrot/Julia */
+   
+   tempsqrx = old.x - old.x * old.x + old.y * old.y;
+   tempsqry = old.y - old.y * old.x * 2;
+
+   new.x = floatparm->x * tempsqrx - floatparm->y * tempsqry;
+   new.y = floatparm->x * tempsqry + floatparm->y * tempsqrx;
    FLOATBAILOUT();
    return(0);
 }
@@ -1787,6 +1283,23 @@ SierpinskiFractal()
       lnew.x = lnew.x - ltemp.x;	/* new.x = 2 * old.x - 1 */
    /* end barnsley code */
    LONGBAILOUT();
+   return(0);
+}
+
+SierpinskiFPFractal() 
+{
+   /* following code translated from basic - see "Fractals
+   Everywhere" by Michael Barnsley, p. 251, Program 7.1.1 */ 
+
+   new.x = 2 * old.x;
+   new.y = 2 * old.y;
+   if( old.y > .5)
+      new.y = 2 * old.y - 1;
+   else if (old.x > .5)
+      new.x = 2 * old.x - 1;
+
+   /* end barnsley code */
+   FLOATBAILOUT();
    return(0);
 }
 
@@ -2081,8 +1594,12 @@ Mandel4Fractal()
 
 floatZtozpluszpwrFractal() 
 {
+   cpower(&old,(int)param[2],&new);
+   old = ComplexPower(old,old);
+/*
    cpower(&old,5,&new);
    z_to_the_z(&old,&old);
+*/
    new.x = new.x + old.x +floatparm->x;
    new.y = new.y + old.y +floatparm->y;
    FLOATBAILOUT();
@@ -2135,6 +1652,37 @@ Barnsley3Fractal()
       lnew.y += multiply(longparm->y,lold.x,bitshift); 
    }
    LONGBAILOUT();
+   return(0);
+}
+
+Barnsley3FPFractal() 
+{
+   /* An unnamed Mandelbrot/Julia function from "Fractals
+   Everywhere" by Michael Barnsley, p. 292, example 4.1 */
+
+
+   /* calculate intermediate products */
+   foldxinitx  = old.x * old.x;
+   foldyinity  = old.y * old.y;
+   foldxinity  = old.x * old.y;
+   
+   /* orbit calculation */                  
+   if(old.x > 0) 
+   {
+      new.x = foldxinitx - foldyinity - 1.0;
+      new.y = foldxinity * 2;               
+   }
+   else 
+   {
+      new.x = foldxinitx - foldyinity -1.0 + floatparm->x * old.x;
+      new.y = foldxinity * 2;
+
+      /* This term added by Tim Wegner to make dependent on the 
+         imaginary part of the parameter. (Otherwise Mandelbrot 
+         is uninteresting. */
+      new.y += floatparm->y * old.x; 
+   }
+   FLOATBAILOUT();
    return(0);
 }
 
@@ -2224,6 +1772,19 @@ LPopcornFractal()
    }
    else
       LONGBAILOUT();
+   return(0);
+}
+
+int MarksCplxMand(void) 
+{
+   struct complex temp;
+   temp.x = tempsqrx - tempsqry;
+   temp.y = 2*old.x*old.y;
+/*   FPUcplxmul(&old, &old, &temp); */
+   FPUcplxmul(&temp, &Coefficient, &new);
+   new.x += floatparm->x;
+   new.y += floatparm->y;
+   FLOATBAILOUT();
    return(0);
 }
 
@@ -2381,9 +1942,19 @@ void mandel_per_pixel()
    }
    else
       linit.x = lx0[col];
-   
-   lold.x = linit.x + llambda.x; /* initial pertubation of parameters set */
-   lold.y = linit.y + llambda.y;
+   if(bof_pp60_61)
+   {
+      /* kludge to match "Beauty of Fractals" picture since we start
+         Mandelbrot iteration with init rather than 0 */
+      lold.x = llambda.x; /* initial pertubation of parameters set */
+      lold.y = llambda.y;
+      color = -1;
+   }
+   else
+   {   
+      lold.x = linit.x + llambda.x; /* initial pertubation of parameters set */
+      lold.y = linit.y + llambda.y;
+   } 
    ltempsqrx = multiply(lold.x, lold.x, bitshift);
    ltempsqry = multiply(lold.y, lold.y, bitshift);
 }
@@ -2442,8 +2013,19 @@ void mandelfp_per_pixel()
       invertz2(&init);
    else
       init.x = dx0[col];
-   old.x = init.x + parm.x; /* initial pertubation of parameters set */
-   old.y = init.y + parm.y;
+   if(bof_pp60_61)
+   {
+      /* kludge to match "Beauty of Fractals" picture since we start
+         Mandelbrot iteration with init rather than 0 */
+      old.x = parm.x; /* initial pertubation of parameters set */
+      old.y = parm.y;
+      color = -1;
+   }
+   else
+   {   
+      old.x = init.x + parm.x; /* initial pertubation of parameters set */
+      old.y = init.y + parm.y;
+   } 
 
    tempsqrx = sqr(old.x);  /* precalculated value for regular Mandelbrot */
    tempsqry = sqr(old.y);
@@ -2474,8 +2056,8 @@ void MPCjulia_per_pixel()
      old.x = dx0[col];
      old.y = dy0[row];
    }   
-   mpcold.r = pd2MP(old.x);
-   mpcold.i = pd2MP(old.y);
+   mpcold.x = pd2MP(old.x);
+   mpcold.y = pd2MP(old.y);
 }
 
 void othermandelfp_per_pixel()
@@ -2508,6 +2090,20 @@ void otherjuliafp_per_pixel()
    }   
 }
 
+int MarksCplxMandperp(void) 
+{
+   if(invert)
+      invertz2(&init);
+   else
+      init.x = dx0[col];
+   old.x = init.x + parm.x; /* initial pertubation of parameters set */
+   old.y = init.y + parm.y;
+   tempsqrx = sqr(old.x);  /* precalculated value */
+   tempsqry = sqr(old.y);
+   Coefficient = ComplexPower(init, pwr);
+   return(1);
+}
+
 /* -------------------------------------------------------------------- */
 /*		Setup (once per fractal image) routines			*/
 /* -------------------------------------------------------------------- */
@@ -2515,7 +2111,7 @@ void otherjuliafp_per_pixel()
 MandelSetup()		/* Mandelbrot Routine */
 {
    if (debugflag != 90 && ! invert && decomp[0] == 0 && rqlim <= 4.0 
-          && forcesymmetry == 999 && biomorph == -1)
+          && forcesymmetry == 999 && biomorph == -1 && bof_pp60_61 == 0)
       calctype = calcmand; /* the normal case - use CALCMAND */
    else
    {
@@ -2626,8 +2222,8 @@ NewtonSetup()		/* Newton/NewtBasin Routines */
       /* list of roots to discover where we converged for newtbasin */
       for(i=0;i<degree;i++)
       {
-         MPCroots[i].r = pd2MP(cos(i*PI*2.0/(double)degree));
-         MPCroots[i].i = pd2MP(sin(i*PI*2.0/(double)degree));
+         MPCroots[i].x = pd2MP(cos(i*PI*2.0/(double)degree));
+         MPCroots[i].y = pd2MP(sin(i*PI*2.0/(double)degree));
       }
    }
 
@@ -2663,20 +2259,31 @@ MandelfpSetup()
       c_exp = 1;
    if(fractype==FPMANDELZPOWER && c_exp & 1) /* odd exponents */
       setsymmetry(XYAXIS_NOPARM);         
+
+   pwr.x = param[2] - 1.0;
+   pwr.y = param[3];
    
    floatparm = &init;
    return(1);
 }
+ 
 JuliafpSetup()
 {
    c_exp = param[2];
    if(fractype==FPJULIAZPOWER && c_exp < 1)
       c_exp = 1;
    if(fractype==FPJULIAZPOWER && c_exp & 1) /* odd exponents */
-      setsymmetry(NOSYM);         
+      setsymmetry(NOSYM);
    floatparm = &parm;
+   if(fractype==COMPLEXMARKSJUL)
+   {
+      pwr.x = param[2] - 1.0;
+      pwr.y = param[3];
+      Coefficient = ComplexPower(*floatparm, pwr);
+   }
    return(1);
 }
+
 MandellongSetup()
 {
    c_exp = param[2];
@@ -2726,6 +2333,17 @@ SierpinskiSetup()
    return(1);
 }
 
+
+SierpinskiFPSetup()
+{
+   /* sierpinski */
+   periodicitycheck = 0;		/* disable periodicity checks */
+   tmp.x = 1;
+   tmp.y = 0.5;
+   return(1);
+}
+
+
 StandardSetup()
 {
    return(1);
@@ -2751,6 +2369,15 @@ static char imagroot[]   = "Imag part of Root";
 static char realdegree[] = "Real part of Degree";
 static char imagdegree[] = "Imag part of Degree";
 
+/* for Lorenz */
+static char timestep[]     = "Time Step";
+
+/* for formula */
+static char p1real[] = "Real portion of p1";
+static char p2real[] = "Real portion of p2";
+static char p1imag[] = "Imaginary portion of p1";
+static char p2imag[] = "Imaginary portion of p2";
+
 /* bailout defines */
 #define FTRIGBAILOUT 2500.0
 #define LTRIGBAILOUT   64.0
@@ -2766,287 +2393,344 @@ struct fractalspecificstuff fractalspecific[] =
    |---------------|---------------|---------------|----------------|-------|
    */
 
-   "mandel",      realz0, imagz0,"","",
+   "mandel",      realz0, imagz0,"","",0,0,0,0,
    -2.5,  1.5, -1.5,  1.5, 1, JULIA,     NOFRACTAL, MANDELFP, XAXIS_NOPARM, 
    JuliaFractal,  mandel_per_pixel,MandelSetup,    calcmand,        STDBAILOUT,
 
-   "julia",       realparm, imagparm,"","",
+   "julia",       realparm, imagparm,"","",0.3,0.6,0,0,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MANDEL, JULIAFP,  ORIGIN, 
    JuliaFractal,   julia_per_pixel, JuliaSetup,    calcmand,        STDBAILOUT,
 
-   "*newtbasin",   newtdegree,"", "","",
+   "*newtbasin",   newtdegree,"", "","",3,0,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, MPNEWTBASIN,   NOSYM, 
    NewtonFractal2, otherjuliafp_per_pixel,  NewtonSetup, StandardFractal,0.0,
 
-   "lambda",      realparm, imagparm,"","",
-   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MANDELLAMBDA, NOFRACTAL,  NOSYM, 
+   "lambda",      realparm, imagparm,"","",0.85,0.6,0,0,
+   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MANDELLAMBDA, LAMBDAFP,  NOSYM, 
    LambdaFractal,   long_julia_per_pixel, JulialongSetup,  StandardFractal,STDBAILOUT,
    
-   "*mandel",    realz0, imagz0,"","",
+   "*mandel",    realz0, imagz0,"","",0,0,0,0,
    -2.5,  1.5, -1.5,  1.5, 0, JULIAFP,   NOFRACTAL, MANDEL,  XAXIS_NOPARM, 
    JuliafpFractal,mandelfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
    
-   "*newton",      newtdegree,"", "","",
+   "*newton",      newtdegree,"", "","",3,0,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, MPNEWTON,   XAXIS, 
    NewtonFractal2, otherjuliafp_per_pixel,  NewtonSetup, StandardFractal,0.0,
 
-   "*julia",     realparm, imagparm,"","",
+   "*julia",     realparm, imagparm,"","",0.3,0.6,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, MANDELFP, JULIA,  ORIGIN, 
    JuliafpFractal, juliafp_per_pixel,  JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "plasma",      "Graininess Factor (.1 to 50, default is 2)","","","",
+   "plasma",      "Graininess Factor (.1 to 50, default is 2)","","","",2,0,0,0,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM,
    NULL,           NULL,   StandaloneSetup,      plasma,          0.0,
    
-   "*lambdasine",  realparm, imagparm,"","",
+   "*lambdasine",  realparm, imagparm,"","",1.0,0.4,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, MANDELSINE, LLAMBDASINE, PI_SYM, 
    LambdasineFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,FTRIGBAILOUT,
    
-   "*lambdacos",   realparm, imagparm,"","",
+   "*lambdacos",   realparm, imagparm,"","",1.5,0.6,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, MANDELCOS, LLAMBDACOS,  PI_SYM, 
    LambdacosineFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,FTRIGBAILOUT,
 
-   "*lambdaexp",   realparm, imagparm,"","",
+   "*lambdaexp",   realparm, imagparm,"","",0.12,2.1,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, MANDELEXP, LLAMBDAEXP,  XAXIS, 
    LambdaexponentFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,FTRIGBAILOUT,
 
-   "test",        "(testpt Param #1)","(testpt param #2)","(testpt param #3)", "(testpt param #4)",
+   "test",        "(testpt Param #1)","(testpt param #2)","(testpt param #3)", "(testpt param #4)",0,0,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
    NULL,          NULL,             StandaloneSetup, test,    STDBAILOUT,
  
-  "sierpinski",  "","","","",
-   -0.9,  1.7, -0.9,  1.7, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
+  "sierpinski",  "","","","",0,0,0,0,
+   -0.9,  1.7, -0.9,  1.7, 1, NOFRACTAL, NOFRACTAL, SIERPINSKIFP,   NOSYM, 
    SierpinskiFractal,long_julia_per_pixel, SierpinskiSetup,StandardFractal,127.0,
- 
-  "barnsleym1",  realz0, imagz0,"","",
-   -2.0,  2.0, -1.5,  1.5, 1, BARNSLEYJ1,NOFRACTAL, NOFRACTAL,  XYAXIS_NOPARM, 
+
+  "barnsleym1",  realz0, imagz0,"","",0,0,0,0,
+   -2.0,  2.0, -1.5,  1.5, 1, BARNSLEYJ1,NOFRACTAL, BARNSLEYM1FP,  XYAXIS_NOPARM, 
    Barnsley1Fractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
  
-  "barnsleyj1",  realparm, imagparm,"","",
-   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, BARNSLEYM1, NOFRACTAL,  ORIGIN, 
+  "barnsleyj1",  realparm, imagparm,"","",0.6,1.1,0,0,
+   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, BARNSLEYM1, BARNSLEYJ1FP,  ORIGIN, 
    Barnsley1Fractal,long_julia_per_pixel,JulialongSetup,StandardFractal,STDBAILOUT,
 
-   "barnsleym2",  realz0, imagz0,"","",
-   -2.0,  2.0, -1.5,  1.5, 1, BARNSLEYJ2,NOFRACTAL, NOFRACTAL,  YAXIS_NOPARM, 
+   "barnsleym2",  realz0, imagz0,"","",0,0,0,0,
+   -2.0,  2.0, -1.5,  1.5, 1, BARNSLEYJ2,NOFRACTAL, BARNSLEYM2FP,  YAXIS_NOPARM, 
    Barnsley2Fractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
    
-   "barnsleyj2",  realparm, imagparm,"","",
-   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, BARNSLEYM2, NOFRACTAL,  ORIGIN, 
+   "barnsleyj2",  realparm, imagparm,"","",0.6,1.1,0,0,
+   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, BARNSLEYM2, BARNSLEYJ2FP,  ORIGIN, 
    Barnsley2Fractal,long_julia_per_pixel,JulialongSetup,StandardFractal,STDBAILOUT,
    
-   "*mandelsine",  realz0, imagz0,"","",
+   "*mandelsine",  realz0, imagz0,"","",0,0,0,0,
    -8.0,  8.0, -6.0,  6.0, 0, LAMBDASINE,NOFRACTAL, LMANDELSINE, XYAXIS_NOPARM, 
    LambdasineFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,FTRIGBAILOUT,
 
-   "*mandelcos",   realz0, imagz0,"","",
+   "*mandelcos",   realz0, imagz0,"","",0,0,0,0,
    -8.0,  8.0, -6.0,  6.0, 0, LAMBDACOS, NOFRACTAL, LMANDELCOS, XYAXIS_NOPARM, 
    LambdacosineFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,FTRIGBAILOUT,
 
-   "*mandelexp",   realz0, imagz0,"","",
+   "*mandelexp",   realz0, imagz0,"","",0,0,0,0,
    -4.0,  4.0, -3.0,  3.0, 0, LAMBDAEXP, NOFRACTAL, LMANDELEXP,   0, 
    LambdaexponentFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,FTRIGBAILOUT,
 
-   "mandellambda",realz0, imagz0,"","",
-   -2.0,  2.0, -1.5,  1.5, 1, LAMBDA,    NOFRACTAL, NOFRACTAL,  XAXIS_NOPARM, 
+   "mandellambda",realz0, imagz0,"","",0,0,0,0,
+   -2.0,  2.0, -1.5,  1.5, 1, LAMBDA,    NOFRACTAL, MANDELLAMBDAFP,  XAXIS_NOPARM, 
    LambdaFractal,mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "marksmandel", realz0, imagz0, exponent,"",
+   "marksmandel", realz0, imagz0, exponent,"",0,0,0,0,
    -2.0,  2.0, -1.5,  1.5, 1, MARKSJULIA, NOFRACTAL, NOFRACTAL,  NOSYM,
    MarksLambdaFractal,marksmandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "marksjulia", realparm, imagparm, exponent,"",
+   "marksjulia", realparm, imagparm, exponent,"",0.1,0.9,0,0,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MARKSMANDEL, NOFRACTAL,   ORIGIN,
    MarksLambdaFractal,julia_per_pixel,MarksJuliaSetup,StandardFractal,STDBAILOUT,
 
-   "unity",       "","","","",
+   "unity",       "","","","",0,0,0,0,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL,   XYAXIS, 
    UnityFractal, long_julia_per_pixel,UnitySetup,StandardFractal,0.0,
    
-   "mandel4",      realz0, imagz0,"","",
+   "mandel4",      realz0, imagz0,"","",0,0,0,0,
    -2.0,  2.0, -1.5,  1.5, 1, JULIA4,     NOFRACTAL, NOFRACTAL,  XAXIS_NOPARM, 
    Mandel4Fractal,  mandel_per_pixel, MandellongSetup, StandardFractal,  STDBAILOUT,
 
-   "julia4",       realparm, imagparm,"","",
+   "julia4",       realparm, imagparm,"","",0.6,0.55,0,0,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, MANDEL4, NOFRACTAL, ORIGIN, 
    Mandel4Fractal,   julia_per_pixel, JulialongSetup,StandardFractal,    STDBAILOUT,
 
-   "ifs",        "","","", "",
+   "ifs",        "","","","",0,0,0,0,
    -8.0,  8.0, -1.0, 11.0, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
    NULL,          NULL,             StandaloneSetup, ifs,    0.0,
 
-   "ifs3d",        "","","", "",
+   "ifs3d",        "","","","",0,0,0,0,
    -11.0,  11.0, -11.0, 11.0, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
    NULL,          NULL,      StandaloneSetup, ifs3d,    0.0,
 
-   "barnsleym3",  realz0, imagz0,"","",
-   -2.0,  2.0, -1.5,  1.5, 1, BARNSLEYJ3,NOFRACTAL, NOFRACTAL,  XAXIS_NOPARM, 
+   "barnsleym3",  realz0, imagz0,"","",0,0,0,0,
+   -2.0,  2.0, -1.5,  1.5, 1, BARNSLEYJ3,NOFRACTAL, BARNSLEYM3FP,  XAXIS_NOPARM, 
    Barnsley3Fractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
    
-   "barnsleyj3",  realparm, imagparm,"","",
-   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, BARNSLEYM3, NOFRACTAL,  XAXIS, 
+   "barnsleyj3",  realparm, imagparm,"","",0.1,0.36,0,0,
+   -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, BARNSLEYM3, BARNSLEYJ3FP,  XAXIS, 
    Barnsley3Fractal,long_julia_per_pixel,JulialongSetup,StandardFractal,STDBAILOUT,
 
-   "demm",    realz0, imagz0,"","",
+   "demm",    realz0, imagz0,"","",0,0,0,0,
    -2.5,  1.5, -1.5,  1.5, 0, DEMJ,   NOFRACTAL, NOFRACTAL,   XAXIS_NOPARM, 
    NULL,				NULL, 		StandaloneSetup, DistanceEstimatorMethod,STDBAILOUT,
 
-   "demj",     realparm, imagparm,"","",
+   "demj",     realparm, imagparm,"","",0.3,0.6,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, DEMM, NOFRACTAL,    ORIGIN, 
    NULL,				NULL, 		StandaloneSetup, DistanceEstimatorMethod,STDBAILOUT,
 
-   "bifurcation",     "", "","","",
+   "bifurcation",     "", "","","",0,0,0,0,
    1.9,  3.0, 0,  1.34, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
    NULL,				NULL, 		StandaloneSetup, Bifurcation,STDBAILOUT,
 
-   "*mandelsinh",  realz0, imagz0,"","",
+   "*mandelsinh",  realz0, imagz0,"","",0,0,0,0,
    -8.0,  8.0, -6.0,  6.0, 0, LAMBDASINH,NOFRACTAL, LMANDELSINH, XYAXIS_NOPARM, 
    LambdasinhFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,FTRIGBAILOUT,
 
-   "*lambdasinh",  realparm, imagparm,"","",
+   "*lambdasinh",  realparm, imagparm,"","",1.0,0.7,0,0,
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, MANDELSINH, LLAMBDASINH, PI_SYM, 
    LambdasinhFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,FTRIGBAILOUT,
 
-   "*mandelcosh",   realz0, imagz0,"","",
+   "*mandelcosh",   realz0, imagz0,"","",0,0,0,0,
    -8.0,  8.0, -6.0,  6.0, 0, LAMBDACOSH, NOFRACTAL, LMANDELCOSH, XYAXIS_NOPARM, 
    LambdacoshFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,FTRIGBAILOUT,
    
-   "*lambdacosh",   realparm, imagparm,"","",
+   "*lambdacosh",   realparm, imagparm,"","",1.0,0.7,0,0,
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, MANDELCOSH, LLAMBDACOSH, PI_SYM, 
    LambdacoshFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,FTRIGBAILOUT,
 
-   "mandelsine",realz0, imagz0,"","",
+   "mandelsine",realz0, imagz0,"","",0,0,0,0,
    -8.0,  8.0, -6.0,  6.0, 16, LLAMBDASINE, NOFRACTAL, MANDELSINE, XYAXIS_NOPARM, 
    LongLambdasineFractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,LTRIGBAILOUT,
 
-   "lambdasine",      realparm, imagparm,"","",
+   "lambdasine",      realparm, imagparm,"","",1.0,0.4,0,0,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, LMANDELSINE, LAMBDASINE,PI_SYM, 
    LongLambdasineFractal,   long_julia_per_pixel, JulialongSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "mandelcos",realz0, imagz0,"","",
+   "mandelcos",realz0, imagz0,"","",0,0,0,0,
    -8.0,  8.0, -6.0,  6.0, 16, LLAMBDACOS, NOFRACTAL, MANDELCOS, XYAXIS_NOPARM, 
    LongLambdacosFractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,LTRIGBAILOUT,
 
-   "lambdacos",      realparm, imagparm,"","",
+   "lambdacos",      realparm, imagparm,"","",1.5,0.6,0,0,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, LMANDELCOS, LAMBDACOS, PI_SYM, 
    LongLambdacosFractal,   long_julia_per_pixel, JulialongSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "mandelsinh",realz0, imagz0,"","",
+   "mandelsinh",realz0, imagz0,"","",0,0,0,0,
    -8.0,  8.0, -6.0,  6.0, 16, LLAMBDASINH, NOFRACTAL, MANDELSINH, XYAXIS_NOPARM, 
    LongLambdasinhFractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,LTRIGBAILOUT,
 
-   "lambdasinh",      realparm, imagparm,"","",
+   "lambdasinh",      realparm, imagparm,"","",1.0,0.7,0,0,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, LMANDELSINH, LAMBDASINH, ORIGIN, 
    LongLambdasinhFractal,   long_julia_per_pixel, JulialongSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "mandelcosh",realz0, imagz0,"","",
+   "mandelcosh",realz0, imagz0,"","",0,0,0,0,
    -8.0,  8.0, -6.0,  6.0, 16, LLAMBDACOSH,    NOFRACTAL, MANDELCOSH,  XYAXIS_NOPARM, 
    LongLambdacoshFractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,LTRIGBAILOUT,
 
-   "lambdacosh",      realparm, imagparm,"","",
+   "lambdacosh",      realparm, imagparm,"","",1.0,0.7,0,0,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, LMANDELCOSH, LAMBDACOSH, ORIGIN, 
    LongLambdacoshFractal,   long_julia_per_pixel, JulialongSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "mansinzsqrd",      realz0, imagz0,"","",
+   "mansinzsqrd",      realz0, imagz0,"","",0,0,0,0,
    -2.5,  1.5, -1.5,  1.5, 16, LJULSINZSQRD,  NOFRACTAL, FPMANSINZSQRD, XAXIS_NOPARM, 
    SinZsquaredFractal,mandel_per_pixel,MandellongSetup,StandardFractal, STDBAILOUT,
 
-   "julsinzsqrd",       realparm, imagparm,"","",
+   "julsinzsqrd",       realparm, imagparm,"","",-0.5,0.5,0,0,
    -2.0,  2.0, -1.5,  1.5, 16, NOFRACTAL, LMANSINZSQRD, FPJULSINZSQRD,  NOSYM, 
    SinZsquaredFractal,julia_per_pixel, JulialongSetup,StandardFractal, STDBAILOUT,
 
-   "*mansinzsqrd",    realz0, imagz0,"","",
+   "*mansinzsqrd",    realz0, imagz0,"","",0,0,0,0,
    -2.5,  1.5, -1.5,  1.5, 0, FPJULSINZSQRD,   NOFRACTAL, LMANSINZSQRD, XAXIS_NOPARM, 
    SinZsquaredfpFractal,mandelfp_per_pixel, MandelfpSetup,StandardFractal, STDBAILOUT,
 
-   "*julsinzsqrd",     realparm, imagparm,"","",
+   "*julsinzsqrd",     realparm, imagparm,"","",-0.5,0.5,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, FPMANSINZSQRD, LJULSINZSQRD,   NOSYM, 
    SinZsquaredfpFractal, juliafp_per_pixel,  JuliafpSetup,StandardFractal, STDBAILOUT,
 
-   "mandelexp",realz0, imagz0,"","",
+   "mandelexp",realz0, imagz0,"","",0,0,0,0,
    -4.0,  4.0, -3.0,  3.0, 16, LLAMBDAEXP,    NOFRACTAL,  MANDELEXP, XAXIS, 
    LongLambdaexponentFractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,LTRIGBAILOUT,
 
-   "lambdaexp",      realparm, imagparm,"","",
+   "lambdaexp",      realparm, imagparm,"","",0.12,2.1,0,0,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, LMANDELEXP, LAMBDAEXP, XAXIS, 
    LongLambdaexponentFractal,   long_julia_per_pixel, JulialongSetup,  StandardFractal,LTRIGBAILOUT,
 
-   "manzpower", realz0, imagz0, exponent,"",
+   "manzpower", realz0, imagz0, exponent,"",0,0,2,0,
    -2.0,  2.0, -1.5,  1.5, 1, LJULIAZPOWER, NOFRACTAL, FPMANDELZPOWER,  XAXIS,
    longZpowerFractal,mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "julzpower", realparm, imagparm, exponent,"",
+   "julzpower", realparm, imagparm, exponent,"",0.3,0.6,2,0,
    -2.0,  2.0, -1.5,  1.5, 1, NOFRACTAL, LMANDELZPOWER, FPJULIAZPOWER,   ORIGIN,
    longZpowerFractal,julia_per_pixel,JulialongSetup,StandardFractal,STDBAILOUT,
 
-   "*manzpower",    realz0, imagz0, exponent,"",
+   "*manzpower",    realz0, imagz0, exponent,"",0,0,2,0,
    -2.5,  1.5, -1.5,  1.5, 0, FPJULIAZPOWER,   NOFRACTAL, LMANDELZPOWER,  XAXIS_NOPARM, 
    floatZpowerFractal,othermandelfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "*julzpower",     realparm, imagparm, exponent,"",
+   "*julzpower",     realparm, imagparm, exponent,"",0.3,0.6,2,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, FPMANDELZPOWER, LJULIAZPOWER,  ORIGIN, 
    floatZpowerFractal, otherjuliafp_per_pixel,  JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "manzzpwr",    realz0, imagz0, exponent,"",
+   "manzzpwr",    realz0, imagz0, exponent,"",0,0,2,0,
    -2.5,  1.5, -1.5,  1.5, 0, FPJULZTOZPLUSZPWR,   NOFRACTAL, NOFRACTAL,  XAXIS_NOPARM, 
    floatZtozpluszpwrFractal,othermandelfp_per_pixel, MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "julzzpwr",     realparm, imagparm, exponent,"",
+   "julzzpwr",     realparm, imagparm, exponent,"",-0.3,0.3,2,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, FPMANZTOZPLUSZPWR, NOFRACTAL,  NOSYM, 
    floatZtozpluszpwrFractal, otherjuliafp_per_pixel,  JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "mansinexp",realz0, imagz0,"","",
+   "mansinexp",realz0, imagz0,"","",0,0,0,0,
    -8.0,  8.0, -6.0,  6.0, 16, LJULSINEXP,    NOFRACTAL,  FPMANSINEXP, XAXIS_NOPARM, 
    LongSinexponentFractal,long_mandel_per_pixel,MandellongSetup,StandardFractal,STDBAILOUT,
 
-   "julsinexp",      realparm, imagparm,"","",
+   "julsinexp",      realparm, imagparm,"","",0,0,0,0,
    -4.0,  4.0, -3.0,  3.0, 16, NOFRACTAL, LMANSINEXP,FPJULSINEXP, NOSYM,
    LongSinexponentFractal,   long_julia_per_pixel, JulialongSetup,  StandardFractal,STDBAILOUT,
 
-   "*mansinexp",   realz0, imagz0,"","",
+   "*mansinexp",   realz0, imagz0,"","",0,0,0,0,
    -8.0,  8.0, -6.0,  6.0, 0, FPJULSINEXP, NOFRACTAL, LMANSINEXP,   XAXIS_NOPARM, 
    FloatSinexponentFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
 
-   "*julsinexp",   realparm, imagparm,"","",
+   "*julsinexp",   realparm, imagparm,"","",0,0,0,0,
    -4.0,  4.0, -3.0,  3.0, 0, NOFRACTAL, FPMANSINEXP, LJULSINEXP,   NOSYM, 
    FloatSinexponentFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "*popcorn", "", "", "","",
+   "*popcorn", "", "", "","",0,0,0,0,
    -3.0,  3.0, -2.2,  2.2, 0, NOFRACTAL, NOFRACTAL, LPOPCORN,  NOPLOT, 
    PopcornFractal, otherjuliafp_per_pixel,  JuliafpSetup,StandardFractal,STDBAILOUT,
 
-   "popcorn", "", "", "","",
+   "popcorn", "", "", "","",0,0,0,0,
    -3.0,  3.0, -2.2,  2.2, 16, NOFRACTAL, NOFRACTAL, FPPOPCORN,  NOPLOT, 
    LPopcornFractal,   long_julia_per_pixel, JulialongSetup,  StandardFractal,STDBAILOUT,
 
-   "*lorenz","Time Step","a","b", "c",
+   "*lorenz",timestep,"a","b", "c",.02,5,15,1,
    -15,  15, 0, 30, 0, NOFRACTAL, NOFRACTAL, LLORENZ,   NOSYM, 
    NULL,          NULL,             StandaloneSetup, floatlorenz,    0.0,
 
-   "lorenz","Time Step","a","b", "c",
+   "lorenz",timestep,"a","b", "c",.02,5,15,1,
    -15,  15, 0, 30, 16, NOFRACTAL, NOFRACTAL, FPLORENZ,   NOSYM, 
    NULL,          NULL,             StandaloneSetup, longlorenz,    0.0,
 
-   "lorenz3d","Time Step","a","b", "c",
+   "lorenz3d",timestep,"a","b", "c",.02,5,15,1,
    -30.0,  30.0,  -30.0,   30.0, 16, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
    NULL,          NULL,      StandaloneSetup, lorenz3dlong,    0.0,
 
-   "newton",      newtdegree,"", "","",
+   "newton",      newtdegree,"", "","",3,0,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NEWTON,   XAXIS, 
    MPCNewtonFractal, MPCjulia_per_pixel,  NewtonSetup, StandardFractal,0.0,
 
-   "newtbasin",      newtdegree,"", "","",
+   "newtbasin",      newtdegree,"", "","",0,0,0,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NEWTBASIN,   NOSYM, 
    MPCNewtonFractal, MPCjulia_per_pixel,  NewtonSetup, StandardFractal,0.0,
 
-   "complexnewton", realdegree, imagdegree, realroot, imagroot,
+   "complexnewton", realdegree, imagdegree, realroot, imagroot,3,0,1,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM,
    ComplexNewton, otherjuliafp_per_pixel,  ComplexNewtonSetup, StandardFractal,0.0,
 
-   "complexbasin", realdegree, imagdegree, realroot, imagroot,
+   "complexbasin", realdegree, imagdegree, realroot, imagroot,3,0,1,0,
    -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM,
    ComplexBasin, otherjuliafp_per_pixel,  ComplexNewtonSetup,  StandardFractal, 0.0,
 
-   NULL, NULL, NULL, NULL, NULL,	/* marks the END of the list */
+   "cmplxmarksmand", realz0, imagz0, realdegree, imagdegree,0,0,1,0,
+   -2.0,  2.0, -1.5,  1.5, 0, COMPLEXMARKSJUL, NOFRACTAL, NOFRACTAL,   NOSYM,
+   MarksCplxMand, MarksCplxMandperp, MandelfpSetup, StandardFractal, STDBAILOUT,
+
+   "cmplxmarksjul", realparm, imagparm, realdegree, imagdegree,0.3,0.6,1,0,
+   -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, COMPLEXMARKSMAND, NOFRACTAL,   NOSYM,
+   MarksCplxMand, juliafp_per_pixel, JuliafpSetup, StandardFractal, STDBAILOUT,
+
+   "formula", p1real, p1imag, p2real, p2imag, 0,0,0,0,
+   -2.0, 2.0, -1.5, 1.5, 1, NOFRACTAL, NOFRACTAL, FFORMULA, SETUP_SYM,
+   Formula, form_per_pixel, intFormulaSetup, StandardFractal, 0,
+
+   "*formula", p1real, p1imag, p2real, p2imag, 0,0,0,0,
+   -2.0, 2.0, -1.5, 1.5, 0, NOFRACTAL, NOFRACTAL, FORMULA, SETUP_SYM,
+   Formula, form_per_pixel, fpFormulaSetup, StandardFractal, 0,
+
+  "*sierpinski",  "","","","",0,0,0,0,
+   -0.9,  1.7, -0.9,  1.7, 0, NOFRACTAL, NOFRACTAL, SIERPINSKI,   NOSYM, 
+   SierpinskiFPFractal, otherjuliafp_per_pixel, SierpinskiFPSetup,StandardFractal,127.0,
+
+   "*lambda",      realparm, imagparm,"","",0.85,0.6,0,0,
+   -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, MANDELLAMBDAFP, LAMBDA,  NOSYM, 
+   LambdaFPFractal,   otherjuliafp_per_pixel, JuliafpSetup,  StandardFractal,STDBAILOUT,
+
+  "*barnsleym1",  realz0, imagz0,"","",0,0,0,0,
+   -2.0,  2.0, -1.5,  1.5, 0, BARNSLEYJ1FP,NOFRACTAL, BARNSLEYM1,  XYAXIS_NOPARM, 
+   Barnsley1FPFractal, othermandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
+
+  "*barnsleyj1",  realparm, imagparm,"","",0.6,1.1,0,0,
+   -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, BARNSLEYM1FP, BARNSLEYJ1,  ORIGIN, 
+   Barnsley1FPFractal, otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,STDBAILOUT,
+
+   "*barnsleym2",  realz0, imagz0,"","",0,0,0,0,
+   -2.0,  2.0, -1.5,  1.5, 0, BARNSLEYJ2FP,NOFRACTAL, BARNSLEYM2,  YAXIS_NOPARM, 
+   Barnsley2FPFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
+
+   "*barnsleyj2",  realparm, imagparm,"","",0.6,1.1,0,0,
+   -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, BARNSLEYM2FP, BARNSLEYJ2,  ORIGIN, 
+   Barnsley2FPFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,STDBAILOUT,
+
+   "*barnsleym3",  realz0, imagz0,"","",0,0,0,0,
+   -2.0,  2.0, -1.5,  1.5, 0, BARNSLEYJ3FP, NOFRACTAL, BARNSLEYM3,  XAXIS_NOPARM, 
+   Barnsley3FPFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
+
+   "*barnsleyj3",  realparm, imagparm,"","",0.6,1.1,0,0,
+   -2.0,  2.0, -1.5,  1.5, 0, NOFRACTAL, BARNSLEYM3FP, BARNSLEYJ3,  XAXIS, 
+   Barnsley3FPFractal,otherjuliafp_per_pixel,JuliafpSetup,StandardFractal,STDBAILOUT,
+
+   "*mandellambda",realz0, imagz0,"","",0,0,0,0,
+   -2.0,  2.0, -1.5,  1.5, 0, LAMBDAFP, NOFRACTAL, MANDELLAMBDA,  XAXIS_NOPARM, 
+   LambdaFPFractal,othermandelfp_per_pixel,MandelfpSetup,StandardFractal,STDBAILOUT,
+
+   "julibrot", "","","","", -.83, -.83, .25, -.25,
+   -2.0, 2.0, -1.5, 1.5, 1, NOFRACTAL, NOFRACTAL, NOFRACTAL, NOSYM,
+   JuliaFractal, jb_per_pixel, JulibrotSetup, Std4dFractal, STDBAILOUT,
+
+   NULL, NULL, NULL, NULL, NULL,0,0,0,0, /* marks the END of the list */
    0,  0, 0,  0, 0, NOFRACTAL, NOFRACTAL, NOFRACTAL,   NOSYM, 
    NULL, NULL, NULL, NULL,0
 };
+	

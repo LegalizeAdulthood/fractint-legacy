@@ -58,6 +58,8 @@ ENDIF
 	extrn	scrub_orbit:far		; this routine is in 'calcfrac.c'
 	extrn	intpotential:far	; this routine is in 'calcfrac.c'
 
+	extrn	lx0:dword, ly0:dword	; arrays of (dword) increment values
+
 .DATA
 
 FUDGEFACTOR	equ	29		; default (non-potential) fudgefactor
@@ -69,7 +71,6 @@ FUDGEFACTOR2	equ	24		; potential algoithm variant
 	extrn	numpasses:word		; == 0 if single-pass, 1 if 2-pass
 	extrn	inside:word		; "inside" color, normally 1 (blue)
 	extrn	creal:dword, cimag:dword ; Julia Set Constant
-	extrn	lx0:dword, ly0:dword	; arrays of (dword) increment values
 	extrn	delx:dword, dely:dword	; actual increment values
 	extrn	xdots:word, ydots:word	; number of dots across and down
 	extrn	maxit:word, colors:word	; maximum iterations, colors
@@ -172,21 +173,29 @@ yloop:					; for (y = iystart; y <= iystop; y++)
 	mov	oldcolor,bx		;  (avoids slowness at 32000 iters)
 
 xloop:					; for (x = ixstart; x <= ixstop; x++)
+	push	es			; save this for a tad
 	mov	bx,ix			; pull lx0 value out of the array
 	shl	bx,1			; convert to double-word pointer
 	shl	bx,1			;  ...
-	mov	ax,word ptr lx0[bx]	;  here it is!
-	mov	dx,word ptr lx0+2[bx]	;  ...
+	add	bx,word ptr lx0		;  ..
+	mov	ax,word ptr lx0+2	; get the segment
+	mov	es,ax			;  ...
+	mov	ax,word ptr es:0[bx]	;  here it is!
+	mov	dx,word ptr es:2[bx]	;  ...
 	mov	word ptr a,ax		; save it for later
 	mov	word ptr a+2,dx		;  ...
 
 	mov	bx,iy			; pull ly0 value out of the array
 	shl	bx,1			; convert to double-word pointer
 	shl	bx,1			;  ...
-	mov	ax,word ptr ly0[bx]	;  here it is!
-	mov	dx,word ptr ly0+2[bx]	;  ...
+	add	bx,word ptr ly0		;  ..
+	mov	ax,word ptr ly0+2	; get the segment
+	mov	es,ax			;  ...
+	mov	ax,word ptr es:0[bx]	;  here it is!
+	mov	dx,word ptr es:2[bx]	;  ...
 	mov	word ptr b,ax		; save it for later
 	mov	word ptr b+2,dx		;  ...
+	pop	es			; restore the segment
 
 	mov	ax,word ptr creal	; initialize x == creal
 	mov	dx,word ptr creal+2	;  ...

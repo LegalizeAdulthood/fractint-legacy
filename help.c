@@ -12,6 +12,7 @@ extern char far helpmessagecredits[];
 extern char far helpmessagemenu[];
 extern char far *helpmessagemain[];
 extern char far *helpmessagecycling[];
+extern char far *helpmessagexhair[];
 extern char far *helpmessagemouse[];
 extern char far *helpmessagecmdline[];
 extern char far *helpmessagefractals[];
@@ -104,7 +105,7 @@ while (mode != HELPEXIT) {
 					mode = HELPCYCLING;
 					break;
 				case '3':
-					mode = HELPMOUSE;
+					mode = HELPXHAIR;
 					break;
 				case '4':
 					mode = HELPCMDLINE;
@@ -117,6 +118,9 @@ while (mode != HELPEXIT) {
 					break;
 				case '7':
 					mode = HELPMOREINFO;
+					break;
+				case '8':
+					mode = HELPMOUSE;
 					break;
 				case 27:
 					mode = HELPEXIT;
@@ -134,6 +138,9 @@ while (mode != HELPEXIT) {
 			break;
 		case HELPCYCLING:
 			key = helppage(helpmessagecycling);
+			break;
+		case HELPXHAIR:
+			key = helppage(helpmessagexhair);
 			break;
 		case HELPMOUSE:
 			key = helppage(helpmessagemouse);
@@ -187,7 +194,7 @@ if (helppages[1] == NULL) {
 key = 13;
 page = 1;
 
-while (key == 13) {
+while (key == 13 || key == 1013) {
 	helptitle();
 	helpmessage(helppages[page-1]);
 	movecursor(21,0);
@@ -210,7 +217,7 @@ char accessmethod[2];
 j = -12;
 key = 13;
 
-while (key == 13) {
+while (key == 13 || key == 1013) {
 	helptitle();
 	printf("\n");
 	j += 12;	/* display next page */

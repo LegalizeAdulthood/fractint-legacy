@@ -1,15 +1,26 @@
 .c.obj:	
-	cl /AM /W1 /FPi /Gs /c /Oait $*.c
+#	qcl /AM /W1 /FPi /c /Od $*.c
+#	cl /AM /W1 /FPi /c /Oait $*.c
+#	cl /AM /W1 /FPi /Gs /c /Od /Zi $*.c
+	cl /AM /W1 /FPi /c /Oait $*.c
 
 .asm.obj:
+#	masm /ML $*;
+#	masm /ML /Zi $*;
 	masm /ML $*;
 
+
+lorenz.obj : lorenz.c fractint.h
+
+plot3d.obj : plot3d.c
 
 3d.obj : 3d.c fractint.h
 
 fractals.obj : fractals.c fractint.h
 
 calcfrac.obj : calcfrac.c fractint.h
+
+parser.obj : parser.c fractint.h
 
 calcmand.obj : calcmand.asm
 
@@ -48,6 +59,8 @@ newton.obj : newton.asm
 
 printer.obj : printer.c fractint.h
 
+prompts.obj : prompts.c fractint.h
+
 rotate.obj : rotate.c fractint.h
 
 testpt.obj: testpt.c fractint.h
@@ -71,11 +84,15 @@ mpmath_c.obj : mpmath_c.c mpmath.h
 
 mpmath_a.obj : mpmath_a.asm
 
+jb.obj : jb.c fractint.h
+
 fractint.exe : fractint.obj help.obj config.obj encoder.obj gifview.obj \
      general.obj calcmand.obj fractals.obj calcfrac.obj testpt.obj \
-     decoder.obj rotate.obj yourvid.obj \
+     decoder.obj rotate.obj yourvid.obj prompts.obj parser.obj \
      diskvid.obj line3d.obj 3d.obj newton.obj farmsg.obj cmdfiles.obj \
      targa.obj loadmap.obj tgasubs.obj printer.obj \
      video.obj tgaview.obj f16.obj fr8514a.obj \
-     hgcfra.obj fpu087.obj fpu387.obj mpmath_c.obj  mpmath_a.obj 
+     hgcfra.obj fpu087.obj fpu387.obj mpmath_c.obj  mpmath_a.obj \
+     lorenz.obj plot3d.obj jb.obj
+#	link /ST:4096 /CO /NOE @fractint.lnk
 	link /ST:4096 /NOE @fractint.lnk

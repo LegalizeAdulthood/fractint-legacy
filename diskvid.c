@@ -6,6 +6,8 @@
 #include <dos.h>
 #include "fractint.h"
 
+extern	int ramvideo;			/* 0 = skip RAM-Video */
+
 extern	unsigned char diskline[2049];
 extern	int xdots, ydots, colors;
 extern	int diskisactive, diskvideo;
@@ -15,7 +17,7 @@ static unsigned int pixelsperbyte, pixelshift, pixeloffset;
 static unsigned int pixeloffsetmask;
 static unsigned int pixelbitshift[8], pixelmask[8], notpixelmask[8];
 
-static int bytesperline, oldy, linehaschanged, diskisgood;
+static int bytesperline, oldy, timetodisplay, linehaschanged, diskisgood;
 static FILE *fp;
 
 static unsigned char huge *memoryvideo;
@@ -75,16 +77,17 @@ emmhandle = 0;			/* and claim no expanded memory */
 
 memorypointer = xdots;  memorypointer *= ydots;	/* try RAM first */
 memorypointer >>= pixelshift;		/* adjust for pixels / byte */
-if ((memoryvideo = (unsigned char huge *)farmemalloc(memorypointer)) != NULL) {
-	if (diskprintfs) 
-		printf("\n(Using your Memory)\n");
-	for (longi = 0; longi < memorypointer; longi++)	/* clear the RAM */
-		memoryvideo[longi] = 0;
-	diskvideo = 0;			/* using regular RAM */
-	diskisgood = 1;			/* but the video IS good */
-	oldy = -1;			/* there is no current line */
-	return(0);			/* and bail out */
-	}
+if (ramvideo)				/* only do this if RAM-video is enabled */
+	if ((memoryvideo = (unsigned char huge *)farmemalloc(memorypointer)) != NULL) {
+		if (diskprintfs) 
+			printf("\n(Using your Memory)\n");
+		for (longi = 0; longi < memorypointer; longi++)	/* clear the RAM */
+			memoryvideo[longi] = 0;
+		diskvideo = 0;			/* using regular RAM */
+		diskisgood = 1;			/* but the video IS good */
+		oldy = -1;			/* there is no current line */
+		return(0);			/* and bail out */
+		}
 
 memorypointer = xdots; memorypointer *= ydots;		/* try exp memory */
 memorypointer >>= pixelshift;		/* adjust for pixels / byte */
@@ -95,7 +98,7 @@ if ((expmemoryvideo = emmquery()) != NULL &&
 		printf("\n(Using your Expanded Memory)\n");
 	for (oldexppage = 0; oldexppage < exppages; oldexppage++)
 		emmclearpage(oldexppage, emmhandle);/* clear the "video" */
-	diskvideo = 1;			/* using Expanded RAM */
+	diskvideo = 0;			/* using Expanded RAM */
 	diskisgood = 1;			/* the video IS good */
 	oldy = -1;			/* there is no current line */
 	return(0);			/* and bail out */
@@ -131,6 +134,7 @@ diskvideo = 2;			/* using your disk drive */
 diskisgood = 1;			/* now note that the file is intact */
 oldy = -1;			/* there is no current line */
 linehaschanged = 0;		/* current line has not changed */
+timetodisplay = -1;		/* time-to-display-status counter */
 
 return(0);
 
@@ -169,12 +173,12 @@ unsigned int page, offset;
 if (x < 0 || x >= xdots || y < 0 || y >= ydots) return(0);
 
 if (memoryvideo != NULL) {		/* RAM video? */
-	if (++oldy == xdots) {			/* need to get a new line? */
+	if (++timetodisplay == 1000) {	/* time to display status? */
 		if (diskprintfs) {
-			home();			/* show a progress report */
+			home();		/* show a progress report */
 			printf("Reading Line %4d...     ",y);
 			}
-		oldy = -1;
+		timetodisplay = -1;
 		}
 	start = y;  start = (start * xdots) + x;	/* then read it! */
 	pixeloffset = start & pixeloffsetmask;	/* get pixel offset */
@@ -183,12 +187,12 @@ if (memoryvideo != NULL) {		/* RAM video? */
 	}
 
 if (emmhandle != 0) {				/* expanded memory video? */
-	if (oldy != y) {			/* need to get a new line? */
+	if (++timetodisplay == 1000) {	/* time to display status? */
 		if (diskprintfs) {
-			home();			/* show a progress report */
+			home();		/* show a progress report */
 			printf("Reading Line %4d...     ",y);
-		}
-		oldy = y;			/* reset oldy */
+			}
+		timetodisplay = -1;
 		}
 	start = y; start = (start * xdots) + x;	/* figure out where it is */
 	pixeloffset = start & pixeloffsetmask;	/* get pixel offset */
@@ -231,12 +235,12 @@ unsigned int page, offset;
 if (x < 0 || x >= xdots || y < 0 || y >= ydots) return(0);
 
 if (memoryvideo != NULL) {		/* RAM video? */
-	if (++oldy == xdots) {			/* need to get a new line? */
+	if (++timetodisplay == 1000) {	/* time to display status? */
 		if (diskprintfs) {
-			home();			/* show a progress report */
+			home();		/* show a progress report */
 			printf("Writing Line %4d...     ",y);
 			}
-		oldy = -1;
+		timetodisplay = -1;
 		}
 	start = y;  start = (start * xdots) + x;	/* then write it! */
 	pixeloffset = start & pixeloffsetmask;	/* get pixel offset */
@@ -246,12 +250,12 @@ if (memoryvideo != NULL) {		/* RAM video? */
 	}
 
 if (emmhandle != 0) {				/* expanded memory video? */
-	if (oldy != y) {			/* need to get a new line? */
+	if (++timetodisplay == 1000) {	/* time to display status? */
 		if (diskprintfs) {
-			home();			/* show a progress report */
+			home();		/* show a progress report */
 			printf("Writing Line %4d...     ",y);
 			}
-		oldy = y;			/* reset oldy */
+		timetodisplay = -1;
 		}
 	start = y; start = (start * xdots) + x;	/* figure out where it is */
 	pixeloffset = start & pixeloffsetmask;	/* get pixel offset */

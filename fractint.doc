@@ -1,8 +1,9 @@
-                      Fractint Version 11.0
+
+                      Fractint Version 12.0
 
 CONTENTS
 
-New Features in Version 11.0
+New Features in Version 12.0
 
 Introduction
 
@@ -32,11 +33,14 @@ Introduction
      Bifurcation
      Lorenz, Lorenz3d
      Test Stub
+     Formula
+     Julibrots
 
     Doodads, Bells and Whistles
      "3D" Images
      Inversion
      Decomposition
+     Starmaps
      Logarithmic Palettes
      Pickover Biomorphs and Popcorn
 
@@ -57,7 +61,8 @@ Introduction
      Who Is This Guy, Anyway?
     A Little Code
      Logic Speed-ups
-     Limitations and Uglies
+     The Limitations of Integer Math
+     The Fractint "Fractal Engine" Architecture
 
 Appendix A: Mathematics of the Fractal Types
 Appendix B: Stone Soup with Pixels
@@ -66,39 +71,29 @@ Appendix D: Bibliography
 
 
 
-NEW FEATURES IN VERSION 11.0
+NEW FEATURES IN VERSION 12.0
 
-More fractal types!
-   mandelsinh/lambdasinh        mandelcosh/lambdacosh
-   mansinzsqrd/julsinzsqrd      mansinexp/julsinexp
-   manzzprw/julzzpwr            manzpower/julzpower
-   lorenz (from Rob Beyer)      lorenz3d
-   complexnewton                complexbasin
-   popcorn
-
-New integer fractal algorithms!  Virtually every fractal type now has
-an integer AND a floating point algorithm.
-
-"Float=yes" option now determines whether integer or floating-point
-algorithms are used for most fractal types
-
-"F" command toggles the use of floating-point algorithms, flagged in
-the <Tab> status display 
-
-8/16/32/../256-Way decomposition option (from Richard Finegold)
-
-"Biomorph=", "bailout=", "symmetry="  and "askvideo=" options
-
-"T(ransform)" option in the IFS editor lets you select 3D options (used
-with the Lorenz3D fractal type)
-
-The "T(ype)" command uses a new "Point-and-Shoot" method of selecting
-fractal types rather than prompting you for a type name (an omen of
-things to come)
-
-Bug fixes to continuous-potential algorithm on integer fractals, GIF
-encoder, and IFS editor
-
+New SuperVGA Autodetecting and VESA Video modes (you tell us the
+  resolution you want, and we'll figure out how to do it)
+New Full-Screen Entry for most prompting
+New Fractal formula interpreter ('type=formula') - roll your own
+  fractals without using a "C" compiler!
+New 'Julibrot' fractal type
+Added floating point option to all remaining fractal types.
+Real (funny glasses) 3D - Now with "real-time" lorenz3D!!
+Non-Destructive <TAB> - Check out what your fractal parameters are
+  without stopping the generation of a fractal image
+New Cross-Hair mode for changing individual palette colors (VGA only)
+Zooming beyond the limits of Integer algorithms (with automatic
+  switchover to a floating-point algorithm when you zoom in "too far")
+New 'inside=bof60', 'inside=bof61' ("Beauty of Fractals, Page nn") options
+New starmap ('a' - for astrology? astronomy?) transformation option
+Restrictions on the options available when using Expanded Memory
+  "Disk/RAM" video mode have been removed 
+And a lot of other nice little clean-up features that we've already
+  forgotten that we've added...
+Added capability to create 3D projection images (just barely) for people
+  with 2 or 4 color video boards.
 
 INTRODUCTION
 
@@ -116,7 +111,7 @@ something computers can do very rapidly.
 more detail without limit as you plot smaller and smaller areas.
 FRACTINT lets you "zoom in" by positioning a small box and hitting
 <Enter> to redraw the boxed area at full-screen size; its maximum
-linear "magnification" is over a millionfold.
+linear "magnification" is over a trillionfold.
 
 3) They can be astonishingly beautiful, especially using PC color
 displays' ability to assign colors to selected points, and (with VGA
@@ -215,7 +210,12 @@ Redraw the previous image. The program tracks 50 sets of coordinates.
 <Tab>
 Display the current fractal type, parameters, screen or (if displayed)
 zoom-box coordinates, maximum iteration count, and other information
-useful in keeping track of where you are.
+useful in keeping track of where you are.  With version 12.0, the Tab
+function is non-destructive - if you press it while in the midst of
+generating an image, you will continue generating it when you return.
+The Tab function now also tells you if your image is still being
+generated or has finished - a handy feature for those overnight,
+1024x768 resolution fractal images.
 
 <Spacebar>
 Toggle between Mandelbrot-set images and their corresponding Julia-set
@@ -246,9 +246,11 @@ Select a fractal type. Move the cursor to your choice and hit <Enter>.
 You will be prompted for any parameters that type may require.
 
 <E>
-Call up an editor that modifies, saves and restores the parameters used
-in plotting the Barnsley IFS fractal types.  The Editor is also used to
-modify the 3D perspective values for the "Lorenz3D" fractal type.
+Call up an editor that modifies, saves and restores various parameters.
+Currently you can change the coefficients used in plotting the Barnsley 
+IFS fractal types or the 3D transformations used with the "Lorenz3D" 
+and "IFS3D" fractal types, including the selection of "funny glasses"
+red/blue 3D. 
 
 <F>
 Toggles the use of floating-point algorithms. Their use is shown on the
@@ -369,9 +371,57 @@ see Sec. 4 for details on creating your own map files.)
 Pause, prompt for a filename, and save the current palette to the named
 file (.MAP assumed).
 
+<X>
+Enters the "Cross-Hair" Palette manipulation sub-mode, described below,
+in which you can modify your image one color (palette) at a time
+(not for EGA).
+
 Any other key terminates the color-cycling process (you can always
 return to it with another <C>, <+> or <->) and returns to the main
 command mode.
+
+
+        Cross-Hair Mode (a Sub-Mode of Color-Cycling)
+
+This mode is entered from the main color-cycling mode by pressing the
+"X" key, which brings up a "Cross-Hair" cursor with which you point
+to a pixel using the particular color palette you wish to modify.
+Unlike the main color-cycling level, where you are modifying all of the
+colors at once, Cross-Hair mode modifies only one palette at a time.
+This feature is currently available only on VGA adapters.
+
+<Cursor ("arrow") Keys>
+Move the cross-hair cursor around the screen.  The Control-Cursor keys
+move the cursor around faster.  A mouse can also be used to move around,
+in which case holding down the right button slows down cursor movement.
+The palette value of the pixel in the middle of your cross-hair cursor
+is the palette value that you will be manipulating.
+
+<R>, <G>, <B>
+Increase the red, green, or blue component of your palette color by a
+small amount. Note the case distinction of this vs:
+
+<r>, <g>, <b>
+Decrease the red, green, or blue component of your palette color by a
+small amount.
+
+<+>, <->
+Changes the RGB components of the palette you are pointing at to those
+of the next higher (or lower, for the <-> key) palette value.  Useful for
+"erasing" bands of color.
+
+<Page Up>, <Page Down>
+Change the palette value of the cross-hair cursor to the next higher (or
+lower) palette value.  A handy feature when the cross-hair cursor gets
+"lost" in the background.  Holding down the left mouse button and moving
+the mouse forward and backward has the same effect.
+
+<ENTER>
+Does nothing at all.  Added only to prevent you from accidentally 
+exiting cross-hair mode by pressing both mouse buttons.
+
+Any other key terminates Cross-Hair sub-mode and returns to the main
+Color-Cycling command mode.
 
 
                 Save/Restore/Print Commands
@@ -402,9 +452,10 @@ information into "height". You will be prompted for all KINDS of
 options; see "3D Images" in Sec. 3 for details.
 
 <O>
-Restore in 3D and overlay the result on the current screen. (This only
-works when there's already a 3D image on screen, so it can't be con-
-fused with the <O>-for-orbits toggle in the main command menu.)
+Restore in 3D and overlay the result on the current screen. (This 
+only works when there's a completed on screen, so it can't be 
+confused with the <O>-for-orbits toggle that ONLY operates WHILE a 
+fractal is being generated.)
 
 
                               HINTS
@@ -803,14 +854,20 @@ rotation=xrot/yrot/zrot       (try 30/30/30)
 shift=xshift/yshift           (shifts BEFORE applying perspective!)  
 perspective=viewerposition    (try 200)
 
-Alternatively, from the IFS 3D codes-editing screen, entering a "t"
-(for "transformations") will allow you to edit these values. The
-defaults are the same as for regular 3D, and are not always optimum for
-the 3D fern. Try rotation=30/30/30. Note that applying shift when using
-perspective changes the picture -- your "point of view" is moved.
+Alternatively, entering "e" (for edit) from main screen or  entering 
+a "t" (for "transformations") from the IFS 3D codes-editing screen, will 
+allow you to edit these values. The defaults are the same as for regular 
+3D, and are not always optimum for the 3D fern. Try rotation=30/30/30. 
+Note that applying shift when using perspective changes the picture -- 
+your "point of view" is moved. 
 
-This feature dedicated to Bruce Goren, as a bribe to get him to send us
-a knockout stereo slide of a 3D fern.
+A truly wild variation of 3D may be seen by entering "2" for the stereo 
+mode, putting on red/blue "funny glasses", and watching the fern develop
+with full depth perception right there before your eyes!
+
+This feature is STILL dedicated to Bruce Goren, as a bribe to get him to 
+send us MORE knockout stereo slides of 3D ferns, now that we have made it 
+so easy!
 
 
 SIERPINSKI GASKET (type=sierpinski)
@@ -1049,11 +1106,14 @@ is the Lorenz attractor as seen in everyday 2D.  "Type=lorenz3d"
 is the same set of equations with the added twist that the results
 are run through our perspective 3D routines, so that you get to view
 it from different angles (you can modify your perspective "on the fly"
-using the transformation option of the <E>ditor command.)  Hint: the
-default perspective values (x = 60, y = 30, z = 0) aren't the best ones
-to use for fun Lorenz Attractor viewing.  Experiment a bit - start with
-rotation values of 0/0/0 and then change to 20/0/0 and 40/0/0 to see
-the attractor from different angles.- and while you're at it, use a
+using the transformation option of the <E>ditor command.) If you set
+the "stereo" option to "2", and have red/blue funny glasses on, you will
+see the attractor orbit with depth perception.
+
+Hint: the default perspective values (x = 60, y = 30, z = 0) aren't the 
+best ones to use for fun Lorenz Attractor viewing.  Experiment a bit - 
+start with rotation values of 0/0/0 and then change to 20/0/0 and 40/0/0 
+to see the attractor from different angles.- and while you're at it, use a
 non-zero perspective point (try 100 and see what happens when you get
 *inside* the Lorenz orbits.  Here comes one - Duck!)
 
@@ -1090,276 +1150,649 @@ supported, preferably formatted as you see here to simplify folding it
 into the documentation.
 
 
+FORMULA (type=formula)
+
+Fractint now has a new 'type=formula' fractal type.  This is a
+"roll-your-own" fractal interpreter - you don't even need a compiler!
+
+To run a "type=formula" fractal, you first need to build a text file
+containing formulas (there's a sample file - FRACTINT.FRM - included
+with this distribution).  When you select the "formula" fractal type,
+you are prompted first for the name of your file.  Then, after the
+program locates the file and scans it for formulas, you are prompted
+for the formula name you wish to run.  After prompting for any
+parameters, the formula is parsed for syntax errors and then the
+fractal is generated.
+
+There are also two new command-line options that work with type=formula
+("formulafile=" and "formulaname=") if you are using this new fractal
+type in batch mode.  
+
+(the following documentation is supplied by Mark Peterson, who wrote the
+formula interpreter):
+
+Formula fractals allow you to create your own fractal formulas.  The
+general format is:
+
+   Mandelbrot(XAXIS) { z = Pixel:  z = sqr(z) + pixel, |z| <= 4 }
+      |         |          |                |              |
+     Name     Symmetry    Initial         Iteration       Bailout
+                          Condition                       Criteria
+
+Initial conditions are set, then the iterations performed until the
+bailout criteria is true or 'z' turns into a periodic loop.
+
+All variables are created automatically by their usage and treated as
+complex.  If you declare 'v = 2' then the variable 'v' is treated as a
+complex with an imaginary value of zero.
+
+          Predefined Variables (x, y)
+          --------------------------------------------
+          z              used for periodicity checking
+          p1             parameters 1 and 2
+          p2             parameters 3 and 4
+          pixel          screen coordinates
+
+          Precedence
+          --------------------------------------------
+          1              sin(), cos(), sinh(), cosh(), sqr(),
+                         log(), exp(), abs()
+          2              - (negation), ^ (power)
+          3              * (multiplication), / (division)
+          4              + (addition), - (subtraction)
+          5              = (assignment)
+          6              < (less than), <= (less than or equal to)
+
+Precedence may be overridden by use of parenthesis.  Note the modulas
+squared operator |z| is also parenthetic and always sets the imaginary
+component to zero.  This means 'c * |z - 4|' first subtracts 4 from z,
+calculates the modulas squared then multiplies times 'c'.  Nested
+modulas squared operators require overriding parenthesis:
+
+          c * |z + (|pixel|)|
+
+The formulas are performed using either integer or floating point
+mathematics depending on the type of math you have setup.  If you do
+not have an FPU then type MPC math is performed in leu of traditional
+floating point.
+
+Remember that when using integer math there is a limited dynamic
+range, so what you think may be a fractal could really be just a
+limitation of the integer math range.  God may work with integers, but
+His dynamic range is many orders of magnitude greater than our puny 32
+bit mathematics!  Always verify with the floating point.
+
+
+JULIBROTS (type=julibrot)
+
+(the following documentation is supplied by Mark Peterson, who "invented"
+the Julibrot algorithm)
+
+There is a very close relationship between the Mandelbrot set and
+Julia sets of the same equation.  To draw a Julia set you take the
+basic equation and vary the initial value according to the two
+dimensions of screen leaving the constant untouched.  This method
+diagrams two dimensions of the equation, 'x' and 'iy', which I refer
+to as the Julia x and y.
+
+     z(0) = screen coordinate (x + iy)
+     z(1) = (z(0) * z(0)) + c, where c = (a + ib)
+     z(2) = (z(1) * z(0)) + c
+     z(3) = . . . .
+
+The Mandelbrot set is a composite of all the Julia sets.  If you take
+the center pixel of each Julia set and plot it on the screen
+coordinate corresponding to the value of c, a + ib, then you have the
+Mandelbrot set.
+
+     z(0) = 0
+     z(1) = (z(0) * z(0)) + c, where c = screen coordinate (a + ib)
+     z(2) = (z(1) * z(1)) + c
+     z(3) = . . . .
+
+I refer to the 'a' and 'ib' components of 'c' as the Mandelbrot 'x'
+and 'y'.
+
+All the 2 dimensional Julia sets correspond to a single point on the 2
+dimensional Mandelbrot set, making a total of 4 dimensions associated
+with our equation.  Visualizing 4 dimensional objects is not as
+difficult as it may sound at first if you consider we live in a 4
+dimensional world.  The room around you is three dimensions and as you
+read this text you are moving through the fourth dimension of time. 
+You and everything around your are 4 dimensional objects - which is to
+say 3 dimensional objects moving through time.  We can think of the 4
+dimensions of our equation in the same manner, this is as a 3
+dimensional object evolving over time - sort of a 3 dimensional
+fractal movie.  The fun part of it is you get to pick the dimension
+representing time!
+
+To construct the 4 dimensional object into something you can view on
+the computer screen you start with the simple 2 dimensions of the
+Julia set.  I'll treat the two Julia dimensions as the spacial
+dimensions of height and width, and the Mandelbrot 'y' dimension as
+the third spacial dimension of depth.  This leaves the Mandelbrot 'x'
+dimension as time.  Draw the Julia set associated with the Mandelbrot
+coordinate (-.83, -.25), but instead of setting the color according to
+the iteration level it bailed out on, make it a two color drawing
+where the pixels are black for iteration levels less than 30, and
+another color for iteration levels greater than or equal to 30.  Now
+increment the Mandelbrot 'y' coordinate by a little bit, say (-.83, -
+.2485), and draw another Julia set in the same manner using a
+different color for bailout values of 30 or greater.  Continue doing
+this until you reach (-.83, .25).  You now have a three dimensional
+representation of the equation at time -.83.  If you make the same
+drawings for points in time before and after -.83 you can construct a
+3 dimensional movie of the equation which essentially is a full 4
+dimensional representation.
+
+In the Julibrot fractal available with this release of FRACTINT the
+spacial dimensions of height and width are always the Julia
+dimensions.  The dimension of depth is determined by the Mandelbrot
+coordinates.  The program will consider the dimension of depth as the
+line between the two Mandelbrot points.  To draw the image in our
+previous example you would set the 'From Mandelbrot' to (-.83, .25)
+and the 'To Mandelbrot' as (-.83, -.25).  If you set the number of 'z'
+pixels to 128 then the program will draw the 128 Julia sets found
+between Mandelbrot points (-.83, .25) and (-.83, -.25).  To speed
+things up the program doesn't actually calculate ALL the coordinates
+of the Julia sets.  It starts with the a pixel a the Julia set closest
+to the observer and moves into the screen until it either reaches the
+required bailout or the limit to the range of depth.
+
+Zooming can be done in the same manner as with other fractals.  The
+visual effect (with other values unchanged) is similar to putting the
+boxed section under a pair of magnifying glasses.
+
+The variable associated with penetration level is the level of bailout
+there you decide to make the fractal solid.  In other words all
+bailout levels less than the penetration level are considered to be
+transparent, and those equal or greater to be opaque.  The farther
+away the apparent pixel is the dimmer the color.
+
+The remainder of the parameters are needed to construct the red/blue
+picture so that the fractal appears with the desired depth and proper
+'z' location.  With the origin set to 8 inches beyond the screen plane
+and the depth of the fractal at 8 inches the default fractal will
+appear to start at 4 inches beyond the screen and extend to 12 inches
+if your eyeballs are 2.5 inches apart and located at a distance of 24
+inches from the screen.  The screen dimensions provide the reference
+frame.
+
+To the human eye blue appears brighter than red.  The Blue:Red ratio
+is used to compensate for this fact.  If the image appears reddish
+through the glasses raise this value until the image appears to be in
+shades of grey.  If it appears bluish lower the ratio.
+
+Currently the Julibrots can only be shown in 256 red/blue colors for
+viewing through red/blue funny glasses.  Be sure to select the proper
+map file.
+
+
 "3D" IMAGES
 
-FRACTINT can now restore images in "3D". Important: we use quotation
-marks because it does not CREATE images of 3D fractal objects (there
-are such, but we're not there yet.) Instead, it restores .FRA images
-(or .GIF images -- see Sec. 4) as a 3D PROJECTION. The iteration values
-you've come to know and love, the ones that determine pixel colors, are
-translated into "height" so that your saved screen becomes a landscape
-viewed in perspective. You can even wrap the landscape onto a sphere
-for realistic-looking planets and moons that never existed outside your
-PC!
+FRACTINT can now restore images in "3D". Important: we use quotation 
+marks because it does not CREATE images of 3D fractal objects (there 
+are such, but we're not there yet.) Instead, it restores .FRA images 
+(or .GIF images -- see Sec. 4) as a 3D PROJECTION or STEREO IMAGE 
+PAIR. The iteration values you've come to know and love, the ones that 
+determine pixel colors, are translated into "height" so that your 
+saved screen becomes a landscape viewed in perspective. You can even 
+wrap the landscape onto a sphere for realistic-looking planets and 
+moons that never existed outside your PC!
 
-We suggest starting with a saved plasma-cloud screen. Hit <3> in main
-command mode to begin the process, enter the filename (.FRA extension
-assumed), and you'll be bombarded with a long series of options. Not to
-worry: all of them have defaults chosen to yield an acceptable starting
-image, so the first time out just pump your way through with the
-<Enter> key. When you enter a different value for any option, that
-becomes the default value the next time you hit <3>, so you can change
-one option at a time until you get what you want.
+We suggest starting with a saved plasma-cloud screen. Hit <3> in main 
+command mode to begin the process, enter the filename. If no extension 
+is specified, a .FRA extension is assumed. If no .FRA is found, it 
+will assume a .GIF extension. If no match is then found, if will 
+attempt to match the file with no extension. Then it will prompt you 
+for the video mode if appropriate.
 
-After the filename prompt and video mode check, you're asked if you
-want a preview of your image. If you say "yes", after answering the
-other questions you'll see a fast, crude rendering that lets you play
-with the options and see the result quickly; when you're ready, enter
-"no" for preview and you'll get a slower but more detailed image.
+Now, you'll be bombarded with a long series of options. Not to worry: 
+all of them have defaults chosen to yield an acceptable starting 
+image, so the first time out just pump your way through with the 
+<Enter> key. When you enter a different value for any option, that 
+becomes the default value the next time you hit <3>, so you can change 
+one option at a time until you get what you want. Generally <ESC> will 
+take you back to the previous screen.
 
-The next question asks if you want a sphere projection. Let's assume
-you respond <N> (the default), so you'll get a "landscape" projection,
-also known as (drums and trumpets, please):
+3D MODE SELECTION
+
+After the filename prompt and video mode check, you're presented with 
+a "3d Mode Selection" screen. Each selection will have defaults 
+entered if you wish to change any of the defaults use the cursor keys 
+to move through the menu. When you're satisfied press <Enter>.
+
+Here are the options and what they do:
+
+Preview Mode:
+
+     Preview mode provides a rapid look at your transformed image 
+     using by skipping a lot of rows and filling the image in. Good 
+     for quickly discovering the best parameters. Let's face it, the 
+     FRACTINT authors most famous for "blazingly fast" code *DIDN'T* 
+     write the 3D routines!
+
+Show Box:
+
+     If you have selected Preview Mode you have another option to 
+     worry about. This is the option to show the image box in scaled 
+     and rotated coordinates x, y, and z. The box only appears in 
+     rectangular transformations and shows how the final image will be 
+     oriented. If you select light source in the next screen, it will 
+     also show you the light source vector so you can tell where the 
+     light is coming from in relation to your image. Sorry no head or 
+     tail on the vector yet. 
+
+Coarseness:
+
+     This sets how many divisions the image will be divided into 
+     in the y direction, if you select preview mode above, or 
+     grid fill in the "Select Fill Type" screen next.
+
+Spherical Projection:
+
+     The next question asks if you want a sphere projection. This will 
+     take  your image and map it onto a plane if you answer "no" or a 
+     sphere if you answer "yes" as described above. Try  it and you'll 
+     see what we mean. 
+
+Stereo:
+
+     Sound in FRACTINT? Well, not yet. FRACTINT now allows you to 
+     create 3D images for use with red/blue glasses like 3D 
+     comics you may have seen, or images like Captain EO.
+
+     Option 0 is normal old 3D you can look at with just your 
+     eyes.
+
+     Options 1 and 2 require the special red/blue-green glasses. 
+     They are meant to be viewed right on the screen or on a 
+     color print off of the screen. The image can be made to 
+     hover entirely or partially in front of the screen. Great 
+     fun! These two options give a gray scale image when viewed. 
+
+     Option 1 gives 64 shades of gray but with half the spatial 
+     resolution you have selected. It works by writing the red and 
+     blue images on adjacent pixels, which is why it eats half your 
+     resolution. In general, we recommend you use this only with 
+     resolutions above 640x350. Use this mode for continuous potential 
+     landscapes where you *NEED* all those shades. 
+
+     Option "2" gives you full spatial resolution but with only 16 
+     shades of gray. If the red and blue images overlap, the colors 
+     are mixed. Good for wire-frame images, lorenz3d and ifs3d. Works 
+     fine in 16 color modes.
+
+     Option 3 is for creating stereo pair images for view later 
+     with more specialized equipment. It allows full color images 
+     to be presented in glorious stereo. The left image presented 
+     on the screen first. You may photograph it or save it. Then 
+     the second image is presented, you may do the same as the 
+     first image. You can then take the two images and convert 
+     them to a stereo image pair as outlined by Bruce Goren (see 
+     below). When you are satisfied with your selections press 
+     enter to go to the next screen which will appear below this 
+     one.
+
+SELECT FILL TYPE Screen
+
+These options exist because in the course of the 3D projection, 
+portions of the original image may be stretched to fit the new 
+surface. Points of an image that formerly were right next to each 
+other, now may have a space between them. These options generally 
+determine what to do with the space between the mapped dots.
+
+For an illustration, pick the second option "just draw the points", 
+which just maps points to corresponding points. Generally this will 
+leave empty space between many of the points. Therefore you can choose 
+various algorithms that "fill in" the space between the points in 
+various ways.
+
+Now, try the first option "make a surface grid." This option will make 
+a grid of the surface which is as many divisions in the original "y" 
+direction as was set in "coarse" in the first screen. It is very fast, 
+and can give you a good idea what the final relationship of parts of 
+your picture will look like.
+
+Try the second option, "connect the dots (wire frame)", then "surface 
+fills - (colors interpolated)" and "(colors not interpolated), the 
+general favorite of the authors. Solid fill, while it reveals the 
+pseudo-geology under your pseudo-landscape, inevitably takes longer.
+
+Now try the light source fill types. These two algorithms allow 
+you to position the "sun" over your "landscape." Each pixel is 
+colored according to the angle the surface makes with an 
+imaginary light source. You will be asked to enter the three 
+coordinates of the vector pointing toward the light in one of the 
+following screens.
+
+Light source before transformation calculates the illumination 
+before doing the coordinate transformations, and is slightly 
+faster. If you generate a sequence of images where one rotation 
+is progressively changed, the effect is as if the image and the 
+light source are fixed in relation to each other and you orbit 
+around the image.
+
+Light source after transformation applies the transformations 
+first, then calculates the illumination. If you generate a 
+sequence of images with progressive rotation as above the effect 
+is as if you and the light source are fixed and the object is 
+rotating.
+
+For ease of discussion we will refer to the following fill types 
+by their numbers:
+
+        -1 - surface grid
+         0 - (default) - no fill at all - just draw the dots.
+         1 - wire frame - joins points with lines
+         2 - surface fill - (colors interpolated)
+         3 - surface fill - (interpolation turned off)
+         4 - solid fill - draws lines from the "ground" up to the point
+         5 - surface fill with light model - calculated before 3D transforms
+         6 - surface fill with light model - calculated after 3D transforms
+
+Types 2, 5, and 6 interpolate colors when filling, making a very 
+smooth fill if the palette is continuous. This may not be desirable if 
+the palette is not continuous. Type 3 is the same as type 2 with 
+interpolation turned off. You might want to use fill type 3, for 
+example, to project a .GIF photograph onto a sphere. With type 2, you 
+might see the filled-in points, since chances are the palette is not 
+continuous; type 3 fills those same points in with the colors of 
+adjacent pixels. However, for most fractal images, fill type 2 works 
+better.
+
+
+STEREO 3D VIEWING
+
+If you selected Stereo option 1, 2 or 3 you will be presented another 
+screen to select from. We suggest you definitely use defaults at first 
+on this one.
+
+Funny Glasses Parameters
+
+When you look at an image with both eyes, each eye sees the image in 
+slightly different perspective because they see it from different 
+places.
+
+The first selection you must make is ocular separation, the distance 
+the between the viewers eyes. This is measured as a % of screen and is 
+an important factor in setting the position of the final stereo image 
+in front of or behind the CRT Screen.
+
+The second selection is convergence, also as a % of screen. This 
+tends to move the image forward and back to set where it floats. 
+More positive values move the image towards the viewer. The value 
+of this parameter needs to be set in conjunction with the setting of 
+ocular separation and the perspective distance. It directly adjusts 
+the overall separation of the two stereo images. Beginning anaglyphers 
+love to create images floating mystically in front of the screen, but 
+grizzled old 3D veterans look upon such antics with disdain, and 
+believe the image should be safely inside the monitor where it 
+belongs!
+
+Left and Right Red and Blue image crop (% of screen also) help 
+keep the visible part of the right image the same as the visible 
+part of the left by cropping them. If there is too much in the 
+field of either eye that the other doesn't see, the stereo effect 
+can be ruined.
+
+Red and Blue brightness factor. The generally available red/blue-
+green glasses, made for viewing on ink on paper and not the light 
+from a CRT, let in more red light in the blue-green lens than we 
+would like. This leaves a ghost of the red image on the blue-
+green image (definitely not desired in stereo images). We have 
+countered this by adjusting the intensity of the red and blue 
+values on the CRT. In general you should not have to adjust this.
+
+The final entry is Map file name. If you have a special map file 
+you want to use for Stereo 3D this is the place to enter its 
+name. Generally glasses1.map is for type 1 (alternating pixels), and 
+glasses2.map is for type 2 (superimposed pixels). Grid.map is great 
+for wire-frame images using 16 color modes.
+
 
 
 RECTANGULAR COORDINATE TRANSFORMATION
 
-First you are prompted for rotation values around the X, Y, and Z axes.
-Think of your starting image as a flat map: the X value tilts the
-bottom of your monitor towards you by X degrees, the Y value pulls the
-left side of the monitor towards you, and the Z value spins it counter-
-clockwise. Note that these are NOT independent rotations: the image is
-rotated first along the X-axis, then along the Y-axis, and finally
-along the Z-axis. Those are YOUR axes, not those of your (by now
-hopelessly skewed) monitor.
+The first entries are rotation values around the X, Y, and Z axes. 
+Think of your starting image as a flat map: the X value tilts the 
+bottom of your monitor towards you by X degrees, the Y value pulls the 
+left side of the monitor towards you, and the Z value spins it 
+counter-clockwise. Note that these are NOT independent rotations: the 
+image is rotated first along the X-axis, then along the Y-axis, and 
+finally along the Z-axis. Those are YOUR axes, not those of your (by 
+now hopelessly skewed) monitor. All rotations actually occur through 
+the center of the original image.
 
-You are then prompted for three scaling factors in percent. Initially,
-leave the X and Y axes alone and play with Z, now the vertical axis,
-which translates into surface "roughness."  High values of Z make
-spiky, on-beyond-Alpine mountains and improbably deep valleys; low
-values make gentle, rolling terrain. Negative roughness is legal: if
-you're doing an M-set image and want Mandelbrot Lake to be below the
-ground, instead of eerily floating above, try a roughness of about
--30%.
+Then there are three scaling factors in per cent. Initially, leave the 
+X and Y axes alone and play with Z, now the vertical axis, which 
+translates into surface "roughness."  High values of Z make spiky, on-
+beyond-Alpine mountains and improbably deep valleys; low values make 
+gentle, rolling terrain. Negative roughness is legal: if you're doing 
+an M-set image and want Mandelbrot Lake to be below the ground, 
+instead of eerily floating above, try a roughness of about -30%.
 
-Next you are prompted for a water level -- really a minimum-color value
-that performs the function "if (color < waterlevel) color =
-waterlevel". So it plots all colors "below" the one you choose at the
-level of that color, with the effect of filling in "valleys" and
-converting them to "lakes."
+Next we need a water level -- really a minimum-color value that 
+performs the function "if (color < waterlevel) color = waterlevel". So 
+it plots all colors "below" the one you choose at the level of that 
+color, with the effect of filling in "valleys" and converting them to 
+"lakes."
 
-Next comes a menu of "fill" options:
+Now we enter a perspective distance, which you can think of as the 
+"distance" from your eye to the image. A zero value (the default) 
+means no perspective calculations, which allows use of a faster 
+algorithm. 
 
-0 - (default) - no fill at all - just draw the dots.
-1 - wire frame - joins points with lines
-2 - surface fill - fills in all points on the surface
-3 - surface fill - (interpolation turned off)
-4 - solid fill - draws lines from the "ground" up to the point
-5 - surface fill with light model - calculated before 3D transforms
-6 - surface fill with light model - calculated after 3D transforms
+For non-zero values, picture a box with the original X-Y plane of your 
+flat fractal on the bottom, and your 3D fractal inside. A perspective 
+value of 100% places your eye right at the edge of the box and yields 
+fairly severe distortion, like a close view through a wide-angle lens. 
+200% puts your eye as far from the front of the box as the back is 
+behind. 300% puts your eye twice as far from the front of the box as 
+the back is, etc. Try about 150% for reasonable results. Much larger 
+values put you far away for even less distortion, while values smaller 
+than 100% put you "inside" the box. Try larger values first, and work 
+your way in.
 
-These options exist because in the course of the 3D projection, points
-of an image that formerly "covered" all the pixels may no longer do so.
-For an illustration, pick the first option, which just maps points to
-corresponding points. Generally many of the points are missed. There-
-fore you can choose various algorithms that attempt to "fill in" the
-missing points. Try lines (1), then surface fills (2) and (3), the
-general favorite of the authors. Solid fill (4), while it reveals the
-pseudo-geology under your pseudo-landscape, inevitably takes longer.
+Finally, you are prompted for two types of X and Y shifts (now back in 
+the plane of your screen) that let you move the final image around if 
+you'd like to re-center it. The first set, x and y shift with 
+perspective, move the image and the effect changes the perspective you 
+see. The second set, "x and y adjust without perspective", move the 
+image but do not change perspective. They are used just for 
+positioning the final image on the screen
 
-After the fill options you are prompted for a perspective value, which
-you can think of as the "distance" from your eye to the image. A zero
-value (the default) means no perspective calculations, which allows use
-of a faster algorithm.
+Well, OK, we lied. If you selected one of the light source fill 
+options, there are still MORE options.
 
-For non-zero values, picture a box with the original X-Y plane of your
-flat fractal on the bottom, and your 3D fractal inside. A perspective
-value of 100% places your eye right at the edge of the box and yields
-fairly severe distortion, like a close view through a wide-angle lens.
-Try about 150% for reasonable results. Much larger values put you far
-away for even less distortion, while values smaller than 100% put you
-"inside" the box. Try larger values first, and work your way in.
+You must chose the direction of the light from the light source. This 
+will be scaled in the x, y, and z directions the same as the image. 
+For example, 1,1,3 positions the light to come from the lower right 
+front of the screen in relation to the untransformed image. It is 
+important to remember that these coordinates are scaled the same as 
+your image. Thus 1,1,1 positions the light to come from a direction of 
+equal distances to the right, below and in front of each pixel on the 
+original image. However, if the x,y,z scale is set to 90,90,30 the 
+result will be from equal distances to the right and below each pixel 
+but from only 1/3 the distance in front of the screen ie. it will be 
+low in the sky, say, afternoon or morning.
 
-Finally, you are prompted for X and Y shifts (now back in the plane of
-your screen) that let you move the final image around if you'd like to
-re-center it.
-
-Well, OK, we lied. If you selected fill option 5 or 6, there are still
-MORE options. These two algorithms color each pixel according to the
-angle the surface makes with an imaginary light source. You are asked
-to enter the three coordinates of the vector pointing toward the light,
-so that you can position the "sun" over your "landscape."
-
-Then you are asked for a smoothing factor. Unless you used continuous
+Then you are asked for a smoothing factor. Unless you used continuous 
 potential (see Sec. 4) when generating the starting image, the illumi-
-nation in fills 5 and 6 will appear "sparkly", like a sandy beach in
-bright sun. A smoothing factor of 2 or 3 will allow you to see the
-large-scale shapes better. But if your fractal is not a plasma cloud
-and has features with sharply defined boundaries (e.g. Mandelbrot
-Lake), the smoothing may cause the colors to run. This is a feature,
-not a bug. (A copyrighted response of [your favorite commercial soft-
-ware company here], used by permission.)
+nation when using light source fills may appear "sparkly", like a 
+sandy beach in bright sun. A smoothing factor of 2 or 3 will allow you 
+to see the large-scale shapes better. But if your fractal is not a 
+plasma cloud and has features with sharply defined boundaries (e.g. 
+Mandelbrot Lake), the smoothing may cause the colors to run. This is a 
+feature, not a bug. (A copyrighted response of [your favorite 
+commercial soft-ware company here], used by permission.) 
 
-You'll probably want to adjust the final colors for fill types 5 and 6
-via color cycling. Try one of the more continuous palettes (<F8>
-through <F10>), or load the GRAY palette with the <A>lternate-map
-command.
+Author's note - smoothing is a historical relic dating back to 
+*BEFORE* we added continuous potential.  If anyone actually *USES* 
+this, let us know - otherwise we'll probably take it out.
 
-Fill type 5 calculates the illumination before doing the coordinate
-transformations, and is faster. Type 6 applies the transformations
-first, then calculates the color, so the light-and-shade effect tends
-to be better. In sphere mode, only type 6 gives you a light and dark
-side of the "planet."
+You'll probably want to adjust the final colors for fill types using 
+light source via color cycling. Try one of the more continuous 
+palettes (<F8> through <F10>), or load the GRAY palette with the 
+<A>lternate-map command.
 
-Types 2, 5, and 6 interpolate colors when filling, making a very smooth
-fill if the palette is continuous. This may not be desirable if the
-palette is not continuous. Type 3 is the same as type 2 with interpola-
-tion turned off. You might want to use fill type 3, for example, to
-project a .GIF photograph onto a sphere. With type 2, you might see the
-filled-in points, since chances are the palette is not continuous; type
-3 fills those same points in with the colors of adjacent pixels.
-However, for most fractal images, fill type 2 works better.
+Now, absolutely the last option (this time we mean it): you are asked 
+for a range of "transparent" colors, if any. This option is most 
+useful when using the <O>verlay command below. Enter the color range 
+(minimum and maximum value) for which you do not want to over-write 
+whatever may already be on the screen. The default is no transparency 
+(display everything).
 
-Now, absolutely the last option (this time we mean it): you are asked
-for a range of "transparent" colors, if any. This option is most useful
-when using the <O>verlay command below. Enter the color range (minimum
-and maximum value) for which you do not want to over-write whatever may
-already be on the screen. The default is no
-transparency (display everything).
+Note that any image loaded up in 3D is treated as if it were a plasma 
+cloud: we have NO idea how to retain the ability to zoom and pan 
+around a 3D image that has been twisted, stretched, perspective-ized, 
+and water-leveled. Actually, we do, but it involves the kind of 
+hardware that Industrial Light & Magic, Pixar et al. use for feature 
+films. So if you'd like to send us a check equivalent to George Lucas' 
+net from the "Star Wars" series...
 
-Note that any image loaded up in 3D is treated as if it were a plasma
-cloud: we have NO idea how to retain the ability to zoom and pan around
-a 3D image that has been twisted, stretched, perspective-ized, and
-water-leveled. Actually, we do, but it involves the kind of hardware
-that Industrial Light & Magic, Pixar et al. use for feature films. So
-if you'd like to send us a check equivalent to George Lucas' net from
-the "Star Wars" series...
-
-Now, lie down for a while in a quiet room with a damp washcloth on your
-forehead. Feeling better? Good -- because it's time to go back almost
-to the top of the 3D options and just say yes to:
+Now, lie down for a while in a quiet room with a damp washcloth on 
+your forehead. Feeling better? Good -- because it's time to go back 
+almost to the top of the 3D options and just say yes to:
 
 
 SPHERICAL PROJECTION
 
-Picture a globe lying on its side, "north" pole to the right. (It's our
-planet, and we'll position it the way we like.) You will be mapping the
-X and Y axes of the starting image to latitude and longitude on the
-globe, so that what was a horizontal row of pixels follows a line of
-longitude. The defaults exactly cover the hemisphere facing you, from
-longitude 180 degrees (top) to 0 degrees (bottom) and latitude -90
-(left) to latitude 90 (right). By changing them you can map the image
-to a piece of the hemisphere or wrap it clear around the globe.
+Picture a globe lying on its side, "north" pole to the right. (It's 
+our planet, and we'll position it the way we like.) You will be 
+mapping the X and Y axes of the starting image to latitude and 
+longitude on the globe, so that what was a horizontal row of pixels 
+follows a line of longitude. The defaults exactly cover the hemisphere 
+facing you, from longitude 180 degrees (top) to 0 degrees (bottom) and 
+latitude -90 (left) to latitude 90 (right). By changing them you can 
+map the image to a piece of the hemisphere or wrap it clear around the 
+globe.
 
-The next prompt is for a radius factor that controls the over-all size
-of the globe. All the rest of the prompts are the same as in the
-landscape projection. You may want less surface roughness for a plausi-
-ble look, unless you prefer small worlds with big topography, a la "The
-Little Prince."
+The next entry is for a radius factor that controls the over-all size 
+of the globe. All the rest of the entries are the same as in the 
+landscape projection. You may want less surface roughness for a 
+plausi-ble look, unless you prefer small worlds with big topography, a 
+la "The Little Prince."
 
-WARNING: When the "construction" process begins at the edge of the
-globe (default) or behind it, it's plotting points that will be hidden
-by subsequent points as the process sweeps around the sphere toward
-you. Our nifty hidden-point algorithms "know" this, and the first few
-dozen lines may be invisible unless a high mountain happens to poke
-over the horizon. If you start a spherical projection and the screen
-stays black, wait for a while (a longer while for higher resolution or
-fill type 6) to see if points start to appear. Would we lie to you? If
-you're still waiting hours later, first check that the power's still
-on, then consider a faster system.
+WARNING: When the "construction" process begins at the edge of the 
+globe (default) or behind it, it's plotting points that will be hidden 
+by subsequent points as the process sweeps around the sphere toward 
+you. Our nifty hidden-point algorithms "know" this, and the first few 
+dozen lines may be invisible unless a high mountain happens to poke 
+over the horizon. If you start a spherical projection and the screen 
+stays black, wait for a while (a longer while for higher resolution or 
+fill type 6) to see if points start to appear. Would we lie to you? If 
+you're still waiting hours later, first check that the power's still 
+on, then consider a faster system. 
+
+
+Once you're familiar with the effects of the 3D option values you have 
+a variety of options on how to specify them. You can specify them all 
+on the command line (there ARE a lot of them so they may not all fit 
+within the DOS command line limits), with an SSTOOLS.INI file, or with 
+a command file.
+
+Here's an example for you power FRACTINTers, the command
+
+          FRACTINT MYFILE SAVENAME=MY3D 3D= BATCH=YES
+
+would make FRACTINT load MYFILE.FRA, re-plot it as a 3D landscape 
+(taking all of the defaults), save the result as MY3D.FRA, and exit to 
+DOS. By the time you've come back with that cup of coffee, you'll have 
+a new world to view, if not conquer.
 
 
 3D OVERLAY MODE
 
-While the <3> command creates its image on a blank screen, the <O>
-command draws a second image over an existing 3D projection (and is
-only available in that context.)  So you can do a landscape, then hit
-<O> and choose spherical projection to re-plot that image or another as
-a moon in the sky above the landscape. <O> can be repeated as many
-times as you like.
-It's worth noting that not all that many years ago, one of us watched
-Benoit Mandelbrot and fractal-graphics wizard Dick Voss creating just
-such a moon-over-landscape image at IBM's research center in Yorktown
-Heights, NY. The system was a large and impressive mainframe with
-floating-point facilities bigger than the average minicomputer, running
-LBLGRAPH -- what Mandelbrot calls "an independent-minded and often very
-ill-mannered heap of graphics programs that originated in work by Alex
-Hurwitz and Jack Wright of IBM Los Angeles."
+While the <3> command creates its image on a blank screen, the <O> 
+command draws a second image over an existing displayed image. This 
+image can be any restored image from a <R> command or the result of a 
+just executed <3> command. So you can do a landscape, then hit <O> and 
+choose spherical projection to re-plot that image or another as a moon 
+in the sky above the landscape. <O> can be repeated as many times as 
+you like.
 
-We'd like to salute LBLGRAPH, its successors, and their creators,
-because it was their graphic output (like "Planetrise over Labelgraph
-Hill," plate C9 in Mandelbrot's "Fractal Geometry of Nature") that
-helped turn fractal geometry from a mathematical curiosity into a
+It's worth noting that not all that many years ago, one of us watched 
+Benoit Mandelbrot and fractal-graphics wizard Dick Voss creating just 
+such a moon-over-landscape image at IBM's research center in Yorktown 
+Heights, NY. The system was a large and impressive mainframe with 
+floating-point facilities bigger than the average minicomputer, 
+running LBLGRAPH -- what Mandelbrot calls "an independent-minded and 
+often very ill-mannered heap of graphics programs that originated in 
+work by Alex Hurwitz and Jack Wright of IBM Los Angeles."
+
+We'd like to salute LBLGRAPH, its successors, and their creators, 
+because it was their graphic output (like "Planetrise over Labelgraph 
+Hill," plate C9 in Mandelbrot's "Fractal Geometry of Nature") that 
+helped turn fractal geometry from a mathematical curiosity into a 
 phenomenon. We'd also like to point out that it wasn't as fast, flexi-
-ble or pretty as FRACTINT on a 386/16 PC with S-VGA graphics. Now, a
+ble or pretty as FRACTINT on a 386/16 PC with S-VGA graphics. Now, a 
 lot of the difference has to do with the incredible progress of micro-
-processor power since then, so a lot of the credit should go to Intel
-rather than to our highly tuned code. OK, twist our arms -- it IS
+processor power since then, so a lot of the credit should go to Intel 
+rather than to our highly tuned code. OK, twist our arms -- it IS 
 awfully good code.
 
-Once you're familiar with the effects of the 3D option values, you can
-specify them all (and there ARE a lot of them) with the "3D=" command-
-line argument, in the same order as they are asked when you're working
-interactively. You can stop listing your own arguments and take the
-rest as defaults at any time, and you can skip over those you don't
-care about: i.e., "3D=/////50" over-rides just the default for the
-sixth argument (the Z-scaling value). The "sphere projection" question
-uses a 0/1 parameter, with 0 (the default) meaning "no."
 
-So for you power FRACTINTers, the command
+SPECIAL NOTE FOR CGA OR HERCULES USERS
 
-          FRACTINT MYFILE SAVENAME=MY3D 3D= BATCH=YES
+If you are one of those unfortunates with a CGA or Hercules 2-color 
+monochrome graphics, it is now possible for you to make 3D projection 
+images.
 
-would make FRACTINT load MYFILE.FRA, re-plot it as a 3D landscape
-(taking all of the defaults), save the result as MY3D.FRA, and exit to
-DOS. By the time you've come back with that cup of coffee, you'll have
-a new world to view, if not conquer.
+Try the following unfortunately circuitous approach. Invoke FRACTINT, 
+making sure you have set askvideo=yes. Use a diskvideo mode to create 
+a 256 color fractal. You might want to edit the fractint.cfg file to 
+make a diskvideo mode with the same pixel dimensions as your normal 
+video (see "batch=config" command for how to create fractint.cfg). 
+Using the "3" command, enter the file name of the saved 256 color 
+file, say "no" to the "Legal for this machine?" prompt, selecting 
+instead your 2 or 4 color mode, and answer the other 3D prompts. You 
+will then see a 3D projection of the fractal. Another example of Stone 
+Soup responsiveness to our fan mail!
 
 
-                          3D VIEWING
+HOW TO MAKE 3D SLIDES
 
-Bruce Goren, CIS' resident stereoscopic maven, contributed these
-tips on what to do next with your 3D images:
+Bruce Goren, CIS's resident stereoscopic maven, contributed these tips 
+on what to do with your 3D images (Bruce inspired and prodded us so 
+much we automated much of what follows, allowing both this and actual 
+on screen stereo viewing, but we included it here for reference and a 
+brief tutorial.)
 
-"I use a Targa 32 video card and TOPAS graphic software, moving the
-viewport or imaginary camera left and right to create two separate views
-of the stationary object in x,y,z, space. The distance between the two
-views, known as the inter-occular distance, toe-in or convergence angle,
-is critical. It makes the difference between good 3-D and headache-
-generating bad 3-D.
- 
-For a 3D fractal landscape, I created and photographed the left and
-right eye views as if flying by in an imaginary airplane
-and mounted the film chips for stereo viewing. To make my image, first
-I generated a plasma cloud based on a color map I calculated to resemble
-a geological survey map (available on CIS as TARGA.MAP). In the 3D
-reconstruction, I used a perspective value of 150 and shifted the
-camera -15 and +15 on the X-axis for the left and right views.
-All other values were left to the defaults.
- 
-The images are captured on a Matrix 3000 film recorder -- basically a
-box with a high-resolution (1400 lines) black and white TV and
-a 35mm camera (Konica FS-1) looking at the TV screen through a filter
-wheel. The Matrix 3000 can be calibrated for 8 different film types,
-but so far I have only used Kodak Ektachrome 64 daylight for slides
-and a few print films. I glass mount the film chips myself.
- 
-Each frame is exposed three times, once through each of the red, blue,
-and green filters to create a color image from computer video without
-the scan-lines which normally result from photographing television
-screens.  The aspect ratio of the resulting images led me to mount the
-chips using the 7-sprocket Busch-European Emde masks.  The best source
-of  Stereo mounting and viewing supplies I know of is an outfit called
-Reel 3-D Enterprises, Inc. at P.O. Box 2368, Culver City, CA 90231,
-tel. 213-837-2368.
- 
-The Stone Soupers are now working on a way to combine these left and right
-eyed views to facilitate anaglyphic (red/blue-green) viewing directly
-off the monitor!
- 
-My platform is an IBM PC/AT crystal-swapped up to 9 MHz. The math
-co-processor runs on a separate 8-MHz accessory sub-board. The system
-currently has 6.5 MB of RAM."
+"I use a Targa 32 video card and TOPAS graphic software, moving the 
+viewport or imaginary camera left and right to create two separate 
+views of the stationary object in x,y,z, space. The distance between 
+the two views, known as the inter-ocular distance, toe-in or 
+convergence angle, is critical. It makes the difference between good 
+3-D and headache-generating bad 3-D.
+
+"For a 3D fractal landscape, I created and photographed the left and 
+right eye views as if flying by in an imaginary airplane and mounted 
+the film chips for stereo viewing. To make my image, first I generated 
+a plasma cloud based on a color map I calculated to resemble a 
+geological survey map (available on CIS as TARGA.MAP). In the 3D 
+reconstruction, I used a perspective value of 150 and shifted the 
+camera -15 and +15 on the X-axis for the left and right views. All 
+other values were left to the defaults.
+
+"The images are captured on a Matrix 3000 film recorder -- basically a 
+box with a high-resolution (1400 lines) black and white TV and a 35mm 
+camera (Konica FS-1) looking at the TV screen through a filter wheel. 
+The Matrix 3000 can be calibrated for 8 different film types, but so 
+far I have only used Kodak Ektachrome 64 daylight for slides and a few 
+print films. I glass mount the film chips myself.
+
+"Each frame is exposed three times, once through each of the red, 
+blue, and green filters to create a color image from computer video 
+without the scan-lines which normally result from photographing 
+television screens.  The aspect ratio of the resulting images led me 
+to mount the chips using the 7-sprocket Busch-European Emde masks.  
+The best source of  Stereo mounting and viewing supplies I know of is 
+an outfit called Reel 3-D Enterprises, Inc. at P.O. Box 2368, Culver 
+City, CA 90231, tel. 213-837-2368. "My platform is an IBM PC/AT 
+crystal-swapped up to 9 MHz. The math co-processor runs on a separate 
+8-MHz accessory sub-board. The system currently has 6.5 MB of RAM."
+
 
 
                           INVERSION
@@ -1388,9 +1821,8 @@ point at 4 times the radius is mapped inside at 1/4 the radius.
 
 The <I> command prompts you for the radius and center coordinates of
 the inversion circle. A default choice of -1 sets the radius at 1/6 the
-smaller dimension of the current screen mode. <Enter> in response to
-the prompts for Xcenter and Ycenter uses the center of the current
-screen.
+smaller dimension of the current screen mode.  The default values
+for Xcenter and Ycenter use the center of the current screen.
 
 Try this one out with a Newton plot, so its radial "spokes" will give
 you something to hang on to. Plot a Newton-method image, then hit <I>
@@ -1440,7 +1872,7 @@ count of 150, your image will run through the 16-color palette 150/16 =
 9.375 times.  If you elect to use Logarithmic palettes, however, the
 color Fractint uses for iteration N will be determined by the
 algorithm "palettenumber = maxcolors * log(maxiter) / log(N).  This
-results in spectacularly different images if yo are using a high
+results in spectacularly different images if you are using a high
 iteration limit near the current iteration maximum of 32000 and are
 zooming in on an area near a "lakelet".
 
@@ -1468,148 +1900,185 @@ you are stuck with monochrome graphics, try it - works great in
 two-color modes. Try it with the marksmandel and marksjulia types, or
 any of the new "biomorph" fractals.
 
+STARFIELDS
+
+Once you have generated your favorite fractal image, you can convert it
+into a fractal starfield with the 'a' transformation (for 'astronomy'? -
+once again, all of the good letters were gone already).  Stars are generated
+on a pixel-by-pixel basis - the odds that a particular pixel will coalesce
+into a star are based (partially) on the color index of that pixel.
+
+(the following documentation is supplied by Mark Peterson, who wrote the
+starfield transformation):
+
+If the screen were entirely black and the 'Star Density per Pixel'
+were set to 30 then a starfield transformation would create an evenly
+distributed starfield with an average of one star for every 30 pixels.
+
+If you're on a 320x200 screen then you have 64000 pixels and would end
+up with about 2100 stars.  
+
+By introducing the variable of 'Clumpiness' we can create more stars
+in areas that have higher color values.  At 100% Clumpiness a color
+value of 255 will change the average of finding a star at that
+location to 50:50.  A lower clumpiness values will lower the amount of
+probability weighting.  To create a spiral galaxy draw your favorite
+spiral fractal (IFS, Julia, or Mandelbrot) and perform a starfield
+transformation.  For general starfields I'd recommend transforming a 
+plasma fractal.
+
+Real starfields have many more dim stars than bright ones because very
+few stars are close enough to appear bright.  To achieve this effect
+the program will create a bell curve based on the value of ratio of
+Dim stars to bright stars.  After calculating the bell curve the curve
+is folded in half and the peak used to represent the number of dim stars.
+
+Starfields are calculated for proper display using the ALTERN.MAP.
+
 
 3. Command-Line Arguments, Batch Mode, and SSTOOLS.INI
 
-FRACTINT accepts command-line arguments that allow you to load it with
-your own choice of video mode, starting coordinates, and just about
-every other parameter and option. These arguments can also be included
-in a SSTOOLS.INI startup file, or in command files invoked on the
-command line using LINK-style syntax ("FRACTINT @MYFILE"). The program
-first looks along the DOS PATH for any file called SSTOOLS.INI and
-reads start-up variables from that file. Then, it looks at its own
-command line; arguments there will over-ride those from the .INI file.
+FRACTINT accepts command-line arguments that allow you to load it with 
+your own choice of video mode, starting coordinates, and just about 
+every other parameter and option. These arguments can also be included 
+in a SSTOOLS.INI startup file, or in command files invoked on the 
+command line using LINK-style syntax ("FRACTINT @MYFILE"). The program 
+first looks along the DOS PATH for any file called SSTOOLS.INI and 
+reads start-up variables from that file. Then, it looks at its own 
+command line; arguments there will over-ride those from the .INI file. 
 The syntax is:
 
-                FRACTINT argument argument argument...
+              FRACTINT argument argument argument...
 
-where the individual arguments are separated by one or more spaces (an
-individual argument may NOT include spaces). Either upper or lower case
-may be used, and arguments can be in any order.
+where the individual arguments are separated by one or more spaces (an 
+individual argument may NOT include spaces). Either upper or lower 
+case may be used, and arguments can be in any order. To make your file 
+more readable, you may replace the spaces with Returns.
 
 Argument
 
 FILENAME=[name]
-Causes FRACTINT to read the named file, which must either have been
-saved from an earlier FRACTINT session (version 7.0 or later) or be a
-generic GIF file, and use that as its starting point, bypassing the
-initial information screens. The filetype is optional and defaults to
-.FRA. Generic GIF files are restored as fractal type "plasma". On the
-command line you may omit FILENAME= and just give the name; the full
+Causes FRACTINT to read the named file, which must either have been 
+saved from an earlier FRACTINT session (version 7.0 or later) or be a 
+generic GIF file, and use that as its starting point, bypassing the 
+initial information screens. The filetype is optional and defaults to 
+.FRA. Generic GIF files are restored as fractal type "plasma". On the 
+command line you may omit FILENAME= and just give the name; the full 
 argument is required in SSTOOLS.INI and other command files.
 
 @FILENAME
-Causes FRACTINT to read "filename" for arguments. When it finishes, it
-resumes reading its own command line -- i.e., "FRACTINT MAXITER=250
-@MYFILE PASSES=1" is legal. This option is only valid on the command
-line, as FRACTINT is not clever enough to deal with multiple indirec-
-tion.
+Causes FRACTINT to read "filename" for arguments. When it finishes, it 
+resumes reading its own command line -- i.e., "FRACTINT MAXITER=250 
+@MYFILE PASSES=1" is legal. This option is only valid on the command 
+line, as FRACTINT is not clever enough to deal with multiple 
+indirection.
 
 PASSES=1, 2, or g
-Selects single-pass, dual-pass, or solid-Guessing mode. Again, the
+Selects single-pass, dual-pass, or solid-Guessing mode. Again, the 
 first two take the same total time to finish the display, while solid-
 guessing is faster at the risk of errors for a few pixels.
 
 INSIDE=nnn
-Set the color of the interior: for example, "INSIDE=0" makes the M-set
+Set the color of the interior: for example, "INSIDE=0" makes the M-set 
 a stylish basic black. A setting of -1 makes inside=maxiter.
 
 MAXITER=nnn
-Reset the iteration maximum (the number of iterations at which the
-program gives up and says 'OK, this point seems to be part of the set
-in question and should be colored [insidecolor]') from the default 150.
-Values range from 10 to 32000 (super-high iteration limits like 30000
-are useful when using logarithmic palettes).
+Reset the iteration maximum (the number of iterations at which the 
+program gives up and says 'OK, this point seems to be part of the set 
+in question and should be colored [insidecolor]') from the default 
+150. Values range from 10 to 32000 (super-high iteration limits like 
+30000 are useful when using logarithmic palettes).
 
 ITERINCR=nnn
-Set the iteration increment (the change in maxiter when you hit the '<'
-or '>' keys). Default is 50.
+Set the iteration increment (the change in maxiter when you hit the 
+'<' or '>' keys). Default is 50.
 
 VIDEO=xxx
-Set the initial video mode (and bypass the informational screens).
+Set the initial video mode (and bypass the informational screens). 
 Handy for batch runs. (Example: VIDEO=F4 for IBM 16-color VGA.)
 
-(You can obtain the current VIDEO= values from the "Video Modes" help
-screens inside Fractint.  We don't duplicate them here only because
+(You can obtain the current VIDEO= values from the "Video Modes" help 
+screens inside Fractint.  We don't duplicate them here only because 
 they change so darned often!)
 
 ASKVIDEO=[yes/no]
-If "no," this eliminates the prompt asking you if a file to be restored
-is OK for your current video hardware.
+If "no," this eliminates the prompt asking you if a file to be 
+restored is OK for your current video hardware.
 
 WARNING: every version of FRACTINT so far has had a bigger, better, but
 shuffled-around video table. Since calling for a mode your hardware
 doesn't support can leave your system in limbo, be careful about
-leaving these arguments in a command file to be used with future ver-
-sions of FRACTINT, particularly for the super-VGA modes.
+leaving these arguments in a command file to be used with future 
+versions of FRACTINT, particularly for the super-VGA modes.
 
 SAVENAME=[name]
-Set the filename to use when you <S>ave a screen. The default filename
+Set the filename to use when you <S>ave a screen. The default filename 
 is FRACT001. The .FRA extension is optional (Example: SAVENAME=myfile)
 
 WARN=[yes/no]
-Sets the savename warning flag (default is 'no'). If 'yes', saved files
-will NOT over-write existing files from previous sessions; instead the
-automatic incrementing of FRACTnnn.FRA will continue.
+Sets the savename warning flag (default is 'no'). If 'yes', saved 
+files will NOT over-write existing files from previous sessions; 
+instead the automatic incrementing of FRACTnnn.FRA will continue.
 
 TYPE=[name]
-Selects the type of fractal image to display. The default is type
+Selects the type of fractal image to display. The default is type 
 "mandel," the M-set.
 
 PARAMS=n/n/n/n...
-Set optional (required, for some fractal types) values used in plot-
-ting. These numbers typically represent the real and imaginary portions
-of some startup value, and are described in detail as needed in Sec. 2.
-(Example: FRACTINT TYPE=julia PARAMS=-0.48/0.626 would wait at the
-opening screen for you to select a video mode, but then proceed
-straight to the Julia set for the stated x (real) and y (imaginary)
+Set optional (required, for some fractal types) values used in 
+plotting. These numbers typically represent the real and imaginary 
+portions of some startup value, and are described in detail as needed 
+in Sec. 2. (Example: FRACTINT TYPE=julia PARAMS=-0.48/0.626 would wait 
+at the opening screen for you to select a video mode, but then proceed 
+straight to the Julia set for the stated x (real) and y (imaginary) 
 coordinates.)
 
-CORNERS=xmin/xmax/ymin/ymax
-Begin with these coordinates as the range of x and y coordinates,
-rather than the default values of (for type=mandel) -2.0/2.0/-1.5/1.5.
+CORNERS=xmin/xmax/ymin/ymax 
+Begin with these coordinates as the range of x and y coordinates, 
+rather than the default values of (for type=mandel) -2.0/2.0/-1.5/1.5. 
 (Example: corners=-0.739/-0.736/0.288/0.291).
 
 POTENTIAL=maxcolor [/slope[/modulus[/potfile]]]
-Establishes the "continuous potential" coloring mode for all fractal
-types except plasma clouds, IFS and IFS3D. The four arguments define
-the maximum color value, the slope of the potential curve, the modulus
-"bailout" value, and the savefile name. Example: "POTENTIAL=
-240/2000/40/potfile". The Mandelbrot and Julia types ignore the modulus
-bailout value and use their own hardwired value of 4.0 instead; see
-Sec. 4 on the continuous-potential algorithm for details.
+Establishes the "continuous potential" coloring mode for all fractal 
+types except plasma clouds, IFS and IFS3D. The four arguments define 
+the maximum color value, the slope of the potential curve, the modulus 
+"bailout" value, and the savefile name. Example: "POTENTIAL= 
+240/2000/40/potfile". The Mandelbrot and Julia types ignore the 
+modulus bailout value and use their own hardwired value of 4.0 
+instead; see Sec. 4 on the continuous-potential algorithm for details.
 
 RSEED=nnnn
-The initial random-number "seed" for plasma clouds is taken from your
-PC's internal clock-timer. This argument forces a value (which you can
-see in the <Tab> display), and allows you to reproduce plasma clouds. A
-detailed discussion of why a TRULY random number may be impossible to
-define, let alone generate, will have to wait for "FRACTINT: The 3-MB
-Doc File."
+The initial random-number "seed" for plasma clouds is taken from your 
+PC's internal clock-timer. This argument forces a value (which you can 
+see in the <Tab> display), and allows you to reproduce plasma clouds. 
+A detailed discussion of why a TRULY random number may be impossible 
+to define, let alone generate, will have to wait for "FRACTINT: The 3-
+MB Doc File."
 
 DECOMP=2/4/8/16/32/64/128/256
 Invokes the corresponding decomposition coloring scheme.
 
-LOGMAP=yes
-Switches the default color palette-map selection from normal (continu-
-ous) to logarithmic.
+LOGMAP=yes Switches the default color palette-map selection from 
+normal (continu-ous) to logarithmic.
 
 IFS=filename
-Use the IFS coded values in [filename] to generate Barnsley IFS fractal
-images. The default extension is .IFS. See Sec. 2 for details.
+Use the IFS coded values in [filename] to generate Barnsley IFS 
+fractal images. The default extension is .IFS. See Sec. 2 for details.
 
 IFS3D=filename
-Use the IFS coded values in [filename] to generate Barnsley IFS3D
+Use the IFS coded values in [filename] to generate Barnsley IFS3D 
 fractals.
 
-3D=[nn[/nn[/nn]]]...
-Replaces the default answers to the <3> command's prompts, as described
-in Sec. 2. If FILENAME= is given, forces the restore to be performed in
-3D mode. Very handy when used with the 'batch=yes' option for batch-
-mode 3D images.
+3D=Yes
+Replaces the default answers to the <3> command's prompts, as 
+described in Sec. 2. If FILENAME= is given, forces the restore to be 
+performed in 3D mode. Very handy when used with the 'batch=yes' option 
+for batch-mode 3D images. (Note: the form "3D/=parm/parm/parm ..." for 
+entering 3D parameters still works but will not be supported in the 
+future. Use the variables below. Position-sensitive parameters are 
+nasty and evil, especially when there are dozens of them!)
 
 The options below replace selected 3D defaults:
-
 sphere=yes                 Turns on spherical projection mode
 Longitude=nn/nn            Longitude minimum and maximum
 latitude=nn/nn             Latitude minimum and maximum
@@ -1620,12 +2089,25 @@ roughness=nn               Same as z scale factor
 waterline=nn               Colors nn and below will be "inside" color
 filltype=nn                3D filltype
 perspective=nn             Perspective distance
-xyshift=nn/nn              Shift image in x and y directions
+xyshift=nn/nn              Shift image in x and y directions with
+                            perspective
 lightsource=nn/nn/nn       Coordinates for light-source vector
 smoothing=nn               Smooths images in light-source fill modes
 transparent=min/max        Defines a range of colors to be treated as   
                             "transparent" when <O>verlaying 3D images.
+xyadjust=nn/nn             This shifts the image in the x/y dir without
+                            perspective
+stereo=n                   Selects the type of stereo image creation
+interocular=nn             Sets the interocular distance for stereo
+converge=nn                Determines the overall image separation
+crop=nn/nn/nn/nn           Trims the edges off stereo pairs
+bright=nn/nn               Compensates for funny glasses filter parameters
 
+To stay out of trouble, use the complete list, even if you want to use 
+what you think are the default values. It takes a little practice to 
+learn what the default values really are. The best way to create a 
+command file is to use the Batch command <B> on an image you like and 
+then modify the resulting parameters.
 
 INVERT=nn/nn/nn
 Turns on inversion. The parameters are radius of inversion, x-coordi-
@@ -1669,6 +2151,24 @@ and an alternate map read in via <M> in color-command mode is that this
 one is permanent. WARNING: If colors 0 and 1 decode to the same color,
 your <H>elp screens will use the same color for both text and back-
 ground, which makes them kind of difficult to read.
+
+RAMVIDEO=no
+If set, when you select a "Disk/RAM" video mode, the check for adequate
+RAM is bypassed, and Fractint heads straight for your expanded memory
+and/or hard disk.  This is useful where you may *technically* have
+enough RAM for a particular video mode, but you may want to use it 
+later for something else (like shelling to DOS).
+
+FORMULAFILE=formulafilename
+Lets you specify the default formula file for type=formula fractals
+(the default is FRACTINT.FRM).  Handy if you want to generate one
+of these fractal types in batch mode.
+
+FORMULANAME=formulaname
+Lets you specify the default formula name for type=formula fractals
+(the default is no formula at all).  Required if you want to generate
+one of these fractal types in batch mode, as this is the only way to
+specify a formula name in that case.
 
 ;
 As usual, indicates the rest of the command line (or the rest of the
@@ -1861,12 +2361,13 @@ to 2 bytes per pixel, so they can get quite large.
 The following commands can be used to recreate the image that Mark
 Peterson first prototyped for us, and named "MtMand":
 
-                TYPE=mandelfp
+                TYPE=mandel
                 CORNERS=-0.19920/-0.11/1.0/1.06707
                 INSIDE=255
                 MAXITER=255
                 POTENTIAL=255/2000/1000/potfile.tga
                 PASSES=1
+                FLOAT=yes
 
 This assumes a 256-color video mode.
 
@@ -1894,8 +2395,8 @@ Guruka Singh Khalsa's favorite color-map for plasma "landscapes").
 
 5. Hardware Support
 
-True to the spirit of public-domain programming, FRACTINT makes no
-attempt to verify that your video adapter can run in the mode you
+True to the spirit of public-domain programming, FRACTINT makes only a
+limited attempt to verify that your video adapter can run in the mode you
 specify, or even that an adapter is present, before writing to it.
 Hence the warning to check your "VIDEO=" argument before using a new
 version, in which the old key combo may now call an ultraviolet holo-
@@ -1928,8 +2429,8 @@ The table as currently distributed begins with nine standard and
 several non-standard IBM video modes that have been exercised success-
 fully with a PS/2 model 80. These entries, coupled with the descriptive
 comments in the table definition and the information supplied (or that
-should have been supplied!) with your video
-adapter, should be all you need to add your own entries.
+should have been supplied!) with your video adapter, should be all you
+need to add your own entries.
 
 
 320 x 400 x 256 and 360 x 480 x 256 VGA MODES
@@ -1965,7 +2466,11 @@ After the IBM and quasi-pseudo-demi-IBM modes, the table contains an
 ever-increasing number of entries for other adapters. Almost all of
 these entries have been added because someone like you sent us spec
 sheets, or modified FRACTINT to support them and then informed us about
-it.
+it.  With version 12.0, we've added both John Bridges' SuperVGA
+Autodetecting logic *and* VESA adapter detection, so that many of the
+brand-specific SuperVGA modes have been collapsed into a single function
+key.  There is now exactly one function key for SuperVGA 640x480x256
+mode, for instance.  
 
 
 TARGA MODES
@@ -1990,10 +2495,10 @@ the current internal limit of 2048 x 2048 x 256, and for background
 processing under multi-tasking DOS managers such as DESQview.
 
 The zoom box is disabled during these modes (you couldn't see where it
-is anyway). To eliminate thrashing, so are features such as orbit
-display, dual-pass mode, solid-guessing, symmetry checks and (sorry)
-plasma clouds that require simultaneous access to several lines of the
-"display."
+is anyway). To eliminate thrashing, if your "video" is really on a hard
+disk, so are features such as orbit display, dual-pass mode,
+solid-guessing, symmetry checks and (sorry) plasma clouds that require
+simultaneous access to several lines of the "display.".
 
 On a PC with 640K of memory running only FRACTINT under DOS, "disk-
 video" modes up to 640x480x256 fit into RAM, and any higher-resolution
@@ -2083,6 +2588,9 @@ that mode. Currently available codes are:
  23) SuperVGA 1024x768x16 mode for the Video 7 chipset
  24) SuperVGA 1024x768x16 mode for the Paradise chipset
  25) SuperVGA 1024x768x16 mode for the Chips & Tech chipset
+ 26) SuperVGA 1024x768x16 mode for the Everex Chipset
+ 27) SuperVGA Auto-Detect mode (we poke around looking for your adapter type)
+ 28) VESA modes
 
 7. The number of pixels across the screen (X - 160 to 2048)
 8. The number of pixels down the screen (Y - 160 to 2048)
@@ -2261,11 +2769,11 @@ now uses 16-bit math where applicable, which makes a big difference on
 non-32-bit PCs.
 
 
-LIMITATIONS AND UGLIES
+LIMITATIONS OF INTEGER MATH (and how we now get around it)
 
-FRACTINT now uses 16-bit and/or 32-bit integer math to generate nearly
-all its fractal types. The advantage of integer math is speed: this is
-by far the fastest such plotter that we have ever seen on any PC. The
+By default, FRACTINT uses 16-bit and/or 32-bit integer math to generate
+nearly all its fractal types. The advantage of integer math is speed: this
+is by far the fastest such plotter that we have ever seen on any PC. The
 disadvantage is an accuracy limit. Integer math represents numbers like
 1.00 as 32-bit integers of the form [1.00 * (2^29)] (approximately
 500,000,000 digits!) for the Mandelbrot and Julia sets. Other integer
@@ -2275,33 +2783,99 @@ significant digits, and works fine... until the initial values of the
 calculations on consecutive pixels differ only in the ninth decimal
 place.
 
-(A few of the integer algorithms for the newer fractal types even use
-bitshifts of 16 - but those fractal types simply aren't available in
-any other program, and you can always get back to a 24-bit bitshift
-by forcing Fractint to use a floating-point algorithm with the
-"FLOAT=YES" command-line option.)
+At that point, if Fractint has a floating-point algorithm handy for
+that particular fractal type (and virtually all of the fractal types 
+have one these days), it will silently switch over to the
+floating-point algorithm and keep right on going.  Fair warning -
+if you don't have an FPU, the effect is that of a rocket sled hitting
+a wall of jello, and even if you do, the slowdown is noticable.
 
-At that point, FRACTINT does the best it can: it switches to its
-minimal drawing mode, with adjacent pixels having initial values
-differing by 1 (really 0.000000002), and disables zooming and panning.
-This happens more often than you might think, only because it's so
-tempting to zoom in on a tiny piece of the image. You can reach minimal
-mode with your fifth consecutive "maximum zoom", each of which covers
-about 0.25% of the previous screen. By then your full-screen image is
-an area less than 1/(10^13)th [~0.0000000000001] the area of the
+If it has no floating-point algorithm, FRACTINT does the best it can:
+it switches to its minimal drawing mode, with adjacent pixels having
+initial values differing by 1 (really 0.000000002), and disables zooming
+and panning.  If you are stuch with an integer algorithm, you can reach
+minimal mode with your fifth consecutive "maximum zoom", each of which
+covers about 0.25% of the previous screen. By then your full-screen image
+is an area less than 1/(10^13)th [~0.0000000000001] the area of the
 initial screen.
 
-Think of it this way: if the program would allow you to zoom from a
-full M-set in VGA to a SINGLE PIXEL and redraw it as a full-screen
-image... then zoom on a single pixel of THAT screen and redraw, you'd
-see an area representing 1/((640*480)^2)th or ~0.00000000001 of the
-area of the first screen... and you still wouldn't have reached minimal
-drawing mode.
+Think of it this way: at minimal drawing mode, your VGA display
+would have to have a surface area of over one million square miles just
+to be able to display the entire M-set using the integer algorithms.
+Using the floating-point algorithms, your display would have to
+be big enough to fit the entire solar system out to the orbit of
+Saturn inside it.  So there's a considerable saving on hardware,
+electricity and desk space involved here.  Also, you don't have to
+take out asteroid insurance.
 
-Or think of it this way: at minimal drawing mode, your VGA display
-would have to have a surface area of over one million square miles to
-be able to display the entire M-set. So there's a considerable saving
-on hardware, electricity and desk space involved here.
+THE FRACTINT "FRACTAL ENGINE" ARCHITECTURE
+
+Several of the authors would never ADMIT this, but FRACTINT has 
+evolved a powerful and flexible architecture that makes adding 
+new fractals very easy. (They would never admit this because they 
+pride themselves on being the sort that mindlessly but happily 
+hacks away at code and "sees if it works and doesn't hang the 
+machine".) 
+
+Many fractal calculations work by taking a rectangle in the 
+complex plane, and, point by point, calculating a color 
+corresponding to that point. Furthermore, the color calculation 
+is often done by iterating a function over and over until some 
+bailout condition is met.
+
+In implementing such a scheme, there are three fractal-specific 
+calculations that take place within a framework that is pretty 
+much the same for them all.  Rather than copy the same code over 
+and over, we created a standard fractal engine that calls three 
+functions that may be bolted in temporarily to the engine.  The 
+"bolting in" process uses the C language mechanism of variable 
+function pointers.
+
+These three functions are: 
+
+     1) a setup function that is run once per image, to do any 
+     required initialization of variables,
+
+     2) a once-per-pixel function that does whatever 
+     initialization has to be done to calculate a color for one 
+     pixel, and
+
+     3) a once-per-orbit-iteration function, which is the 
+     fundamental fractal algorithm that is repeatedly iterated in 
+     the fractal calculation.
+
+The common framework that calls these functions can contain all 
+sorts of speedups, tricks, and options that the fractal 
+implementor need not worry about.  All that is necessary is to 
+write the three functions in the correct way, and BINGO! - all 
+options automatically apply. What makes it even easier is that 
+usually one can re-use functions 1) and 2) written for other 
+fractals, and therefore only need to write function 3).
+
+Then it occurred to us that there might be more than one sort of 
+fractal engine, so we even allowed THAT to be bolted in. And we 
+created a data structure for each fractal that includes pointers 
+to these four functions, various prompts, a default region of the 
+complex plane, and various miscellaneous bits of information that 
+allow toggling between Julia and Mandelbrot or toggling between 
+the various kinds of math used in implementation.
+
+That sounds pretty flexible, but there is one drawback - you have 
+to be a C programmer and have a C compiler to make use of it! So 
+we took it a step further, and designed a built-in high level 
+compiler, so that you can enter the formulas for the various 
+functions in a formula file in a straight-forward algebra-like 
+language, and FRACTINT will compile them and bolt them in for 
+you!
+
+There is a terrible down side to this flexibility.  FRACTINT 
+users everywhere are going beserk. Fractal-inventing creativity 
+is running rampant. Proposals for new fractal types are clogging 
+the mail and the telephones.
+
+All we can say is that non-productivity software has never been 
+so potent, and we're sorry, it's our fault!
+
 
 FRACTINT was compiled using Microsoft C 5.1 and Microsoft Assembler 5.1
 using the "Medium" model. Note that the assembler code uses the "C"
@@ -2460,6 +3034,67 @@ who hang around the Compuserve PICS forum and keep adding video modes
 to the program.  Or...
 
 
+A WORD ABOUT THE AUTHORS
+
+FRACTINT is the result of a synergy between the main authors, 
+many contributors, and published sources.  All three of the main 
+authors have had a hand in many aspects of the code.  However 
+each author has certain areas of greater contribution and 
+creativity.  Since there is not room in the help screen for the 
+contributions of the main authors, we list these here to 
+facilitate those who would like to communicate with us on 
+particular subjects.  
+
+Bert Tyler is the original author.  He wrote the "blindingly 
+fast" 386-specific 32 bit integer math code and the original 
+video mode logic.  More than any of the authors, he has 
+personally touched and massaged the entire source. His forte is 
+writing fast 80x86 assembler, his knowledge of a variety of video 
+hardware, and his skill at hacking up the code we send him!
+
+Bert has a BA in mathematics from Cornell University.  He has 
+been in programming since he got a job at the computer center in 
+his sophmore year at college - in other words, he hasn't done an 
+honest day's work in his life.  He has been known to pass himself 
+off as a PC expert, a UNIX expert, a statistician, and even a 
+financial modeling expert.  He is currently masquerading as an 
+independent PC consultant, supporting the PC-to-Mainframe 
+communications environment at NIH.  If you sent mail from the 
+Internet to an NIH staffer on his 3+Mail system, it was probably 
+Bert's code that mangled it during the Internet-to-3+Mail 
+conversion.  He also claims to support the MS-Kermit environment 
+at NIH. Fractint is Bert's first effort at building a graphics 
+program.
+
+Tim Wegner contributed the original implementation of palette 
+animation, and is responsible for most of the 3D mechanisms.  He 
+provided the main outlines of the "StandardFractal" engine and 
+data structures, and is accused by his cohorts of being "obsessed 
+with options".  Tim is quite proud of having originally 
+integrated the 256 color super VGA modes in FRACTINT, especially 
+since he knows almost nothing about it!
+
+Tim has BA and MA degrees in mathematics from Carleton College 
+and the University of California Berkeley.  He worked for 7 years 
+overseas as a volunteer, doing things like working with Egyptian 
+villagers building water systems. Since returning to the US in 
+1982, he has written shuttle navigation software, a software 
+support environment prototype, and supported strategic 
+information planning, all at NASA's Johnson Space Center.
+
+Mark Peterson invented the periodicity detection logic, several 
+original fractal types, transcendental function libraries, 
+alternate math implementations, the formula compiler, and the 
+"Juliabrot" intrinsic 3D fractals - in other words, most of the 
+truly original ideas in FRACTINT!
+
+Mark's knowledge of higher mathematics and programing was 
+achieved almost entirely through self-study.  Currently he works 
+as a real-time supervisor of the electrical transmission system 
+for Connecticut and Massachusetts.  When not hard at work on 
+programming projects he relaxes with Karate and Judo.
+
+
 Accessing the Authors
 
 ======================================
@@ -2489,16 +3124,17 @@ Tyler Software          btyler on BIX
 124 Wooded Lane
 Villanova, PA 19085
 (215) 525-6355
-
-Timothy Wegner          [71320,675] on Compuserve             
-1955 Portsmouth         nmittiw@mwibm.mitre.org on Internet
-Houston, TX 77098       twegner@mwunix.mitre.org on Internet 
+ 
+Timothy Wegner          [71320,675] on CIS
+MITRE                   nmittiw@mwibm.mitre.org on Internet
+1120 Nasa #1            twegner@mwunix.mitre.org on Internet
+Houston, TX 77058
 (713) 522-7933
 
 Mark C. Peterson        [70441,3353] on CIS
-128 Hamden Ave., F
-Waterbury, CT 06704
-(203) 754-1162
+253 West St., H
+Plantsville, CT 06479
+(203) 276-9474 (voice)
 
 Rob Beyer               [71021,2074] on CIS
 23 Briarwood Lane
@@ -2516,15 +3152,15 @@ Monte Davis             [71450,3542] on CIS
 Brooklyn, NY 11201
 (718) 625-4610
 
-Richard Finegold        [76701,153] on Compuserve
+Richard Finegold        [76701,153] on CIS
 1414 179th Ave NE       richg@blake.acs.washington.edu on InterNET
 Bellevue, WA 98008      uw-beaver!blake!richg on UseNET
 (206) 746-2694          
 
-Michael L. Kaufman      (accessible via EXEC-PC bbs)
-2247 Ridge Ave, #2K
+Michael L. Kaufman      [71610,431] on CIS
+2247 Ridge Ave, #2K     (also accessible via EXEC-PC bbs)
 Evanston, IL, 60201
-(312) 864-7916
+(708) 864-7916
 
 Joe McLain              [75066,1257] on CIS
 McLain Imaging
@@ -2536,11 +3172,26 @@ Bob Montgomery          [73357,3140] on CIS
 (Author of VPIC)
 132 Parsons Road
 Longwood, Fl  32779
+ 
+Marc Reinig             [72410,77] on CIS
+3415 Merrill Rd.        mqr@sun.com!daver!cypress!pld on Usenet
+Aptos, CA. 95003        abu on BIX
+(408) 475-2132
 
 Dean Souleles           [75115,1671] on CIS
 8840 Collett Ave.
 Sepulveda, CA  91343
 (818) 893-7558
+
+Scott Taylor            [72401,410] on CIS
+1901 South County Road 23E
+Berthoud, CO 80513
+(303) 651-6692
+
+Paul Varner             [73237,441] on CIS
+PO Box 930
+Shepherdstown, WV 25443
+(304) 876-2011
 
 Phil Wilson             [76247,3145] on CIS
 410 State St., #55
@@ -2552,6 +3203,30 @@ APPENDIX C
 
 Features first appearing in:
 ===========================
+
+Version 11.0, 1/90
+
+More fractal types
+   mandelsinh/lambdasinh        mandelcosh/lambdacosh
+   mansinzsqrd/julsinzsqrd      mansinexp/julsinexp
+   manzzprw/julzzpwr            manzpower/julzpower
+   lorenz (from Rob Beyer)      lorenz3d
+   complexnewton                complexbasin
+   popcorn
+
+Virtually every fractal type given an integer AND a floating point algorithm.
+"Float=yes" option now determines whether integer or floating-point
+     algorithms are used for most fractal types
+"F" command toggles the use of floating-point algorithms, flagged in
+     the <Tab> status display 
+8/16/32/../256-Way decomposition option (from Richard Finegold)
+"Biomorph=", "bailout=", "symmetry="  and "askvideo=" options
+"T(ransform)" option in the IFS editor lets you select 3D options (used
+     with the Lorenz3D fractal type)
+The "T(ype)" command uses a new "Point-and-Shoot" method of selecting
+     fractal types rather than prompting you for a type name
+Bug fixes to continuous-potential algorithm on integer fractals, GIF
+     encoder, and IFS editor
 
 Version 10.0, 11/89
 
@@ -2727,3 +3402,4 @@ PEITGEN, Heinz-Otto & RICHTER, Peter: "The Beauty of Fractals,"
   Springer-Verlag, 1986.
     THE coffee-table book of fractal images, knowledgeable on computer
     graphics as well as the mathematics they portray.
+

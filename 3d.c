@@ -59,6 +59,7 @@ ROTZ(é) =           cosé  siné    0     0
 #include <math.h>
 #include <float.h>
 #include "fractint.h"
+extern int overflow;
 extern int bad_value;
 
 /* initialize a matrix and set to identity matrix 
@@ -261,7 +262,7 @@ int bitshift;    /* fixed point conversion bitshift */
 {
    LVECTOR tmp;
    int i,j, k;
-
+   overflow = 0;
    k = CMAX-1;			/* shorten the math if non-perspective and non-illum */
    if (lview[2] == 0 && t0[0] == 0) k--;
 
@@ -289,10 +290,10 @@ int bitshift;    /* fixed point conversion bitshift */
       denom = lview[2] - tmp[2];
       if (denom >= 0) 		/* bail out if point is "behind" us */
       {
-           tmp[0] = bad_value;
-           tmp[0] = tmp[0]<<bitshift;
-           tmp[1] = tmp[0];
-           tmp[2] = tmp[0];
+           t[0] = bad_value;
+           t[0] = t[0]<<bitshift;
+           t[1] = t[0];
+           t[2] = t[0];
            return(-1);
       }
       
@@ -316,7 +317,7 @@ int bitshift;    /* fixed point conversion bitshift */
    t[0] = tmp[0];
    t[1] = tmp[1];
    t[2] = tmp[2];
-   return(0);
+   return(overflow);
 }
 
 /* Long version of perspective. Because of use of fixed point math, there
@@ -325,9 +326,9 @@ longpersp(LVECTOR lv, LVECTOR lview, int bitshift)
 {
    LVECTOR tmpview;
    long denom;
-   
+   overflow = 0;   
    denom = lview[2] - lv[2];
-   if (denom == 0) 		/* bail out if point is "behind" us */
+   if (denom >= 0) 		/* bail out if point is "behind" us */
    {
         lv[0] = bad_value;
         lv[0] = lv[0]<<bitshift;
@@ -349,14 +350,14 @@ longpersp(LVECTOR lv, LVECTOR lview, int bitshift)
 
    /* z coordinate if needed           */
    /* lv[2] = divide(lview[2],denom);  */
-   return(0);
+   return(overflow);
 }
 
 int longvmult(LVECTOR s,LMATRIX m,LVECTOR t,int bitshift)
 {
    LVECTOR tmp;
    int i,j, k;
-
+   overflow = 0;
    k = CMAX-1;
 
    for(j=0;j<k;j++)
@@ -373,5 +374,5 @@ int longvmult(LVECTOR s,LMATRIX m,LVECTOR t,int bitshift)
    t[0] = tmp[0];
    t[1] = tmp[1];
    t[2] = tmp[2];
-   return(0);
+   return(overflow);
 }

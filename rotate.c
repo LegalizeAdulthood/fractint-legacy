@@ -15,7 +15,6 @@ extern	int	colors;				/* maximum colors available */
 extern unsigned char dacbox[256][3];	/* Video-DAC (filled in by SETVIDEO) */
 extern int	daclearn, daccount;	/* used by the color-cyclers */
 extern int	reallyega;		/* == 0 if it's really an EGA */
-extern int	extraseg;		/* used by Save-to-GIF routines */
 
 static int paused;				/* rotate-is-paused flag */
 
@@ -46,6 +45,7 @@ if (dacbox[0][0] == 255 || 		/* ??? no DAC to rotate!	*/
 		buzzer(2);
 		return;
 		}
+
 oldhelpmode = helpmode;			/* save the old help mode */
 helpmode = HELPCYCLING;			/* new help mode */
 
@@ -71,9 +71,6 @@ if (direction < 0) {
 	last = 1;
 	next = maxreg;
 	}
-
-oldhelpmode = helpmode;			/* save the old help mode */
-helpmode = HELPCYCLING;			/* new help mode */
 
 more = 1;
 while (more) {
@@ -272,6 +269,23 @@ while (more) {
 			fkey = 0;	/* disable random generation */
 			pauserotate();	/* update palette and pause */
 			break;
+		case 'x':		/* switch to x-hair */
+		case 'X':
+			if (reallyega) break;	/* no sense on real EGAs */
+			{
+			int olddaccount;
+			olddaccount = daccount;
+			daccount = 256;
+			dacbox[0][0] = 63;
+			dacbox[0][1] = 63;
+			dacbox[0][2] = 63;
+			spindac(0,1);		/* show white border */
+			daccount = olddaccount;
+			palettes();		/* bring up crosshairs */
+			fkey = 0;		/* disable random generation */
+			pauserotate();		/* update palette and pause */
+			}
+			break;
 		default:		/* maybe a new palette, maybe bail-out */
 		if (kbdchar < 1084 || kbdchar > 1113) {
 			more = 0;	/* time to bail out */
@@ -401,4 +415,205 @@ unsigned char start[3], middle[3], finish[3];
          dacbox[i+85][j]  = (i*finish[j] + (86-i)*middle[j])/85;
          dacbox[i+170][j] = (i*start[j]  + (86-i)*finish[j])/85;
       }
+}
+
+
+extern	int	xdots, ydots;			/* # of dots on the screen  */
+
+static int crosshair_active, crosshair_cursor;
+static int crosshair_row, crosshair_col, crosshair_color, crosshair_newcolor;
+static int old_crosshair_row, old_crosshair_col;
+static unsigned char crosshair_colors[2][10], crosshair_oldcolor[3];
+
+extern int	lookatmouse;		/* used to activate non-button mouse movement */
+
+palettes()				/* adjust-the-palette routine	*/
+{
+int  kbdchar, more;
+int i, j, k, changecolor, changedirection;
+int oldhelpmode;
+int olddaccount;
+
+if (dacbox[0][0] == 255 || 		/* ??? no DAC to rotate! */
+	reallyega ||			/* true VGAs only, please */
+	colors < 16) {			/* strange things happen in 2x modes */
+		buzzer(2);
+		return;
+		}
+
+oldhelpmode = helpmode;			/* save the old help mode */
+helpmode = HELPXHAIR;			/* new help mode */
+
+olddaccount = daccount;			/* update the DAC ASAP */
+daccount = 256;
+
+crosshair_row = xdots / 2;		/* start the cursor in the */
+crosshair_col = ydots / 2;		/* middle of the screen */
+crosshair_active = 0;			/* no crosshair active */
+crosshair_cursor = 0;			/* black crosshair cursor */
+cross_hair(1);				/* draw the crosshair */
+
+lookatmouse = 1;			/* activate the full mouse-checking */
+
+more = 1;
+while (more) {
+	while(!keypressed());		/* wait until a key gets hit	*/
+	kbdchar = getakey();
+	switch (kbdchar) {
+		case '+':		/* '+' 	*/
+			if (++crosshair_newcolor == 256)
+				crosshair_newcolor = 1;
+			for (k = 0; k < 3; k++)
+				dacbox[crosshair_color][k] =
+					 dacbox[crosshair_newcolor][k];
+			if (crosshair_color == crosshair_newcolor)
+				for (k = 0; k < 3; k++)
+					dacbox[crosshair_color][k] =
+						crosshair_oldcolor[k];
+			spindac(0,1);
+			break;
+		case '-':		/* '-' 	*/
+			if (--crosshair_newcolor == 0)
+				crosshair_newcolor = 255;
+			for (k = 0; k < 3; k++)
+				dacbox[crosshair_color][k] =
+					 dacbox[crosshair_newcolor][k];
+			if (crosshair_color == crosshair_newcolor)
+				for (k = 0; k < 3; k++)
+					dacbox[crosshair_color][k] =
+						crosshair_oldcolor[k];
+			spindac(0,1);
+			break;
+		case 1116:		/* Ctrl-RightArrow 	*/
+			crosshair_row += 4;
+		case 1077:		/* RightArrow 	*/
+			crosshair_row++;
+			if (crosshair_row >= xdots)
+				crosshair_row = xdots-1;
+			cross_hair(1);
+			break;
+		case 1115:		/* Ctrl-LeftArrow */
+			crosshair_row -= 4;
+		case 1075:		/* LeftArrow 	*/
+			crosshair_row--;
+			if (crosshair_row < 0)
+				crosshair_row = 0;
+			cross_hair(1);
+			break;
+		case 1141:		/* Ctrl-UpArrow 	*/
+			crosshair_col -= 4;
+		case 1072:		/* UpArrow 	*/
+			crosshair_col--;
+			if (crosshair_col < 0)
+				crosshair_col = 0;
+			cross_hair(1);
+			break;
+		case 1145:		/* Ctrl-DownArrow 	*/
+			crosshair_col += 4;
+		case 1080:		/* DownArrow 	*/
+			crosshair_col++;
+			if (crosshair_col >= ydots)
+				crosshair_col = ydots-1;
+			cross_hair(1);
+			break;
+		case 1073:		/* page up */
+			if (++crosshair_cursor >= colors)
+				crosshair_cursor = 0;
+			cross_hair(1);
+			break;
+		case 1081:		/* page down */
+			if (--crosshair_cursor < 0)
+				crosshair_cursor = colors-1;
+			cross_hair(1);
+			break;
+		case 'r':		/* color changes */
+			if (changecolor    == -1) changecolor = 0;
+			if (changedirection == 0) changedirection = -1;
+		case 'g':		/* color changes */
+			if (changecolor    == -1) changecolor = 1;
+			if (changedirection == 0) changedirection = -1;
+		case 'b':		/* color changes */
+			if (changecolor    == -1) changecolor = 2;
+			if (changedirection == 0) changedirection = -1;
+		case 'R':		/* color changes */
+			if (changecolor    == -1) changecolor = 0;
+			if (changedirection == 0) changedirection = 1;
+		case 'G':		/* color changes */
+			if (changecolor    == -1) changecolor = 1;
+			if (changedirection == 0) changedirection = 1;
+		case 'B':		/* color changes */
+			if (changecolor    == -1) changecolor = 2;
+			if (changedirection == 0) changedirection = 1;
+
+			i = getcolor(crosshair_row, crosshair_col);
+			dacbox[i][changecolor] += changedirection;
+			if (dacbox[i][changecolor] == 64)
+				dacbox[i][changecolor] = 63;
+			if (dacbox[i][changecolor] == 255)
+				dacbox[i][changecolor] = 0;
+			spindac(0,1);
+
+			changecolor    = -1;	/* clear flags for next time */
+			changedirection = 0;
+			break;
+		case 13:			/* Enter keys */
+		case 1013:
+			break;
+		default:
+			more = 0;
+			break;
+		}
+	}
+cross_hair(0);				/* remove the cross-hairs */
+daccount = olddaccount;			/* replace the DAC count */
+lookatmouse = 0;			/* deactivate mouse checking */
+helpmode = oldhelpmode;			/* return to previous help mode */
+}
+
+cross_hair(onoff)
+{
+int i, j;
+
+if (crosshair_active) {			/* remove old cross-hair? */
+	for (i = 0; i < 10; i++) {
+		j = old_crosshair_row - 6 + i;
+		if (i >= 5) j += 3;
+		if (j > -1 && j < xdots)
+			putcolor(j, old_crosshair_col, crosshair_colors[0][i]);
+		}
+	for (i = 0; i < 10; i++) {
+		j = old_crosshair_col - 6 + i;
+		if (i >= 5) j += 3;
+		if (j > -1 && j < ydots)
+			putcolor(old_crosshair_row, j, crosshair_colors[1][i]);
+		}
+	}
+
+crosshair_active = 0;
+
+if (onoff) {			/* display new old cross-hair? */
+	crosshair_active = 1;
+	old_crosshair_row = crosshair_row;
+	old_crosshair_col = crosshair_col;
+	crosshair_color = getcolor(old_crosshair_row, old_crosshair_col);
+	for (i = 0; i < 3; i++)
+		crosshair_oldcolor[i] = dacbox[crosshair_color][i];
+	crosshair_newcolor = crosshair_color;
+		for (i = 0; i < 10; i++) {
+		j = old_crosshair_row - 6 + i;
+		if (i >= 5) j += 3;
+		if (j > -1 && j < xdots) {
+			crosshair_colors[0][i] = getcolor(j, old_crosshair_col);
+			putcolor(j, old_crosshair_col, crosshair_cursor);
+			}
+		}
+	for (i = 0; i < 10; i++) {
+		j = old_crosshair_col - 6 + i;
+		if (i >= 5) j += 3;
+		if (j > -1 && j < ydots) {
+			crosshair_colors[1][i] = getcolor(old_crosshair_row, j);
+			putcolor(old_crosshair_row, j, crosshair_cursor);
+			}
+		}
+	}
 }

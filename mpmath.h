@@ -9,7 +9,7 @@ struct MP {
 };
 
 struct MPC {
-	struct MP r, i;
+	struct MP x, y;
 };
 
 extern struct MP MPTrigTable[2][4][256], InvHalfPi, HalfPi, InvLn2, Ln2;
@@ -76,6 +76,7 @@ extern struct MP  (*pMPadd)(struct MP x, struct MP y);
 extern struct MP  (*pMPsub)(struct MP x, struct MP y);
 extern struct MP  (*pd2MP)(double x)                 ;
 extern double *   (*pMP2d)(struct MP m)              ;
+void setMPfunctions(void);
 
 
 /* FPU routines */
@@ -87,6 +88,23 @@ extern void FPUcplxdiv(struct complex *x, struct complex *y,
 extern void FPUsincos(double *Angle, double *Sin, double *Cos);
 extern void FPUsinhcosh(double *Angle, double *Sinh, double *Cosh);
 extern void FPUcplxlog(struct complex *x, struct complex *z);
+extern void FPUcplxexp387(struct complex *x, struct complex *z);
+extern struct complex ComplexPower(struct complex x, struct complex y);
 
+/* Integer Routines */
+void SinCos086(long x, long *sinx, long *cosx);
+void SinhCosh086(long x, long *sinx, long *cosx);
+
+/*** Formula Declarations ***/
+typedef enum { D_MATH, M_MATH, L_MATH } MATH_TYPE;
+extern MATH_TYPE MathType;
+
+int ParseStr(char *Str);
+int Formula(void);
+int form_per_pixel(void);
+int fpFormulaSetup(void);
+int mpcFormulaSetup(void);
+int intFormulaSetup(void);
+/* char *FormStr, *FormName;	BDT commented these out */
 
 #endif

@@ -29,6 +29,13 @@ extern char readname[];					/* file name            */
 static FILE *fpin = NULL;				/* FILE pointer             */
 unsigned int height;
 
+extern  FILE *dacfile;
+extern  char MAP_name[];
+extern  int     mapset;
+
+extern int glassestype;
+extern int display3d;
+
 int bad_code_count = 0;					/* needed by decoder module */
 
 get_byte()
@@ -121,8 +128,17 @@ gifview()
          if ((buffer[j] = (unsigned char)get_byte()) < 0)
             return(-1);
          if (dacbox[0][0] != 255)   	/* (only if we really have a DAC) */
-            dacbox[k][j] = buffer[j] >> 2;
+            if(!display3d || (glassestype != 1 && glassestype != 2)) 
+               dacbox[k][j] = buffer[j] >> 2;
       }
+   }
+   /* don't read if glasses */
+   if (mapset && glassestype!=1 && glassestype != 2)
+   {
+       dacfile = fopen(MAP_name,"r");
+       ValidateLuts(dacfile);  /* read the palette file */
+       fclose(dacfile); /* close it */
+       spindac(0,1); /* load it, but don't spin */
    }
    if (dacbox[0][0] != 255) spindac(0,1);	/* update the DAC */
 
@@ -179,8 +195,8 @@ gifview()
       }
    }
    close_file();
-   if (status == 0)
-      buzzer(0);             /* audible signal - we done */
+   /* if (status == 0)
+      buzzer(0); */             /* audible signal - we done */
    return(status);
 }
 close_file()

@@ -82,7 +82,22 @@ struct fractal_info 			/*  for saving data in GIF file     */
     float invert[3];
     int decomp[2];
     int symmetry;
-	int future[35];     /* for stuff we haven't thought of yet */
+    /* version 2 stuff */
+    int init3d[16];
+    int previewfactor;
+    int xtrans;
+    int ytrans;
+    int red_crop_left;
+    int red_crop_right;
+    int blue_crop_left;
+    int blue_crop_right;
+    int red_bright;
+    int blue_bright;
+    int xadjust;
+    int eyeseparation;
+    int glassestype;
+
+    int future[7];     /* for stuff we haven't thought of yet */
 };
 
 #define MAXVIDEOMODES 100	/* maximum size of the video table */
@@ -170,6 +185,7 @@ extern int maxvideomode;
 #define  PI_SYM_NOPARM -5
 #define  PI_SYM         5
 #define  NOPLOT        99
+#define  SETUP_SYM    100
 
 extern float   far initifs[NUMIFS][IFSPARM];          /* IFS code values */
 extern float   far initifs3d[NUMIFS][IFS3DPARM];      /* IFS 3D code values */
@@ -178,6 +194,7 @@ struct fractalspecificstuff
 {
    char  *name;				/* name of the fractal */
    char  *param[4];			/* name of the parameters */
+   float paramvalue[4];     /* default parameter value */
    float xmin;				/* default XMIN corner */
    float xmax;				/* default XMAX corner */
    float ymin;				/* default YMIN corner */
@@ -214,11 +231,12 @@ extern struct fractalspecificstuff fractalspecific[];
 #define HELPAUTHORS	1
 #define HELPMAIN	2
 #define	HELPCYCLING	3
-#define HELPMOUSE	4
+#define	HELPXHAIR	4
 #define	HELPCMDLINE	5
 #define HELPFRACTALS    6
 #define	HELPVIDEO	7
 #define	HELPMOREINFO	8
+#define HELPMOUSE	9
 #define HELPMENU	98
 #define	HELPEXIT	99
 

@@ -60,7 +60,7 @@ amode		dw	18, 9 dup(?)
 oops		db	13,10
 		db	"Couldn't find the 8514/A interface"
 		db	13,10
-		db	"(Maybe you forgot to load HDIDLOAD)"
+		db	"(Maybe you forgot to load HDILOAD)"
 		db	13,10
 		db	"$"
 
