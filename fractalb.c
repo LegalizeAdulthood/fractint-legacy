@@ -6,9 +6,6 @@ fractal routines.
 --------------------------------------------------------------------   */
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <float.h>
 #include <limits.h>
 #include <string.h>
 #ifdef __TURBOC__
@@ -16,11 +13,12 @@ fractal routines.
 #elif !defined(__386BSD__)
 #include <malloc.h>
 #endif
-#include "fractint.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 #include "helpdefs.h"
 #include "fractype.h"
-#include "prototyp.h"
-#include "biginit.h"
+
 
 int bf_math = 0;
 

@@ -6,7 +6,7 @@
 
 # the following klooge lets us define an alternate link/def file for 
 # the new overlay structure available under MSC7
-
+#DEBUG = 1
 !ifdef C7
 DEFFILE  = fractint.def
 LINKFILE = fractint.lnk
@@ -26,12 +26,21 @@ all : fractint.exe
 # for Quick Assembler
 #       $(AS) $*.asm
 
+!ifndef DEBUG
 .c.obj:
 	  $(CC) /AM /W4 /FPi /c $(OptT) $*.c >> f_errs.txt
 
 Optsize = $(CC) /AM /W4 /FPi /c $(OptS) $*.c >> f_errs.txt
 
 Optnoalias = $(CC) /AM /W4 /FPi /c $(OptN) $*.c >> f_errs.txt
+!else
+.c.obj:
+	  $(CC) /Zi /AM /W4 /FPi /c $(OptT) $*.c >> f_errs.txt
+
+Optsize = $(CC) /Zi /AM /W4 /FPi /c $(OptS) $*.c >> f_errs.txt
+
+Optnoalias = $(CC) /Zi /AM /W4 /FPi /c /DTESTFP $(OptN) $*.c >> f_errs.txt
+!endif
 
 lorenz.obj : lorenz.c fractint.h fractype.h
 
@@ -69,7 +78,11 @@ parserfp.obj : parserfp.c fractint.h mpmath.h
 
 parsera.obj: parsera.asm
 # for MASM
+!ifndef DEBUG
 	$(AS) /e parsera;
+!else
+	$(AS) /e /Zi parsera;
+!endif
 # for QuickAssembler
 #   $(AS) /FPi parsera.asm
 
@@ -235,7 +248,12 @@ fractint.exe : fractint.obj help.obj loadfile.obj encoder.obj gifview.obj \
      fractalb.obj ant.obj frasetup.obj framain2.obj \
      lsysf.obj lsysaf.obj \
      $(DEFFILE) $(LINKFILE)
+!ifndef DEBUG
 	$(LINKER) /ST:9000 /SE:210 /PACKC /F /NOE @$(LINKFILE) > foo
+!else
+	$(LINKER) /CO /ST:6000 /SE:210 /PACKC /F /NOE @$(LINKFILE) > foo
+#	$(LINKER) /ST:6000 /SE:210 /PACKC /F /NOE @$(LINKFILE) > foo
+!endif
 !ifdef C7
         @echo (Any overlay_thunks (L4059) warnings from the linker are harmless) >> foo
 !endif

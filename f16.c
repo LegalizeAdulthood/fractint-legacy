@@ -22,11 +22,12 @@
    The part which wrote 16 bit .tga files has already been deleted.
 */
 
-#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "targa_lc.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "targa_lc.h"
 
 #ifdef XFRACT
 char rlebuf[258];    /* RLE-state variables */

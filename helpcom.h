@@ -10,7 +10,6 @@
 #ifndef HELPCOM_H
 #define HELPCOM_H
 
-#include "port.h"
 
 /*
  * help file signature

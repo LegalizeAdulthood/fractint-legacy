@@ -202,15 +202,16 @@
 #define CHIP                   166
 #define QUADRUPTWO             167
 #define THREEPLY               168
-#define VOLTERRALOTKA          169
+#define VL                     169
+#define ESCHER                 170
 
 /* demonstration Mandelbrot and Julia fractals
 
-#define DEMOWALK            166
-#define DEMOMANDEL          167
-#define DEMOJULIA           168
-#define DEMOMANDELFP        169
-#define DEMOJULIAFP         170
+#define DEMOWALK            171
+#define DEMOMANDEL          172
+#define DEMOJULIA           173
+#define DEMOMANDELFP        174
+#define DEMOJULIAFP         175
 
 */
 

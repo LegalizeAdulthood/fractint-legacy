@@ -36,11 +36,14 @@ echo         4 images:  Caverns_Of_Mongue, Mandel-virus, NutcrackerMonsters,
 echo                    Sliced-Tomato.
 echo     5 - Images for Fractint 19.4
 echo         4 images:  Graphs, G-3-03-M, Spirals, Jdsg410.
-echo     6 - New Images for Fractint 19.5
+echo     6 - Images for Fractint 19.5
 echo         2 images:  Ptcmjn01, Ptc4m01.
-echo     7 - Exit
-choice /n /c:1234567 "                   Your selection: "
-if errorlevel 7 goto END
+echo     7 - New Images for Fractint 19.6
+echo         3 images:  EJ_01 Oortcld SG8-21-12
+echo     8 - Exit
+choice /n /c:12345678 "                   Your selection: "
+if errorlevel 8 goto END
+if errorlevel 7 goto 19_6_1
 if errorlevel 6 goto 19_5_1
 if errorlevel 5 goto 19_4_1
 if errorlevel 4 goto 19_3_4
@@ -65,6 +68,9 @@ set pars=5
 goto select_video
 :19_5_1
 set pars=6
+goto select_video
+:19_6_1
+set pars=7
 
 rem                           +--------------+
 rem                           ! Select video !
@@ -78,7 +84,7 @@ if %pars%==3 echo                Total time: 10 minutes at 1024x768 on a P166
 if %pars%==4 echo                Total time: 24 minutes at 1024x768 on a P166
 if %pars%==5 echo                Total time: 12 minutes at 1024x768 on a P166
 if %pars%==6 echo                Total time: 11 minutes at 1024x768 on a P166
-
+if %pars%==7 echo                Total time: 14 minutes at 1024x768 on a P166
 echo.
 echo     Use this table to get an idea of the calculation time on your computer:
 echo +---------+----------+----------+----------+----------+-----------+-----------+
@@ -275,7 +281,7 @@ rem                         ! Images for 19.5 !
 rem                         +-----------------+
 
 :19_5_1_g
-if not %pars%==6 goto end
+if not %pars%==6 goto 19_6_1_g
 IF EXIST %gifdir%PTCMJN01.GIF GOTO 26
 FRACTINT video=%video% @FRACT19.PAR/PTCMJN01 BATCH=YES SAVENAME=PTCMJN01
 IF ERRORLEVEL 2 GOTO ABORT
@@ -284,6 +290,26 @@ IF EXIST %gifdir%PTC4M01.GIF GOTO 27
 FRACTINT video=%video% @FRACT19.PAR/PTC4M01 BATCH=YES SAVENAME=PTC4M01
 IF ERRORLEVEL 2 GOTO ABORT
 :27
+goto SUCCESS
+
+rem                         +-----------------+
+rem                         ! Images for 19.6 !
+rem                         +-----------------+
+
+:19_6_1_g
+if not %pars%==7 goto end
+IF EXIST %gifdir%EJ_01.GIF GOTO 28
+FRACTINT video=%video% @FRACT19.PAR/EJ_01 BATCH=YES SAVENAME=EJ_01
+IF ERRORLEVEL 2 GOTO ABORT
+:28
+IF EXIST %gifdir%oortcld.GIF GOTO 29
+FRACTINT video=%video% @FRACT19.PAR/oortcld BATCH=YES SAVENAME=oortcld
+IF ERRORLEVEL 2 GOTO ABORT
+:29
+IF EXIST %gifdir%sg82112.GIF GOTO 30
+FRACTINT video=%video% @FRACT19.PAR/sg8-21-12 BATCH=YES SAVENAME=sg82112
+IF ERRORLEVEL 2 GOTO ABORT
+:30
 goto SUCCESS
 
 rem                              +------+

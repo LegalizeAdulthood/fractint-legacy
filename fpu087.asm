@@ -84,7 +84,7 @@ extrn compiled_by_turboc:word
 
 extrn cpu:WORD
 extrn overflow:word
-extrn save_release:word
+;extrn save_release:word
 PUBLIC TrigLimit
 
 ; CAE 6Nov92 made these public for PARSERA.ASM */
@@ -196,9 +196,9 @@ LOCAL Status:WORD
    mov   bx, z
    fstp  QWORD PTR [bx]
    fstp  QWORD PTR [bx+8]
-   mov   ax,save_release
-   cmp   ax,1920
-   jle   ExitDiv       ; before 19.20 overflow wasn't set
+;   mov   ax,save_release
+;   cmp   ax,1920
+;   jle   ExitDiv       ; before 19.20 overflow wasn't set
    mov   overflow, 1
    jmp   ExitDiv
 

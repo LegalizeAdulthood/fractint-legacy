@@ -1,12 +1,14 @@
+
+#ifndef PROTOTYP_H
+#define PROTOTYP_H
+
 /* includes needed to define the prototypes */
 
-#include <stdio.h>
 #include "mpmath.h"
+#include "big.h"
 #include "fractint.h"
-#ifndef PORT_H
-#include "port.h"
-#endif
 #include "helpcom.h"
+#include "externs.h"
 
 /*  calcmand -- assembler file prototypes */
 
@@ -86,9 +88,10 @@ extern  int    cdecl far_strlen( char far *);
 extern  int    cdecl far_strnicmp(char far *, char far *,int);
 extern  void   cdecl far_strcpy( char far *, char far *);
 extern  int    cdecl far_strcmp( char far *, char far *);
+extern  int    cdecl far_strcmp( char far *, char far *);
 extern  int    cdecl far_stricmp(char far *, char far *);
 extern  void   cdecl far_strcat( char far *, char far *);
-extern  void   cdecl far_memset( VOIDFARPTR , int      , int);
+extern  void   cdecl far_memset( VOIDFARPTR , int      , unsigned);
 extern  void   cdecl far_memcpy( VOIDFARPTR , VOIDFARPTR , int);
 extern  int    cdecl far_memcmp( VOIDFARPTR , VOIDFARPTR , int);
 extern  void   cdecl far_memicmp(VOIDFARPTR , VOIDFARPTR , int);
@@ -311,7 +314,7 @@ extern VOIDPTR mem_alloc(unsigned size);
 void putrow(int x, int y, int width, char *buff);
 void getrow(int x, int y, int width, char *buff);
 void mem_init(VOIDPTR block, unsigned size);
-void hline(int x, int y, int width, int color);
+/* void hline(int x, int y, int width, int color); */
 int Cursor_WaitKey(void);
 void Cursor_CheckBlink(void);
 #ifdef XFRACT
@@ -467,7 +470,9 @@ extern int MarksMandelPwrFractal(void);
 extern int TimsErrorfpFractal(void);
 extern int TimsErrorFractal(void);
 extern int CirclefpFractal(void);
-extern int VLFractal(void);
+extern int VLfpFractal(void);
+extern int VLSetup(void);
+extern int EscherfpFractal(void);
 extern int long_julia_per_pixel(void);
 extern int long_richard8_per_pixel(void);
 extern int long_mandel_per_pixel(void);
@@ -602,7 +607,7 @@ extern int sound_line(BYTE *,int );
 extern int sound_line(unsigned char *pixels,int linelen);
 #ifndef XFRACT
 extern int timer(int,int (*subrtn)(),...);
-extern int _cdecl matherr(struct exception *);
+extern int _cdecl _matherr(struct exception *);
 #else
 extern int timer();
 extern int XZoomWaiting;
@@ -776,9 +781,9 @@ extern void showtrig(char *);
 extern int set_trig_array(int ,char *);
 extern void set_trig_pointers(int );
 extern int tab_display(void);
-extern int endswithslash(char *);
+extern int endswithslash(char far *);
 extern int ifsload(void);
-extern int find_file_item(char *,char *,FILE **);
+extern int find_file_item(char *,char *,FILE **, int);
 extern int file_gets(char *,int ,FILE *);
 extern void roundfloatd(double *);
 extern void fix_inversion(double *);
@@ -993,18 +998,20 @@ extern int whichfn(char *,int );
 extern int CvtStk(void);
 #ifndef XFRACT
 extern void (far *isfunct(char *,int ))(void );
+extern int fFormula(void );
 #else
 extern void (far *isfunct(char *,int ))();
 #endif
 extern void RecSortPrec(void );
 extern int Formula(void );
+extern int BadFormula(void );
 extern int form_per_pixel(void );
-extern char *FindFormula(char *);
 extern int RunForm(char *);
 extern int fpFormulaSetup(void );
 extern int intFormulaSetup(void );
 extern void init_misc(void);
 extern void free_workarea(void);
+extern int fill_if_group(int endif_index, JUMP_PTRS_ST *jump_data);
 
 /*  plot3d -- C file prototypes */
 
@@ -1086,7 +1093,7 @@ extern int strncasecmp(char far *,char far *,int );
 extern int main_menu(int );
 extern int input_field(int ,int ,char *,int ,int ,int ,int (*)(int));
 extern int field_prompt(int ,char far *,char far *,char *,int ,int (*)(int));
-extern int thinking(int ,char *);
+extern int thinking(int ,char far *);
 extern void clear_screen(void );
 extern int savegraphics(void);
 extern int restoregraphics(void);
@@ -1219,5 +1226,4 @@ extern _BFCMPLX *ComplexPower_bf(_BFCMPLX *t, _BFCMPLX *xx, _BFCMPLX *yy);
 /*#define DEBUG */
 #endif
 
-#include "externs.h"
-
+#endif

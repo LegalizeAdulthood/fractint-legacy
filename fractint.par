@@ -364,6 +364,7 @@ SWT-030            { ; lambdafn, COSH                       Scott Taylor
   inside=255 potential=255/455/0 colors=@neon.map
   }
 
+
 EvilFrog          { ; Kermit with rabies                   Wesley Loewer
   reset type=frothybasin passes=1
   corners=0.1987794025371462/0.1987794025306378/-1.287290394040766/-1.2872\
@@ -371,6 +372,8 @@ EvilFrog          { ; Kermit with rabies                   Wesley Loewer
   maxiter=100
   colors=000z00<82>M00z0z<40>M0M0z0<40>0M000z<40>00Mzz0<40>MM0000000000
   }
+
+
 Horsetail          { ; MIIM Julia                           Michael Snyder
                      ; Reminds me of a horsetail fern
                      ; Give it your highest 16-color resolution.
@@ -394,3 +397,4 @@ SeaShell           { ; MIIM Julia                           Michael Snyder
   corners=0.839251/-0.839269/-1.119046/1.119006/-0.839269/1.119006
   params=0.27334/0.00742/5/1024
   }
+

@@ -2,17 +2,21 @@
         Various routines that prompt for things.
 */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #ifndef XFRACT
 #include <io.h>
-#include <dos.h>
 #elif !defined(__386BSD__)
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/dir.h>
+#ifndef __SVR4
+# include <sys/dir.h>
+#else
+# include <dirent.h>
+#ifndef DIRENT
+#define DIRENT
+#endif
+#endif
 #endif
 #ifdef __TURBOC__
 #include <alloc.h>
@@ -25,10 +29,16 @@
 #define getwd(a) getcwd(a,MAXPATHLEN)
 #endif
 
-#include "fractint.h"
+#ifdef __SVR4
+#include <sys/param.h>
+#define getwd(a) getcwd(a,MAXPATHLEN)
+#endif
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 #include "fractype.h"
 #include "helpdefs.h"
-#include "prototyp.h"
 
 /* Routines in this module      */
 
@@ -80,7 +90,7 @@ char commandmask[13] = {"*.par"};
    }
 int get_toggles()
 {
-   static FCODE o_hdg[]={"        Basic Options\n\
+   static FCODE o_hdg[]={"Basic Options\n\
 (not all combinations make sense)"};
    char hdg[sizeof(o_hdg)];
    char far *choices[20];
@@ -96,7 +106,7 @@ int get_toggles()
    int old_biomorph,old_decomp;
    int old_fillcolor;
    int old_stoppass;
-   static char *calcmodes[] ={"1","2","3","g","b","t","g1","g2","g3","g4","g5","g6"};
+   static char *calcmodes[] ={"1","2","3","g","g1","g2","g3","g4","g5","g6","b","t"};
    static char *soundmodes[5]={s_yes,s_no,s_x,s_y,s_z};
 
    far_strcpy(hdg,o_hdg);
@@ -113,13 +123,13 @@ int get_toggles()
                           : (usr_stdcalcmode == '2') ? 1
                           : (usr_stdcalcmode == '3') ? 2
                           : (usr_stdcalcmode == 'g' && stoppass == 0) ? 3
-                          : (usr_stdcalcmode == 'b') ? 4
-                          : (usr_stdcalcmode == 't') ? 5
-                          : (usr_stdcalcmode == 'g' && stoppass == 1) ? 6
-                          : (usr_stdcalcmode == 'g' && stoppass == 2) ? 7
-                          : (usr_stdcalcmode == 'g' && stoppass == 3) ? 8
-                          : (usr_stdcalcmode == 'g' && stoppass == 4) ? 9
-                          : (usr_stdcalcmode == 'g' && stoppass == 5) ? 10 : 11;
+                          : (usr_stdcalcmode == 'g' && stoppass == 1) ? 4
+                          : (usr_stdcalcmode == 'g' && stoppass == 2) ? 5
+                          : (usr_stdcalcmode == 'g' && stoppass == 3) ? 6
+                          : (usr_stdcalcmode == 'g' && stoppass == 4) ? 7
+                          : (usr_stdcalcmode == 'g' && stoppass == 5) ? 8
+                          : (usr_stdcalcmode == 'g' && stoppass == 6) ? 9
+                          : (usr_stdcalcmode == 'b') ? 10 : 11;
    old_usr_stdcalcmode = usr_stdcalcmode;
    old_stoppass = stoppass;
 
@@ -326,7 +336,7 @@ int get_toggles()
 
 int get_toggles2()
 {
-   static FCODE o_hdg[]={"       Extended Options\n\
+   static FCODE o_hdg[]={"Extended Options\n\
 (not all combinations make sense)"};
    char hdg[sizeof(o_hdg)];
    char far *ptr;
@@ -778,7 +788,7 @@ int get_rds_params(void) {
          uvalues[k++].type = '*';
          for(i=0;i<sizeof(rds6);i++)
             rds6[i] = ' ';
-         if((p = strrchr(stereomapname,'\\'))==NULL ||
+         if((p = strrchr(stereomapname,SLASHC))==NULL ||
                  strlen(stereomapname) < sizeof(rds6)-2)
             p = strlwr(stereomapname);
          else
@@ -1003,8 +1013,8 @@ int  fr_findnext()              /* Find next file (or subdir) meeting above path
              splitpath(dirEntry->d_name,NULL,NULL,thisname,thisext);
              if ((searchname[0]=='*' || strcmp(searchname,thisname)==0) &&
                      (searchext[0]=='*' || strcmp(searchext,thisext)==0)) {
-                 strncpy(DTA.filename,dirEntry->d_name,20);
-                 DTA.filename[20]=='\0';
+                 strncpy(DTA.filename,dirEntry->d_name,13);
+                 DTA.filename[12]=='\0';
                  strcpy(tmpname,searchdir);
                  strcat(tmpname,"/");
                  strcat(tmpname,dirEntry->d_name);
@@ -1082,9 +1092,10 @@ int getafilename(char *hdg,char *template,char *flname)
    static FCODE o_instr[]={"Press F6 for default directory, F4 to toggle sort "};
    char far *instr;
    int masklen;
-   char filename[13];
+   char filename[FILE_MAX_PATH]; /* 13 is big enough for Fractint, but not Xfractint */
    char speedstr[81];
    char tmpmask[FILE_MAX_PATH];   /* used to locate next file in list */
+   char old_flname[FILE_MAX_PATH];
    static int numtemplates = 1;
    int i,j;
    int out;
@@ -1108,30 +1119,20 @@ int getafilename(char *hdg,char *template,char *flname)
    int options = 8;
 
    rds = (stereomapname == flname)?1:0;
-#if 0
-   if(rds)
-   {
-      setclear();
-      sprintf(speedstr,"Scanning for %dx%d file names...",xdots,ydots);
-      putstringcenter(0,0,80,C_GENERAL_INPUT,speedstr);
-   }
-#endif
+
    /* steal existing array for "choices" */
    choices = (struct CHOICE far *far*)MK_FP(extraseg,0);
    choices[0] = (struct CHOICE far *)(choices + MAXNUMFILES+1);
    attributes = (int far *)(choices[0] + MAXNUMFILES+1);
    instr = (char far *)(attributes + MAXNUMFILES +1);
-#if 0 /* not needed if no farmemalloc */
-   if(choices[0] == NULL)
-      stopmsg(0, "farmemalloc failed in getafilename");
-#endif
    attributes[0] = 1;
    for(i=1;i<MAXNUMFILES+1;i++)
    {
       choices[i] = choices[i-1] + 1;
       attributes[i] = 1;
    }
-
+   /* save filename */
+   strcpy(old_flname,flname);
 restart:  /* return here if template or directory changes */
 
    tmpmask[0] = 0;
@@ -1293,6 +1294,8 @@ retry_dir:
    }
    if (i < 0)
    {
+      /* restore filename */
+      strcpy(flname,old_flname);
       return(-1);
    }
    if(speedstr[0] == 0 || speedstate == MATCHING)

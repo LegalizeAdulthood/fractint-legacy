@@ -3,15 +3,15 @@
 /* Fractint to be read from a file.                                    */
 /***********************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
 #include <time.h>
 #include <string.h>
 #ifndef XFRACT
 #include <conio.h>
 #endif
-#include "fractint.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 
 static void sleep_secs(int);
@@ -19,30 +19,60 @@ static int  showtempmsg_txt(int,int,int,int,char *);
 static void message(int secs, char far *buf);
 static void slideshowerr(char far *msg);
 static int  get_scancode(char *mn);
-static char far *get_mnemonic(int code);
+static void get_mnemonic(int code, char *mnemonic);
+
+static FCODE s_ENTER     [] = "ENTER"     ;
+static FCODE s_INSERT    [] = "INSERT"    ;
+static FCODE s_DELETE    [] = "DELETE"    ;
+static FCODE s_ESC       [] = "ESC"       ;
+static FCODE s_TAB       [] = "TAB"       ;
+static FCODE s_PAGEUP    [] = "PAGEUP"    ;
+static FCODE s_PAGEDOWN  [] = "PAGEDOWN"  ;
+static FCODE s_HOME      [] = "HOME"      ;
+static FCODE s_END       [] = "END"       ;
+static FCODE s_LEFT      [] = "LEFT"      ;
+static FCODE s_RIGHT     [] = "RIGHT"     ;
+static FCODE s_UP        [] = "UP"        ;
+static FCODE s_DOWN      [] = "DOWN"      ;
+static FCODE s_F1        [] = "F1"        ;
+static FCODE s_CTRL_RIGHT[] = "CTRL_RIGHT";
+static FCODE s_CTRL_LEFT [] = "CTRL_LEFT" ;
+static FCODE s_CTRL_DOWN [] = "CTRL_DOWN" ;
+static FCODE s_CTRL_UP   [] = "CTRL_UP"   ;
+static FCODE s_CTRL_END  [] = "CTRL_END"  ;
+static FCODE s_CTRL_HOME [] = "CTRL_HOME" ;
+
+#define MAX_MNEMONIC    20   /* max size of any mnemonic string */
 
 struct scancodes
 {
    int code;
-   char far *mnemonic;
+   FCODE *mnemonic;
 };
+
 static struct scancodes far scancodes[] =
 {
-   {  ENTER,      "ENTER"       },
-   {  INSERT,     "INSERT"      },
-   {  DELETE,     "DELETE"      },
-   {  ESC,        "ESC"         },
-   {  TAB,        "TAB"         },
-   {  PAGE_UP,    "PAGEUP"      },
-   {  PAGE_DOWN,  "PAGEDOWN"    },
-   {  HOME,       "HOME"        },
-   {  END,        "END"         },
-   {  LEFT_ARROW, "LEFT"        },
-   {  RIGHT_ARROW,"RIGHT"       },
-   {  UP_ARROW,   "UP"          },
-   {  DOWN_ARROW, "DOWN"        },
-   {  F1,         "F1"          },
-   {  -1,         NULL          }
+   {  ENTER,         s_ENTER     },
+   {  INSERT,        s_INSERT    },
+   {  DELETE,        s_DELETE    },
+   {  ESC,           s_ESC       },
+   {  TAB,           s_TAB       },
+   {  PAGE_UP,       s_PAGEUP    },
+   {  PAGE_DOWN,     s_PAGEDOWN  },
+   {  HOME,          s_HOME      },
+   {  END,           s_END       },
+   {  LEFT_ARROW,    s_LEFT      },
+   {  RIGHT_ARROW,   s_RIGHT     },
+   {  UP_ARROW,      s_UP        },
+   {  DOWN_ARROW,    s_DOWN      },
+   {  F1,            s_F1        },
+   {  RIGHT_ARROW_2, s_CTRL_RIGHT},
+   {  LEFT_ARROW_2,  s_CTRL_LEFT },
+   {  DOWN_ARROW_2,  s_CTRL_DOWN },
+   {  UP_ARROW_2,    s_CTRL_UP   },
+   {  CTL_END,       s_CTRL_END  },
+   {  CTL_HOME,      s_CTRL_HOME },
+   {  -1,             NULL       }
 };
 #define stop sizeof(scancodes)/sizeof(struct scancodes)-1
 
@@ -56,14 +86,17 @@ static int get_scancode(char *mn)
    return(scancodes[i].code);
 }
 
-static char far *get_mnemonic(int code)
+static void get_mnemonic(int code,char *mnemonic)
 {
    int i;
    i = 0;
+   *mnemonic = 0;
    for(i=0;i< stop;i++)
       if(code == scancodes[i].code)
+      {
+         far_strcpy(mnemonic,scancodes[i].mnemonic);
          break;
-   return(scancodes[i].mnemonic);
+      }   
 }
 #undef stop
 
@@ -307,7 +340,7 @@ void stopslideshow()
 
 void recordshw(int key)
 {
-   char far *mn;
+   char mn[MAX_MNEMONIC];
    float dt;
    dt = (float)ticks;      /* save time of last call */
    ticks=clock_ticks();  /* current time */
@@ -341,12 +374,9 @@ void recordshw(int key)
          fprintf(fpss,"\"\n");
          quotes=0;
       }
-      if((mn=get_mnemonic(key)) != NULL)
-#ifndef XFRACT
-          fprintf(fpss,"%Fs",mn);
-#else
+      get_mnemonic(key,mn);
+      if(*mn)
           fprintf(fpss,"%s",mn);
-#endif
       else if (check_vidmode_key(0,key) >= 0)
          {
             char buf[10];

@@ -6,15 +6,12 @@ but is a customized version specific to Fractint.  The biggest difference
 is in the allocations of memory for the big numbers.
 */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <malloc.h>
-#include <math.h>
-#include "fractint.h"
-#include "fractype.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
-#include "big.h"
+#include "fractype.h"
 
 /* appears to me that avoiding the start of extraseg is unnecessary. If
    correct, later we can eliminate ENDVID here. */
@@ -123,9 +120,9 @@ static void init_bf_2(void)
     calc_lengths();
 
     /* allocate all the memory at once within the same segment (DOS) */
-#ifdef BIG_FAR /* for testing */
+#if defined(BIG_FAR) || defined(BIG_ANSI_C)
     bnroot = (bf_t)MK_FP(extraseg,ENDVID); /* ENDVID is to avoid videotable */
-#else /* BASED, NEAR, or ANSI_C */
+#else /* BASED or NEAR  */
     bnroot = (bf_t)ENDVID;  /* ENDVID is to avoid videotable */
 #endif
 #ifdef BIG_BASED
@@ -211,6 +208,9 @@ static void init_bf_2(void)
     bftmp      = bnroot+ptr; ptr += rbflength+2;
     }
     bf10tmp    = bnroot+ptr; ptr += bfdecimals+4;
+
+    /* ptr needs to be 16-bit aligned on some systems */
+    ptr = (ptr+1)&~1;
 
     stack_ptr  = bnroot + ptr;
     startstack = ptr;

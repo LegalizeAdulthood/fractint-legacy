@@ -11,6 +11,8 @@
  *
  *    TIW - Tim Wegner
  *
+ *    AMC - Andrew McCarthy [andrewmc@netsoc.ucd.ie]
+ *
  * Revision History:
  *
  *   10-22-90 EAN     Initial release.
@@ -98,30 +100,32 @@
  *                      X, Y = exclusion modes, F = freesyle mode, T = stripe
  *                      mode is waiting for #.
  *
+ *   03-21-97 AMC     Made '"' work the same as '@' and made 'œ' work like
+ *  (seems to work)     '#' for those of us on this side of the Atlantic!
+ *                    The original palette is now stored in the other slots
+ *                      on startup, so you can 'undo all' if you haven't
+ *                      overwritten them already. Undo could do this, but
+ *                      this is handy.
  */
 
 #ifdef DEBUG_UNDO
 #include "mdisp.h"   /* EAN 930211 *** Debug Only *** */
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #ifndef XFRACT
 #include <stdarg.h>
-#include <dos.h>     /* for FP_SEG & FP_OFF */
 #else
 #include <varargs.h>
 #endif
-#include <math.h>
 
 #ifdef __TURBOC__
 #   include <mem.h>   /* to get mem...() declarations */
 #endif
 
-#include "fractint.h" /* for overlay stuff */
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
-
 
 /*
  * misc. #defines
@@ -1803,6 +1807,7 @@ struct  _PalTable
 
    PALENTRY far *save_pal[8];
 
+
    PALENTRY      fs_color;
    int           top,bottom; /* top and bottom colours of freestyle band */
    int           bandwidth; /*size of freestyle colour band */
@@ -2796,6 +2801,8 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
          }
 
       case '@':    /* swap g<->b */
+      case '"':    /* for Europeans!  AMC */
+      case 151:    /* for French keyboards */
          {
          int a = this->curr[0],
              b = this->curr[1];
@@ -2819,6 +2826,8 @@ static void PalTable__other_key(int key, RGBEditor *rgb, VOIDPTR info)
          }
 
       case '#':    /* swap r<->b */
+      case 156:    /* AMC: This seems to work instead of the pound sign */
+      case '$':    /* AMC: If all else fails! (I'd rather not use this) */
          {
          int a = this->curr[0],
              b = this->curr[1];
@@ -3411,7 +3420,7 @@ static void PalTable_Destroy(PalTable *this)
 
 static void PalTable_Process(PalTable *this)
    {
-   int ctr;
+   int ctr,i;
 
    getpalrange(0, colors, this->pal);
 
@@ -3454,6 +3463,22 @@ static void PalTable_Process(PalTable *this)
    PalTable__SetCurr(this, this->active,          PalTable__GetCursorColor(this));
    PalTable__SetCurr(this, (this->active==1)?0:1, PalTable__GetCursorColor(this));
    Cursor_Show();
+
+   /* Store original palette in slots (AMC) */
+   for(i=0;i<8;i++)
+      {
+      if ( this->save_pal[i] != NULL )
+         {
+         struct SREGS seg;
+
+         segread(&seg);
+         movedata(seg.ds, (USEGTYPE)(this->pal), FP_SEG(this->save_pal[i]),
+            FP_OFF(this->save_pal[i]), 256*3);
+         }
+      else
+         buzzer(3); /* Short on memory! */
+      }
+   /* End of AMC's new section */
 
    this->done = FALSE;
 

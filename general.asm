@@ -1685,7 +1685,7 @@ normalize endp
 ;       far_stricmp( char far *, char far *);
 ;       far_strnicmp(char far *, char far *, int);
 ;       far_strcat ( char far *, char far *);
-;       far_memset ( char far *, char far,   int);
+;       far_memset ( char far *, int,        long);
 ;       far_memcpy ( char far *, char far *, int);
 ;       far_memcmp ( char far *, char far *, int);
 ;       far_memicmp( char far *, char far *, int);
@@ -1699,9 +1699,9 @@ normalize endp
 
 xxxfar_memlen   proc    near    ; return string length - INCLUDING the 0
         mov     ax,0
-        mov     cx,1024
+        mov     cx,65535
         repne   scasb
-        sub     cx,1024
+        sub     cx,65535
         neg     cx
         ret
 xxxfar_memlen   endp

@@ -77,18 +77,15 @@
 
  */
 
-#include <stdlib.h>
 
 #ifndef XFRACT
 #include <bios.h>
-#include <dos.h>
 #include <io.h>
 #endif
 
 #include <fcntl.h>
 #include <sys/types.h>
 #include <errno.h>
-#include <stdio.h>      /*** for vsprintf prototype ***/
 
 #ifndef XFRACT
 #include <conio.h>
@@ -98,11 +95,11 @@
 #endif
 
 #include <string.h>
-#include <float.h>      /* for pow() */
-#include <math.h>       /*  "    "   */
-#include "fractint.h"
-#include "fractype.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "fractype.h"
 
 /* macros for near-space-saving purposes */
 /* CAE 9211 changed these for BC++ */
@@ -565,8 +562,9 @@ Print_Screen (void)
                 gamma_val = 10.0 / i;
                 gammadiv = pow(255,gamma_val) / 255;
                 for (i = 0; i < 256; ++i) { /* build gamma conversion table */
+                    static FCODE msg[]={"Calculating color translation"};
                     if ((i & 15) == 15)
-                        thinking(1,"Calculating color translation");
+                        thinking(1,msg);
                     convert[i] = (BYTE)((pow((double)i,gamma_val) / gammadiv) + 0.5);
                     }
                 for (i = 0; i < 330; ++i) {

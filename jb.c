@@ -1,9 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include "fractint.h"
-#include "mpmath.h"
-#include "helpdefs.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "helpdefs.h"
 #include "fractype.h"
 
 /* these need to be accessed elsewhere for saving data */

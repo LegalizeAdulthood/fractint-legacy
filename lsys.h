@@ -3,6 +3,10 @@
  *      Nicholas Wilt, 6/26/93.
  */
 
+#ifndef LSYS_H
+#define LSYS_H
+
+
 #define size    ssize
 /* Needed for use of asm -- helps decide which pointer to function
  * to put into the struct lsys_cmds.
@@ -81,3 +85,4 @@ extern struct lsys_cmd far *LSysFSizeTransform(char far *s, struct lsys_turtlest
 extern struct lsys_cmd far *LSysFDrawTransform(char far *s, struct lsys_turtlestatef *ts);
 extern void _fastcall lsysf_dosincos(void);
 
+#endif

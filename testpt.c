@@ -26,9 +26,9 @@ extern int  getakey(void);
 
 int teststart()     /* this routine is called just before the fractal starts */
 {
+#ifndef XFRACT
    extern int debugflag;
    extern int xdots, ydots, colors;
-
    /*
         true-color demo: if debugging flag is 500 and in 256-color mode
         write out a couple of truecolor patterns, read them in and
@@ -71,7 +71,7 @@ int teststart()     /* this routine is called just before the fractal starts */
          }
       }
    }
-
+#endif
    return( 0 );
 }
 

@@ -177,7 +177,8 @@ SUMMARY OF FRACTAL TYPES
 {=HT_DIFFUS diffusion}
 ~Label=HF_DIFFUS
     Diffusion Limited Aggregation.  Randomly moving points
-    accumulate.  Two parameters: border width (default 10), type.
+    accumulate.  Three parameters: border width (default 10), type,
+    and color change rate.
 
 {=HT_DYNAM dynamic}
 ~Label=HF_DYNAM
@@ -817,6 +818,28 @@ SUMMARY OF FRACTAL TYPES
       x = (2 - One) * y;
       z(n+1) = x + i*y
     No parameters.
+
+{=HT_VL volterra-lotka}
+~Label=HF_VL
+    Volterra-Lotka fractal from The Beauty of Fractals
+      x(0) = xpixel, y(0) = ypixel;
+      dx/dt =  x - xy = f(x,y)
+      dy/dt = -y + xy = g(x,y)
+      x(new) = x + h/2 * [ f(x,y) + f[x + pf(x,y), y + pg(x,y)] ]
+      y(new) = y + h/2 * [ g(x,y) + g[x + pf(x,y), y + pg(x,y)] ]
+    Two parameters: h and p
+    Recommended: zmag or bof60 inside coloring options
+
+{=HT_ESCHER escher_julia}
+~Label=HF_ESCHER
+    Escher-like tiling of Julia sets from The Science of Fractal Images
+      z(0) = pixel
+      z(n+1) = z(n)^2 + (0, 0i)
+    The target set is a second, scaled, Julia set:
+      T = [ z: | (z * 15.0)^2 + c | < BAILOUT ]
+    Two parameters: real and imaginary parts of c
+    Iteration count and bailout size apply to both Julia sets.
+
 ~CompressSpaces+
 ;
 ;
@@ -881,6 +904,7 @@ Select a fractal type:
 { Diffusion Limited Aggregation }
 { Magnetic Fractals }
 { L-Systems }
+{ Escher-Like Julia Sets }
 { Lyapunov Fractals }
 { fn||fn Fractals }
 { Halley }
@@ -2430,6 +2454,26 @@ complex.  If you declare 'v = 2' then the variable 'v' is treated as a
 complex with an imaginary value of zero.
 
 ~OnlineFF
+Sequential processing of the formula can be altered with the flow control\
+instructions
+
+    IF(expr1)\
+      statements\
+    ELSEIF(expr2)\
+       statements\
+    .\
+    .\
+    ELSEIF(exprn)\
+       statements\
+    ELSE\
+      statements\
+    ENDIF\
+
+where the expressions are evaluated and the statements executed are those\
+immediately following the first "true" expression (the real part of the\
+complex variable being nonzero). Nesting of IF..ENDIF blocks is permitted.\
+
+~OnlineFF
 ~Format-
           Predefined Variables (x, y)
           --------------------------------------------
@@ -2682,25 +2726,49 @@ The screen dimensions provide the reference frame.
 ~Topic=Diffusion Limited Aggregation, Label=HT_DIFFUS
 (type=diffusion)
 
-This type begins with a single point in the center of the screen.
-Subsequent points move around randomly until coming into contact with the
-first point, at which time their locations are fixed and they are colored
-randomly.  This process repeats until the fractals reaches the edge of the
-screen.  Use the show orbits function to see the points' random motion.
+Standard diffusion begins with a single point in the center of the
+screen.  Subsequent points move around randomly until coming into
+contact with a point already on the screen, at which time their
+locations are fixed and they are drawn.  This process repeats until
+the fractals reaches the edge of the screen.  Use the show orbits
+function to see the points' random motion.
 
-One unfortunate problem is that on a large screen, this process will tend
-to take eons.  To speed things up, the points are restricted to a box
-around the initial point.  The first and only parameter to diffusion
-contains the size of the border between the fractal and the edge of the
-box.  If you make this number small, the fractal will look more solid and
-will be generated more quickly.
+One unfortunate problem is that on a large screen, this process will
+tend to take eons.  To speed things up, the points are restricted to a box
+around the initial point.  The first parameter to diffusion contains the
+size of the border between the fractal and the edge of the box.  If you
+make this number small, the fractal will look more solid and will be
+generated more quickly.
 
-Diffusion was inspired by a Scientific American article a couple of years
-back which includes actual pictures of real physical phenomena that behave
-like this.
+The second parameter to diffusion changes the type of growth.  If
+you set it to 1, then the diffusion will start with a line along the
+bottom of the screen.  Points will appear above this line and the
+fractal will grow upward.  For this fractal, the points are
+restricted to a box which is as wide as the screen but whose
+distance from the fractal is given by the border size (the first
+parameter).  Initial points are released from a centered segment
+along the top of this box which has a width equal to twice the
+border size.
+
+If the second parameter is set to 2, then diffusion begins with a
+square box on the screen.  Points appear on a circle inside the box
+whose distance from the box is equal to the border size.  This
+fractal grows very slowly since the points are not restricted to a
+small box. 
+
+The third and last parameter for diffusion controls the color of the
+fractal.  If it is set to zero then points are colored randomly.
+Otherwise, it tells how often to shift the color of the points being
+deposited.  If you set it to 150, for example, then the color of the
+points will shift every 150 points leading to a radial color pattern
+if you are using the standards diffusion type.  
+
+Diffusion was inspired by a Scientific American article a couple of
+years back which includes actual pictures of real physical phenomena
+that behave like this.
 
 Thanks to Adrian Mariano for providing the diffusion code and
-documentation. Juan J. Buhler added the additional options.
+documentation. Juan J. Buhler added additional options.
 ;
 ;
 ~Topic=Lyapunov Fractals, Label=HT_LYAPUNOV
@@ -2831,6 +2899,134 @@ See {Finite Attractors} for more
 information on this aspect of Fractint internals.
 
 (Thanks to Kevin Allen for Magnetic type documentation above).
+;
+;
+~Topic=Volterra-Lotka Fractals, Label=HT_VL
+(type=volterra-lotka)
+
+In The Beauty of Fractals, these images are offered as an example of
+"how an apparently innocent system of differential equations gives rise
+to unimaginably rich and complex behavior after discretization." The
+Volterra-Lotka equations are a refinement of attempts to model predator-
+prey systems.
+
+If x represents the prey population and y represents the predator
+population, their relationship can be expressed as:
+
+~Format-
+  dx/dt =  Ax - Bxy = f(x,y)
+  dy/dt = -Cy + Dxy = g(x,y)
+~Format+
+
+According to Peitgen and Richter, "Hence, x grows at a constant rate in
+the absence of y, and y decays at a constant rate in the absence of x.
+The prey is consumed in proportion to y, and the predators expand in
+proportion to x." They proceed to "discretize" this system, by "mating"
+the Euler and Heun methods. For purposes of image computation, their
+formula (Equation 8.3 on page 125) can be interpreted as:
+
+~Format-
+  x(new) = x + h/2 * [ f(x,y) + f[x + pf(x,y), y + pg(x,y)] ]
+  y(new) = y + h/2 * [ g(x,y) + g[x + pf(x,y), y + pg(x,y)] ]
+~Format+
+
+This formula can be used to plot or connect single points, starting with
+arbitrary values of x(0) and y(0), to produce typical "strange attractor"
+images such as the ones commonly derived from the Henon or Lorenz formulae.
+But to produce an escape-time fractal, we iterate this formula for all
+(x, y) pairs that we can associate with pixels on our monitor screen. The
+standard window is:  0.0 < x < 6.0;  0.0 < y < 4.5. Since the "unimaginably
+rich and complex behavior" occurs with the points that do NOT escape, the
+inside coloring method assumes considerable importance.
+
+The parameters h and p can be selected between 0.0 and 1.0, and this
+determines the types of attractors that will result. Infinity and (1, 1)
+are predictable attractors. For certain combinations, an "invariant
+circle" (which is not strictly circular) and/or an orbit of period 9 also
+are attractive.
+
+The invariant circle and periodic orbit change with each (h, p) pair, and
+they must be determined empirically. That process would be thoroughly
+impractical to implement through any kind of fixed formula. This is
+especially true because even when these attractors are chosen, the
+threshold for determining when a point is "close enough" is quite arbitrary,
+and yet it affects the image considerably. The best compromise in the
+context of a generalized formula is to use either the "zmag" or "bof60"
+inside coloring options. See {Inside=bof60|bof61|zmag|period} for
+details. This formula performs best with a relatively high bailout value;
+the default is set at 256, rather than the standard default of 4.
+
+~Format-
+Reference: Peitgen, H.-O. and Richter, P.H. The Beauty of Fractals,
+  Springer-Verlag, 1986; Section 8, pp. 125-7.
+~Format+
+;
+;
+~Topic=Escher-Like Julia Sets, Label=HT_ESCHER
+(type=escher_julia)
+
+These unique variations on the Julia set theme, presented in The Science of
+Fractal Images, challenge us to expand our pre-conceived notions of how
+fractals should be iterated. We start with a very basic Julia formula:
+
+~Format-
+  z(n+1) = z(n)^2 + (0, 0i)
+~Format+
+
+The standard algorithm would test each iterated point to see if it "escapes to
+infinity". If its size or "modulus" (its distance from the origin) exceeds a 
+preselected {Bailout Test} value, it is outside the Julia set, and it is banished 
+to the world of multicolored level sets which color-cycle spectacularly. But another
+way of describing an escaped point is to say that it is "attracted" to infinity. We
+make this decision by calculating whether the point falls within the "target set"
+of all points closer to infinity than the boundary created by the bailout value. In
+this way, the "disk around infinity" is conceptually no different from the disks 
+around {Finite Attractors} such as those used for Newton fractals.
+
+In the above formula, with c = (0, 0i), this standard algorithm yields a rather
+unexciting circle. But along comes Peitgen to tell us that "since T [the target
+set] can essentially be anything, this method has tremendous artistic potential.
+For example, T could be a so-called p-norm disk ... or a scaled filled-in Julia
+set or something designed by hand. This method opens a simple [beware when he uses
+words like that] and systematic approach to Escher-like tilings."
+
+So, what we do is iterate the above formula, scale each iteration, and plug it into
+a second Julia formula. This formula has a value of c selected by the user. If the 
+point converges to this non-circular target set:
+
+~Format-
+  T = [ z: | (z * 15.0)^2 + c | < BAILOUT ]
+~Format+
+
+we color it in proportion to the overall iteration count. If not, it will be
+attracted to infinity and can be colored with the usual outside coloring 
+options. This formula uses a new Fractint programming feature which allows the use 
+of a customized coloring option for the points which converge to the target Julia 
+set, yet allows the other points to be handled by the standard fractal engine with 
+all of its options.
+
+With the proper palette and parameters for c, and using the {Inversion} option and
+a solid outside color from the {Color Parameters}, you can create a solar eclipse, 
+with the corona composed of Julia-shaped flames radiating from the sun's surface.
+
+If you question the relevance of these images to Escher, check out his Circle Limit
+series (especially III and IV). In his own words: "It is to be doubted whether there
+exist today many ... artists of any kind, to whom the desire has come to penetrate to
+the depths of infinity.... There is only one possible way of ... obtaining an
+"infinity" entirely enclosed within a logical boundary line.... The largest ... shapes
+are now found in the center and the limit of infinite number and infinite smallness
+is reached at the circumference.... Not one single component ever reaches the edge. 
+For beyond that there is "absolute nothingness." And yet this round world cannot exist
+without the emptiness around it, not simply because "within" presupposes "without", but
+also because it is out there in the "nothingness" that the center points of the arcs
+that go to build up the framework are fixed with such geometric exactitude."     
+    
+~Format-
+References: 
+  Ernst, B. The Magic Mirror of M. C. Escher, Barnes & Noble, 1994, pp. 102-11.
+  Peitgen, H.-O. and Saupe, D. The Science of Fractal Images, Springer-Verlag, 
+    1988; pp. 185, 187.
+~Format+
 ;
 ;
 ~Topic=L-Systems, Label=HT_LSYS

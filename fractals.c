@@ -37,9 +37,6 @@ an appropriate setup, per_image, per_pixel, and orbit routines.
 
 --------------------------------------------------------------------   */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <float.h>
 #include <limits.h>
 #include <string.h>
 #ifdef __TURBOC__
@@ -47,11 +44,12 @@ an appropriate setup, per_image, per_pixel, and orbit routines.
 #elif !defined(__386BSD__)
 #include <malloc.h>
 #endif
-#include "fractint.h"
-#include "mpmath.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 #include "helpdefs.h"
 #include "fractype.h"
-#include "prototyp.h"
+
 
 #define NEWTONDEGREELIMIT  100
 
@@ -164,7 +162,6 @@ void FloatPreCalcMagnet2() /* precalculation for Magnet2 (M & J) for speed */
     T_Cm1.x += T_Cm1.x + T_Cm1.x;   T_Cm1.y += T_Cm1.y + T_Cm1.y;
     T_Cm2.x += T_Cm2.x + T_Cm2.x;   T_Cm2.y += T_Cm2.y + T_Cm2.y;
   }
-
 
 /* -------------------------------------------------------------------- */
 /*              Bailout Routines Macros                                                                                                 */
@@ -321,15 +318,22 @@ static int near Halleybailout(void)
 struct MPC mpcold, mpcnew, mpctmp, mpctmp1;
 struct MP mptmpparm2x;
 
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
+
 static int near MPCHalleybailout(void)
 {
-static struct MP mptmpbailout;
+   static struct MP mptmpbailout;
    mptmpbailout = *MPabs(*pMPsub(MPCmod(mpcnew), MPCmod(mpcold)));
    if (pMPcmp(mptmpbailout, mptmpparm2x) < 0)
       return(1);
    mpcold = mpcnew;
    return(0);
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 #endif
 
 #ifdef XFRACT
@@ -401,6 +405,8 @@ void cpower(_CMPLX *base, int exp, _CMPLX *result)
         exp >>= 1;
     }
 }
+
+#ifndef XFRACT
 /* long version */
 static long lxt, lyt, lt2;
 
@@ -484,6 +490,7 @@ z_to_the_z(_CMPLX *z, _CMPLX *out)
     out->y = tmpexp*siny;
     return(errno_xxx);
 }
+#endif
 #endif
 
 #ifdef XFRACT /* fractint uses the NewtonFractal2 code in newton.asm */
@@ -577,6 +584,9 @@ struct MP mpt2;
 struct MP mpone;
 #endif
 
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
 int MPCNewtonFractal()
 {
 #ifndef XFRACT
@@ -622,7 +632,9 @@ int MPCNewtonFractal()
     return(MPOverflow);
 #endif
 }
-
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 Barnsley1Fractal()
 {
@@ -1432,6 +1444,10 @@ int AplusOne, Ap1deg;
 struct MP mpAplusOne, mpAp1deg;
 struct MPC mpctmpparm;
 
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
+
 int MPCHalleyFractal()
 {
 #ifndef XFRACT
@@ -1496,6 +1512,9 @@ struct MPC mpcHalnumer2, mpcHaldenom, mpctmp;
    return(MPCHalleybailout()||MPOverflow);
 #endif
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 HalleyFractal()
 {
@@ -2379,11 +2398,10 @@ int mandel_per_pixel()
    return(1); /* 1st iteration has been done */
 }
 
-
 int marksmandel_per_pixel()
 {
+#ifndef XFRACT
    /* marksmandel */
-
    if(invert)
    {
       invertz2(&init);
@@ -2426,6 +2444,7 @@ int marksmandel_per_pixel()
 
    ltempsqrx = multiply(lold.x, lold.x, bitshift);
    ltempsqry = multiply(lold.y, lold.y, bitshift);
+#endif
    return(1); /* 1st iteration has been done */
 }
 
@@ -2541,6 +2560,9 @@ int juliafp_per_pixel()
    return(0);
 }
 
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
 int MPCjulia_per_pixel()
 {
 #ifndef XFRACT
@@ -2558,6 +2580,9 @@ int MPCjulia_per_pixel()
    return(0);
 #endif
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 otherrichard8fp_per_pixel()
 {
@@ -2585,6 +2610,10 @@ int othermandelfp_per_pixel()
    return(1); /* 1st iteration has been done */
 }
 
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
+
 int MPCHalley_per_pixel()
 {
 #ifndef XFRACT
@@ -2600,6 +2629,9 @@ int MPCHalley_per_pixel()
    return(0);
 #endif
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 int Halley_per_pixel()
 {
@@ -2834,6 +2866,50 @@ HyperComplexFPFractal()
        return 1;
    }
    return(0);
+}
+
+VLfpFractal() /* Beauty of Fractals pp. 125 - 127 */
+{
+   double a, b, ab, half, u, w, xy;
+
+   half = param[0] / 2.0;
+   xy = old.x * old.y;
+   u = old.x - xy;
+   w = -old.y + xy;
+   a = old.x + param[1] * u;
+   b = old.y + param[1] * w;
+   ab = a * b;
+   new.x = old.x + half * (u + (a - ab));
+   new.y = old.y + half * (w + (-b + ab));
+   return(floatbailout());
+}
+
+EscherfpFractal() /* Science of Fractal Images pp. 185, 187 */   
+{
+   _CMPLX oldtest, newtest, testsqr;
+   double testsize = 0.0;
+   long testiter = 0;
+
+   new.x = tempsqrx - tempsqry; /* standard Julia with C == (0.0, 0.0i) */
+   new.y = 2.0 * old.x * old.y;
+   oldtest.x = new.x * 15.0;    /* scale it */
+   oldtest.y = new.y * 15.0;
+   testsqr.x = sqr(oldtest.x);  /* set up to test with user-specified ... */
+   testsqr.y = sqr(oldtest.y);  /*    ... Julia as the target set */
+   while (testsize <= rqlim && testiter < maxit) /* nested Julia loop */
+   {
+      newtest.x = testsqr.x - testsqr.y + param[0];
+      newtest.y = 2.0 * oldtest.x * oldtest.y + param[1]; 
+      testsize = (testsqr.x = sqr(newtest.x)) + (testsqr.y = sqr(newtest.y));
+      oldtest = newtest;
+      testiter++;
+   }
+   if (testsize > rqlim) return(floatbailout()); /* point not in target set */
+   else /* make distinct level sets if point stayed in target set */
+   {
+      coloriter = ((3L * coloriter) % 255L) + 1L;
+      return 1;
+   }
 }
 
 #if 0

@@ -1,13 +1,12 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #ifdef __TURBOC__
 #include <alloc.h>
 #else
 #include <malloc.h>
 #endif
-#include "fractint.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 #include "lsys.h"
 
@@ -298,8 +297,9 @@ if (overflow)     /* integer math routines overflowed */
 
    while (command->ch && command->ch !=']') {
       if (! (ts->counter++)) {
+         static FCODE msg[]={"L-System thinking (higher orders take longer)"};
          /* let user know we're not dead */
-         if (thinking(1,"L-System thinking (higher orders take longer)")) {
+         if (thinking(1,msg)) {
             ts->counter--;
             return NULL;
          }

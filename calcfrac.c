@@ -15,21 +15,15 @@ Additional fractal-specific modules are also invoked from CALCFRAC:
   and more
  -------------------------------------------------------------------- */
 
-#include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
-#include <float.h>
 #include <limits.h>
 #include <time.h>
-#ifndef XFRACT
-#include <dos.h>
-#endif
-#include "fractint.h"
-#include "fractype.h"
-#include "mpmath.h"
-#include "targa_lc.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
-#include "big.h"
+#include "fractype.h"
+#include "targa_lc.h"
+
 
 /* routines in this module      */
 
@@ -486,8 +480,8 @@ int calcfract(void)
       MaxLTSize = INT_MAX;
       Log_Calc = 0; /* use logtable */
    }
-   else if(rangeslen && maxit > INT_MAX) {
-      MaxLTSize = INT_MAX;
+   else if(rangeslen && maxit >= INT_MAX) {
+      MaxLTSize = INT_MAX-1;
    }
 
    if ((LogFlag || rangeslen) && !Log_Calc)
@@ -504,6 +498,9 @@ int calcfract(void)
            stopmsg(0,msg);
          }
          else {
+            static FCODE msg[]={"Insufficient memory for logTable, using on-the-fly routine"};
+            stopmsg(0,msg);
+            Log_Fly_Calc = 1;
             Log_Calc = 1; /* calculate on the fly */
             SetupLogTable();
          }
@@ -1079,11 +1076,20 @@ int calcmand(void)              /* fast per pixel 1/2/b/g, called with row & col
       && (realcoloriter < maxit || (inside < 0 && coloriter == maxit)))
             coloriter = logtablecalc(coloriter);
       color = abs((int)coloriter);
-      if (coloriter >= colors) /* don't use color 0 unless from inside/outside */
-         if (colors < 16)
-            color &= andcolor;
-         else
-            color = ((color - 1) % andcolor) + 1;  /* skip color zero */
+      if (coloriter >= colors) { /* don't use color 0 unless from inside/outside */
+         if (save_release <= 1950) {
+            if (colors < 16)
+               color &= andcolor;
+            else
+               color = ((color - 1) % andcolor) + 1;  /* skip color zero */
+         }
+         else {
+            if (colors < 16)
+               color = (int)(coloriter & andcolor);
+            else
+               color = (int)(((coloriter - 1) % andcolor) + 1);
+         }
+      }
       if(debugflag != 470)
          if(color <= 0 && stdcalcmode == 'b' )   /* fix BTM bug */
             color = 1;
@@ -1115,15 +1121,24 @@ int calcmandfp(void)
       if ((LogTable || Log_Calc) /* map color, but not if maxit & adjusted for inside,etc */
           && (realcoloriter < maxit || (inside < 0 && coloriter == maxit)))
             coloriter = logtablecalc(coloriter);
-       color = abs((int)coloriter);
-         if (coloriter >= colors) /* don't use color 0 unless from inside/outside */
+      color = abs((int)coloriter);
+      if (coloriter >= colors) { /* don't use color 0 unless from inside/outside */
+         if (save_release <= 1950) {
             if (colors < 16)
                color &= andcolor;
             else
                color = ((color - 1) % andcolor) + 1;  /* skip color zero */
-         if(debugflag != 470)
-            if(color == 0 && stdcalcmode == 'b' )   /* fix BTM bug */
-               color = 1;
+         }
+         else {
+            if (colors < 16)
+               color = (int)(coloriter & andcolor);
+            else
+               color = (int)(((coloriter - 1) % andcolor) + 1);
+         }
+      }
+      if(debugflag != 470)
+         if(color == 0 && stdcalcmode == 'b' )   /* fix BTM bug */
+            color = 1;
       (*plot) (col, row, color);
    }
    else
@@ -1164,7 +1179,6 @@ int StandardFractal(void)       /* per pixel 1/2/b/g, called with row & col set 
    _CMPLX deriv;
    long dem_color = -1;
    _CMPLX dem_new;
-   int dem_overflow_flag = 0;
    close = .01;
    lclose = (long)(close*fudge);
    savemaxit = maxit;
@@ -1180,7 +1194,7 @@ int StandardFractal(void)       /* per pixel 1/2/b/g, called with row & col set 
       int i;
       for(i=0;i<16;i++)
          tantable[i] = 0.0;
-      maxit = 16;
+      if (save_release > 1824) maxit = 16;
    }
    if (periodicitycheck == 0 || inside == ZMAG || inside == STARTRAIL)
       oldcoloriter = 2147483647L;       /* don't check periodicity at all */
@@ -1234,7 +1248,6 @@ int StandardFractal(void)       /* per pixel 1/2/b/g, called with row & col set 
                rqlim = DEM_BAILOUT;
            dem_color = -1;
          }
-         dem_overflow_flag = 0;
          deriv.x = 1;
          deriv.y = 0;
          magnitude = 0;
@@ -1299,20 +1312,17 @@ int StandardFractal(void)       /* per pixel 1/2/b/g, called with row & col set 
             ftemp = 2 * (old.x * deriv.x - old.y * deriv.y);
          deriv.y = 2 * (old.y * deriv.x + old.x * deriv.y);
          deriv.x = ftemp;
-         if (use_old_distest)
-            if (sqr(deriv.x)+sqr(deriv.y) > dem_toobig) {
-               dem_overflow_flag = 1;
+         if (use_old_distest) {
+            if (sqr(deriv.x)+sqr(deriv.y) > dem_toobig)
                break;
-            }
-         else
-            if (max(fabs(deriv.x),fabs(deriv.y)) > dem_toobig) {
-               dem_overflow_flag = 1;
+         }
+         else if (save_release > 1950)
+            if (max(fabs(deriv.x),fabs(deriv.y)) > dem_toobig)
                break;
-            }
          /* if above exit taken, the later test vs dem_delta will place this
                     point on the boundary, because mag(old)<bailout just now */
 
-         if (curfractalspecific->orbitcalc() || overflow)
+         if (curfractalspecific->orbitcalc() || (overflow && save_release > 1826))
          {
           if (use_old_distest) {
            if (dem_color < 0) {
@@ -1329,6 +1339,7 @@ int StandardFractal(void)       /* per pixel 1/2/b/g, called with row & col set 
          }
          old = new;
       }
+
       /* the usual case */
       else if ((curfractalspecific->orbitcalc() && inside != STARTRAIL)
               || overflow)
@@ -1362,21 +1373,23 @@ int StandardFractal(void)       /* per pixel 1/2/b/g, called with row & col set 
                   new.y /= fudge;
                }
 
-               if(new.x > STARTRAILMAX)
-                  new.x = STARTRAILMAX;
-               if(new.x < -STARTRAILMAX)
-                  new.x = -STARTRAILMAX;
-               if(new.y > STARTRAILMAX)
-                  new.y = STARTRAILMAX;
-               if(new.y < -STARTRAILMAX)
-                  new.y = -STARTRAILMAX;
-               tempsqrx = new.x * new.x;
-               tempsqry = new.y * new.y;
-               magnitude = tempsqrx + tempsqry;
-               old = new;
+               if (save_release > 1824) {
+                 if(new.x > STARTRAILMAX)
+                    new.x = STARTRAILMAX;
+                 if(new.x < -STARTRAILMAX)
+                    new.x = -STARTRAILMAX;
+                 if(new.y > STARTRAILMAX)
+                    new.y = STARTRAILMAX;
+                 if(new.y < -STARTRAILMAX)
+                    new.y = -STARTRAILMAX;
+                 tempsqrx = new.x * new.x;
+                 tempsqry = new.y * new.y;
+                 magnitude = tempsqrx + tempsqry;
+                 old = new;
+               }
                {
                int tmpcolor;
-               tmpcolor = abs((int)coloriter);
+               tmpcolor = (int)(((coloriter - 1) % andcolor) + 1);
                tantable[tmpcolor-1] = new.y/(new.x+.000001);
                }
             }
@@ -1655,13 +1668,12 @@ int StandardFractal(void)       /* per pixel 1/2/b/g, called with row & col set 
    if (distest)
    {
       double dist,temp;
-      if (magnitude == 0)
-         magnitude = sqr(new.x) + sqr(new.y);
-      if (dem_overflow_flag || magnitude == 0)
+      dist = sqr(new.x) + sqr(new.y);
+      if (dist == 0 || overflow)
          dist = 0;
       else {
-         temp = log(magnitude);
-         dist = magnitude * sqr(temp) / ( sqr(deriv.x) + sqr(deriv.y) );
+         temp = log(dist);
+         dist = dist * sqr(temp) / ( sqr(deriv.x) + sqr(deriv.y) );
       }
       if (dist < dem_delta)     /* point is on the edge */
       {
@@ -1779,11 +1791,20 @@ int StandardFractal(void)       /* per pixel 1/2/b/g, called with row & col set 
    plot_pixel:
 
    color = abs((int)coloriter);
-   if (coloriter >= colors) /* don't use color 0 unless from inside/outside */
-      if (colors < 16)
-         color &= andcolor;
-      else
-         color = ((color - 1) % andcolor) + 1;  /* skip color zero */
+   if (coloriter >= colors) { /* don't use color 0 unless from inside/outside */
+      if (save_release <= 1950) {
+         if (colors < 16)
+            color &= andcolor;
+         else
+            color = ((color - 1) % andcolor) + 1;  /* skip color zero */
+      }
+      else {
+         if (colors < 16)
+            color = (int)(coloriter & andcolor);
+         else
+            color = (int)(((coloriter - 1) % andcolor) + 1);
+      }
+   }
    if(debugflag != 470)
       if(color <= 0 && stdcalcmode == 'b' )   /* fix BTM bug */
          color = 1;
@@ -2607,11 +2628,11 @@ static int _fastcall guessrow(int firstpass,int y,int blocksize)
          {
             /* next useful in testing to make skips visible */
             /*
-                           if(halfblock==1)
-                           {
-                              (*plot)(x+1,y,0); (*plot)(x,y+1,0); (*plot)(x+1,y+1,0);
-                              }
-                         */
+            if(halfblock==1)
+            {
+               (*plot)(x+1,y,0); (*plot)(x,y+1,0); (*plot)(x+1,y+1,0);
+            }
+            */
             x+=maxblock;
             prev11=c31=c21=c24=c12=c13=c22;
             guessed12=guessed13=0;
@@ -2650,6 +2671,7 @@ static int _fastcall guessrow(int firstpass,int y,int blocksize)
          if(bottom_guess==0)
             c23=c33= -1;
          guessed23=guessed33= -1;
+         guessed13=0; /* fix for ydots not divisible by four bug TW 2/16/97 */
       }
       if(xplushalf>ixstop)
       {

@@ -17,16 +17,15 @@
      (203) 276-9721
 */
 
-#include <stdlib.h>
 
-/* This now in prototyp.h */
-/*
-#include "mpmath.h"
-*/
-
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 
 #ifndef XFRACT
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
 
 struct MP *MPsub(struct MP x, struct MP y) {
    y.Exp ^= 0x8000;
@@ -98,7 +97,9 @@ struct MPC MPCsub(struct MPC x, struct MPC y) {
    return(z);
 }
 
-struct MPC MPCone = { 0x3fff, 0x80000000l, 0, 0l };
+struct MPC MPCone = { {0x3fff, 0x80000000l},
+                      {0, 0l}
+                    };
 
 struct MPC MPCpow(struct MPC x, int exp) {
    struct MPC z;
@@ -187,7 +188,9 @@ void setMPfunctions(void) {
       /* pfg2MP = fg2MP086; */
    }
 }
-
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 #endif /* XFRACT */
 
 #ifndef sqr

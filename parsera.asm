@@ -32,6 +32,7 @@
 
 ;             Date      Init   Change description
 
+;           6 Mar 1997   TIW   Added if/else support
 ;           7 Aug 1996   TIW   Added scrnpix constant
 ;           4 Aug 1996   TIW   Added whitesq variable support
 ;          30 Jun 1996   TIW   Added floor, ceil, trunc, and round functions
@@ -99,7 +100,7 @@ CARG               equ CPFX+ARGSZ      ; size of constarg
 LASTSQR            equ CARG*4+CPFX     ; offset of lastsqr from start of v
 WHITESQ            equ CARG*9+CPFX     ; offset of whitesq from start of v
 SCRNPIX            equ CARG*10+CPFX    ; offset of scrnpix from start of v
-
+JCSZ               equ 10              ; size of jump_control structure
 ; ---------------------------------------------------------------------------
 FRAME              MACRO regs          ; build a stack frame
       push         bp
@@ -381,17 +382,16 @@ _DATA              segment word public use16 'DATA'
    extrn           _LastOp:WORD, _LastInitOp:WORD
    extrn           _InitOpPtr:WORD, _InitStoPtr:WORD, _InitLodPtr:WORD
    extrn           _s:WORD
-   extrn           _OpPtr:WORD, _LodPtr:WORD, _StoPtr:WORD
-   extrn           _Load:DWORD, _Store:DWORD
-   extrn           _FormName:byte
    extrn           _dy1:DWORD, _dx1:DWORD, _dy0:DWORD, _dx0:DWORD
    extrn           _new:WORD, _old:WORD
    extrn           _overflow:WORD
    extrn           _save_release:WORD
    extrn           _col:WORD, _row:WORD
    extrn           _Arg1:WORD, _Arg2:WORD
-   extrn           _f:DWORD, _pfls:DWORD, _v:DWORD
+   extrn           _pfls:DWORD, _v:DWORD
    extrn           _debugflag:WORD
+   extrn           _jump_index:WORD, _InitJumpIndex:WORD
+   extrn           _jump_control:DWORD
 _DATA               ends
 
 ; ---------------------------------------------------------------------------
@@ -626,6 +626,8 @@ NotBothZero:
    ifndef          COMPILER            ; this instr not needed   CAE 30DEC93
       mov          _LastInitOp,bx      ; LastInitOp=OpPtr
    endif
+      mov          ax, _jump_index     ; InitJumpIndex=jump_index TIW 06Mar97
+      mov          _InitJumpIndex,ax
       finit                            ; changed from fninit     CAE 09OCT93
    END_OPER        EndInit
 ; --------------------------------------------------------------------------
@@ -1476,6 +1478,49 @@ End_Log_ATan:
 ; --------------------------------------------------------------------------
 ; End of new functions.                                          TIW 30Jun96
 ; --------------------------------------------------------------------------
+   BEGN_INCL       Jump                ;
+      mov	   ax,JCSZ             ; ax = sizeof(jump control struct)
+      imul	   _jump_index         ; address of jump_control[jump_index]
+      push         es
+      les          bx, _jump_control
+      add          bx,ax
+      mov	   ax,WORD PTR es:[bx+8]; jump_index = DestJumpIndex 
+      mov	   bx,WORD PTR es:[bx+2]; bx = JumpOpPtr
+      pop          es
+      mov	   _jump_index,ax
+      add          bx, WORD PTR _pfls  ; 
+   END_INCL        Jump                ;
+; --------------------------------------------------------------------------
+   BEGN_OPER       JumpOnTrue          ;
+      ftst                             ; test Arg1.x
+      fstsw        ax
+      sahf
+      jz           short NotTrue       ; if(Arg1.x != 0)     
+      INCL_OPER    JumpOnTrue, Jump    ; call Jump
+      jmp          short EndJumpOnTrue
+NotTrue:
+      add          _jump_index, 1      ; else jump_index++ 
+EndJumpOnTrue:
+   END_OPER        JumpOnTrue          ;
+; --------------------------------------------------------------------------
+   BEGN_OPER       JumpOnFalse         ;
+      ftst                             ; test Arg1.x
+      fstsw        ax
+      sahf
+      jnz          short True          ; if(Arg1.x == 0)
+      INCL_OPER    JumpOnFalse, Jump
+      jmp          short EndJumpOnFalse
+True:
+      add          _jump_index, 1      ; else jump_index++ 
+EndJumpOnFalse:
+   END_OPER        JumpOnFalse         ;
+; --------------------------------------------------------------------------
+   BEGN_OPER       JumpLabel           ;
+      add          _jump_index, 1      ; jump_index++
+   END_OPER        JumpLabel           ;
+; --------------------------------------------------------------------------
+; End of new functions.                                          TIW 09Mar97
+; --------------------------------------------------------------------------
    BEGN_OPER       LT                  ; <
    ; Arg2->d.x = (double)(Arg2->d.x < Arg1->d.x);
       fcomp        st(2)               ; y.y, x.x, x.y, comp arg1 to arg2
@@ -1914,6 +1959,8 @@ _Img_Setup         endp
 _fFormulaX         proc far
       push         si
       push         di
+      mov          ax,WORD PTR _InitJumpIndex
+      mov          WORD PTR _jump_index,ax
       mov          edx,_maxit          ; edx holds coloriter during loop
       mov          _coloriter,edx      ; set coloriter to maxit
       mov          ax,ds               ; save ds in ax
@@ -1962,6 +2009,8 @@ _fFormula          proc far
       push         di                  ; don't build a frame here
       mov          di,offset DGROUP:_s ; reset this for stk overflow area
       mov          bx,_InitOpPtr       ; bx -> one before first token
+      mov          ax,WORD PTR _InitJumpIndex
+      mov          WORD PTR _jump_index,ax
       mov          ax,ds               ; save ds in ax
       lds          cx,_fLastOp         ; ds:cx -> last token
       mov          es,ax               ; es -> DGROUP
@@ -2017,7 +2066,7 @@ checker_is_1:
    ;    v[10].a.d.y = (double)row;
       fild         _row                ; ST  = row
       fstp         QWORD PTR es:[bx+SCRNPIX+8] ; scrnpix.y = row
-
+      mov          _jump_index,0        ;jump_index = 0
       cmp          _invert,0            ; inversion support added
       je           skip_invert          ;                        CAE 08FEB95
       mov          si,offset DGROUP:_old

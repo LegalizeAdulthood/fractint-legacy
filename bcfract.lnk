@@ -37,7 +37,7 @@
 /o+ /v- miscovl.obj+
 /o+ /v- miscres.obj+
 /o- /v- mpmath_c.obj+
-/o+ /v- parser.obj+
+/o- /v- parser.obj+
 /o+ /v- parserfp.obj+
 /o+ /v- plot3d.obj+
 /o+ /v- printer.obj+

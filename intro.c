@@ -7,16 +7,12 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
-#ifndef XFRACT
-#include <dos.h>
-#endif
 
-#include "fractint.h"
-#include "helpdefs.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "helpdefs.h"
 
 /* stuff from fractint */
 
@@ -57,24 +53,25 @@ void intro(void)
    authors[j+1] = i;
 
    helptitle();
-   toprow = 8;
+#define END_MAIN_AUTHOR 8
+   toprow = END_MAIN_AUTHOR+1;
 #ifndef XFRACT
    botrow = 21;
 #else
    botrow = 20;
    putstringcenter(21,0,80,C_TITLE,
-   "Unix/X port of fractint by Ken Shirriff [shirriff@cs.Berkeley.EDU]");
+   "Unix/X port of fractint by Ken Shirriff [shirriff@eng.sun.com]");
 #endif
    putstringcenter(1,0,80,C_TITLE, PRESS_ENTER);
    putstring(2,0,C_CONTRIB,screen_text);
    setattr(2,0,C_AUTHDIV1,80);
-   setattr(7,0,C_AUTHDIV1,80);
+   setattr(END_MAIN_AUTHOR,0,C_AUTHDIV1,80);
    setattr(22,0,C_AUTHDIV2,80);
-   setattr(3,0,C_PRIMARY,320);
+   setattr(3,0,C_PRIMARY,400);
    setattr(23,0,C_TITLE_LOW,160);
-   for (i = 3; i < 7; ++i)
-      setattr(i,18,C_CONTRIB,60);
-   setattr(toprow,0,C_CONTRIB,14*80);
+   for (i = 3; i < END_MAIN_AUTHOR; ++i)
+      setattr(i,18,C_CONTRIB,61);
+   setattr(toprow,0,C_CONTRIB,13*80);
    i = botrow - toprow;
    srand((unsigned int)clock_ticks());
    j = rand15()%(j-(botrow-toprow)); /* first to use */

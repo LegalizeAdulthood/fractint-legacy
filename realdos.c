@@ -3,32 +3,31 @@
 */
 
 #include <string.h>
-#include <stdio.h>
 #ifndef XFRACT
-#include <dos.h>
 #include <io.h>
 #include <process.h>
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <math.h>
-#include <stdlib.h>
 #include <ctype.h>
-#include "fractint.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 #include "fractype.h"
 #include "helpdefs.h"
-#include "prototyp.h"
 
 static int menu_checkkey(int curkey,int choice);
 
 /* uncomment following for production version */
+
 /* #define PRODUCTION */
 
-int release=1950;  /* this has 2 implied decimals; increment it every synch */
-int patchlevel=0;  /* patchlevel for DOS version */
+int release=1960;  /* this has 2 implied decimals; increment it every synch */
+int patchlevel=0; /* patchlevel for DOS version */
 #ifdef XFRACT
-int xrelease=300;
+int xrelease=304;
 #endif
 
 /* fullscreen_choice options */
@@ -58,8 +57,8 @@ static char far s_errorstart[] = {"*** Error during startup:"};
 #endif
 static char far s_escape_cancel[] = {"Escape to cancel, any other key to continue..."};
 static char far s_anykey[] = {"Any key to continue..."};
-#ifndef PRODUCTION
-static char far s_custom[] = {"Customized Version"};
+#if !defined(PRODUCTION) && !defined(XFRACT)
+static char far s_custom[] = {"Customized Version"}; 
 static char far s_notpublic[] = {"Not for Public Release"};
 #endif
 int stopmsg (int flags, char far *msg)
@@ -291,6 +290,9 @@ void blankrows(int row,int rows,int attr)
       putstring(row++,0,attr,buf);
    }
 
+#if (_MSC_VER >= 700)
+#pragma code_seg ("realdos1_text")     /* place following in an overlay */
+#endif
 
 void helptitle()
 {
@@ -315,7 +317,7 @@ void helptitle()
    putstringcenter(0,0,80,C_TITLE,msg);
 #endif
 /* uncomment next for production executable: */
-#ifdef PRODUCTION
+#if defined(PRODUCTION) || defined(XFRACT)
     return;
    /*NOTREACHED*/
 #else
@@ -330,6 +332,24 @@ void helptitle()
 #endif
 }
 
+
+void footer_msg(int *i, int options, char *speedstring)
+{
+   static FCODE choiceinstr1a[]="Use the cursor keys to highlight your selection";
+   static FCODE choiceinstr1b[]="Use the cursor keys or type a value to make a selection";
+   static FCODE choiceinstr2a[]="Press ENTER for highlighted choice, or ESCAPE to back out";
+   static FCODE choiceinstr2b[]="Press ENTER for highlighted choice, ESCAPE to back out, or F1 for help";
+   static FCODE choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for help";
+   putstringcenter((*i)++,0,80,C_PROMPT_BKGRD,
+      (speedstring) ? choiceinstr1b : choiceinstr1a);
+   putstringcenter(*(i++),0,80,C_PROMPT_BKGRD,
+         (options&CHOICEMENU) ? choiceinstr2c
+      : ((options&CHOICEHELP) ? choiceinstr2b : choiceinstr2a));
+}
+
+#if (_MSC_VER >= 700)
+#pragma code_seg ()         /* back to normal segment */
+#endif
 
 int putstringcenter(int row, int col, int width, int attr, char far *msg)
 {
@@ -490,6 +510,86 @@ void discardscreen()
 
 char speed_prompt[]="Speed key string";
 
+/* For file list purposes only, it's a directory name if first 
+   char is a dot or last char is a slash */
+static int isadirname(char far *name)
+{
+   if(*name == '.' || endswithslash(name))
+      return 1;
+   else
+      return 0;
+}
+
+#if (_MSC_VER >= 700)
+#pragma code_seg ("realdos1_text")     /* place following in an overlay */
+#endif
+
+void show_speedstring(int speedrow,
+                   char *speedstring,
+                   int (*speedprompt)(int,int,int,char *,int))
+{
+   int speed_match = 0;
+   int i,j;
+   char buf[81];
+   memset(buf,' ',80);
+   buf[80] = 0;
+   putstring(speedrow,0,C_PROMPT_BKGRD,buf);
+   if (*speedstring) {                 /* got a speedstring on the go */
+      putstring(speedrow,15,C_CHOICE_SP_INSTR," ");
+      if (speedprompt)
+         j = speedprompt(speedrow,16,C_CHOICE_SP_INSTR,speedstring,speed_match);
+      else {
+         putstring(speedrow,16,C_CHOICE_SP_INSTR,speed_prompt);
+         j = sizeof(speed_prompt)-1;
+         }
+      strcpy(buf,speedstring);
+      i = strlen(buf);
+      while (i < 30)
+         buf[i++] = ' ';
+      buf[i] = 0;
+      putstring(speedrow,16+j,C_CHOICE_SP_INSTR," ");
+      putstring(speedrow,17+j,C_CHOICE_SP_KEYIN,buf);
+      movecursor(speedrow,17+j+strlen(speedstring));
+      }
+   else
+      movecursor(25,80);
+}
+
+void process_speedstring(char    *speedstring, 
+                        char far*far*choices,         /* array of choice strings                */
+                        int       curkey, 
+                        int      *pcurrent,
+                        int       numchoices,
+                        int       speed_match)
+{
+   int i;
+   
+   i = strlen(speedstring);
+   if (curkey == 8 && i > 0) /* backspace */
+      speedstring[--i] = 0;
+   if (33 <= curkey && curkey <= 126 && i < 30) 
+   {
+      curkey = tolower(curkey);
+      speedstring[i] = (char)curkey;
+      speedstring[++i] = 0;
+   }
+   if (i > 0) 
+   {              /* locate matching type */
+      *pcurrent = 0;
+      while (*pcurrent < numchoices
+        && (speed_match = strncasecmp(speedstring,choices[*pcurrent],i)) > 0)
+         ++*pcurrent;
+      if (speed_match < 0 && *pcurrent > 0)  /* oops - overshot */
+         --*pcurrent;
+      if (*pcurrent >= numchoices) /* bumped end of list */
+         *pcurrent = numchoices - 1;
+   }
+}
+
+#if (_MSC_VER >= 700)
+#pragma code_seg ()         /* back to normal segment */
+#endif
+
 int fullscreen_choice(
     int options,                  /* &2 use menu coloring scheme            */
                                   /* &4 include F1 for help in instructions */
@@ -517,11 +617,6 @@ int fullscreen_choice(
                   speedstring[0] != 0 on return if string is present
     */
 {
-static char far choiceinstr1a[]="Use the cursor keys to highlight your selection";
-static char far choiceinstr1b[]="Use the cursor keys or type a value to make a selection";
-static char far choiceinstr2a[]="Press ENTER for highlighted choice, or ESCAPE to back out";
-static char far choiceinstr2b[]="Press ENTER for highlighted choice, ESCAPE to back out, or F1 for help";
-static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for help";
 
    int titlelines,titlewidth;
    int reqdrows;
@@ -673,11 +768,7 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
          if (++i < 22) ++i;
          }
       i -= scrunch;
-      putstringcenter(i++,0,80,C_PROMPT_BKGRD,
-            (speedstring) ? choiceinstr1b : choiceinstr1a);
-      putstringcenter(i++,0,80,C_PROMPT_BKGRD,
-            (options&CHOICEMENU) ? choiceinstr2c
-            : ((options&CHOICEHELP) ? choiceinstr2b : choiceinstr2a));
+      footer_msg(&i,options,speedstring);
       }
    if (instr) {                            /* display caller's instructions */
       charptr = instr;
@@ -700,7 +791,6 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
    redisplay = 1;
    topleftrow -= scrunch;
    for(;;) { /* main loop */
-
       if (redisplay) {                       /* display the current choices */
          if ((options & CHOICEMENU) == 0) {
             memset(buf,' ',80);
@@ -750,28 +840,7 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
                 C_CHOICE_CURRENT,itemptr);
 
       if (speedstring) {                     /* show speedstring if any */
-         memset(buf,' ',80);
-         buf[80] = 0;
-         putstring(speedrow,0,C_PROMPT_BKGRD,buf);
-         if (*speedstring) {                 /* got a speedstring on the go */
-            putstring(speedrow,15,C_CHOICE_SP_INSTR," ");
-            if (speedprompt)
-               j = speedprompt(speedrow,16,C_CHOICE_SP_INSTR,speedstring,speed_match);
-            else {
-               putstring(speedrow,16,C_CHOICE_SP_INSTR,speed_prompt);
-               j = strlen(speed_prompt);
-               }
-            strcpy(buf,speedstring);
-            i = strlen(buf);
-            while (i < 30)
-               buf[i++] = ' ';
-            buf[i] = 0;
-            putstring(speedrow,16+j,C_CHOICE_SP_INSTR," ");
-            putstring(speedrow,17+j,C_CHOICE_SP_KEYIN,buf);
-            movecursor(speedrow,17+j+strlen(speedstring));
-            }
-         else
-            movecursor(25,80);
+         show_speedstring(speedrow,speedstring,speedprompt);
          }
       else
          movecursor(25,80);
@@ -807,22 +876,80 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
          case ESC:
             goto fs_choice_end;
          case DOWN_ARROW:
-         case DOWN_ARROW_2:
             rev_increment = 0 - (increment = boxwidth);
             break;
+         case DOWN_ARROW_2:
+            rev_increment = 0 - (increment = boxwidth);
+            {
+               int newcurrent = current;
+               while((newcurrent+=boxwidth) != current) {
+                  if(newcurrent >= numchoices)
+                     newcurrent = (newcurrent % boxwidth) - boxwidth;
+                  else if(!isadirname(choices[newcurrent])) {
+                     if(current != newcurrent)
+                        current = newcurrent - boxwidth;
+                     break;  /* breaks the while loop */
+                  }
+               }
+            }
+            break;
          case UP_ARROW:
-         case UP_ARROW_2:
             increment = 0 - (rev_increment = boxwidth);
             break;
+         case UP_ARROW_2:
+            increment = 0 - (rev_increment = boxwidth);
+            {
+               int newcurrent = current;
+               while((newcurrent-=boxwidth) != current) {
+                  if(newcurrent < 0) {
+                     newcurrent = (numchoices - current) % boxwidth;
+                     newcurrent =  numchoices + (newcurrent ? boxwidth - newcurrent: 0);
+                  }
+                  else if(!isadirname(choices[newcurrent])) {
+                     if(current != newcurrent)
+                        current = newcurrent + boxwidth;
+                     break;  /* breaks the while loop */
+                  }
+               }
+            }
+            break;
          case RIGHT_ARROW:
-         case RIGHT_ARROW_2:
-            if (boxwidth == 1) break;
             increment = 1; rev_increment = -1;
             break;
+         case RIGHT_ARROW_2:  /* move to next file; if at last file, go to
+                                 first file */
+            increment = 1; rev_increment = -1;
+            {
+               int newcurrent = current;
+               while(++newcurrent != current) {
+                  if(newcurrent >= numchoices)
+                     newcurrent = -1;
+                  else if(!isadirname(choices[newcurrent])) {
+                     if(current != newcurrent)
+                        current = newcurrent - 1;
+                     break;  /* breaks the while loop */
+                  }
+               }
+            }
+            break;
          case LEFT_ARROW:
-         case LEFT_ARROW_2:
-            if (boxwidth == 1) break;
             increment = -1; rev_increment = 1;
+            break;
+         case LEFT_ARROW_2: /* move to previous file; if at first file, go to
+                               last file */
+            increment = -1; rev_increment = 1;
+            {
+               int newcurrent = current;
+               while(--newcurrent != current) {
+                  if(newcurrent < 0)
+                     newcurrent = numchoices;
+                  else if(!isadirname(choices[newcurrent])) {
+                     if(current != newcurrent)
+                        current = newcurrent + 1;
+                     break;  /* breaks the while loop */
+                  }
+               }
+            }
             break;
          case PAGE_UP:
             if (numchoices > boxitems) {
@@ -840,15 +967,39 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
                redisplay = 1;
                }
             break;
-         case CTL_HOME:
          case HOME:
             current = -1;
             increment = rev_increment = 1;
             break;
-         case CTL_END:
+         case CTL_HOME:
+            current = -1;
+            increment = rev_increment = 1;
+            {
+               int newcurrent;
+               for(newcurrent = 0; newcurrent < numchoices; ++newcurrent) {
+                  if(!isadirname(choices[newcurrent])) {
+                     current = newcurrent - 1;
+                     break;  /* breaks the for loop */
+                  }
+               }
+            }
+            break;
          case END:
             current = numchoices;
             increment = rev_increment = -1;
+            break;
+         case CTL_END:
+            current = numchoices;
+            increment = rev_increment = -1;
+            {
+               int newcurrent;
+               for(newcurrent = numchoices - 1; newcurrent >= 0; --newcurrent) {
+                  if(!isadirname(choices[newcurrent])) {
+                     current = newcurrent + 1;
+                     break;  /* breaks the for loop */
+                  }
+               }
+            }
             break;
          default:
             if (checkkey) {
@@ -859,28 +1010,11 @@ static char far choiceinstr2c[]="Press ENTER for highlighted choice, or F1 for h
                }
             ret = -1;
             if (speedstring) {
-               i = strlen(speedstring);
-               if (curkey == 8 && i > 0) /* backspace */
-                  speedstring[--i] = 0;
-               if (33 <= curkey && curkey <= 126 && i < 30) {
-                  curkey = tolower(curkey);
-                  speedstring[i] = (char)curkey;
-                  speedstring[++i] = 0;
-                  }
-               if (i > 0) {              /* locate matching type */
-                  current = 0;
-                  while (current < numchoices
-                    && (speed_match = strncasecmp(speedstring,choices[current],i)) > 0)
-                     ++current;
-                  if (speed_match < 0 && current > 0)  /* oops - overshot */
-                     --current;
-                  if (current >= numchoices) /* bumped end of list */
-                     current = numchoices - 1;
-                  }
+               process_speedstring(speedstring,choices,curkey,&current,
+                        numchoices,speed_match);
                }
             break;
-         }
-
+      }
       if (increment) {                  /* apply cursor movement */
          current += increment;
          if (speedstring)               /* zap speedstring */
@@ -1248,6 +1382,7 @@ int input_field(
          display = 0;
          }
       curkey = keycursor(row+insert,col+offset);  /* get a keystroke */
+      if(curkey == 1047) curkey = 47; /* numeric slash */
       switch (curkey) {
          case ENTER:
          case ENTER_2:
@@ -1256,12 +1391,10 @@ int input_field(
          case ESC:
             goto inpfld_end;
          case RIGHT_ARROW:
-         case RIGHT_ARROW_2:
             if (offset < len-1) ++offset;
             started = 1;
             break;
          case LEFT_ARROW:
-         case LEFT_ARROW_2:
             if (offset > 0) --offset;
             started = 1;
             break;
@@ -1434,7 +1567,7 @@ int field_prompt(
       call this when thinking phase is done
    */
 
-int thinking(int options,char *msg)
+int thinking(int options,char far *msg)
 {
    static int thinkstate = -1;
    static char *wheel[] = {"-","\\","|","/"};
@@ -1453,7 +1586,7 @@ int thinking(int options,char *msg)
       thinkstate = 0;
       helptitle();
       strcpy(buf,"  ");
-      strcat(buf,msg);
+      far_strcat(buf,msg);
       strcat(buf,"    ");
       putstring(4,10,C_GENERAL_HI,buf);
       thinkcol = textcol - 3;
@@ -1746,8 +1879,8 @@ int load_fractint_cfg(int options)
             keynum < 0 ||
             dotmode < 0 || dotmode > 30 ||
             textsafe2 < 0 || textsafe2 > 4 ||
-            xdots < 160 || xdots > MAXPIXELS ||
-            ydots < 160 || ydots > MAXPIXELS ||
+            xdots < MINPIXELS || xdots > MAXPIXELS ||
+            ydots < MINPIXELS || ydots > MAXPIXELS ||
             (colors != 0 && colors != 2 && colors != 4 && colors != 16 &&
              colors != 256)
            )
@@ -1904,3 +2037,4 @@ void vidmode_keyname(int k,char *buf)
 #if (_MSC_VER >= 700)
 #pragma code_seg ()      /* back to normal segment */
 #endif
+

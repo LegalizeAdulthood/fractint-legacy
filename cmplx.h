@@ -2,9 +2,6 @@
 #ifndef _CMPLX_DEFINED
 #define _CMPLX_DEFINED
 
-#ifndef PORT_H
-#include "port.h"
-#endif
 
 struct DHyperComplex {
     double x,y;

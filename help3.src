@@ -113,8 +113,9 @@ line. Autokey files can contain the following:
       F3  -- Function key 3\
       SF3 --<Shift> and <F3> together\
 
-  Special keys: ENTER ESC F1 PAGEUP PAGEDOWN HOME END LEFT RIGHT UP DOWN
-  INSERT DELETE TAB
+  Special keys: ENTER ESC F1 PAGEUP PAGEDOWN HOME END LEFT RIGHT UP DOWN\
+  INSERT DELETE TAB CTRL_RIGHT CTRL_LEFT CTRL_DOWN CTRL_UP CTRL_HOME\
+  CTRL_END\
 
   WAIT <nnn.n> -- wait nnn.n seconds before continuing
 

@@ -2,22 +2,18 @@
         loadfile.c - load an existing fractal image, control level
 */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
-#ifndef XFRACT
-#include <dos.h>
-#endif
 #ifdef XFRACT
 #include <unistd.h>
 #endif
-#include "fractint.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 #include "fractype.h"
 #include "helpdefs.h"
 #include "targa_lc.h"
-#include "prototyp.h"
 
 /* routines in this module      */
 
@@ -54,7 +50,8 @@ int read_overlay()      /* read overlay/3D files, if reqr'd */
    initmode = -1;               /* no viewing mode set yet */
    oldfloatflag = usr_floatflag;
    loaded3d = 0;
-
+   if(fastrestore)
+      viewwindow=0;
    if(has_ext(readname) == NULL)
       strcat(readname,".gif");
 
@@ -90,6 +87,8 @@ int read_overlay()      /* read overlay/3D files, if reqr'd */
       potparam[0]   = read_info.potential[0];
       potparam[1]   = read_info.potential[1];
       potparam[2]   = read_info.potential[2];
+      if(*s_makepar == '\0')
+         colors = read_info.colors;
       potflag       = (potparam[0] != 0.0);
       rflag         = read_info.rflag;
       rseed         = read_info.rseed;
@@ -832,7 +831,10 @@ int ret = 0;
        (fractype == FORMULA && save_release <= 1920) ||
        (fractype == FFORMULA && save_release <= 1920) ||
        (LogFlag != 0 && save_release <= 1920) ||
-       (fractype == TRIGSQR && save_release < 1900))
+       (fractype == TRIGSQR && save_release < 1900) ||
+       (inside == STARTRAIL && save_release < 1825) ||
+       (maxit > 32767 && save_release <= 1950) ||
+       (distest && save_release <=1950) )
      ret = 1;
    return(ret);
 }
@@ -967,7 +969,7 @@ int fgetwindow(void)
       if ((charbuf = farmemalloc((long)XMMWRITELEN)) != NULL
         && xmmquery() != 0
         && (xmmhandle = xmmallocate((unsigned int)(longtmp = (memorysize+1023) >> 10))) != 0) {
-         longtmp >>= 2;
+         longtmp >>= 3;
          mempages = (int)longtmp;
          for (i = 0; i < XMMWRITELEN; i++)
             charbuf[i] = 0;

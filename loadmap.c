@@ -1,14 +1,11 @@
 /** loadmap.c **/
 
 
-#include        <stdio.h>
-#include        <stdlib.h>
-#ifndef XFRACT
-#include        <dos.h>
-#endif
 #include        <string.h>
-#include        "fractint.h"
-#include        "prototyp.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 
 /***************************************************************************/
 
@@ -31,9 +28,11 @@ int ValidateLuts( char * fn )
 FILE * f;
 unsigned        r, g, b, index;
 char    line[160];
-char    temp[81];
+char    temp[FILE_MAX_PATH+1];
+char    temp_fn[FILE_MAX_PATH];
         strcpy(temp,MAP_name);
-        merge_pathnames(temp,fn,0);
+        strcpy(temp_fn,fn);
+        merge_pathnames(temp,temp_fn,0);
         if (has_ext(temp) == NULL) /* Did name have an extension? */
                 strcat(temp,".map");  /* No? Then add .map */
         findpath( temp, line);        /* search the dos path */

@@ -2,13 +2,13 @@
     rotate.c - Routines that manipulate the Video DAC on VGA Adapters
 */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include "fractint.h"
-#include "helpdefs.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "helpdefs.h"
 
 /* routines in this module      */
 
@@ -369,7 +369,11 @@ static void set_palette(BYTE start[3], BYTE finish[3])
    dacbox[0][0] = dacbox[0][1] = dacbox[0][2] = 0;
    for(i=1;i<=255;i++)                  /* fill the palette     */
       for (j = 0; j < 3; j++)
+#ifdef __SVR4
+         dacbox[i][j] = (BYTE)((int)(i*start[j] + (256-i)*finish[j])/255);
+#else
          dacbox[i][j] = (BYTE)((i*start[j] + (256-i)*finish[j])/255);
+#endif
 }
 
 static void set_palette2(BYTE start[3], BYTE finish[3])
@@ -378,8 +382,13 @@ static void set_palette2(BYTE start[3], BYTE finish[3])
    dacbox[0][0] = dacbox[0][1] = dacbox[0][2] = 0;
    for(i=1;i<=128;i++)
       for (j = 0; j < 3; j++) {
+#ifdef __SVR4
+         dacbox[i][j]     = (BYTE)((int)(i*finish[j] + (128-i)*start[j] )/128);
+         dacbox[i+127][j] = (BYTE)((int)(i*start[j]  + (128-i)*finish[j])/128);
+#else
          dacbox[i][j]     = (BYTE)((i*finish[j] + (128-i)*start[j] )/128);
          dacbox[i+127][j] = (BYTE)((i*start[j]  + (128-i)*finish[j])/128);
+#endif
       }
 }
 
@@ -389,9 +398,15 @@ static void set_palette3(BYTE start[3], BYTE middle[3], BYTE finish[3])
    dacbox[0][0] = dacbox[0][1] = dacbox[0][2] = 0;
    for(i=1;i<=85;i++)
       for (j = 0; j < 3; j++) {
+#ifdef __SVR4
+         dacbox[i][j]     = (BYTE)((int)(i*middle[j] + (86-i)*start[j] )/85);
+         dacbox[i+85][j]  = (BYTE)((int)(i*finish[j] + (86-i)*middle[j])/85);
+         dacbox[i+170][j] = (BYTE)((int)(i*start[j]  + (86-i)*finish[j])/85);
+#else
          dacbox[i][j]     = (BYTE)((i*middle[j] + (86-i)*start[j] )/85);
          dacbox[i+85][j]  = (BYTE)((i*finish[j] + (86-i)*middle[j])/85);
          dacbox[i+170][j] = (BYTE)((i*start[j]  + (86-i)*finish[j])/85);
+#endif
       }
 }
 

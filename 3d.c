@@ -55,8 +55,10 @@ ROTZ(i) =           cosi  sini    0     0
                       --  Tim Wegner  April 22, 1989
 */
 
-#include <stdio.h>
+
 #include <string.h>
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 
 /* initialize a matrix and set to identity matrix

@@ -1,6 +1,10 @@
+#ifndef EXTERNS_H
+#define EXTERNS_H
+
 #ifndef DEBUG
 #define DEBUG 1
 #endif
+
 
 /* keep var names in column 30 for sorting via sort /+30 <in >out */
 extern int                   active_system;
@@ -131,6 +135,7 @@ extern BYTE                  exitmode;
 extern SEGTYPE               extraseg;
 extern int                   eyeseparation;
 extern float                 eyesfp;
+extern int                   fastrestore;
 extern long                  FgHalf;
 extern double                fgLimit;
 extern long                  FgOne;
@@ -248,6 +253,7 @@ extern long far *            lx0;
 extern long far *            lx1;
 extern long far *            ly0;
 extern long far *            ly1;
+extern int                   lzw[2];
 extern long                  l_at_rad;
 extern MATRIX                m;
 extern int                   made_dsktemp;
@@ -257,6 +263,7 @@ extern BYTE far *            mapdacbox;
 extern int                   mapset;
 extern char                  MAP_name[];
 extern int                   matherr_ct;
+extern double                math_tol[2];
 extern int                   maxcolor;
 extern long                  maxct;
 extern char                  maxfn;
@@ -407,6 +414,7 @@ extern int                   save_release;
 extern int                   save_system;
 extern float                 screenaspect;
 extern char                  scrnfile[];
+extern struct SearchPath     searchfor;
 extern char                  showbox;
 extern int                   showdot;
 extern int                   showfile;
@@ -505,7 +513,6 @@ extern char                  s_egamono[];
 extern char                  s_ega[];
 extern char                  s_epscross[];
 extern char                  s_epsf[];
-extern char far              s_escapetoabort[];
 extern char                  s_exitmode[];
 extern char                  s_exitnoask[];
 extern char                  s_exp[];
@@ -778,3 +785,5 @@ extern int                   zoomoff;
 extern int                   zrotate;
 extern double                zskew;
 extern double                zwidth;
+
+#endif

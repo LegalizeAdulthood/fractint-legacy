@@ -12,16 +12,13 @@
 
 */
 
-#include <stdio.h>
 #ifndef XFRACT
 #include <conio.h>
 #include <string.h>
-#include <dos.h>
-
-/* #include "port.h" */ /* in prototyp.h */
-#else
-#include "fractint.h"
 #endif
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 #include "tplus.h"
 
@@ -434,22 +431,22 @@ void ClearTPlusScreen(void) {
 static struct {
    unsigned xdots, ydots, Template, Zoom, Depth;
 } far ModeTable[] = {
-   512, 400, 0,  0, 4,
-   512, 476, 1,  0, 4,
-   512, 486, 2,  0, 4,
-   512, 576, 3,  0, 4,
-   640, 480, 4,  0, 2,
-   648, 486, 5,  0, 2,
-   720, 486, 6,  0, 2,
-   720, 576, 7,  0, 2,
-   756, 486, 8,  0, 2,
-   768, 576, 9,  0, 2,
-   800, 600, 10, 0, 2,
-   1024,768, 11, 0, 2,
-   640, 400, 13, 0, 2,
-   320, 200, 13, 1, 2,
-   512, 496, 14, 0, 4,
-   640, 496, 15, 0, 2,
+   {512, 400, 0,  0, 4},
+   {512, 476, 1,  0, 4},
+   {512, 486, 2,  0, 4},
+   {512, 576, 3,  0, 4},
+   {640, 480, 4,  0, 2},
+   {648, 486, 5,  0, 2},
+   {720, 486, 6,  0, 2},
+   {720, 576, 7,  0, 2},
+   {756, 486, 8,  0, 2},
+   {768, 576, 9,  0, 2},
+   {800, 600, 10, 0, 2},
+   {1024,768, 11, 0, 2},
+   {640, 400, 13, 0, 2},
+   {320, 200, 13, 1, 2},
+   {512, 496, 14, 0, 4},
+   {640, 496, 15, 0, 2}
 };
 
 static unsigned TableSize = (sizeof(ModeTable) / sizeof(ModeTable[0]));

@@ -2,28 +2,26 @@
         Overlayed odds and ends that don't fit anywhere else.
 */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
 #ifndef XFRACT
 #include <malloc.h>
 #include <process.h>
-#include <dos.h>
 #include <stdarg.h>
 #include <io.h>
 #else
 #include <varargs.h>
 #endif
-#include "fractint.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 #include "fractype.h"
 #include "helpdefs.h"
-#include "prototyp.h"
 
 /* routines in this module      */
 
-static void write_batch_parms(char *colorinf,int maxcolor);
+static void write_batch_parms(char *colorinf,int maxcolor,int i, int j);
 static void expand_comments(char far *target, char far *source);
 
 #ifndef XFRACT
@@ -57,6 +55,7 @@ char s_seqd[]     = " %s=%d";
 char s_seqdd[]    = " %s=%d/%d";
 char s_seqddd[]   = " %s=%d/%d/%d";
 char s_seqldddd[]  = " %s=%ld/%d/%d/%d";
+char s_seqy[]     = " %s=y";
 char s_x[]        = "x";
 char s_y[]        = "y";
 char s_z[]        = "z";
@@ -67,7 +66,7 @@ FILE *parmfile;
 
 #define PAR_KEY(x)  ( x < 10 ? '0' + x : 'a' - 10 + x)
 
-#ifdef C6
+#ifdef _MSC_VER
 #pragma optimize("e",off)  /* MSC 6.00A messes up next rtn with "e" on */
 #endif
 
@@ -87,7 +86,7 @@ void make_batch_file()
    double pdely;
    double pdelx2;
    double pdely2;
-   unsigned int j, pxdots, pydots, xm, ym;
+   unsigned int pxdots, pydots, xm, ym;
    double pxxmin, pyymax;
    char vidmde[5];
    int promptnum;
@@ -95,7 +94,7 @@ void make_batch_file()
    int have3rd;
    /****/
 
-   int i;
+   int i, j;
    char far *inpcommandfile, far *inpcommandname;
    char far *inpcomment[4];
    struct fullscreenvalues paramvalues[18];
@@ -390,7 +389,7 @@ Continue to replace it, Cancel to back out"};
          pyymax = yymax;
       }
       for (i = 0; i < (int)xm; i++)  /* columns */
-      for (j = 0; j < (unsigned int)ym; j++)  /* rows    */
+      for (j = 0; j < (int)ym; j++)  /* rows    */
       {
          if (xm > 1 || ym > 1)
          {
@@ -455,12 +454,11 @@ Continue to replace it, Cancel to back out"};
             for(k=1;k<4;k++)
                if (CommandComment[k][0])
                   fprintf(parmfile, "%s%s\n", buf, CommandComment[k]);
-            /*
             if (patchlevel != 0)
                fprintf(parmfile, "%s Version %d Patchlevel %d\n", buf,
-                  release, patchlevel); */
+                  release, patchlevel); 
          }
-         write_batch_parms(colorspec, maxcolor);   /* write the parameters */
+         write_batch_parms(colorspec, maxcolor, i, j);
          if(xm > 1 || ym > 1)
          {
             fprintf(parmfile,"  video=%s", vidmde);
@@ -511,7 +509,7 @@ static struct write_batch_data { /* buffer for parms to break lines nicely */
    char *buf;
    } *wbdata;
 
-static void write_batch_parms(char *colorinf,int maxcolor)
+static void write_batch_parms(char *colorinf, int maxcolor, int ii, int jj)
 {
    char far *saveshared;
    int i,j,k;
@@ -690,7 +688,7 @@ static void write_batch_parms(char *colorinf,int maxcolor)
                           ?neworbittype:fractype,i) != NULL) break;
 
       if (i >= 0) {
-        if (fractype == CELLULAR)
+        if (fractype == CELLULAR || fractype == ANT)
           put_parm(" %s=%.1f",s_params,param[0]);
         else
         {
@@ -702,7 +700,7 @@ static void write_batch_parms(char *colorinf,int maxcolor)
           put_parm(" %s=%.17g",s_params,param[0]);
         }
         for (j = 1; j <= i; ++j)
-        if (fractype == CELLULAR)
+        if (fractype == CELLULAR || fractype == ANT)
           put_parm("/%.1f",param[j]);
         else
         {
@@ -721,7 +719,7 @@ static void write_batch_parms(char *colorinf,int maxcolor)
          put_parm( " %s=%.15g/%.15g",s_initorbit,initorbit.x,initorbit.y);
 
       if (floatflag)
-         put_parm( " %s=y",s_float);
+         put_parm( s_seqy,s_float);
 
       if (maxit != 150)
          put_parm(" %s=%ld",s_maxiter,maxit);
@@ -820,16 +818,16 @@ static void write_batch_parms(char *colorinf,int maxcolor)
                      pseudox?pseudox:xdots,pseudoy?pseudoy:ydots);
       }
       if (old_demm_colors)
-         put_parm( " %s=y",s_olddemmcolors);
+         put_parm( s_seqy,s_olddemmcolors);
       if (usr_biomorph != -1)
          put_parm( s_seqd,s_biomorph, usr_biomorph);
       if (finattract)
-         put_parm(" %s=y",s_finattract);
+         put_parm(s_seqy,s_finattract);
 
       if (forcesymmetry != 999) {
          static FCODE msg[] =
             {"Regenerate before <b> to get correct symmetry"};
-         if(forcesymmetry == 1000)
+         if(forcesymmetry == 1000 && ii == 1 && jj == 1)
             stopmsg(0,msg);
          put_parm( " %s=",s_symmetry);
          if (forcesymmetry==XAXIS)
@@ -876,7 +874,7 @@ static void write_batch_parms(char *colorinf,int maxcolor)
       if (loaded3d == 0)
          put_filename(s_filename,readname);
       if (SPHERE) {
-         put_parm( " %s=y",s_sphere);
+         put_parm( s_seqy,s_sphere);
          put_parm( s_seqdd,s_latitude, THETA1, THETA2);
          put_parm( s_seqdd,s_longitude, PHI1, PHI2);
          put_parm( s_seqd,s_radius, RADIUS);
@@ -897,19 +895,19 @@ static void write_batch_parms(char *colorinf,int maxcolor)
       if (RAY) {
          put_parm( s_seqd,s_ray,RAY);
          if (BRIEF)
-            put_parm(" %s=y",s_brief);
+            put_parm(s_seqy,s_brief);
          }
       if (FILLTYPE > 4) {
          put_parm( s_seqddd,s_lightsource, XLIGHT, YLIGHT, ZLIGHT);
          if (LIGHTAVG)
-            put_parm( " %=%d",s_smoothing, LIGHTAVG);
+            put_parm(s_seqd,s_smoothing, LIGHTAVG);
          }
       if (RANDOMIZE)
          put_parm( s_seqd,s_randomize,RANDOMIZE);
       if (Targa_Out)
-         put_parm( " %s=y",s_fullcolor);
+         put_parm( s_seqy,s_fullcolor);
       if (grayflag)
-         put_parm( " %s=y",s_usegrayscale);
+         put_parm( s_seqy,s_usegrayscale);
       if (Ambient)
          put_parm( s_seqd,s_ambient,Ambient);
       if (haze)
@@ -1235,6 +1233,10 @@ int getprecbf(int rezflag)
    return(max(digits,dec));
 }
 
+#ifdef _MSC_VER
+#pragma optimize("e",off)  /* MSC 7.00 messes up next with "e" on */
+#endif
+
 /* This function calculates the precision needed to distiguish adjacent
    pixels at Fractint's maximum resolution of MAXPIXELS by MAXPIXELS
    (if rez==MAXREZ) or at current resolution (if rez==CURRENTREZ)    */
@@ -1277,6 +1279,10 @@ int getprecdbl(int rezflag)
    digits = max(digits,3);
    return(digits);
 }
+
+#ifdef _MSC_VER
+#pragma optimize("e",on)
+#endif
 
 /*
    Strips zeros from the non-exponent part of a number. This logic
@@ -1743,6 +1749,8 @@ static void update_fractint_cfg()
    linenum = nextmode = 0;
    nextlinenum = cfglinenums[0];
    while (fgets(buf,120,cfgfile)) {
+      int truecolorbits;
+      char colorsbuf[10];
       ++linenum;
       if (linenum == nextlinenum) { /* replace this line */
          far_memcpy((char far *)&vident,(char far *)&vidtbl[nextmode],
@@ -1758,17 +1766,24 @@ static void update_fractint_cfg()
             j += 8;
             }
          buf[i] = 0;
-         fprintf(outfile,"%-4s,%s,%4x,%4x,%4x,%4x,%4d,%4d,%4d,%3d,%s\n",
+         if((truecolorbits = videoentry.dotmode/1000) == 0)
+            sprintf(colorsbuf,"%3d",videoentry.colors);
+         else 
+            sprintf(colorsbuf,"%3s",
+               buf, (truecolorbits == 3)?"64m":
+                    (truecolorbits == 2)?"16k":
+                    (truecolorbits == 1)?"15k":"???");
+         fprintf(outfile,"%-4s,%s,%4x,%4x,%4x,%4x,%4d,%4d,%4d,%s,%s\n",
                 kname,
                 buf,
                 vident.videomodeax,
                 vident.videomodebx,
                 vident.videomodecx,
                 vident.videomodedx,
-                vident.dotmode,
+                vident.dotmode%1000,
                 vident.xdots,
                 vident.ydots,
-                vident.colors,
+                colorsbuf,
                 vident.comment);
          if (++nextmode >= vidtbllen)
             nextlinenum = 32767;

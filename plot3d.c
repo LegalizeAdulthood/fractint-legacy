@@ -4,11 +4,10 @@
     By Tim Wegner and Marc Reinig.
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "fractint.h"
-#include "fractype.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "fractype.h"
 
 /* Use these palette indices for red/blue - same on ega/vga */
 #define PAL_BLUE    1

@@ -77,24 +77,26 @@ ENDIF
         extrn   TPlusLUT:far
 
 ; 8514/A routines               ; changed 8514/A routines to near JCO 4/11/92
-        extrn   open8514  :near     ; start 8514a
-        extrn   reopen8514:near     ; restart 8514a
-        extrn   close8514 :near     ; stop 8514a
-        extrn   fr85wdot  :near     ; 8514a write dot
-        extrn   fr85wbox  :near     ; 8514a write box
-        extrn   fr85rdot  :near     ; 8514a read dot
-        extrn   fr85rbox  :near     ; 8514a read box
-        extrn   w8514pal  :near     ; 8514a pallete update
+;   And back to far, JCO 4/13/97
+        extrn   open8514  :far     ; start 8514a
+        extrn   reopen8514:far     ; restart 8514a
+        extrn   close8514 :far     ; stop 8514a
+        extrn   fr85wdot  :far     ; 8514a write dot
+        extrn   fr85wbox  :far     ; 8514a write box
+        extrn   fr85rdot  :far     ; 8514a read dot
+        extrn   fr85rbox  :far     ; 8514a read box
+        extrn   w8514pal  :far     ; 8514a pallete update
 
 ; HW Compatible 8514/A routines    ; AW, made near JCO 4/11/92
-        extrn   open8514hw  :near      ; start 8514a
-        extrn   reopen8514hw:near      ; restart 8514a
-        extrn   close8514hw :near      ; stop 8514a
-        extrn   fr85hwwdot  :near      ; 8514a write dot
-        extrn   fr85hwwbox  :near      ; 8514a write box
-        extrn   fr85hwrdot  :near      ; 8514a read dot
-        extrn   fr85hwrbox  :near      ; 8514a read box
-        extrn   w8514hwpal  :near      ; 8514a pallete update
+;   And back to far, JCO 4/13/97
+        extrn   open8514hw  :far      ; start 8514a
+        extrn   reopen8514hw:far      ; restart 8514a
+        extrn   close8514hw :far      ; stop 8514a
+        extrn   fr85hwwdot  :far      ; 8514a write dot
+        extrn   fr85hwwbox  :far      ; 8514a write box
+        extrn   fr85hwrdot  :far      ; 8514a read dot
+        extrn   fr85hwrbox  :far      ; 8514a read box
+        extrn   w8514hwpal  :far      ; 8514a pallete update
 
 ; Hercules Routines
         extrn   inithgc   :far      ; Initialize Hercules card graphics mode
@@ -3628,15 +3630,47 @@ TPlusRead      ENDP
 ;       ret
 ;f85end endp
 
-;f85write    proc    near
-;       call   far ptr fr85wdot
-;       ret
-;f85write    endp
+; hardware
+f85hwwrite     proc    near
+       call   far ptr fr85hwwdot
+       ret
+f85hwwrite    endp
 
-;f85read proc   near
-;       call   far ptr fr85rdot
-;       ret
-;f85read endp
+f85hwread proc   near
+       call   far ptr fr85hwrdot
+       ret
+f85hwread endp
+
+f85hwline proc   near
+       call    far ptr fr85hwwbox        ;put out the box
+       ret
+f85hwline endp
+
+f85hwreadline proc    near
+       call    far ptr fr85hwrbox        ;read the box
+       ret
+f85hwreadline endp
+
+; afi
+f85write     proc    near
+       call   far ptr fr85wdot
+       ret
+f85write    endp
+
+f85read proc   near
+       call   far ptr fr85rdot
+       ret
+f85read endp
+
+f85line proc   near
+       call    far ptr fr85wbox        ;put out the box
+       ret
+f85line endp
+
+f85readline proc    near
+       call    far ptr fr85rbox        ;read the box
+       ret
+f85readline endp
 
 hgcwrite proc near
         mov     ah,0                    ; clear the high-order color byte
@@ -4341,16 +4375,6 @@ notlastplane:
 tweak256readline        endp
 
 
-;f85line proc   near
-;       call    fr85wbox        ;put out the box
-;       ret
-;f85line endp
-
-;f85readline proc    near
-;       call    fr85rbox        ;read the box
-;       ret
-;f85readline endp
-
 ; ******************** Function videocleanup() **************************
 
 ;       Called at the end of any assembler video read/writes to make
@@ -4515,10 +4539,10 @@ noxga:
         jne     no8514                  ; nope.
         cmp     ai_8514, 0              ;check afi flag, JCO 4/11/92
         jne     f85endafi
-        call    close8514hw             ;use registers, JCO 4/11/92
+        call    far ptr close8514hw     ;use registers, JCO 4/11/92
         jmp     f85enddone
 f85endafi:
-        call    close8514               ;use near afi, JCO 4/11/92
+        call    far ptr close8514       ;use afi, JCO 4/11/92
 ;       call    f85end          ;use afi
 f85enddone:
         mov     f85flag, 0
@@ -4835,11 +4859,11 @@ targaMode:                              ; TARGA MODIFIED 2 June 89 - j mclain
 f8514mode:                              ; 8514 modes
         cmp     ai_8514, 0              ; check if afi flag is set, JCO 4/11/92
         jne     f85afi          ; yes, try afi
-        call    open8514hw              ; start the 8514a, try registers first JCO
+        call    far ptr open8514hw      ; start the 8514a, try registers first JCO
         jnc     f85ok
         mov     ai_8514, 1              ; set afi flag
 f85afi:
-        call    open8514                ; start the 8514a, try afi
+        call    far ptr open8514        ; start the 8514a, try afi
         jnc     f85ok
         mov     ai_8514, 0              ; clear afi flag, JCO 4/11/92
         mov     goodmode,0              ; oops - problems.
@@ -4858,19 +4882,19 @@ hgcmode:
 f85ok:
         cmp     ai_8514, 0
         jne     f85okafi                        ; afi flag is set JCO 4/11/92
-        mov     ax,offset fr85hwwdot    ;use register routines
-        mov     bx,offset fr85hwrdot    ;changed to near calls
-        mov     cx,offset fr85hwwbox    ;
-        mov     dx,offset fr85hwrbox    ;
+        mov     ax,offset f85hwwrite    ;use register routines
+        mov     bx,offset f85hwread    ;changed to near calls
+        mov     cx,offset f85hwline    ;
+        mov     dx,offset f85hwreadline    ;
         mov     si,offset swapnormread  ; set up the normal swap routine
         mov     f85flag,1               ;
         mov     oktoprint,0             ; NOT OK to printf() in this mode
         jmp     videomode               ; return to common code
 f85okafi:
-        mov     ax,offset fr85wdot      ;use afi routines, JCO 4/11/92
-        mov     bx,offset fr85rdot      ;changed to near calls
-        mov     cx,offset fr85wbox      ;
-        mov     dx,offset fr85rbox      ;
+        mov     ax,offset f85write      ;use afi routines, JCO 4/11/92
+        mov     bx,offset f85read      ;changed to near calls
+        mov     cx,offset f85line      ;
+        mov     dx,offset f85readline      ;
         mov     si,offset swapnormread  ; set up the normal swap routine
         mov     f85flag,1               ;
         mov     oktoprint,0             ; NOT OK to printf() in this mode
@@ -5426,10 +5450,10 @@ setfortext      proc    uses es si di
         je      go_dosettext
         cmp     ai_8514, 0              ;using registers? JCO 4/11/92
         jne     not85reg
-        call    close8514hw             ;close adapter if not, with registers
+        call    far ptr close8514hw             ;close adapter if not, with registers
         jmp     done85close
 not85reg:
-        call    close8514               ;close adapter if not, with afi
+        call    far ptr close8514               ;close adapter if not, with afi
 done85close:
         mov     f85flag, 0
 go_dosettext:
@@ -5684,10 +5708,10 @@ setforgraphics  proc    uses es si di
         jne     go_graphicsreturn
         cmp     ai_8514, 0              ;check afi flag JCO 4/11/92
         jne     reopenafi
-        call    reopen8514hw    ;use registers
+        call    far ptr reopen8514hw    ;use registers
         jmp     reopen85done
 reopenafi:
-        call    reopen8514              ;use afi
+        call    far ptr reopen8514              ;use afi
 reopen85done:
         mov     f85flag, 1
 go_graphicsreturn:
@@ -7553,10 +7577,10 @@ nolearn:
 spin8514:
         cmp     ai_8514, 0              ;check afi flag JCO 4/11/92
         jne     spin85afi
-        call    w8514hwpal              ; AW
+        call    far ptr w8514hwpal              ; AW
         jmp     spindacreturn
 spin85afi:
-        call    w8514pal                ;use afi
+        call    far ptr w8514pal                ;use afi
 
 spindacreturn:
         ret

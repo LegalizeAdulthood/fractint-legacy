@@ -4,15 +4,11 @@
    red/blue 3D images. Tim Wegner
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <float.h>
-#include <math.h>
 #include <string.h>
-#include "mpmath.h"
-#include "fractint.h"
-#include "fractype.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "fractype.h"
 
 /* orbitcalc is declared with no arguments so jump through hoops here */
 #define LORBIT(x,y,z) \
@@ -1182,7 +1178,9 @@ int dynamfloat(double *x, double *y, double *z)
 {
       _CMPLX cp,tmp;
       double newx,newy;
+#ifndef XFRACT
       newx = *z; /* for warning only */
+#endif
       cp.x = b* *x;
       cp.y = 0;
       CMPLXtrig0(cp, tmp);
@@ -1213,7 +1211,7 @@ int iconfloatorbit(double *x, double *y, double *z)
 {
 
     double oldx, oldy, zzbar, zreal, zimag, za, zb, zn, p;
-    unsigned char i;
+    int i;
 
     oldx = *x;
     oldy = *y;

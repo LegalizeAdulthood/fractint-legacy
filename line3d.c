@@ -9,13 +9,10 @@
 /*                formatting cleanup.                                   */
 /************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <limits.h>
-#ifndef XFRACT
-#include <dos.h>
-#endif
-#include "fractint.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 
 struct point
@@ -96,7 +93,6 @@ static BYTE T24 = 24;
 static BYTE T32 = 32;
 static BYTE upr_lwr[4];
 static int T_Safe; /* Original Targa Image successfully copied to targa_temp */
-static void draw_rect(VECTOR, VECTOR, VECTOR, VECTOR, int, int);
 static VECTOR light_direction;
 static BYTE Real_Color;  /* Actual color of cur pixel */
 static int RO, CO, CO_MAX;  /* For use in Acrospin support */
@@ -1875,8 +1871,13 @@ static int _fastcall out_triangle(struct f_point pt1, struct f_point pt2, struct
    /* Color of triangle is average of colors of its verticies */
    if (!BRIEF)
       for (i = 0; i <= 2; i++)
+#ifdef __SVR4
+         c[i] = (float) ((int)(dacbox[c1][i] + dacbox[c2][i] + dacbox[c3][i])
+            / (3 * 63));
+#else
          c[i] = (float) (dacbox[c1][i] + dacbox[c2][i] + dacbox[c3][i])
             / (3 * 63);
+#endif
 
    /* get rid of degenerate triangles: any two points equal */
    if ((pt_t[0][0] == pt_t[1][0] &&

@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <float.h>
 #include <limits.h>
 #include <string.h>
 #ifdef __TURBOC__
@@ -8,11 +5,11 @@
 #elif !defined(__386BSD__)
 #include <malloc.h>
 #endif
-#include "fractint.h"
-#include "mpmath.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 #include "helpdefs.h"
 #include "fractype.h"
-#include "prototyp.h"
 
 #ifndef XFRACT
 #define MPCmod(m) (*pMPadd(*pMPmul((m).x, (m).x), *pMPmul((m).y, (m).y)))
@@ -871,6 +868,7 @@ MandelTrigSetup()
 
 MarksJuliaSetup()
 {
+#ifndef XFRACT
    if(param[2] < 1)
       param[2] = 1;
    c_exp = (int)param[2];
@@ -890,6 +888,7 @@ MarksJuliaSetup()
       lcoefficient.y = 0L;
    }
    get_julia_attractor (0.0, 0.0);      /* an attractor? */
+#endif
    return(1);
 }
 
@@ -1121,4 +1120,14 @@ StandardSetup()
    if(fractype==UNITYFP)
       periodicitycheck=0;
    return(1);
+}
+
+VLSetup()
+{
+   if (param[0] < 0.0) param[0] = 0.0;
+   if (param[1] < 0.0) param[1] = 0.0;
+   if (param[0] > 1.0) param[0] = 1.0;
+   if (param[1] > 1.0) param[1] = 1.0;
+   floatparm = &parm;
+   return 1;
 }

@@ -1,13 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
+
 #include <string.h>
-#include <math.h>
 #ifdef __TURBOC__
 #include <alloc.h>
 #else
 #include <malloc.h>
 #endif
-#include "fractint.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 #include "lsys.h"
 
@@ -127,7 +127,7 @@ static int _fastcall readLSystemFile(char *str)
    FILE *infile;
    char msgbuf[481]; /* enough for 6 full lines */
 
-   if (find_file_item(LFileName,str,&infile) < 0)
+   if (find_file_item(LFileName,str,&infile, 2) < 0)
       return -1;
    while ((c = fgetc(infile)) != '{')
       if (c == EOF) return -1;
@@ -138,18 +138,19 @@ static int _fastcall readLSystemFile(char *str)
 
    while(file_gets(inline,160,infile) > -1)  /* Max line length 160 chars */
    {
+      static FCODE out_of_mem[] = {"Error:  out of memory\n"};
       linenum++;
       if ((word = strchr(inline,';')) != NULL) /* strip comment */
          *word = 0;
       strlwr(inline);
 
-      if (strspn(inline," \t\n") < strlen(inline)) /* not a blank line */
+      if ((int)strspn(inline," \t\n") < (int)strlen(inline)) /* not a blank line */
       {
          word=strtok(inline," =\t\n");
          if (!strcmp(word,"axiom"))
          {
             if (save_rule(strtok(NULL," \t\n"),&ruleptrs[0])) {
-                strcat(msgbuf,"Error:  out of memory\n");
+                far_strcat(msgbuf,out_of_mem);
                 ++err;
                 break;
             }
@@ -171,9 +172,13 @@ static int _fastcall readLSystemFile(char *str)
             }
          else if (strlen(word)==1)
          {
-            strcat(strcpy(fixed,word),strtok(NULL," \t\n"));
+            char *temp;
+            temp = strtok(NULL," \t\n");
+            strcpy(fixed,word);
+            if (temp)
+                strcat(fixed,temp);
             if (save_rule(fixed,rulind++)) {
-                strcat(msgbuf, "Error:  out of memory\n");
+                far_strcat(msgbuf, out_of_mem);
                 ++err;
                 break;
             }
@@ -202,12 +207,14 @@ static int _fastcall readLSystemFile(char *str)
    fclose(infile);
    if (!ruleptrs[0] && err<6)
    {
-      strcat(msgbuf,"Error:  no axiom\n");
+      static FCODE no_axiom[] = {"Error:  no axiom\n"};
+      far_strcat(msgbuf,no_axiom);
       ++err;
    }
    if ((maxangle<3||maxangle>50) && err<6)
    {
-      strcat(msgbuf,"Error:  illegal or missing angle\n");
+      static FCODE missing_angle[] = {"Error:  illegal or missing angle\n"};
+      far_strcat(msgbuf,missing_angle);
       ++err;
    }
    if (err)
@@ -268,7 +275,7 @@ int Lsystem(void)
    }
 
    if (stackoflow) {
-      static char far msg[]={"insufficient memory, try a lower order"};
+      static FCODE msg[]={"insufficient memory, try a lower order"};
       stopmsg(0,msg);
    }
    else if (overflow) {
@@ -610,9 +617,11 @@ if (overflow)     /* integer math routines overflowed */
 #endif
 
    while (command->ch && command->ch !=']') {
+      static FCODE thinking_msg[] = 
+         {"L-System thinking (higher orders take longer)"};
       if (! (ts->counter++)) {
          /* let user know we're not dead */
-         if (thinking(1,"L-System thinking (higher orders take longer)")) {
+         if (thinking(1,thinking_msg)) {
             ts->counter--;
             return NULL;
          }

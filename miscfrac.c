@@ -4,19 +4,13 @@ Miscellaneous fractal-specific code (formerly in CALCFRAC.C)
 
 */
 
-#include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
-#include <float.h>
-#ifndef XFRACT
-#include <dos.h>
-#endif
 #include <limits.h>
-#include "fractint.h"
-#include "fractype.h"
-#include "mpmath.h"
-#include "targa_lc.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "fractype.h"
+#include "targa_lc.h"
 
 /* routines in this module      */
 
@@ -461,29 +455,38 @@ static void set_Plasma_palette()
    dac[0].blue = 0 ;
    for(i=1;i<=85;i++)
    {
+#ifdef __SVR4
+      dac[i].red       = (BYTE)((i*(int)Green.red   + (86-i)*(int)Blue.red)/85);
+      dac[i].green     = (BYTE)((i*(int)Green.green + (86-i)*(int)Blue.green)/85);
+      dac[i].blue      = (BYTE)((i*(int)Green.blue  + (86-i)*(int)Blue.blue)/85);
+
+      dac[i+85].red    = (BYTE)((i*(int)Red.red   + (86-i)*(int)Green.red)/85);
+      dac[i+85].green  = (BYTE)((i*(int)Red.green + (86-i)*(int)Green.green)/85);
+      dac[i+85].blue   = (BYTE)((i*(int)Red.blue  + (86-i)*(int)Green.blue)/85);
+
+      dac[i+170].red   = (BYTE)((i*(int)Blue.red   + (86-i)*(int)Red.red)/85);
+      dac[i+170].green = (BYTE)((i*(int)Blue.green + (86-i)*(int)Red.green)/85);
+      dac[i+170].blue  = (BYTE)((i*(int)Blue.blue  + (86-i)*(int)Red.blue)/85);
+#else
       dac[i].red       = (BYTE)((i*Green.red   + (86-i)*Blue.red)/85);
-      dac[i].green     = (BYTE)((i*Green.green + (86-i)*Blue.green)/85);
+      dac[i].green     = (BYTE)((i*Green.green + (86-i)*Blue.green)/85);  
       dac[i].blue      = (BYTE)((i*Green.blue  + (86-i)*Blue.blue)/85);
-
+ 
       dac[i+85].red    = (BYTE)((i*Red.red   + (86-i)*Green.red)/85);
-      dac[i+85].green  = (BYTE)((i*Red.green + (86-i)*Green.green)/85);
-      dac[i+85].blue   = (BYTE)((i*Red.blue  + (86-i)*Green.blue)/85);
-
+      dac[i+85].green  = (BYTE)((i*Red.green + (86-i)*Green.green)/85);   
+      dac[i+85].blue   = (BYTE)((i*Red.blue  + (86-i)*Green.blue)/85); 
       dac[i+170].red   = (BYTE)((i*Blue.red   + (86-i)*Red.red)/85);
       dac[i+170].green = (BYTE)((i*Blue.green + (86-i)*Red.green)/85);
       dac[i+170].blue  = (BYTE)((i*Blue.blue  + (86-i)*Red.blue)/85);
+#endif
    }
    SetTgaColors();      /* TARGA 3 June 89  j mclain */
    spindac(0,1);
 }
 
-
 /***************** standalone engine for "diffusion" ********************/
 
 #define RANDOM(x)  (rand()%(x))
-
-/* This constant assumes that rand() returns a value from 0 to 32676 */
-#define FOURPI  (long)(4*PI*(double)(1L << 16))
 
 int diffusion()
 {
@@ -492,20 +495,30 @@ int diffusion()
    int mode;     /* Determines diffusion type:  0 = central (classic) */
                  /*                             1 = falling particles */
                  /*                             2 = square cavity     */
+   int colorshift; /* If zero, select colors at random, otherwise shift */
+                   /* the color every colorshift points */
+
+   int colorcount,currentcolor;
+  
    int i;
    double cosine,sine,angle;
-   long lcosine,lsine;
    int x,y;
-   float r, radius, f_tmp;
+   float r, radius;
 
    if (diskvideo)
       notdiskmsg();
+  
    x = y = -1;
    bitshift = 16;
    fudge = 1L << 16;
 
    border = (int)param[0];
    mode = (int)param[1];
+   colorshift = (int)param[2];
+
+   colorcount = colorshift; /* Counts down from colorshift */
+   currentcolor = 1;  /* Start at color 1 (color 0 is probably invisible)*/
+
    if (mode > 2)
       mode=0;
 
@@ -524,13 +537,13 @@ int diffusion()
    if (mode == 1) {
       xmax = xdots / 2 + border;  /* Initial box */
       xmin = xdots / 2 - border;
-      ymin = ydots - 20;
+      ymin = ydots - border;
    }
    if (mode == 2) {
-      if (xdots>ydots)
-         radius = ydots - 5;
+      if (xdots > ydots)
+         radius = ydots - border;
       else
-         radius = xdots - 5;
+         radius = xdots - border;
    }
    if (resuming) /* restore worklist, if we can't the above will stay in place */
    {
@@ -544,80 +557,62 @@ int diffusion()
       end_resume();
    }
 
-   if (mode==0)
-      putcolor(xdots / 2, ydots / 2,RANDOM(colors-1)+1);  /* Seed point */
-
-   if (mode==1)
-      for (i=0;i<=xdots;i++)
-         putcolor(i,ydots-1,colors-1);
-
-   if (mode==2){
-      if (xdots>ydots){
-         for (i=0;i<ydots;i++){
-            putcolor(xdots/2-ydots/2 , i , colors-1);
-            putcolor(xdots/2+ydots/2 , i , colors-1);
-            putcolor(xdots/2-ydots/2+i , 0 , colors-1);
-            putcolor(xdots/2-ydots/2+i , ydots-1 , colors-1);
-         }
-      }
-      else {
-         for (i=0;i<xdots;i++){
-            putcolor(0 , ydots/2-xdots/2+i , colors-1);
-            putcolor(xdots-1 , ydots/2-xdots/2+i , colors-1);
-            putcolor(i , ydots/2-xdots/2 , colors-1);
-            putcolor(i , ydots/2+xdots/2 , colors-1);
-         }
-      }
+   switch (mode) {
+   case 0: /* Single seed point in the center */
+           putcolor(xdots / 2, ydots / 2,currentcolor);  
+           break;
+   case 1: /* Line along the bottom */
+           for (i=0;i<=xdots;i++)
+           putcolor(i,ydots-1,currentcolor);
+           break;
+   case 2: /* Large square that fills the screen */
+           if (xdots > ydots)
+              for (i=0;i<ydots;i++){
+                 putcolor(xdots/2-ydots/2 , i , currentcolor);
+                 putcolor(xdots/2+ydots/2 , i , currentcolor);
+                 putcolor(xdots/2-ydots/2+i , 0 , currentcolor);
+                 putcolor(xdots/2-ydots/2+i , ydots-1 , currentcolor);
+              }
+           else 
+              for (i=0;i<xdots;i++){
+                 putcolor(0 , ydots/2-xdots/2+i , currentcolor);
+                 putcolor(xdots-1 , ydots/2-xdots/2+i , currentcolor);
+                 putcolor(i , ydots/2-xdots/2 , currentcolor);
+                 putcolor(i , ydots/2+xdots/2 , currentcolor);
+              }
+           break;
    }
 
    for(;;)
    {
-      /* Release new point on circle just inside the box */
+      switch (mode) {
+      case 0: /* Release new point on a circle inside the box */
+               angle=2*(double)rand()/(RAND_MAX/PI);
+               FPUsincos(&angle,&sine,&cosine);
+               x = (int)(cosine*(xmax-xmin) + xdots);
+               y = (int)(sine  *(ymax-ymin) + ydots);
+               x = x >> 1; /* divide by 2 */
+               y = y >> 1;
+               break;
+      case 1: /* Release new point on the line ymin somewhere between xmin
+                 and xmax */
+              y=ymin;
+              x=RANDOM(xmax-xmin) + (xdots-xmax+xmin)/2;
+              break;
+      case 2: /* Release new point on a circle inside the box with radius
+                 given by the radius variable */
+               angle=2*(double)rand()/(RAND_MAX/PI);
+               FPUsincos(&angle,&sine,&cosine);
+               x = (int)(cosine*radius + xdots);
+               y = (int)(sine  *radius + ydots);
+               x = x >> 1;
+               y = y >> 1;
+               break;
+      }
 
-      if (mode==0)
-      {
-         if (floatflag)
-         {
-            angle=2*(double)rand()/(RAND_MAX/PI);
-            FPUsincos(&angle,&sine,&cosine);
-            x = (int)(cosine*(xmax-xmin) + xdots);
-            y = (int)(sine  *(ymax-ymin) + ydots);
-         }
-         else
-         {
-            SinCos086(multiply((long)rand15(),FOURPI,16),&lsine,&lcosine);
-            x = (int)((lcosine*(long)(xmax-xmin) >> 16) + xdots);
-            y = (int)((lsine  *(long)(ymax-ymin) >> 16) + ydots);
-         }
-
-         x = x >> 1; /* divide by 2 */
-         y = y >> 1;
-      }
-      if (mode==1)
-      {
-         y=ymin;
-         x=RANDOM(xmax-xmin) + (xdots-xmax+xmin)/2;
-      }
-      if (mode==2)
-      {
-         if (floatflag)
-         {
-            angle=2*(double)rand()/(RAND_MAX/PI);
-            FPUsincos(&angle,&sine,&cosine);
-            x = (int)(cosine*radius + xdots);
-            y = (int)(sine  *radius + ydots);
-         }
-         else
-         {
-            SinCos086(multiply((long)rand15(),FOURPI,16),&lsine,&lcosine);
-            x = (int)((lcosine*(long)(radius) >> 16) + xdots);
-            y = (int)((lsine  *(long)(radius) >> 16) + ydots);
-         }
-         x = x >> 1;
-         y = y >> 1;
-      }
       /* Loop as long as the point (x,y) is surrounded by color 0 */
       /* on all eight sides                                       */
+
       while((getcolor(x+1,y+1) == 0) && (getcolor(x+1,y) == 0) &&
           (getcolor(x+1,y-1) == 0) && (getcolor(x  ,y+1) == 0) &&
           (getcolor(x  ,y-1) == 0) && (getcolor(x-1,y+1) == 0) &&
@@ -627,8 +622,7 @@ int diffusion()
          if (show_orbit)
             putcolor(x,y,0);
 
-         /* Make sure point is inside the box (if mode==0)*/
-         if (mode==0){
+         if (mode==0){  /* Make sure point is inside the box */
             if (x==xmax)
                x--;
             else if (x==xmin)
@@ -639,11 +633,12 @@ int diffusion()
                y++;
          }
 
-         if (mode==1)
+         if (mode==1) /* Make sure point is on the screen below ymin, but
+                    we need a 1 pixel margin because of the next random step.*/
          {
-            if (x>xdots-2)
+            if (x>=xdots-1)
                x--;
-            else if (x<1)
+            else if (x<=1)
                x++;
             if (y<ymin)
                y++;
@@ -655,7 +650,7 @@ int diffusion()
 
          /* Check keyboard */
          if ((++plasma_check & 0x7f) == 1)
-            if(keypressed())
+            if(check_key())
             {
                alloc_resume(20,1);
                if (mode!=2)
@@ -673,51 +668,58 @@ int diffusion()
          if (show_orbit)
             putcolor(x,y,RANDOM(colors-1)+1);
 
-      }
-      putcolor(x,y,RANDOM(colors-1)+1);
+      } /* End of loop, now fix the point */
 
-      /* Is point too close to the edge? */
+      /* If we're doing colorshifting then use currentcolor, otherwise 
+         pick one at random */
+      putcolor(x,y,colorshift?currentcolor:RANDOM(colors-1)+1);
 
-      if (mode==0)
-      {
-         if (((x+border)>xmax) || ((x-border)<xmin)
-             || ((y-border)<ymin) || ((y+border)>ymax))
-         {
-            /* Increase box size, but not past the edge of the screen */
-            if (ymin != 1)
-            {
-               ymin--;
-               ymax++;
-            }
-            if (xmin != 1)
-            {
-               xmin--;
-               xmax++;
-            }
-            if ((ymin==1) || (xmin==1))
-               return 0;
-         }
+      /* If we're doing colorshifting then check to see if we need to shift*/
+      if (colorshift){
+        if (!--colorcount){ /* If the counter reaches zero then shift*/
+          currentcolor++;      /* Increase the current color and wrap */
+          currentcolor%=colors;  /* around skipping zero */
+          if (!currentcolor) currentcolor++;
+          colorcount=colorshift;  /* and reset the counter */
+        }
       }
-      if (mode==1)
-      {
-         if (y < ymin+5)
-            ymin = y - 5;
-         if (ymin<2)
-            return 0;
-      }
-      if (mode==2)
-      {
-         if (abs(x-xdots/2)<5 && abs(y-ydots/2)<5)
-            return 0;
 
-         r = (x-xdots/2)*(x-xdots/2)+(y-ydots/2)*(y-ydots/2);
-         fSqrt14(r,f_tmp);
-         r = 2 * f_tmp;
-         if (r < radius)
-            radius = r;
+      /* If the new point is close to an edge, we may need to increase
+         some limits so that the limits expand to match the growing
+         fractal. */
+ 
+      switch (mode) {
+      case 0: if (((x+border)>xmax) || ((x-border)<xmin)
+                    || ((y-border)<ymin) || ((y+border)>ymax))
+              {
+                 /* Increase box size, but not past the edge of the screen */
+                 ymin--;
+                 ymax++;
+                 xmin--;
+                 xmax++;
+                 if ((ymin==0) || (xmin==0))
+                    return 0;
+              }
+              break;
+      case 1: /* Decrease ymin, but not past top of screen */
+              if (y-border < ymin)
+                 ymin--;
+              if (ymin==0)
+                 return 0;
+              break;
+      case 2: /* Decrease the radius where points are released to stay away 
+                 from the fractal.  It might be decreased by 1 or 2 */
+              r = sqr((float)x-xdots/2) + sqr((float)y-ydots/2);
+              if (r<=border*border) 
+                return 0;
+              while ((radius-border)*(radius-border) > r)
+                 radius--;
+              break;
       }
    }
 }
+
+
 
 /************ standalone engine for "bifurcation" types ***************/
 
@@ -1543,10 +1545,10 @@ cellular () {
    }
 #endif
    if (n == 0) { /* calculate a random rule */
-      n = rand15()%k;
+      n = rand15()%(int)k;
       for (i=1;i<(U16)rule_digits;i++) {
          n *= 10;
-         n += rand15()%k;
+         n += rand15()%(int)k;
       }
       param[1] = n;
    }
@@ -1603,7 +1605,7 @@ cellular () {
    else {
     if(rflag || randparam==0 || randparam==-1){
       for (col=0;col<=ixstop;col++) {
-         cell_array[filled][col] = (BYTE)(rand15()%k);
+         cell_array[filled][col] = (BYTE)(rand15()%(int)k);
       }
     } /* end of if random */
 
@@ -1629,12 +1631,14 @@ cellular () {
 /* calculates the (lnnmbr - 1) generation */
    if (lstscreenflag) { /* line number != 0 & not resuming & not continuing */
      for (row = start_row; row < (S16)lnnmbr; row++) {
-      thinking(1,"Cellular thinking (higher start row takes longer)");
+      static FCODE msg[]={"Cellular thinking (higher start row takes longer)"};
+      
+      thinking(1,msg);
       if(rflag || randparam==0 || randparam==-1){
        /* Use a random border */
        for (i=0;i<=(U16)r;i++) {
-         cell_array[notfilled][i]=(BYTE)(rand15()%k);
-         cell_array[notfilled][ixstop-i]=(BYTE)(rand15()%k);
+         cell_array[notfilled][i]=(BYTE)(rand15()%(int)k);
+         cell_array[notfilled][ixstop-i]=(BYTE)(rand15()%(int)k);
        }
       }
       else {
@@ -1688,8 +1692,8 @@ contloop:
       if(rflag || randparam==0 || randparam==-1){
        /* Use a random border */
        for (i=0;i<=(U16)r;i++) {
-         cell_array[notfilled][i]=(BYTE)(rand15()%k);
-         cell_array[notfilled][ixstop-i]=(BYTE)(rand15()%k);
+         cell_array[notfilled][i]=(BYTE)(rand15()%(int)k);
+         cell_array[notfilled][ixstop-i]=(BYTE)(rand15()%(int)k);
        }
       }
       else {
@@ -2134,7 +2138,7 @@ int calcfroth(void)   /* per pixel 1/2/g, called with row & col set */
          }
 
       while (!found_attractor && ((lmagnitud = (ltempsqrx=lsqr(lold.x)) + (ltempsqry=lsqr(lold.y))) < llimit)
-             && (lmagnitud > 0) && (coloriter < maxit))
+             && (lmagnitud >= 0) && (coloriter < maxit))
          {
          /* simple formula: z = z^2 + conj(z*(-1+ai)) */
          /* but it's the attractor that makes this so interesting */
@@ -2341,3 +2345,4 @@ int froth_per_orbit(void)
       }
    return 0;
    }
+

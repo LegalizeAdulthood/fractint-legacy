@@ -52,7 +52,6 @@
 #define INCLUDE_COMMON  /* tell helpcom.h to include common code */
 
 
-#include <stdio.h>
 #ifndef XFRACT
 #include <io.h>
 #include <stdarg.h>
@@ -61,7 +60,6 @@
 #define strupr strlwr
 #endif
 #include <fcntl.h>
-#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -76,6 +74,8 @@
 
 
 #include <assert.h>
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "helpcom.h"
 
 
@@ -1150,7 +1150,7 @@ int parse_link(void)   /* returns length of link or 0 on error */
       else
          {
          l.type = 1;           /* type 1 = to a label */
-         if (strlen(cmd) > 32)
+         if ((int)strlen(cmd) > 32)
             warn(err_off, "Label is long.");
          if (cmd[1] == '\0')
             {
@@ -1640,10 +1640,10 @@ void read_src(char *fname)
                if (cmd[6] == '\0')
                   warn(eoff,"Topic has no title.");
 
-               else if (strlen(cmd+6) > 70)
+               else if ((int)strlen(cmd+6) > 70)
                   error(eoff,"Topic title is too long.");
 
-               else if (strlen(cmd+6) > 60)
+               else if ((int)strlen(cmd+6) > 60)
                   warn(eoff,"Topic title is long.");
 
                if ( find_topic_title(cmd+6) != -1 )
@@ -1689,7 +1689,7 @@ void read_src(char *fname)
                start_topic(&t, "", 0);
                t.flags |= TF_DATA;
 
-               if (strlen(cmd+5) > 32)
+               if ((int)strlen(cmd+5) > 32)
                   warn(eoff,"Label name is long.");
 
                lbl.name      = dupstr(cmd+5, 0);
@@ -1914,7 +1914,7 @@ void read_src(char *fname)
 
                else if ( strnicmp(cmd, "Label=", 6) == 0 )
                   {
-                  if (strlen(cmd+6) <= 0)
+                  if ((int)strlen(cmd+6) <= 0)
                      error(eoff,"Label has no name.");
 
                   else if ( !validate_label_name(cmd+6) )
@@ -1925,7 +1925,7 @@ void read_src(char *fname)
 
                   else
                      {
-                     if (strlen(cmd+6) > 32)
+                     if ((int)strlen(cmd+6) > 32)
                         warn(eoff,"Label name is long.");
 
                     if ( (t.flags & TF_DATA) && cmd[6] == '@' )
@@ -3021,7 +3021,6 @@ void paginate_document(void)
 /*
  * label sorting stuff
  */
-
 
 int fcmp_LABEL(VOIDCONSTPTR a, VOIDCONSTPTR b)
    {

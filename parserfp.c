@@ -17,6 +17,13 @@
 
 
 /* Revision history:  */
+
+/* 15 Mar 1997 TIW  */
+/*    Fixed if/else bug, replaced stopmsg with pstopmsg */
+
+/* 09 Mar 1997 TIW/GGM  */
+/*    Added support for if/else */
+
 /* 30 Jun 1996 TIW  */
 /*    Removed function names if TESTFP not defined to save memory      */
 /*    Function fStkFloor added to support new 'floor' function         */
@@ -92,7 +99,7 @@
 /* ******************************************************************* */
 
 /* Uncomment the next line to enable debug messages.  */
-/* --#define TESTFP 1  */
+/* #define TESTFP 1 */
 
 /* Use startup parameter "debugflag=324" to show debug messages after  */
 /*    compiling with above #define uncommented.  */
@@ -102,15 +109,10 @@
 
 #include <string.h>
 #include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <float.h>
 #include <time.h>
-#ifndef XFRACT
-#include <dos.h>
-#endif
-#include "fractint.h"
-#include "mpmath.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 
 /* global data  */
@@ -131,12 +133,13 @@ extern int InitLodPtr, InitStoPtr, InitOpPtr, LastInitOp;
 extern void (far * far *f)(void);
 extern char far compiled_fn_1[];
 extern char far compiled_fn_2[];
-
+extern JUMP_CONTROL_ST far *jump_control;
+extern int uses_jump, jump_index;
 int fFormula(void);
 
 typedef void OLD_FN(void);  /* old C functions  */
 
-OLD_FN  StkLod, StkClr, StkSto, EndInit;
+OLD_FN  StkLod, StkClr, StkSto, EndInit, StkJumpLabel;
 OLD_FN  dStkAdd, dStkSub, dStkMul, dStkDiv;
 OLD_FN  dStkSqr, dStkMod;
 OLD_FN  dStkSin, dStkCos, dStkSinh, dStkCosh, dStkCosXX;
@@ -157,6 +160,7 @@ OLD_FN  dStkFloor;
 OLD_FN  dStkCeil;
 OLD_FN  dStkTrunc;
 OLD_FN  dStkRound;
+OLD_FN  StkJump, dStkJumpOnTrue, dStkJumpOnFalse;
 
 typedef void (near NEW_FN)(void);  /* new 387-only ASM functions  */
 
@@ -215,6 +219,7 @@ NEW_FN  fStkASin, fStkACos, fStkASinh, fStkACosh;
 NEW_FN  fStkATanh, fStkATan;
 NEW_FN  fStkCAbs;
 NEW_FN  fStkFloor, fStkCeil, fStkTrunc, fStkRound; /* rounding functions */
+NEW_FN  fStkJump, fStkJumpOnTrue, fStkJumpOnFalse, fStkJumpLabel; /* flow */
 
 /* check to see if a const is being loaded  */
 /* the really awful hack below gets the first char of the name  */
@@ -249,29 +254,43 @@ NEW_FN  fStkFloor, fStkCeil, fStkTrunc, fStkRound; /* rounding functions */
 #define MAX_STACK 8   /* max # of stack register avail  */
 
 #ifdef TESTFP
+int pstopmsg(int x,char far *msg)
+{
+   static FILE *fp = NULL;
+   if(fp == NULL)
+      fp = fopen("fpdebug.txt","w");
+   if(fp)
+   {
+      fprintf(fp,"%Fs\n",msg);
+      fflush(fp);
+   }
+   return(x); /* just to quiet warnings */   
+}
 
-#define DBUGMSG(x,y) if (debugflag==324 ) stopmsg((x), (y) )
+#define stopmsg pstopmsg
+
+#define DBUGMSG(x,y) if (debugflag==324 || debugflag==322 ) stopmsg((x), (y))
 #define DBUGMSG1(x,y,p) \
-      if (debugflag==324 ){ \
+      if (debugflag==324 || debugflag==322 ){ \
          sprintf(cDbgMsg, (y), (p) ); \
          stopmsg((x), cDbgMsg ); \
       }
 #define DBUGMSG2(x,y,p,q) \
-      if (debugflag==324 ){ \
+      if (debugflag==324 || debugflag==322 ){ \
          sprintf(cDbgMsg, (y), (p), (q) ); \
          stopmsg((x), cDbgMsg ); \
       }
 #define DBUGMSG3(x,y,p,q,r) \
-      if (debugflag==324 ){ \
+      if (debugflag==324 || debugflag==322 ){ \
          sprintf(cDbgMsg, (y), (p), (q), (r) ); \
          stopmsg((x), cDbgMsg ); \
       }
 #define DBUGMSG4(x,y,p,q,r,s) \
-      if (debugflag==324 ){ \
+      if (debugflag==324 || debugflag==322 ){ \
          sprintf(cDbgMsg, (y), (p), (q), (r), (s) ); \
          stopmsg((x), cDbgMsg ); \
       }
-#define FNME(a,b,c,d,e,f) a,b,c,d,e,f    /* use the function name string */
+#define FNAME(a,b,c,d,e,f) a,b,c,d,e,f    /* use the function name string */
 #else
 
 #define DBUGMSG(x,y)
@@ -333,16 +352,21 @@ NEW_FN  fStkFloor, fStkCeil, fStkTrunc, fStkRound; /* rounding functions */
 #define FN_CEIL          48
 #define FN_TRUNC         49
 #define FN_ROUND         50
+#define FN_JUMP          51
+#define FN_JUMP_ON_TRUE  52
+#define FN_JUMP_ON_FALSE 53
+#define FN_JUMP_LABEL    54
+
 
 /* number of "old" functions in the table.  */
 /* these are the ones that the parser outputs  */
 
-#define LAST_OLD_FN   FN_ROUND
+#define LAST_OLD_FN   FN_JUMP_LABEL
 #define NUM_OLD_FNS   LAST_OLD_FN + 1
 
 /* total number of functions in the table.  */
 
-#define LAST_FN          FN_ROUND
+#define LAST_FN          FN_JUMP_LABEL
 #define NUM_FNS          LAST_FN + 1
 
 static unsigned char
@@ -433,7 +457,11 @@ struct fn_entry {
    {FNAME("Floor",   dStkFloor,   fStkFloor,  2, 0,  0) },          /* 47  */
    {FNAME("Ceil",    dStkCeil,    fStkCeil,   2, 0,  0) },          /* 48  */
    {FNAME("Trunc",   dStkTrunc,   fStkTrunc,  2, 0,  0) },          /* 49  */
-   {FNAME("Round",   dStkRound,   fStkRound,  2, 0,  0) }           /* 50  */
+   {FNAME("Round",   dStkRound,   fStkRound,  2, 0,  0) },          /* 50  */
+   {FNAME("Jump",        StkJump,         fStkJump,       0, 0, 0)},/* 51  */
+   {FNAME("JumpOnTrue",  dStkJumpOnTrue,  fStkJumpOnTrue, 2, 0, 0)},/* 52  */
+   {FNAME("JumpOnFalse", dStkJumpOnFalse, fStkJumpOnFalse,2, 0, 0)},/* 53  */
+   {FNAME("JumpLabel",   StkJumpLabel,    fStkJumpLabel,  0, 0, 0)} /* 54  */
 };
 
 #ifdef COMPILER
@@ -1282,6 +1310,59 @@ SkipOptimizer:  /* -------------  end of optimizer ----------------------- */
    return 1;  /* return 1 for success  */
 }
 
+int fpfill_jump_struct(void)
+{ /* Completes all entries in jump structure. Returns 1 on error) */
+  /* On entry, jump_index is the number of jump functions in the formula*/
+   int i = 0;
+   int checkforelse = 0;
+   NEW_FN near * JumpFunc;
+   int find_new_func = 1;
+   JUMP_PTRS_ST jump_data[MAX_JUMPS];
+
+   for (OpPtr = 0; OpPtr < (int) LastOp; OpPtr++) {
+      if(find_new_func) {
+         switch (jump_control[i].type) {
+            case 1:
+               JumpFunc = fStkJumpOnFalse;
+               break;
+            case 2:
+               checkforelse = !checkforelse;
+               if(checkforelse)
+                  JumpFunc = fStkJump;
+               else
+                  JumpFunc = fStkJumpOnFalse;
+               break;
+            case 3:
+               JumpFunc = fStkJump;
+               break;
+            case 4:
+               JumpFunc = fStkJumpLabel;
+               break;
+            default:
+               break;
+         }
+         find_new_func = 0;
+      }
+      if(pfls[OpPtr].function == JumpFunc) {
+         jump_data[i].JumpOpPtr = OpPtr*4;
+         i++;
+         find_new_func = 1;
+      }
+   }
+
+      /* Following for safety only; all should always be false */
+   if(i != jump_index || jump_control[i - 1].type != 4
+           || jump_control[0].type != 1) {
+      return 1;
+   }
+
+   while(i > 0) {
+      i--;
+      i = fill_if_group(i, jump_data);
+   }
+   return i < 0 ? 1 : 0;
+}
+
 extern int fform_per_pixel(void);       /* these fns are in parsera.asm  */
 extern int BadFormula(void);
 extern void (far Img_Setup )(void);
@@ -1447,7 +1528,8 @@ skipfinalopt:  /* -------------- end of final optimizations ------------ */
    LASTSQR.d.y = 0.0;  /* do this once per image  */
 
    /* now change the pointers  */
-   if (FormName[0] != 0 ){ /* but only if parse succeeded  */
+   if (FormName[0] != 0 &&
+        (uses_jump == 0 || fpfill_jump_struct() == 0)){ /* but only if parse succeeded  */
       curfractalspecific->per_pixel = fform_per_pixel;
       curfractalspecific->orbitcalc = fFormula;
    }

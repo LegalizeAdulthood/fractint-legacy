@@ -2,16 +2,21 @@
         Various routines that prompt for things.
 */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#ifndef XFRACT
-#include <dos.h>
-#elif !defined(__386BSD__)
+#ifdef   XFRACT
+#ifndef  __386BSD__
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/dir.h>
+#ifndef __SVR4
+# include <sys/dir.h>
+#else
+# include <dirent.h>
+#ifndef DIRENT
+#define DIRENT
+#endif
+#endif
+#endif
 #endif
 #ifdef __TURBOC__
 #include <alloc.h>
@@ -24,15 +29,22 @@
 #define getwd(a) getcwd(a,MAXPATHLEN)
 #endif
 
-#include "fractint.h"
+#ifdef __SVR4
+#include <sys/param.h>
+#define getwd(a) getcwd(a,MAXPATHLEN)
+#endif
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 #include "fractype.h"
 #include "helpdefs.h"
-#include "prototyp.h"
 
 /* Routines used in prompts2.c */
 
-        int prompt_checkkey(int curkey);
-        long get_file_entry(int,char *,char *,char *,char *);
+   int prompt_checkkey(int curkey);
+   int prompt_checkkey_scroll(int curkey);
+   long get_file_entry(int,char *,char *,char *,char *);
 
 /* Routines in this module      */
 
@@ -45,7 +57,7 @@ static  int sel_fractype_help(int curkey, int choice);
         void set_default_parms(void);
 static  long gfe_choose_entry(int,char *,char *,char *);
 static  int check_gfe_key(int curkey,int choice);
-static  void load_entry_text(FILE *entfile,char far *buf,int maxlines);
+static  void load_entry_text(FILE *entfile,char far *buf,int maxlines, int startrow, int startcol);
 static  void format_parmfile_line(int,char *);
 static  int get_light_params(void );
 static  int check_mapfile(void );
@@ -72,6 +84,12 @@ int julibrot;   /* flag for julibrot */
 
 int promptfkeys;
 
+   /* These need to be global because F6 exits fullscreen_prompt() */
+int scroll_row_status;    /* will be set to first line of extra info to
+                             be displayed ( 0 = top line) */
+int scroll_column_status; /* will be set to first column of extra info to
+                             be displayed ( 0 = leftmost column )*/
+
 int fullscreen_prompt(  /* full-screen prompting routine */
         char far *hdg,          /* heading, lines separated by \n */
         int numprompts,         /* there are this many prompts (max) */
@@ -89,12 +107,23 @@ int fullscreen_prompt(  /* full-screen prompting routine */
    int extralines,extrawidth,extrarow;
    int instrrow;
    int promptrow,promptcol,valuecol;
-   int curchoice;
+   int curchoice = 0;
    int done, i, j;
    int anyinput;
    int savelookatmouse;
    int curtype, curlen;
    char buf[81];
+
+      /* scrolling related variables */
+   FILE * scroll_file = NULL;     /* file with extrainfo entry to scroll   */
+   long scroll_file_start = 0;    /* where entry starts in scroll_file     */
+   int in_scrolling_mode = 0;     /* will be 1 if need to scroll extrainfo */
+   int lines_in_entry = 0;        /* total lines in entry to be scrolled   */
+   int vertical_scroll_limit = 0; /* don't scroll down if this is top line */
+   int widest_entry_line = 0;     /* length of longest line in entry       */
+   int rewrite_extrainfo = 0;     /* if 1: rewrite extrainfo to text box   */
+   char blanks[78];               /* used to clear text box                */
+
 #ifndef XFRACT
 static FCODE instr1[]  = {"Use " UPARR " and " DNARR " to select values to change"};
 static FCODE instr2a[]  = {"Type in replacement value for selected field"};
@@ -109,14 +138,71 @@ static FCODE instr3a[] = {"Press ENTER when finished (or ESCAPE to back out)"};
 static FCODE instr3b[] = {"Press ENTER when finished, ESCAPE to back out, or F1 for help"};
 static FCODE instr0a[] = {"No changeable parameters; press ENTER to exit"};
 static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE to back out, F1 for help"};
-/*   if (numprompts <= 0) { */  /* ?? nothing to do! */
-/*      return(0); */
-/*      } */
+
    savelookatmouse = lookatmouse;
    lookatmouse = 0;
    promptfkeys = fkeymask;
+   memset(blanks,' ',77);   /* initialize string of blanks */
+   blanks[77] = (char) 0;
+
+      /* If applicable, open file for scrolling extrainfo. The function
+         find_file_item() opens the file and sets the file pointer to the
+         beginning of the entry.
+      */
+
+   if((fractype == FORMULA || fractype == FFORMULA) && extrainfo && *extrainfo) {
+      find_file_item(FormFileName, FormName, &scroll_file, 1);
+      in_scrolling_mode = 1;
+      scroll_file_start = ftell(scroll_file);
+   }
+
+   else if(fractype == LSYSTEM && extrainfo && *extrainfo) {
+      find_file_item(LFileName, LName, &scroll_file, 2);
+      in_scrolling_mode = 1;
+      scroll_file_start = ftell(scroll_file);
+   }
+
+   else if((fractype == IFS || fractype == IFS3D) && extrainfo && *extrainfo) {
+      find_file_item(IFSFileName, IFSName, &scroll_file, 3);
+      in_scrolling_mode = 1;
+      scroll_file_start = ftell(scroll_file);
+   }
+
+      /* initialize widest_entry_line and lines_in_entry */
+   if(in_scrolling_mode && scroll_file != NULL) {
+      int comment = 0;
+      int c = 0;
+      int widthct = 0;
+      while((c = fgetc(scroll_file)) != EOF && c != '\032') {
+         if(c == ';')
+            comment = 1;
+         else if(c == '\n') {
+            comment = 0;
+            lines_in_entry++;
+            widthct =  -1;
+         }
+         else if (c == '\t')
+            widthct += 7 - widthct % 8;
+         else if ( c == '\r')
+            continue;
+         if(++widthct > widest_entry_line)
+            widest_entry_line = widthct;
+         if (c == '}' && !comment) {
+            lines_in_entry++;
+            break;
+         }
+      }
+      if(c == EOF || c == '\032') { /* should never happen */
+         fclose(scroll_file);
+         in_scrolling_mode = 0;
+      }
+   }
+
+
+
    helptitle();                        /* clear screen, display title line  */
    setattr(1,0,C_PROMPT_BKGRD,24*80);  /* init rest of screen to background */
+
 
    hdgscan = hdg;                      /* count title lines, find widest */
    i = titlewidth = 0;
@@ -125,10 +211,10 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
       if (*(hdgscan++) == '\n') {
          ++titlelines;
          i = -1;
-         }
+      }
       if (++i > titlewidth)
          titlewidth = i;
-      }
+   }
    extralines = extrawidth = i = 0;
    if ((hdgscan = extrainfo) != 0)
       if (*hdgscan == 0)
@@ -140,14 +226,31 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
                if (extralines + numprompts + titlelines >= 20) {
                    *hdgscan = 0; /* full screen, cut off here */
                    break;
-                   }
+               }
                ++extralines;
                i = -1;
-               }
+            }
             if (++i > extrawidth)
                extrawidth = i;
-            }
          }
+      }
+
+      /* if entry fits in available space, shut off scrolling */
+   if(in_scrolling_mode && scroll_row_status == 0
+             && lines_in_entry == extralines - 2
+             && scroll_column_status == 0
+             && far_strchr(extrainfo, '\021') == NULL) {
+      in_scrolling_mode = 0;
+      fclose(scroll_file);
+      scroll_file = NULL;
+   }
+
+      /*initialize vertical scroll limit. When the top line of the text
+        box is the vertical scroll limit, the bottom line is the end of the
+        entry, and no further down scrolling is necessary.
+      */
+   if (in_scrolling_mode)
+      vertical_scroll_limit = lines_in_entry - (extralines - 2);
 
    /* work out vertical positioning */
    i = numprompts + titlelines + extralines + 3; /* total rows required */
@@ -173,6 +276,9 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
       ++extrarow;
    if (extrarow + extralines < 25)
       ++extrarow;
+
+   if(in_scrolling_mode)  /* set box to max width if in scrolling mode */
+      extrawidth = 76;
 
    /* work out horizontal positioning */
    maxfldwidth = maxpromptwidth = maxcomment = anyinput = 0;
@@ -221,8 +327,32 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
    /* display box heading */
    for (i = titlerow; i < boxrow; ++i)
       setattr(i,boxcol,C_PROMPT_HI,boxwidth);
-   textcbase = boxcol + (boxwidth - titlewidth) / 2;
-   putstring(titlerow,0,C_PROMPT_HI,hdg);
+   {
+      char far *hdgline = hdg;
+      /* center each line of heading independently */
+      int i;
+      for(i=0;i<titlelines-1;i++)
+      {
+         char far *next;
+         if((next = far_strchr(hdgline,'\n')) == NULL)
+            break; /* shouldn't happen */
+         *next = '\0';
+         titlewidth = far_strlen(hdgline);
+         textcbase = boxcol + (boxwidth - titlewidth) / 2;
+         putstring(titlerow+i,0,C_PROMPT_HI,hdgline);
+         *next = '\n';
+         hdgline = next+1;
+      }
+        /* add scrolling key message, if applicable */
+      if(in_scrolling_mode) {
+         *(hdgline + 31) = (char) 0;   /* replace the ')' */
+         far_strcat(hdgline, ". CTRL+(direction key) to scroll text.)");
+      }
+
+      titlewidth = far_strlen(hdgline);
+      textcbase = boxcol + (boxwidth - titlewidth) / 2;
+      putstring(titlerow+i,0,C_PROMPT_HI,hdgline);
+   }
 
    /* display extra info */
    if (extrainfo) {
@@ -251,14 +381,17 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
       textcbase += boxwidth - 1;
       putstring(extrarow,0,C_PROMPT_BKGRD,S6);
       putstring(extrarow+extralines-1,0,C_PROMPT_BKGRD,S3);
+
       textcbase = boxcol;
+
       for (i = 1; i < extralines-1; ++i) {
          putstring(extrarow+i,0,C_PROMPT_BKGRD,S4);
          putstring(extrarow+i,boxwidth-1,C_PROMPT_BKGRD,S4);
-         }
+      }
       textcbase += (boxwidth - extrawidth) / 2;
       putstring(extrarow+1,0,C_PROMPT_TEXT,extrainfo);
-      }
+   }
+
    textcbase = 0;
 
    /* display empty box */
@@ -270,35 +403,99 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
       putstring(promptrow+i, promptcol, C_PROMPT_LO, prompts[i]);
       prompt_valuestring(buf,&values[i]);
       putstring(promptrow+i, valuecol, C_PROMPT_LO, buf);
-      }
+   }
+
 
    if (!anyinput) {
       putstringcenter(instrrow,0,80,C_PROMPT_BKGRD,
         (helpmode > 0) ? instr0b : instr0a);
       movecursor(25,80);
+      textcbase = 2;
       for(;;) {
+         if(rewrite_extrainfo) {
+            rewrite_extrainfo = 0;
+            fseek(scroll_file, scroll_file_start, SEEK_SET);
+            load_entry_text(scroll_file, extrainfo, extralines - 2,
+                        scroll_row_status, scroll_column_status);
+            for(i=1; i <= extralines - 2; i++)
+               putstring(extrarow+i,0,C_PROMPT_TEXT,blanks);
+            putstring(extrarow+1,0,C_PROMPT_TEXT,extrainfo);
+         }
         while (!keypressed()) { }
         done = getakey();
         switch(done) {
-           case ESC:
-              done = -1;
-           case ENTER:
-           case ENTER_2:
-              goto fullscreen_exit;
-           case F2:
-           case F3:
-           case F4:
-           case F5:
-           case F6:
-           case F7:
-           case F8:
-           case F9:
-           case F10:
-              if (promptfkeys & (1<<(done+1-F1)) )
-                 goto fullscreen_exit;
-           }
-        }
+            case ESC:
+               done = -1;
+            case ENTER:
+            case ENTER_2:
+               goto fullscreen_exit;
+            case DOWN_ARROW_2:    /* scrolling key - down one row */
+               if(in_scrolling_mode && scroll_row_status < vertical_scroll_limit) {
+                  scroll_row_status++;
+                  rewrite_extrainfo = 1;
+               }
+               break;
+            case UP_ARROW_2:      /* scrolling key - up one row */
+               if(in_scrolling_mode && scroll_row_status > 0) {
+                  scroll_row_status--;
+                  rewrite_extrainfo = 1;
+              }
+              break;
+            case LEFT_ARROW_2:    /* scrolling key - left one column */
+               if(in_scrolling_mode && scroll_column_status > 0) {
+                  scroll_column_status--;
+                  rewrite_extrainfo = 1;
+               }
+               break;
+            case RIGHT_ARROW_2:   /* scrolling key - right one column */
+               if(in_scrolling_mode && far_strchr(extrainfo, '\021') != NULL) {
+                  scroll_column_status++;
+                  rewrite_extrainfo = 1;
+               }
+               break;
+            case CTL_PAGE_DOWN:   /* scrolling key - down one screen */
+               if(in_scrolling_mode && scroll_row_status < vertical_scroll_limit) {
+                  scroll_row_status += extralines - 2;
+                  if(scroll_row_status > vertical_scroll_limit)
+                     scroll_row_status = vertical_scroll_limit;
+                  rewrite_extrainfo = 1;
+               }
+               break;
+            case CTL_PAGE_UP:     /* scrolling key - up one screen */
+               if(in_scrolling_mode && scroll_row_status > 0) {
+                  scroll_row_status -= extralines - 2;
+                  if(scroll_row_status < 0)
+                     scroll_row_status = 0;
+                  rewrite_extrainfo = 1;
+               }
+               break;
+            case CTL_END:         /* scrolling key - to end of entry */
+               if(in_scrolling_mode) {
+                  scroll_row_status = vertical_scroll_limit;
+                  scroll_column_status = 0;
+                  rewrite_extrainfo = 1;
+               }
+               break;
+            case CTL_HOME:        /* scrolling key - to beginning of entry */
+               if(in_scrolling_mode) {
+                  scroll_row_status = scroll_column_status = 0;
+                  rewrite_extrainfo = 1;
+               }
+               break;
+            case F2:
+            case F3:
+            case F4:
+            case F5:
+            case F6:
+            case F7:
+            case F8:
+            case F9:
+            case F10:
+               if (promptfkeys & (1<<(done+1-F1)) )
+                  goto fullscreen_exit;
+         }
       }
+   }
 
 
    /* display footing */
@@ -307,22 +504,36 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
    putstringcenter(instrrow+1,0,80,C_PROMPT_BKGRD,
          (helpmode > 0) ? instr3b : instr3a);
 
-   curchoice = done = 0;
+   done = 0;
    while (values[curchoice].type == '*') ++curchoice;
 
    while (!done) {
+      if(rewrite_extrainfo) {
+         j = textcbase;
+         textcbase = 2;
+         fseek(scroll_file, scroll_file_start, SEEK_SET);
+         load_entry_text(scroll_file, extrainfo, extralines - 2,
+                             scroll_row_status, scroll_column_status);
+         for(i=1; i <= extralines - 2; i++)
+            putstring(extrarow+i,0,C_PROMPT_TEXT,blanks);
+         putstring(extrarow+1,0,C_PROMPT_TEXT,extrainfo);
+         textcbase = j;
+      }
 
       curtype = values[curchoice].type;
       curlen = prompt_valuestring(buf,&values[curchoice]);
-      putstringcenter(instrrow,0,80,C_PROMPT_BKGRD,
-                      (curtype == 'l') ? instr2b : instr2a);
+      if(!rewrite_extrainfo)
+         putstringcenter(instrrow,0,80,C_PROMPT_BKGRD,
+                   (curtype == 'l') ? instr2b : instr2a);
+      else
+         rewrite_extrainfo = 0;
       putstring(promptrow+curchoice,promptcol,C_PROMPT_HI,prompts[curchoice]);
 
       if (curtype == 'l') {
          i = input_field_list(
                 C_PROMPT_CHOOSE, buf, curlen,
                 values[curchoice].uval.ch.list, values[curchoice].uval.ch.llen,
-                promptrow+curchoice,valuecol, prompt_checkkey);
+                promptrow+curchoice,valuecol, in_scrolling_mode ? prompt_checkkey_scroll : prompt_checkkey);
          for (j = 0; j < values[curchoice].uval.ch.llen; ++j)
             if (strcmp(buf,values[curchoice].uval.ch.list[j]) == 0) break;
          values[curchoice].uval.ch.val = j;
@@ -335,7 +546,7 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
          if (curtype == 'D') j = 7;
          if (curtype == 'f') j = 1;
          i = input_field(j, C_PROMPT_INPUT, buf, curlen,
-                promptrow+curchoice,valuecol,prompt_checkkey);
+                promptrow+curchoice,valuecol, in_scrolling_mode ? prompt_checkkey_scroll : prompt_checkkey);
          switch (values[curchoice].type) {
             case 'd':
             case 'D':
@@ -383,7 +594,6 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
          case PAGE_UP:
             curchoice = -1;
          case DOWN_ARROW:
-         case DOWN_ARROW_2:
             do {
                if (++curchoice >= numprompts) curchoice = 0;
                } while (values[curchoice].type == '*');
@@ -391,17 +601,73 @@ static FCODE instr0b[] = {"No changeable parameters; press ENTER to exit, ESCAPE
          case PAGE_DOWN:
             curchoice = numprompts;
          case UP_ARROW:
-         case UP_ARROW_2:
             do {
                if (--curchoice < 0) curchoice = numprompts - 1;
                } while (values[curchoice].type == '*');
             break;
-         }
+         case DOWN_ARROW_2:     /* scrolling key - down one row */
+            if(in_scrolling_mode && scroll_row_status < vertical_scroll_limit) {
+               scroll_row_status++;
+               rewrite_extrainfo = 1;
+            }
+            break;
+         case UP_ARROW_2:       /* scrolling key - up one row */
+            if(in_scrolling_mode && scroll_row_status > 0) {
+               scroll_row_status--;
+               rewrite_extrainfo = 1;
+            }
+            break;
+         case LEFT_ARROW_2:     /*scrolling key - left one column */
+            if(in_scrolling_mode && scroll_column_status > 0) {
+               scroll_column_status--;
+               rewrite_extrainfo = 1;
+            }
+            break;
+         case RIGHT_ARROW_2:    /* scrolling key - right one column */
+            if(in_scrolling_mode && far_strchr(extrainfo, '\021') != NULL) {
+               scroll_column_status++;
+               rewrite_extrainfo = 1;
+            }
+            break;
+         case CTL_PAGE_DOWN:    /* scrolling key - down on screen */
+            if(in_scrolling_mode && scroll_row_status < vertical_scroll_limit) {
+               scroll_row_status += extralines - 2;
+               if(scroll_row_status > vertical_scroll_limit)
+                  scroll_row_status = vertical_scroll_limit;
+               rewrite_extrainfo = 1;
+            }
+            break;
+         case CTL_PAGE_UP:      /* scrolling key - up one screen */
+            if(in_scrolling_mode && scroll_row_status > 0) {
+                 scroll_row_status -= extralines - 2;
+               if(scroll_row_status < 0)
+                  scroll_row_status = 0;
+               rewrite_extrainfo = 1;
+            }
+            break;
+         case CTL_END:          /* scrolling key - go to end of entry */
+            if(in_scrolling_mode) {
+               scroll_row_status = vertical_scroll_limit;
+               scroll_column_status = 0;
+               rewrite_extrainfo = 1;
+            }
+            break;
+         case CTL_HOME:         /* scrolling key - go to beginning of entry */
+            if(in_scrolling_mode) {
+               scroll_row_status = scroll_column_status = 0;
+               rewrite_extrainfo = 1;
+            }
+            break;
       }
+   }
 
 fullscreen_exit:
    movecursor(25,80);
    lookatmouse = savelookatmouse;
+   if(scroll_file) {
+      fclose(scroll_file);
+      scroll_file = NULL;
+   }
    return(done);
 }
 
@@ -463,10 +729,39 @@ int prompt_checkkey(int curkey)
    switch(curkey) {
       case PAGE_UP:
       case DOWN_ARROW:
+      case PAGE_DOWN:
+      case UP_ARROW:
+         return(curkey);
+      case F2:
+      case F3:
+      case F4:
+      case F5:
+      case F6:
+      case F7:
+      case F8:
+      case F9:
+      case F10:
+         if (promptfkeys & (1<<(curkey+1-F1)) )
+            return(curkey);
+      }
+   return(0);
+}
+
+int prompt_checkkey_scroll(int curkey)
+{
+   switch(curkey) {
+      case PAGE_UP:
+      case DOWN_ARROW:
       case DOWN_ARROW_2:
       case PAGE_DOWN:
       case UP_ARROW:
       case UP_ARROW_2:
+      case LEFT_ARROW_2:
+      case RIGHT_ARROW_2:
+      case CTL_PAGE_DOWN:
+      case CTL_PAGE_UP:
+      case CTL_END:
+      case CTL_HOME:
          return(curkey);
       case F2:
       case F3:
@@ -522,12 +817,10 @@ static int input_field_list(
          case ESC:
             goto inpfldl_end;
          case RIGHT_ARROW:
-         case RIGHT_ARROW_2:
             if (++curval >= llen)
                curval = 0;
             break;
          case LEFT_ARROW:
-         case LEFT_ARROW_2:
             if (--curval < 0)
                curval = llen - 1;
             break;
@@ -544,7 +837,7 @@ static int input_field_list(
             for (i = 0; i < llen; ++i) {
                if (++j >= llen)
                   j = 0;
-               if ((*list[j] & 0xdf) == (curkey & 0xdf)) {
+               if ( (*list[j] & 0xdf) == (curkey & 0xdf)) {
                   curval = j;
                   break;
                   }
@@ -665,8 +958,17 @@ static int select_fracttype(int t) /* subrtn of get_fracttype, separated */
    tname[0] = 0;
    done = fullscreen_choice(CHOICEHELP+8,head,NULL,instr,numtypes,
          (char far *far*)choices,attributes,0,0,0,j,NULL,tname,NULL,sel_fractype_help);
-   if (done >= 0)
+   if (done >= 0) {
       done = choices[done]->num;
+      if((done == FORMULA || done == FFORMULA) && !strcmp(FormFileName, CommandFile))
+         strcpy(FormFileName, searchfor.frm);
+      if(done == LSYSTEM && !strcmp(LFileName, CommandFile))
+         strcpy(LFileName, searchfor.lsys);
+      if((done == IFS || done == IFS3D) && !strcmp(IFSFileName, CommandFile))
+         strcpy(IFSFileName, searchfor.ifs);
+   }
+
+
    helpmode = oldhelpmode;
    return(done);
 }
@@ -771,8 +1073,9 @@ void set_default_parms()
       aspectratio_crop(screenaspect,finalaspectratio);
    for (i = 0; i < 4; i++) {
       param[i] = curfractalspecific->paramvalue[i];
-      if (fractype != CELLULAR && fractype != FROTH && fractype != FROTHFP)
-         roundfloatd(&param[i]);   /* don't round cellular or frothybasin */
+      if (fractype != CELLULAR && fractype != FROTH && fractype != FROTHFP &&
+          fractype != ANT)
+         roundfloatd(&param[i]); /* don't round cellular, frothybasin or ant */
    }
    if((extra=find_extra_param(fractype)) > -1)
       for(i=0;i<MAXPARAMS-4;i++)
@@ -984,8 +1287,8 @@ int get_fract_params(int caller)        /* prompt for type-specific parms */
          filename = NULL;
          entryname = NULL;
       }
-      if (find_file_item(filename,entryname,&entryfile) == 0) {
-         load_entry_text(entryfile,tstack,16);
+      if (find_file_item(filename,entryname,&entryfile, -1-i) == 0) {
+         load_entry_text(entryfile,tstack,17, 0, 0);
          fclose(entryfile);
          if(fractype == FORMULA || fractype == FFORMULA)
            RunForm(entryname); /* no error check, should be okay, from above */
@@ -1244,11 +1547,14 @@ gfp_top:
       sprintf(msg,"Parameters for fractal type %s",typename);
    if(bf_math == 0)
    {
-      static FCODE msg1[] = {"\n(Press F6 for corner parameters)"};
-      far_strcat(msg,msg1);
+      static FCODE pressf6[] = {"\n(Press F6 for corner parameters)"};
+      far_strcat(msg,pressf6);
+
    }
    else
       fkeymask = 0;
+   scroll_row_status = 0; /* make sure we start at beginning of entry */
+   scroll_column_status = 0;
    for(;;)
    {
       oldhelpmode = helpmode;
@@ -1374,8 +1680,8 @@ void load_params(int fractype)
    for (i = 0; i < 4; ++i)
    {
       param[i] = fractalspecific[fractype].paramvalue[i];
-      if(fractype != CELLULAR) /* don't round cellular */
-        roundfloatd(&param[i]);
+      if(fractype != CELLULAR && fractype != ANT)
+        roundfloatd(&param[i]); /* don't round cellular or ant */
    }
    if((extra=find_extra_param(fractype)) > -1)
       for(i=0;i<MAXPARAMS-4;i++)
@@ -1505,6 +1811,7 @@ int scan_entries(FILE * infile, void far * ch, char *itemname)
       */
    struct entryinfo far *far * choices;
    char buf[101];
+   int exclude_entry;
    long name_offset, temp_offset;   /*rev 5/23/96 to add temp_offset,
                                       used below to skip any '{' that
                                       does not have a corresponding
@@ -1581,18 +1888,28 @@ top:
          }
          if (c != '}')   /* i.e. is EOF or '\032'*/
             break;
-         buf[ITEMNAMELEN] = 0;
+
+         if (strnicmp(buf, "frm:", 4) == 0 ||
+                   strnicmp(buf, "ifs:", 4) == 0 ||
+                   strnicmp(buf, "par:", 4) == 0)
+            exclude_entry = 4;
+         else if (strnicmp(buf, "lsys:", 5) == 0)
+            exclude_entry = 5;
+         else
+            exclude_entry = 0;
+
+         buf[ITEMNAMELEN + exclude_entry] = 0;
          if (itemname != NULL)  /* looking for one entry */
          {
             if (stricmp(buf, itemname) == 0)
             {
-               fseek(infile, name_offset, SEEK_SET);
+               fseek(infile, name_offset + (long) exclude_entry, SEEK_SET);
                return (-1);
             }
          }
          else /* make a whole list of entries */
          {
-            if (buf[0] != 0 && stricmp(buf, "comment") != 0)
+            if (buf[0] != 0 && stricmp(buf, "comment") != 0 && !exclude_entry)
             {
                far_strcpy(choices[numentries]->name, buf);
                choices[numentries]->point = name_offset;
@@ -1698,66 +2015,276 @@ static int check_gfe_key(int curkey,int choice)
 {
    char infhdg[60];
    char far *infbuf;
+   int in_scrolling_mode = 0; /* 1 if entry doesn't fit available space */
+   int top_line = 0;
+   int left_column = 0;
+   int i;
+   int done = 0;
+   int rewrite_infbuf = 0;  /* if 1: rewrite the entry portion of screen */
+   char blanks[79];         /* used to clear the entry portion of screen */
+   memset(blanks, ' ', 78);
+   blanks[78] = (char) 0;
 
    if (curkey == F6)
       return 0-F6;
    if (curkey == F4)
       return 0-F4;
    if (curkey == F2) {
+      int widest_entry_line = 0;
+      int lines_in_entry = 0;
+      int comment = 0;
+      int c = 0;
+      int widthct = 0;
       infbuf = MK_FP(extraseg,0);
       fseek(gfe_file,gfe_choices[choice]->point,SEEK_SET);
-      load_entry_text(gfe_file,infbuf,16);
+      while((c = fgetc(gfe_file)) != EOF && c != '\032') {
+         if(c == ';')
+            comment = 1;
+         else if(c == '\n') {
+            comment = 0;
+            lines_in_entry++;
+            widthct =  -1;
+         }
+         else if (c == '\t')
+            widthct += 7 - widthct % 8;
+         else if ( c == '\r')
+            continue;
+         if(++widthct > widest_entry_line)
+            widest_entry_line = widthct;
+         if (c == '}' && !comment) {
+            lines_in_entry++;
+            break;
+         }
+      }
+      if(c == EOF || c == '\032') { /* should never happen */
+         fseek(gfe_file,gfe_choices[choice]->point,SEEK_SET);
+         in_scrolling_mode = 0;
+      }
+      fseek(gfe_file,gfe_choices[choice]->point,SEEK_SET);
+      load_entry_text(gfe_file,infbuf, 17, 0, 0);
+      if(lines_in_entry > 17 || widest_entry_line > 74)
+         in_scrolling_mode = 1;
       strcpy(infhdg,gfe_title);
       strcat(infhdg," file entry:\n\n");
  /* ... instead, call help with buffer?  heading added */
       stackscreen();
       helptitle();
       setattr(1,0,C_GENERAL_MED,24*80);
+
+      textcbase = 0;
       putstring(2,1,C_GENERAL_HI,infhdg);
       textcbase = 2; /* left margin is 2 */
-      putstring(-1,0,C_GENERAL_MED,infbuf);
+      putstring(4,0,C_GENERAL_MED,infbuf);
+
       {
-      static FCODE msg[] = {"\n\n\nPress any key to return to selection list"};
+#ifndef XFRACT
+      static FCODE msg[]  = {"\n\n Use " UPARR ", " DNARR ", " RTARR ", " LTARR ", PgUp, PgDown, Home, and End to scroll text\nAny other key to return to selection list"};
+#else
+/* Some compilers don't accept "a" "b", so we have to fill in UPARR ourself.  */
+      static char far msg[] = {"\n\n Press up(K), down(J), right(M), left(N), PgUp, PgDown, Home, and End to scroll text\nAny other key to return to selection list"};
+#endif
       putstring(-1,0,C_GENERAL_LO,msg);
+      }
+
+      while(!done) {
+         if(rewrite_infbuf) {
+            rewrite_infbuf = 0;
+            fseek(gfe_file,gfe_choices[choice]->point,SEEK_SET);
+            load_entry_text(gfe_file, infbuf, 17, top_line, left_column);
+            for(i = 4; i < (lines_in_entry < 17 ? lines_in_entry + 4 : 21); i++)
+               putstring(i,0,C_GENERAL_MED,blanks);
+            putstring(4,0,C_GENERAL_MED,infbuf);
+         }
+         if((i = getakeynohelp()) == DOWN_ARROW || i == DOWN_ARROW_2
+                             || i == UP_ARROW || i == UP_ARROW_2
+                             || i == LEFT_ARROW || i == LEFT_ARROW_2
+                             || i == RIGHT_ARROW || i == RIGHT_ARROW_2
+                             || i == HOME || i == CTL_HOME
+                             || i == END || i == CTL_END
+                             || i == PAGE_UP || i == CTL_PAGE_UP
+                             || i == PAGE_DOWN || i == CTL_PAGE_DOWN) {
+            switch(i) {
+               case DOWN_ARROW: case DOWN_ARROW_2: /* down one line */
+                  if(in_scrolling_mode && top_line < lines_in_entry - 17) {
+                     top_line++;
+                     rewrite_infbuf = 1;
+                  }
+                  break;
+               case UP_ARROW: case UP_ARROW_2:  /* up one line */
+                  if(in_scrolling_mode && top_line > 0) {
+                     top_line--;
+                     rewrite_infbuf = 1;
+                  }
+                  break;
+               case LEFT_ARROW: case LEFT_ARROW_2:  /* left one column */
+                  if(in_scrolling_mode && left_column > 0) {
+                     left_column--;
+                     rewrite_infbuf = 1;
+                  }
+                  break;
+               case RIGHT_ARROW: case RIGHT_ARROW_2: /* right one column */
+                  if(in_scrolling_mode && far_strchr(infbuf, '\021') != NULL) {
+                     left_column++;
+                     rewrite_infbuf = 1;
+                  }
+                  break;
+               case PAGE_DOWN: case CTL_PAGE_DOWN: /* down 17 lines */
+                  if(in_scrolling_mode && top_line < lines_in_entry - 17) {
+                     top_line += 17;
+                     if(top_line > lines_in_entry - 17)
+                        top_line = lines_in_entry - 17;
+                     rewrite_infbuf = 1;
+                  }
+                  break;
+               case PAGE_UP: case CTL_PAGE_UP: /* up 17 lines */
+                  if(in_scrolling_mode && top_line > 0) {
+                     top_line -= 17;
+                     if(top_line < 0)
+                        top_line = 0;
+                     rewrite_infbuf = 1;
+                  }
+                  break;
+               case END: case CTL_END:       /* to end of entry */
+                  if(in_scrolling_mode) {
+                     top_line = lines_in_entry - 17;
+                     left_column = 0;
+                     rewrite_infbuf = 1;
+                  }
+                  break;
+               case HOME: case CTL_HOME:     /* to beginning of entry */
+                  if(in_scrolling_mode) {
+                     top_line = left_column = 0;
+                     rewrite_infbuf = 1;
+                  }
+                  break;
+               default:
+                  break;
+            }
+         }
+         else
+            done = 1;  /* a key other than scrolling key was pressed */
       }
       textcbase = 0;
       movecursor(25,80);
-      getakeynohelp();
       unstackscreen();
-      }
+   }
    return 0;
 }
 
-static void load_entry_text(FILE *entfile,char far *buf,int maxlines)
+static void load_entry_text(
+      FILE *entfile,
+      char far *buf,
+      int maxlines,
+      int startrow,
+      int startcol)
 {
-   int linect,linelen,c,comment=0;
-   linect = linelen = 0;
-   while ((c = fgetc(entfile)) != EOF && c != '\032') {
-      if (c == ';')
-         comment = 1;
-      else if (c == '\n' || c == '\r')
+       /* Revised 12/14/96 by George Martin. Up to maxlines of an entry
+          is copied to *buf starting from row "startrow", and skipping
+          characters in each line up to "startcol". The terminating '\n'
+          is deleted if maxlines is reached before the end of the entry.
+       */
+
+   int linelen, i;
+   int comment=0;
+   int c = 0;
+   int tabpos = 7 - (startcol % 8);
+
+   if(maxlines <= 0) { /* no lines to get! */
+      *buf = (char) 0;
+      return;
+   }
+
+      /*move down to starting row*/
+   for(i = 0; i < startrow; i++) {
+      while((c=fgetc(entfile)) != '\n' && c != EOF && c != '\032') {
+         if(c == ';')
+            comment = 1;
+         if(c == '}' && !comment)  /* end of entry before start line */
+            break;                 /* this should never happen       */
+      }
+      if(c == '\n')
          comment = 0;
-      if (c != '\r') {
-         if (c == '\t') {
-            while ((linelen % 8) != 7 && linelen < 75) { /* 76 wide max */
-               *(buf++) = ' ';
-               ++linelen;
-               }
-            c = ' ';
-            }
-         if (c == '\n') {
-            if (++linect > maxlines) break;
-            linelen = -1;
-            }
-         if (++linelen > 75) {
-            if (linelen == 76) *(buf++) = '\021';
-            }
-         else
+      else {                       /* reached end of file or end of entry */
+         *buf = (char) 0;
+         return;
+      }
+   }
+
+      /* write maxlines of entry */
+   while(maxlines-- > 0) {
+      comment = linelen = i = c = 0;
+
+         /* skip line up to startcol */
+      while (i++ < startcol && (c = fgetc(entfile)) != EOF && c != '\032') {
+         if(c == ';')
+            comment = 1;
+         if(c == '}' && !comment) { /*reached end of entry*/
+            *buf = (char) 0;
+            return;
+         }
+         if ( c == '\r') {
+            i--;
+            continue;
+         }
+         if(c == '\t')
+            i += 7 - (i % 8);
+         if(c == '\n') {  /*need to insert '\n', even for short lines*/
             *(buf++) = (char)c;
-         if (comment == 0 && c == '}') break;
+            break;
          }
       }
-   *buf = 0;
+      if(c == EOF || c == '\032') { /* unexpected end of file */
+         *buf = (char) 0;
+         return;
+      }
+      if(c == '\n')       /* line is already completed */
+         continue;
+
+      if(i > startcol) {  /* can happen because of <tab> character */
+         while(i-- > startcol) {
+            *(buf++) = ' ';
+            linelen++;
+         }
+      }
+
+         /*process rest of line into buf */
+      while ((c = fgetc(entfile)) != EOF && c != '\032') {
+         if (c == ';')
+            comment = 1;
+         else if (c == '\n' || c == '\r')
+            comment = 0;
+         if (c != '\r') {
+            if (c == '\t') {
+               while ((linelen % 8) != tabpos && linelen < 75) { /* 76 wide max */
+                  *(buf++) = ' ';
+                  ++linelen;
+               }
+               c = ' ';
+            }
+            if (c == '\n') {
+               *(buf++) = '\n';
+               break;
+            }
+            if (++linelen > 75) {
+               if (linelen == 76)
+                  *(buf++) = '\021';
+            }
+            else
+               *(buf++) = (char)c;
+            if (c == '}' && !comment) { /*reached end of entry*/
+               *(buf) = (char) 0;
+               return;
+            }
+         }
+      }
+      if(c == EOF || c == '\032') { /* unexpected end of file */
+         *buf = (char) 0;
+         return;
+      }
+   }
+   if(*(buf-1) == '\n') /* specified that buf will not end with a '\n' */
+      buf--;
+   *buf = (char) 0;
 }
 
 static void format_parmfile_line(int choice,char *buf)
@@ -1868,10 +2395,10 @@ int get_3d_params()     /* prompt for 3D parameters */
    int attributes[21];
    int sphere;
    char far *s;
-   static FCODE s1[] = {"              Sphere 3D Parameters\n\
+   static FCODE s1[] = {"Sphere 3D Parameters\n\
 Sphere is on its side; North pole to right\n\
 Long. 180 is top, 0 is bottom; Lat. -90 is left, 90 is right"};
-   static char s2[]={"              Planar 3D Parameters\n\
+   static char s2[]={"Planar 3D Parameters\n\
 Pre-rotation X axis is screen top; Y axis is left side\n\
 Pre-rotation Z axis is coming at you out of the screen!"};
    char far *prompts3d[21];

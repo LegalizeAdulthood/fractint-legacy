@@ -38,27 +38,23 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #ifndef XFRACT
 #include <stdarg.h>
-#include <dos.h>     /* for FP_SEG & FP_OFF */
 #else
 #include <varargs.h>
 #endif
-
-#include <math.h>
 
 #ifdef __TURBOC__
 #   include <mem.h>   /* to get mem...() declarations */
 #endif
 
-#include "helpdefs.h"
-#include "fractint.h" /* for overlay stuff */
-#include "fractype.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "helpdefs.h"
+#include "fractype.h"
 
 #define FAR_RESERVE     8192L     /* amount of far mem we will leave avail. */
 #define MAXRECT         1024      /* largest width of SaveRect/RestoreRect */
@@ -1042,7 +1038,7 @@ void Jiim(int which)         /* called by fractint */
             {
                /* show temp msg will clear self if new msg is a
                   different length - pad to length 40*/
-               while(strlen(str) < 40)
+               while((int)strlen(str) < 40)
                   strcat(str," ");
                str[40] = 0;
                Cursor_Hide();

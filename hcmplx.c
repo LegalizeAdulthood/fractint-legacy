@@ -1,6 +1,7 @@
 /* some hyper complex functions */
-#include "fractint.h"
-#include "mpmath.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 
 void HComplexMult(_HCMPLX *arg1, _HCMPLX *arg2, _HCMPLX *out)
 {

@@ -15,13 +15,15 @@ echo 1:  Basic commands demo
 echo 2:  New stuff in version 19
 echo 3:  New stuff in version 19.4
 echo 4:  New stuff in version 19.5
-echo 5:  Advanced commands demo
-echo 6:  All five demos
+echo 5:  New stuff in version 19.6
+echo 6:  Advanced commands demo
+echo 7:  All six demos
 sschoice
 echo.
-if errorlevel 7 goto top
-if errorlevel 6 goto all
-if errorlevel 5 goto advanced
+if errorlevel 8 goto top
+if errorlevel 7 goto all
+if errorlevel 6 goto advanced
+if errorlevel 5 goto newin196
 if errorlevel 4 goto newin195
 if errorlevel 3 goto newin194
 if errorlevel 2 goto newin19
@@ -50,6 +52,11 @@ goto n195s
 del demo195.par
 goto top
 
+:newin196
+fractint savename=.\ filename=.\ curdir=yes autokey=play autokeyname=new19-6.key
+del demo196?.gif
+goto top
+
 :basic
 fractint savename=.\ filename=.\ curdir=yes @demo.par/Mandel_Demo autokey=play autokeyname=basic.key
 del basic001.gif
@@ -62,11 +69,13 @@ fractint savename=.\ filename=.\ curdir=yes @demo.par/trunc_Demo autokey=play au
 set r=allb
 goto n195s
 :allb
+fractint savename=.\ filename=.\ curdir=yes autokey=play autokeyname=new19-6.key
 fractint savename=.\ filename=.\ curdir=yes @demo.par/Mandel_Demo autokey=play autokeyname=advanced.key
 del basic001.gif
 del new19???.gif
 del new1940?.gif
 del demo195.par
+del demo196?.gif
 goto top
 
 :n195s

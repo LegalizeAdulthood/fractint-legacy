@@ -1,15 +1,14 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #ifndef XFRACT
 #include <io.h>
-#include <dos.h>
 #include <stdarg.h>
 #else
 #include <varargs.h>
 #endif
 #include <ctype.h>
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 #include "fractype.h"
 #include "helpdefs.h"
@@ -85,6 +84,7 @@ int big_while_loop(int *kbdmore, char *stacked, int resumeflag)
          sxdots  = xdots;
          sydots  = ydots;
          sxoffs = syoffs = 0;
+/*         rotate_hi = colors - 1; */
 
          diskvideo = 0;                 /* set diskvideo flag */
          if (dotmode == 11)             /* default assumption is disk */
@@ -160,7 +160,8 @@ int big_while_loop(int *kbdmore, char *stacked, int resumeflag)
                xdots = sxdots;
                ydots = sydots;
                }
-            else if (xdots <= sxdots/20 || ydots <= sydots/20) { /* so ssg works */
+            else if (xdots <= max(MINPIXELS,sxdots/20) 
+                  || ydots <= max(MINPIXELS,sydots/20)) { /* so ssg works */
                static FCODE msg[] = {"View window too small; using full screen."};
                stopmsg(0,msg);
                xdots = sxdots;
@@ -1334,7 +1335,7 @@ int sound_line(BYTE *pixels, int linelen)
       putcolor(i,rowcount,pixels[i]);
       if(orbit_delay > 0)
          sleepms(orbit_delay);
-      w_snd((int)(pixels[i]*3000/colors+basehertz));
+      w_snd((int)((int)(pixels[i])*3000/colors+basehertz));
       if(keypressed())
       {
         nosnd();

@@ -16,9 +16,9 @@
  *                   over 1024x768. Changed to extraseg.
  * 12 Apr 95 TW    Added maxants range check.
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 #include "helpdefs.h"
 
@@ -46,7 +46,7 @@ setwait(long *wait)
    for (;;)
    {
       sprintf(msg, "Delay %4ld", *wait);
-      while (strlen(msg) < 15)
+      while ((int)strlen(msg) < 15)
          strcat(msg, " ");
       msg[15] = '\0';
       showtempmsg((char far *) msg);

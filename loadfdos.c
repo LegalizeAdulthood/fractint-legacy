@@ -29,13 +29,11 @@
 
 */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
-#include <math.h>
-#include "fractint.h"
-#include "helpdefs.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "helpdefs.h"
 
 /* routines in this module      */
 
@@ -198,6 +196,9 @@ Press F1 for help, "};
       vid[i].flags  = tmpflags;
       }
 
+if (fastrestore  && !askvideo)
+   initmode = adapter;
+
 #ifndef XFRACT
    gotrealmode = 0;
    if (initmode < 0 || (askvideo && !initbatch)) {
@@ -292,6 +293,7 @@ Press F1 for help, "};
    far_memcpy((char far *)&videoentry,(char far *)&videotable[initmode],
               sizeof(videoentry));
 
+
    if (viewwindow &&
       filexdots == videoentry.xdots && fileydots == videoentry.ydots) {
       /* pull image into a view window */
@@ -381,7 +383,7 @@ Press F1 for help, "};
       else
          viewreduction = tmpreduce; /* ok, this works */
       }
-   if (fabs(finalaspectratio - screenaspect) > .00001 || viewxdots != 0 ) {
+   if (!fastrestore && (fabs(finalaspectratio - screenaspect) > .00001 || viewxdots != 0)) {
       static FCODE msg[] = {"\
 Warning: <V>iew parameters are being set to non-standard values.\n\
 Remember to reset them when finished with this image!"};

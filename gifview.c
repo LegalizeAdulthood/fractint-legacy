@@ -11,13 +11,9 @@
  *                                                                                      Tim Wegner
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#ifndef XFRACT
-#include <dos.h>
-#endif
-#include "fractint.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 
 static void close_file(void);
@@ -334,8 +330,13 @@ static int out_line_dither(BYTE *pixels, int linelen)
 
     nexterr = (rand15()&0x1f)-16;
     for (i=0;i<linelen;i++) {
+#ifdef __SVR4
+        brt = (int)((dacbox[pixels[i]][0]*5+dacbox[pixels[i]][1]*9 +
+            dacbox[pixels[i]][2]*2))>>4; /* brightness from 0 to 63 */
+#else
         brt = (dacbox[pixels[i]][0]*5+dacbox[pixels[i]][1]*9 +
             dacbox[pixels[i]][2]*2)>>4; /* brightness from 0 to 63 */
+#endif
         brt += nexterr;
         if (brt>32) {
             pixels[i] = 1;

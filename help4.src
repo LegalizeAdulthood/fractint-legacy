@@ -124,10 +124,10 @@
                            vga or higher only
   recordcolors=auto|comment|yes Sets method of writing colors in PAR files.
                            Auto causes colors=@mapfile to be written if
-                           colors came from loading a color map. Yes and 
-                           comment force compressed colors always. Comment 
+                           colors came from loading a color map. Yes and
+                           comment force compressed colors always. Comment
                            also writes map name in a comment if colors came
-                           from a map file. Default is auto. 
+                           from a map file. Default is auto.
   cyclerange=nnn/nnn       Range of colors to cycle (default 1/255)
   cyclelimit=nnn           Color-cycler speed-limit (1 to 256, default = 55)
   olddemmcolors=yes|no     Use old coloring scheme with distance estimator
@@ -192,6 +192,14 @@
                            Set the reduction factor, final media aspect ratio,
                            crop starting coordinates (y/n), explicit x size,
                            and explicit y size
+~OnLineFF
+  fastrestore=yes|no       If yes, resets viewwindow to NO prior to restoring
+                           a gif file, and bypasses the warning when
+                           restoring a gif in a video mode other than the
+                           one in which the gif was saved. Default is no.
+                           Feature will be useful when cycling through a
+                           group of gifs in autokey mode.
+
 ~FF
 {Printer Parameters}
   printer=type[/res[/lpt#[/-1]]]  Set the printer type, dots/inch, and port#
@@ -368,6 +376,16 @@ some examples:
   o To save image parameters for later use in batch mode - see
     {Batch Mode}.
 
+Formulas, ifs, and lsystem entries referred to in a parameter entry can\
+be included in a .par file by adding the prefix frm:, ifs:, or lsys:\
+respectively, for example frm:myformula \{rest of that formula}.\
+Note that the prefix is a label, not part of the formula name, so the\
+reference in the image entry would be formulaname=myformula. The\
+formula, ifs, and lsystem entries added to a parfile are accessed only\
+when the image entry in the parfile is run. To make these formulas generally\
+accessible, they must be added to a .frm, .ifs or .l file (without the\
+identifier prefix, of course).
+
 See {"Parameter Save/Restore Commands"} for details about the <@> and
 <B> commands.
 ;
@@ -414,7 +432,7 @@ files.
 
 WORKDIR=[directory]\
 This command sets the directory where miscellaneous Fractint files get
-written, including MAKEBIG.BAT and debugging files.
+written, including MAKEMIG.BAT and debugging files.
 
 ~ONLINEFF
 FILENAME=[name]\
@@ -454,11 +472,11 @@ all screen output is written to the standard output.
 COMMENT=[comment1]/[comment2]/[comment3]/[comment4]\
 Inserts comments into PAR files. These comments can include
 variables that are expanded at the time the PAR file is created. Variables are
-indicated by $varname$. Underscore characters are expanded to blanks. 
-If you want to include the special characters '$', '_', or '\\' in a comment, 
+indicated by $varname$. Underscore characters are expanded to blanks.
+If you want to include the special characters '$', '_', or '\\' in a comment,
 precede the character with '\\'. Supported variables are:\
 
-Variable   Expands to   Example     Variable   Expands to   Example 
+Variable   Expands to   Example     Variable   Expands to   Example
 ===============================     ===============================\
 $year$     time:year    1996        $date$     mo. day, yr  Aug 17, 1996\
 $month$    time:month   Aug         $calctime$ h:m:s        4:34:45.3\
@@ -468,8 +486,8 @@ $min$      time:minute  34          $xdots$    horiz rez    640\
 $sec$      time:sec     14          $ydots$    vertical rez 480\
 $time$     time:h:m:s   21:34:14    $vidkey$   video key    SF4\
 
-You can leave any of the four comment fields unchanged by leaving that 
-position blank. For example, the command comment=//Created_$date$ inserts 
+You can leave any of the four comment fields unchanged by leaving that
+position blank. For example, the command comment=//Created_$date$ inserts
 the text "Created Aug 17, 1996" into the third comment.
 
 BATCH=yes\
@@ -737,7 +755,7 @@ See {Inside=bof60|bof61|zmag|period} for a brilliant explanation of what
 these do!
 
 Inside=epscross colors pixels green or yellow according to whether their
-orbits swing close to the Y-axis or X-axis, respectively. Inside=starcross
+orbits swing close to the Y-axis or X-axis, respectively. Inside=startrail
 has a coloring scheme based on clusters of points in the orbits. Best with
 outside=<nnn>. For more information, see {Inside=epscross|startrail}.
 
@@ -883,7 +901,7 @@ pre-version 16 scheme.
 
 TRUECOLOR=yes\
 You can save the iteration escape value in a file called ITERATES.TGA.
-This will allow experimentation with trucolor algorithms. A C language
+This will allow experimentation with truecolor algorithms. A C language
 source file that reads the iterates file is provided. Someday we'll have
 REAL truecolor support ...
 ;
@@ -1132,17 +1150,15 @@ Textsafe options:\
     The speed depends on:\
       o Cpu and video adapter speed.\
       o Whether enough expanded or extended memory is available.\
-      o Video mode of image being remembered. A few special modes are
-        *very* slow compared to the rest. The slow ones are: 2 and 4 color
-        modes with resolution higher than 640x480; custom modes for ATI
-        EGA Wonder, Paradise EGA-480, STB, Compaq portable 386, AT&T 6300,
-        and roll-your-own video modes implemented with customized
-        "yourvid.c" code.
+      o Video mode of image being remembered. A few special modes are *very*
+        slow compared to the rest. The slow ones are: 2 and 4 color modes
+        with resolution higher than 640x480; custom modes for ATI EGA Wonder,
+        Paradise EGA-480, STB, Compaq portable 386, AT&T 6300, and roll your
+        own video modes implemented with customized YOURVID.C code.
 If you want to tune Fractint to use different "textsafe" options for
 different video modes, see {"Customized Video Modes\, FRACTINT.CFG"}.
-(E.g. you might
-want to use the slower textsafe=save approach just for a few high-
-resolution modes which have problems with textsafe=yes.)
+(E.g. you might want to use the slower textsafe=save approach just for a
+few high-resolution modes which have problems with textsafe=yes.)
 
 EXITMODE=nn\
 Sets the bios-supported videomode to use upon exit to the specified value.
@@ -1172,9 +1188,20 @@ example, the 320x200 video resolution on the TARGA+ is actually the
 with a zoom of 3 would lower the resolution by 8, which is 2 raised to the
 3rd power, for a full screen resolution of 80x50 pixels.
 
-VIEWWINDOWS=xx[/xx[/yes|no[/nn[/nn]]]]
+VIEWWINDOWS=xx[/xx[/yes|no[/nn[/nn]]]]\
 Set the reduction factor, final media aspect ratio, crop starting
 coordinates (y/n), explicit x size, and explicit y size, see {"View Window"}.
+~OnlineFF
+~Label=@FASTRESTORE
+FASTRESTORE=yes|no\
+If YES, resets viewwindow to "no" prior to restoring a gif file. Otherwise,
+images saved in full view will be drawn in reduced view if viewwindows has
+been set to "yes" previously. Also, when YES, bypasses the warning when
+restoring a gif in a video mode other than the one in which the gif was
+saved. Default is NO. Feature will be useful when cycling through a group
+of gifs in autokey mode.  When combined with askvideo=no, allows loading
+images with the last successfully used video mode.  This is handy when
+viewing 1600x1200 images when you only have 1024x768 available.
 ;
 ;
 ~Topic=Sound Parameters
@@ -1938,8 +1965,8 @@ The fields are defined as:
 Add 100, 200, 300, or 400 to this code to specify an over-ride "textsafe="
  option to be used with the mode.  100=yes, 200=no, 300=bios, 400=save.
  E.g. 428 for a VESA mode with textsafe=save forced.
-8. The number of pixels across the screen (X - 160 to 2048)
-9. The number of pixels down the screen (Y - 160 to 2048)
+8. The number of pixels across the screen (X - 2 to 2048)
+9. The number of pixels down the screen (Y - 2 to 2048)
 10. The number of available colors (2, 4, 16, or 256)
 11. A comment describing the mode (25 chars max, leading blanks are OK)
 ~Format+

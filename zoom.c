@@ -3,11 +3,10 @@
 
 */
 
-#include <float.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include "fractint.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 
 #define PIXELROUND 0.00001

@@ -23,9 +23,6 @@
 /* #define BIG_ANSI_C */  /* C code only */
 /* In DOS, BIG_ANSI_C uses default pointer for model selected */
 
-#include <stdlib.h>
-/* #include "bigport.h" */
-
 
 /* Number of bytes to use for integer part for fixed decimal math, */
 /* does not effect floating point math at all. */

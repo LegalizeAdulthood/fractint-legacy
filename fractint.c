@@ -3,20 +3,43 @@
                         Main Routine
 */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <signal.h>
 #ifndef XFRACT
 #include <io.h>
-#include <dos.h>
 #include <stdarg.h>
 #else
 #include <varargs.h>
 #endif
 #include <ctype.h>
 
+  /* #include hierarchy for fractint is a follows:
+        Each module should include port.h as the first fractint specific
+            include. port.h includes <stdlib.h>, <stdio.h>, <math.h>,
+            <float.h>; and, ifndef XFRACT, <dos.h>.
+        Most modules should include prototyp.h, which incorporates by
+            direct or indirect reference the following header files:
+                mpmath.h
+                cmplx.h
+                fractint.h
+                big.h
+                biginit.h
+                helpcom.h
+                externs.h
+        Other modules may need the following, which must be included
+            separately:
+                fractype.h
+                helpdefs.h
+                lsys.y
+                targa.h
+                targa_lc.h
+                tplus.h
+        If included separately from prototyp.h, big.h includes cmplx.h
+           and biginit.h; and mpmath.h includes cmplx.h
+   */
+
+#include "port.h"
 #include "prototyp.h"
 #include "fractype.h"
 #include "helpdefs.h"
@@ -127,12 +150,12 @@ long    xmin, xmax, ymin, ymax, x3rd, y3rd;  /* integer equivs           */
 double  sxmin,sxmax,symin,symax,sx3rd,sy3rd; /* displayed screen corners */
 double  plotmx1,plotmx2,plotmy1,plotmy2;     /* real->screen multipliers */
 
-int calc_status; /* -1 no fractal                   */
-                 /*  0 parms changed, recalc reqd   */
-                 /*  1 actively calculating         */
-                 /*  2 interrupted, resumable       */
-                 /*  3 interrupted, not resumable   */
-                 /*  4 completed                    */
+int calc_status = -1; /* -1 no fractal                   */
+                      /*  0 parms changed, recalc reqd   */
+                      /*  1 actively calculating         */
+                      /*  2 interrupted, resumable       */
+                      /*  3 interrupted, not resumable   */
+                      /*  4 completed                    */
 long calctime;
 
 int max_colors;                         /* maximum palette size */
@@ -207,6 +230,7 @@ restart:   /* insert key re-starts here */
    name_stack_ptr= -1; /* init loaded files stack */
    if (fract_dir1==NULL)
        fract_dir1 = ".";
+   calc_status = -1;                    /* no active fractal image */
    cmdfiles(argc,argv);         /* process the command-line */
    dopause(0);                  /* pause for error msg if not batch */
    init_msg(0,"",NULL,0);  /* this causes getakey if init_msg called on runup */
@@ -258,7 +282,6 @@ restart:   /* insert key re-starts here */
    diskisactive = 0;                    /* disk-video is inactive */
    diskvideo = 0;                       /* disk driver is not in use */
    setvideotext();                      /* switch to text mode */
-   calc_status = -1;                    /* no active fractal image */
    savedac = 0;                         /* don't save the VGA DAC */
 
 #ifndef XFRACT
@@ -339,7 +362,7 @@ restorestart:
    tabmode = 1;
    lookatmouse = 0;                     /* ignore mouse */
 
-   if ((overlay3d || stacked) && initmode < 0) {        /* overlay command failed */
+   if (((overlay3d && !initbatch) || stacked) && initmode < 0) {        /* overlay command failed */
       unstackscreen();                  /* restore the graphics screen */
       stacked = 0;
       overlay3d = 0;                    /* forget overlays */

@@ -67,7 +67,7 @@ hlinedata       dw      8, 0, 0, 0, 0
 hscoldata       dw      4, 0, 0
 
 
-.CODE   VIDEO_TEXT
+.CODE
 
 
 callafi proc    near
@@ -138,7 +138,7 @@ do85open proc   near
 do85open        endp
 
 
-open8514        proc    near
+open8514        proc    far
 
         call    load8514dacbox  ; load dacbox for 8514/A setup  JCO 4/6/92
 
@@ -204,7 +204,7 @@ afinotfound:                            ; No 8514/A interface found
 
 open8514        endp
 
-reopen8514      proc    near
+reopen8514      proc    far
 
         mov     si, offset hopendata    ;open the adapter
         mov     byte ptr [si + 2], 0C0h         ;zero the image but leave pallette
@@ -215,7 +215,7 @@ reopen8514      proc    near
 reopen8514      endp
 
 
-close8514       proc    near
+close8514       proc    far
 
         mov     si, offset hclosedata           ;turn off 8514a
         mov     ax, HCLOSE
@@ -255,7 +255,7 @@ fr85wdotnew     proc    near    uses si
 fr85wdotnew     endp
 
 
-fr85wdot        proc    near uses si
+fr85wdot        proc    far uses si
 
         mov     linedata, al
 
@@ -283,7 +283,7 @@ fr85wdotx:
 fr85wdot        endp
 
 
-fr85wbox        proc    near uses si
+fr85wbox        proc    far uses si
 
         sub     ax, cx
         inc     ax                      ; BDT patch 11/4/90
@@ -310,7 +310,7 @@ fr85wbox        proc    near uses si
 fr85wbox        endp
 
 
-fr85rdot        proc    near uses si
+fr85rdot        proc    far uses si
 
         mov     bbr + 4, 1              ;define the rectangle
 ;       mov     bbr + 6, 1              ;set in declaration
@@ -335,7 +335,7 @@ fr85rdotx:
 
 fr85rdot        endp
 
-fr85rbox        proc    near uses si
+fr85rbox        proc    far uses si
 
         sub     ax, cx
         inc     ax                      ; BDT patch 11/4/90
@@ -362,7 +362,7 @@ fr85rbox        proc    near uses si
 fr85rbox        endp
 
 
-w8514pal        proc    near
+w8514pal        proc    far
 
         mov     si, offset dacbox
 
@@ -1156,7 +1156,7 @@ mode640x4       dw      0000h   ; Western Digital Enhanced Mode Register ????
                 dw      0021h   ; Display control               ; This may need to be 0020h
 
 
-.CODE   VIDEO_TEXT
+.CODE
 
 ; This routine updates the 8514/A palette
 ; For modes with resolutions > 1024x768, a different DAC must be used.
@@ -1164,7 +1164,7 @@ mode640x4       dw      0000h   ; Western Digital Enhanced Mode Register ????
 ; color instead of the usual 18 bits.
 ; The data is written out in 3 parts during vertical retrace to prevent snow.
 ; Normal 8514/A routine modified to slow down the spin, JCO 4/3/92
-w8514hwpal        proc    near
+w8514hwpal        proc    far
 
         mov     si, offset dacbox
         cld
@@ -1274,7 +1274,7 @@ w8514hwpal      endp
 
 
 ; reopen8514hw turns off VGA pass through and enables the 8514/A display
-reopen8514hw    PROC    near
+reopen8514hw    PROC    far
         cmp     adexboard, 0
         je      enableati
 
@@ -1307,7 +1307,7 @@ reopen8514hw    ENDP
 ; open8514hw initializes the 8514/A for drawing graphics.  It test for the
 ; existence of an 8514/A first.
 ; CY set on error
-open8514hw      proc    near
+open8514hw      proc    far
         ; Test for the existence of an 8514/A card by writing to and reading
         ; from the Error term register.
         xor     al, al
@@ -1765,7 +1765,7 @@ open8514hw      endp
 ;reopen8514hw   endp
 
 
-fr85hwwdot      proc    near
+fr85hwwdot      proc    far
 ; draws a pixel at cx,dx of color al
         mov     bx, dx          ; temporary save of dx (y position)
 
@@ -1803,7 +1803,7 @@ fr85hwwdot      proc    near
 fr85hwwdot      endp
 
 
-fr85hwwbox      proc    near uses si
+fr85hwwbox      proc    far uses si
 ; copies a line of data from ds:si to the display from cx,dx to ax,dx
 
         sub     ax, cx  ; delta is now in ax, 8514/a uses deltas
@@ -1857,7 +1857,7 @@ evn:
 fr85hwwbox      endp
 
 
-fr85hwrdot      proc    near
+fr85hwrdot      proc    far
 ; Reads a single pixel (x,y = cx,dx).  Color returned in ax
 
         push    dx              ; need to save dx register (y value)
@@ -1891,7 +1891,7 @@ fr85hwrdot      proc    near
 
 fr85hwrdot      endp
 
-fr85hwrbox      proc    near uses es
+fr85hwrbox      proc    far uses es
 ; copies a line of data from cx,dx to ax,dx to es:di
         mov     bx, ds  ;set up string write
         mov     es, bx
@@ -2012,7 +2012,7 @@ read_palette_loop:
 enableVGA       ENDP
 
 
-close8514hw     proc    near
+close8514hw     proc    far
 
         ; Re-enables VGA pass-through.
 

@@ -4,14 +4,44 @@
 ** to this file for any new machines/compilers you may have.
 **
 ** XFRACT file "SHARED.H" merged into PORT.H on 3/14/92 by --CWM--
+** TW also merged in Wes Loewer's BIGPORT.H.
 */
 
 #ifndef PORT_H          /* If this is defined, this file has been       */
 #define PORT_H          /* included already in this module.             */
 
+#ifndef XFRACT
+#include        <dos.h>
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <float.h>
+
+
+#if (defined(__STDC__) || defined(__cplusplus) || defined(_MSC_VER) || defined(__TURBOC__)) && !defined(STDC)
+#  define STDC
+#endif
+
+#if (defined(LINUX)) && !defined(STDC)
+#  define STDC
+#endif
+
+#ifndef STDC
+#  ifndef const /* cannot use !defined(STDC) && !defined(const) on Mac */
+#    define const
+#  endif
+#endif
+
+#ifdef __TURBOC__
+#define _matherr matherr
+#endif
+
 /* If endian.h is not present, it can be handled in the code below, */
 /* but if you have this file, it can make it more fool proof. */
-/* include <endian.h> */
+#if (defined(XFRACT) && !defined(__sun))
+#include <endian.h>
+#endif
 #ifndef BIG_ENDIAN
 #define BIG_ENDIAN    4321  /* to show byte order (taken from gcc) */
 #endif
@@ -21,14 +51,33 @@
 
 #define MSDOS 1
 
-
+#define overwrite   fract_overwrite      /* avoid name conflict with curses */
 
 #ifdef XFRACT           /* XFRACT forces unix configuration! --CWM-- */
 
+#ifdef BIG_ANSI_C       /* remove far's */
+#ifdef far
+#undef far
+#endif
+#define far
+#ifdef _far
+#undef _far
+#endif
+#define _far
+#ifdef __far
+#undef __far
+#endif
+#define __far
+#define _fmemcpy  memcpy
+#define _fmemset  memset
+#define _fmemmove memmove
+#ifndef USE_BIGNUM_C_CODE
+#define USE_BIGNUM_C_CODE
+#endif
+#endif
  /* CAE added ltoa, overwrite fix for HP-UX v9 26Jan95  */
 #ifdef _HPUX_SOURCE
 #define ltoa fr_ltoa
-#define overwrite fr_overwrite
 #endif
 
 #ifdef MSDOS
@@ -47,16 +96,12 @@
 
 #ifdef __TURBOC__
    #define __cdecl cdecl
-
-#ifndef __DOS_H
-      /*  dos.h is needed for MK_FP  */
-      #include <dos.h>
-#endif
 #endif
 
 #ifdef MSDOS            /* Microsoft C 5.1 for OS/2 and MSDOS */
                         /* NOTE: this is always true on DOS!  */
                         /*       (MSDOS is defined above)  */
+#define timebx timeb
 
 #ifndef BYTE_ORDER
 #define BYTE_ORDER LITTLE_ENDIAN
@@ -79,7 +124,7 @@
         typedef unsigned char  CHAR;
         typedef void          *VOIDPTR;
         typedef void far      *VOIDFARPTR;
-        typedef void const    *VOIDCONSTPTR;
+        typedef const void    *VOIDCONSTPTR;
 
         #define CONST          const
         #define PRINTER        "/dev/prn"
@@ -110,9 +155,8 @@
 
         typedef void          *VOIDPTR;
         typedef void          *VOIDFARPTR;
-        typedef void          *VOIDCONSTPTR;
+        typedef const void    *VOIDCONSTPTR;
 
-        #define CONST
         #define PRINTER        "PRT:"
         #define LOBYTEFIRST    0
         #define SLASHC         '/'
@@ -144,19 +188,32 @@
         typedef char           CHAR;
 #define __cdecl
 
-#ifdef BADVOID
-        typedef char          *VOIDPTR;
-        typedef char          *VOIDFARPTR;
-        typedef char          *VOIDCONSTPTR;
+#ifdef __SVR4
+  typedef void          *VOIDPTR;
+  typedef void          *VOIDFARPTR;
+  typedef const void    *VOIDCONSTPTR;
 #else
-        typedef void          *VOIDPTR;
-        typedef void          *VOIDFARPTR;
-        typedef void          *VOIDCONSTPTR;
+# ifdef BADVOID
+   typedef char          *VOIDPTR;
+   typedef char          *VOIDFARPTR;
+   typedef char          *VOIDCONSTPTR;
+# else
+   typedef void          *VOIDPTR;
+   typedef void          *VOIDFARPTR;
+   typedef const void    *VOIDCONSTPTR;
+# endif
 #endif
 
+#ifdef __SVR4
+# include <fcntl.h>
+typedef void sigfunc(int);
+#else
+typedef int sigfunc(int);
+#endif
+  
 #ifndef BYTE_ORDER
 /* change for little endians that don't have this defined elsewhere (endian.h) */
-#ifdef linux
+#ifdef LINUX
 #define BYTE_ORDER LITTLE_ENDIAN
 #else
 #define BYTE_ORDER BIG_ENDIAN /* the usual case */
@@ -170,7 +227,7 @@
 #define BIG_ANSI_C
 #endif
 
-#       define CONST
+#       define CONST          const
 #       define PRINTER        "/dev/lp"
 #       define SLASHC         '/'
 #       define SLASH          "/"
@@ -178,7 +235,7 @@
 #       define SLASHDOT       "/."
 #       define DOTSLASH       "./"
 #       define DOTDOTSLASH    "../"
-#       define READMODE "r"
+#       define READMODE       "r"
 #       define WRITEMODE        "w"
 
 #       define write1(ptr,len,n,stream) (fputc(*(ptr),stream),1)
@@ -207,8 +264,7 @@
 #endif
 
 
-/* The following should work regardless of machine type */
-#include <float.h>
+
 
 /* Some compiler libraries don't correctly handle long double.*/
 /* If you want to force the use of doubles, or                */
@@ -223,6 +279,9 @@
 /*   scanf(), but does not support the functions sinl, cosl, fabsl, etc.  */
 /* CAE added this 26Jan95 so it would compile (altered by Wes to new macro) */
 #ifdef _HPUX_SOURCE
+#define DO_NOT_USE_LONG_DOUBLE
+#endif
+#ifdef sun
 #define DO_NOT_USE_LONG_DOUBLE
 #endif
 

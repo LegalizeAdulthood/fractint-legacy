@@ -3,13 +3,6 @@
 #ifndef FRACTINT_H
 #define FRACTINT_H
 
-#include <math.h>
-#ifndef PORT_H
-#include "port.h"
-#endif
-#ifndef _BIG_H
-#include "big.h"
-#endif
 
 typedef BYTE BOOLEAN;
 
@@ -18,6 +11,7 @@ typedef BYTE BOOLEAN;
 #endif
 
 #ifndef XFRACT
+#define ftimex ftime
 typedef int SEGTYPE;
 typedef unsigned USEGTYPE;
 #ifdef __TURBOC__
@@ -38,16 +32,11 @@ typedef char * USEGTYPE;
 #include <sys/types.h> /* need size_t */
 #endif
 
-
 #ifndef XFRACT
 #define clock_ticks() clock()
 #endif
 
 #ifdef XFRACT
-#define _fstrcpy(to,from) strcpy(to,from)
-#define _fmemmove(a,b,c) (bn_t)memmove(a,b,c)
-#define _fmemset(a,b,c) (bn_t)memset(a,b,c)
-#define _fmemcpy(a,b,c) (bn_t)memcpy(a,b,c)
 #define difftime(now,then) ((now)-(then))
 #endif
 
@@ -61,11 +50,26 @@ typedef char * USEGTYPE;
 #define FILE_MAX_PATH  80       /* max length of path+filename  */
 #define FILE_MAX_DIR   80       /* max length of directory name */
 #define FILE_MAX_DRIVE  3       /* max length of drive letter   */
+
+#if 1
 #define FILE_MAX_FNAME  9       /* max length of filename       */
 #define FILE_MAX_EXT    5       /* max length of extension      */
+#else
+/*
+The filename limits were increased in Xfract 3.02. But alas,
+in this poor program that was originally developed on the
+nearly-brain-dead DOS operating system, quite a few things
+in the UI would break if file names were bigger than DOS 8-3
+names. So for now humor us and let's keep the names short.
+*/
+#define FILE_MAX_FNAME  64       /* max length of filename       */
+#define FILE_MAX_EXT    64       /* max length of extension      */
+#endif
+
 #define MAXCMT 57               /* length of par comments       */
 #define MAXPARAMS 10            /* maximum number of parameters */
 #define MAXPIXELS 2048          /* Maximum pixel count across/down the screen */
+#define MINPIXELS 10            /* Minimum pixel count across/down the screen */
 #define DEFAULTASPECT ((float)0.75)/* Assumed overall screen dimensions, y/x  */
 #define DEFAULTASPECTDRIFT ((float)0.02) /* drift of < 2% is forced to 0% */
 
@@ -114,7 +118,7 @@ typedef    struct fractal_info FRACTAL_INFO;
 #define FRACTAL_INFO_SIZE sizeof(FRACTAL_INFO)
 #else
 /* This value should be the MSDOS size, not the Unix size. */
-#define FRACTAL_INFO_SIZE 502
+#define FRACTAL_INFO_SIZE 504
 #endif
 
 struct fractal_info         /*  for saving data in GIF file     */
@@ -486,9 +490,6 @@ extern struct fractalspecificstuff far *curfractalspecific;
 #define DEFAULTFRACTALTYPE      ".gif"
 #define ALTERNATEFRACTALTYPE    ".fra"
 
-#ifndef _CMPLX_DEFINED
-#include "cmplx.h"
-#endif
 
 #ifndef sqr
 #define sqr(x) ((x)*(x))
@@ -530,9 +531,10 @@ typedef long  LVECTOR [DIM];  /* vector of longs   */
 and direction. A fourth dimension is assumed to always have the value 1, but
 is not in the data structure */
 
-
+#ifdef PI
+#undef PI
+#endif
 #define PI 3.14159265358979323846
-
 #define SPHERE    init3d[0]             /* sphere? 1 = yes, 0 = no  */
 #define ILLUMINE  (FILLTYPE>4)  /* illumination model       */
 
@@ -824,6 +826,22 @@ typedef struct palett
 }
 Palettetype;
 
+#define MAX_JUMPS 200  /* size of JUMP_CONTROL array */
+
+typedef struct frm_jmpptrs_st {
+   int      JumpOpPtr;
+   int      JumpLodPtr;
+   int      JumpStoPtr;
+} JUMP_PTRS_ST;
+
+
+typedef struct frm_jump_st {
+   int      type;
+   JUMP_PTRS_ST ptrs;
+   int      DestJumpIndex;
+} JUMP_CONTROL_ST;
+
+
 struct ext_blk_2 {
    char got_data;
    int length;
@@ -851,6 +869,12 @@ struct ext_blk_5 {
    char far *apm_data;
    };
 
+struct SearchPath {
+   char par[FILE_MAX_PATH];
+   char frm[FILE_MAX_PATH];
+   char ifs[FILE_MAX_PATH];
+   char lsys[FILE_MAX_PATH];
+} ;
 struct affine
 {
    /* weird order so a,b,e and c,d,f are vectors */

@@ -16,11 +16,8 @@
 
 #define INCLUDE_COMMON  /* include common code in helpcom.h */
 
-#include <stdio.h>
-#include <stdlib.h>
 #ifndef XFRACT
 #include <io.h>
-#include <dos.h>
 #endif
 #include <fcntl.h>
 #include <string.h>
@@ -31,6 +28,8 @@
 #ifdef XFRACT
 #include <unistd.h>
 #endif
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 #include "helpdefs.h"
 
@@ -1236,10 +1235,10 @@ static int print_doc_output(int cmd, PD_INFO *pd, PRINT_DOC_INFO *info)
          memset(line, ' ', 81);
          sprintf(buff, "Fractint Version %d.%01d%c",release/100, (release%100)/10,
                                 ( (release%10) ? '0'+(release%10) : ' ') );
-         memmove(line + ( (width-strlen(buff)) / 2)-4, buff, strlen(buff));
+         memmove(line + ((width-(int)(strlen(buff))) / 2)-4, buff, strlen(buff));
 
          sprintf(buff, "Page %d", pd->pnum);
-         memmove(line + (width - strlen(buff)), buff, strlen(buff));
+         memmove(line + (width - (int)strlen(buff)), buff, strlen(buff));
 
          printerc(info, '\n', 1);
          printers(info, line, width);
@@ -1599,4 +1598,3 @@ void end_help(void)
       help_file = -1;
       }
    }
-

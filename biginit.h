@@ -3,6 +3,9 @@
 /* Many of these are redundant from big.h  */
 /* but the fractint specific ones are not. */
 
+#ifndef BIGINIT_H
+#define BIGINIT_H
+
 #define MATHBITS      32
 #define MATHBYTES     (MATHBITS/8)
 #define NUMVARS       30            /* room for this many on stack */
@@ -11,7 +14,7 @@
 
 
 /* globals */
-extern int bnstep, bnlength, intlength, rlength, padding, shiftfactor; 
+extern int bnstep, bnlength, intlength, rlength, padding, shiftfactor;
 extern int decimals, bflength, rbflength, bfshiftfactor, bfdecimals;
 
 /* used internally by bignum.c routines */
@@ -43,3 +46,5 @@ extern bf_t bfsxmin, bfsxmax, bfsymin,bfsymax,bfsx3rd,bfsy3rd;/* bflength+2 */
 extern bf_t bfparms[10];                                 /* (bflength+2)*10 */
 extern bf_t bftmp;
 extern bf_t bf10tmp;                                              /* dec+4 */
+
+#endif

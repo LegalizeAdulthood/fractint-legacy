@@ -25,11 +25,10 @@
 
 #include <string.h>
 #include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <float.h>
 #include <time.h>
-#include "mpmath.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
 
 
@@ -54,13 +53,23 @@ struct PEND_OP {
    void (far *f)(void);
    int p;
 };
+
+#ifndef XFRACT
+/* reuse an array in the decoder */
+JUMP_CONTROL_ST far *jump_control = (JUMP_CONTROL_ST far *)sizeofstring;
+#else
+JUMP_CONTROL_ST far jump_control[MAX_JUMPS];
+#endif
+
+int jump_index, InitJumpIndex;
+
+
 /* CAE fp added MAX_STORES and LOADS */
 /* MAX_STORES must be even to make Unix alignment work */
 /* TW made dependent on Max_Ops */
 
 #define MAX_STORES ((Max_Ops/4)*2)  /* at most only half the ops can be stores */
 #define MAX_LOADS  ((unsigned)(Max_Ops*.8))  /* and 80% can be loads */
-
 /* PB 901103 made some of the following static for safety */
 static struct PEND_OP far *o;
 
@@ -88,19 +97,21 @@ static int ShiftBack;     /* TIW 06-18-90 */
 static int SetRandom;     /* MCP 11-21-91 */
 static int Randomized;
 static unsigned long RandNum;
-int uses_p1, uses_p2, uses_p3;
+int uses_p1, uses_p2, uses_p3, uses_jump;
 
 #ifndef XFRACT
 #define ChkLongDenom(denom)\
-    if (denom == 0 || (overflow && save_release > 1920)) {\
+    if ((denom == 0 || overflow) && save_release > 1920) {\
         overflow = 1;\
         return;\
-    }
+    }\
+    else if (denom == 0)\
+        return
 #endif
 
 #define ChkFloatDenom(denom)\
     if (fabs(denom) <= DBL_MIN) {\
-        overflow = 1;\
+        if (save_release > 1920) overflow = 1;\
         return;\
     }
 
@@ -129,7 +140,7 @@ int uses_p1, uses_p2, uses_p3;
 #define FORMULA_TOO_LARGE                         12
 #define INSUFFICIENT_MEM_FOR_TYPE_FORMULA         13
 #define COULD_NOT_OPEN_FILE_WHERE_FORMULA_LOCATED 14
-
+#define ERROR_IN_PARSING_JUMP_STATEMENTS          24
 static char far *ParseErrs(int which)
 {
    int lasterr;
@@ -148,9 +159,23 @@ static char far *ParseErrs(int which)
    static FCODE e12[] = {"Formula is too large"};
    static FCODE e13[] = {"Insufficient memory to run fractal type 'formula'"};
    static FCODE e14[] = {"Could not open file where formula located"};
-   static FCODE e15[] = {"Invalid ParseErrs code"}; /* last one */
-   static FCODE * far ErrStrings[] = 
-     {e0,e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15};
+   static FCODE e15[] = {"Invalid ParseErrs code"};
+   static FCODE e16[] = {"No characters may precede jump instruction"};
+   static FCODE e17[] = {"No characters may follow this jump instruction"};
+   static FCODE e18[] = {"Jump instruction missing required (boolean argument)"};
+   static FCODE e19[] = {"Next jump after \"else\" must be \"endif\""};
+   static FCODE e20[] = {"\"endif\" has no matching \"if\""};
+   static FCODE e21[] = {"Misplaced \"else\" or \"elseif()\""};
+   static FCODE e22[] = {"\"if()\" in initialization has no matching \"endif\""};
+   static FCODE e23[] = {"\"if()\" has no matching \"endif\""};
+   static FCODE e24[] = {"Error in parsing jump statements"};
+   static FCODE e25[] = {"Formula has too many jump commands"}; /* last one */
+   static FCODE * far ErrStrings[] = { e0,e1,e2,e3,e4,e5,
+                                       e6,e7,e8,e9,e10,
+                                       e11,e12,e13,e14,e15,
+                                       e16,e17,e18,e19,e20,
+                                       e21,e22,e23,e24,e25
+                                     };
    lasterr = sizeof(ErrStrings)/sizeof(ErrStrings[0]) - 1;
    if(which > lasterr)
      which = lasterr;
@@ -167,12 +192,19 @@ static char far *ParseErrs(int which)
 #ifndef XFRACT
 #define FUNCT
 #ifdef FUNCT /* use function form save space - isn't really slower */
+
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
 static void mStkFunct(void (*fct)(void))   /* call lStk via dStk */
 {
    Arg1->d = MPC2cmplx(Arg1->m);
    (*fct)();
    Arg1->m = cmplx2MPC(Arg1->d);
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 static void lStkFunct(void (*fct)(void))   /* call lStk via dStk */
 {
@@ -382,11 +414,18 @@ void dStkAdd(void) {
 }
 
 #ifndef XFRACT
+
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
 void mStkAdd(void) {
    Arg2->m = MPCadd(Arg2->m, Arg1->m);
    Arg1--;
    Arg2--;
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 void lStkAdd(void) {
    Arg2->l.x += Arg1->l.x;
@@ -406,11 +445,17 @@ void dStkSub(void) {
 }
 
 #ifndef XFRACT
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
 void mStkSub(void) {
    Arg2->m = MPCsub(Arg2->m, Arg1->m);
    Arg1--;
    Arg2--;
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 void lStkSub(void) {
    Arg2->l.x -= Arg1->l.x;
@@ -449,8 +494,8 @@ void mStkFloor(void) {
 }
 
 void lStkFloor(void) {
-   /* 
-    * Kill fractional part. This operation truncates negative numbers 
+   /*
+    * Kill fractional part. This operation truncates negative numbers
     * toward negative infinity as desired.
     */
    Arg1->l.x = (Arg1->l.x) >> bitshift;
@@ -611,11 +656,17 @@ void dStkMul(void) {
 }
 
 #ifndef XFRACT
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
 void mStkMul(void) {
    Arg2->m = MPCmul(Arg2->m, Arg1->m);
    Arg1--;
    Arg2--;
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 void lStkMul(void) {
    long x, y;
@@ -640,11 +691,17 @@ void dStkDiv(void) {
 }
 
 #ifndef XFRACT
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
 void mStkDiv(void) {
    Arg2->m = MPCdiv(Arg2->m, Arg1->m);
    Arg1--;
    Arg2--;
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 void lStkDiv(void) {
    long x, y, mod, x2, y2;
@@ -671,10 +728,16 @@ void dStkMod(void) {
 }
 
 #ifndef XFRACT
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
 void mStkMod(void) {
    Arg1->m.x = MPCmod(Arg1->m);
    Arg1->m.y.Mant = (long)(Arg1->m.y.Exp = 0);
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 void lStkMod(void) {
 /*   Arg1->l.x = multiply(Arg2->l.x, Arg1->l.x, bitshift) + */
@@ -1456,6 +1519,9 @@ void dStkPwr(void) {
 }
 
 #ifndef XFRACT
+#if (_MSC_VER >= 700)
+#pragma code_seg ("mpmath1_text")     /* place following in an overlay */
+#endif
 void mStkPwr(void) {
    _CMPLX x, y;
 
@@ -1466,6 +1532,9 @@ void mStkPwr(void) {
    Arg1--;
    Arg2--;
 }
+#if (_MSC_VER >= 700)
+#pragma code_seg ()       /* back to normal segment */
+#endif
 
 void lStkPwr(void) {
    _CMPLX x, y;
@@ -1490,7 +1559,78 @@ void (*StkPwr)(void) = dStkPwr;
 
 void EndInit(void) {
    LastInitOp = OpPtr;
+   InitJumpIndex = jump_index;
 }
+
+void StkJump (void)
+{
+   OpPtr =  jump_control[jump_index].ptrs.JumpOpPtr;
+   LodPtr = jump_control[jump_index].ptrs.JumpLodPtr;
+   StoPtr = jump_control[jump_index].ptrs.JumpStoPtr;
+   jump_index = jump_control[jump_index].DestJumpIndex;
+}
+
+void dStkJumpOnFalse (void)
+{
+   if(Arg1->d.x == 0) 
+      StkJump();
+   else
+      jump_index++;
+}
+
+void mStkJumpOnFalse (void)
+{
+#ifndef XFRACT
+   if(Arg1->m.x.Mant == 0) 
+      StkJump();
+   else
+      jump_index++;
+#endif
+}
+
+void lStkJumpOnFalse (void)
+{
+   if(Arg1->l.x == 0) 
+      StkJump();
+   else
+      jump_index++;
+}
+
+void (*StkJumpOnFalse)(void) = dStkJumpOnFalse;
+
+void dStkJumpOnTrue (void)
+{
+   if(Arg1->d.x) 
+      StkJump();
+   else
+      jump_index++;
+}
+
+void mStkJumpOnTrue (void)
+{
+#ifndef XFRACT
+   if(Arg1->m.x.Mant)
+      StkJump();
+   else
+      jump_index++;
+#endif
+}
+
+void lStkJumpOnTrue (void)
+{
+   if(Arg1->l.x) 
+      StkJump();
+   else
+      jump_index++;
+}
+
+void (*StkJumpOnTrue)(void) = dStkJumpOnTrue;
+
+void StkJumpLabel (void)
+{
+   jump_index++;
+}
+
 
 #if (_MSC_VER >= 700)
 #pragma code_seg ("parser1_text")     /* place following in an overlay */
@@ -1627,44 +1767,74 @@ void (*StkTrig1)(void) = dStkSqr;
 void (*StkTrig2)(void) = dStkSinh;
 void (*StkTrig3)(void) = dStkCosh;
 
+char far * JumpList[] = {
+   "if",
+   "elseif",
+   "else",
+   "endif",
+   ""
+};
+
+
+
+int isjump(char *Str, int Len)
+{
+   /* return values
+       0 - Not a jump
+       1 - if
+       2 - elseif
+       3 - else
+       4 - endif
+   */
+
+   int i;
+
+   for(i = 0; *JumpList[i]; i++)
+      if(far_strlen(JumpList[i]) == Len)
+         if(!far_strnicmp(JumpList[i], Str, Len))
+            return i + 1;
+   return 0;
+}
+
+
 char maxfn = 0;
 /* TIW 03-30-91 STOP */
 
 struct FNCT_LIST far FnctList[] = {   /* TIW 03-31-91 added far */
-   s_sin,   &StkSin,
-   s_sinh,  &StkSinh,
-   s_cos,   &StkCos,
-   s_cosh,  &StkCosh,
-   s_sqr,   &StkSqr,
-   s_log,   &StkLog,
-   s_exp,   &StkExp,
-   s_abs,   &StkAbs,
-   s_conj,  &StkConj,
-   s_real,  &StkReal,
-   s_imag,  &StkImag,
-   s_fn1,   &StkTrig0,   /* TIW 03-30-91 */
-   s_fn2,   &StkTrig1,   /* TIW 03-30-91 */
-   s_fn3,   &StkTrig2,   /* TIW 03-30-91 */
-   s_fn4,   &StkTrig3,   /* TIW 03-30-91 */
-   s_flip,  &StkFlip,    /* MCP 4-9-91 */
-   s_tan,   &StkTan,     /* TIW 04-22-91 */
-   s_tanh,  &StkTanh,    /* TIW 04-22-91 */
-   s_cotan, &StkCoTan,   /* TIW 04-24-91 */
-   s_cotanh,&StkCoTanh,  /* TIW 04-24-91 */
-   s_cosxx, &StkCosXX,   /* PB  04-28-91 */
-   s_srand, &StkSRand,   /* MCP 11-21-91 */
-   s_asin,  &StkASin,    /* TIW 11-26-94 */
-   s_asinh, &StkASinh,   /* TIW 11-26-94 */
-   s_acos,  &StkACos,    /* TIW 11-26-94 */
-   s_acosh, &StkACosh,   /* TIW 11-26-94 */
-   s_atan,  &StkATan,    /* TIW 11-26-94 */
-   s_atanh, &StkATanh,   /* TIW 11-26-94 */
-   s_sqrt,  &StkSqrt,    /* TIW 11-26-94 */
-   s_cabs,  &StkCAbs,    /* TIW 11-26-94 */
-   s_floor, &StkFloor,   /* TIW 06-30-96 */
-   s_ceil,  &StkCeil,    /* TIW 06-30-96 */
-   s_trunc, &StkTrunc,   /* TIW 06-30-96 */
-   s_round, &StkRound,   /* TIW 06-30-96 */
+   {s_sin,   &StkSin},
+   {s_sinh,  &StkSinh},
+   {s_cos,   &StkCos},
+   {s_cosh,  &StkCosh},
+   {s_sqr,   &StkSqr},
+   {s_log,   &StkLog},
+   {s_exp,   &StkExp},
+   {s_abs,   &StkAbs},
+   {s_conj,  &StkConj},
+   {s_real,  &StkReal},
+   {s_imag,  &StkImag},
+   {s_fn1,   &StkTrig0},   /* TIW 03-30-91 */
+   {s_fn2,   &StkTrig1},   /* TIW 03-30-91 */
+   {s_fn3,   &StkTrig2},   /* TIW 03-30-91 */
+   {s_fn4,   &StkTrig3},   /* TIW 03-30-91 */
+   {s_flip,  &StkFlip},    /* MCP 4-9-91 */
+   {s_tan,   &StkTan},     /* TIW 04-22-91 */
+   {s_tanh,  &StkTanh},    /* TIW 04-22-91 */
+   {s_cotan, &StkCoTan},   /* TIW 04-24-91 */
+   {s_cotanh,&StkCoTanh},  /* TIW 04-24-91 */
+   {s_cosxx, &StkCosXX},   /* PB  04-28-91 */
+   {s_srand, &StkSRand},   /* MCP 11-21-91 */
+   {s_asin,  &StkASin},    /* TIW 11-26-94 */
+   {s_asinh, &StkASinh},   /* TIW 11-26-94 */
+   {s_acos,  &StkACos},    /* TIW 11-26-94 */
+   {s_acosh, &StkACosh},   /* TIW 11-26-94 */
+   {s_atan,  &StkATan},    /* TIW 11-26-94 */
+   {s_atanh, &StkATanh},   /* TIW 11-26-94 */
+   {s_sqrt,  &StkSqrt},    /* TIW 11-26-94 */
+   {s_cabs,  &StkCAbs},    /* TIW 11-26-94 */
+   {s_floor, &StkFloor},   /* TIW 06-30-96 */
+   {s_ceil,  &StkCeil},    /* TIW 06-30-96 */
+   {s_trunc, &StkTrunc},   /* TIW 06-30-96 */
+   {s_round, &StkRound},   /* TIW 06-30-96 */
 };
 
 void NotAFnct(void) { }
@@ -1717,7 +1887,6 @@ int Len;
 
 void RecSortPrec(void) {
    int ThisOp = NextOp++;
-
    while(o[ThisOp].p > o[NextOp].p && NextOp < posp)
       RecSortPrec();
    f[OpPtr++] = o[ThisOp].f;
@@ -1743,31 +1912,36 @@ struct SYMETRY {
    char *s;
    int n;
 } SymStr[] = {
-   "NOSYM",         0,
-   "XAXIS_NOPARM", -1,
-   "XAXIS",         1,
-   "YAXIS_NOPARM", -2,
-   "YAXIS",         2,
-   "XYAXIS_NOPARM",-3,
-   "XYAXIS",        3,
-   "ORIGIN_NOPARM",-4,
-   "ORIGIN",        4,
-   "PI_SYM_NOPARM",-5,
-   "PI_SYM",        5,
-   "XAXIS_NOIMAG", -6,
-   "XAXIS_NOREAL",  6,
-   "NOPLOT",       99,
-   "", 0
+   {"NOSYM",         0},
+   {"XAXIS_NOPARM", -1},
+   {"XAXIS",         1},
+   {"YAXIS_NOPARM", -2},
+   {"YAXIS",         2},
+   {"XYAXIS_NOPARM",-3},
+   {"XYAXIS",        3},
+   {"ORIGIN_NOPARM",-4},
+   {"ORIGIN",        4},
+   {"PI_SYM_NOPARM",-5},
+   {"PI_SYM",        5},
+   {"XAXIS_NOIMAG", -6},
+   {"XAXIS_NOREAL",  6},
+   {"NOPLOT",       99},
+   {"",              0}
 };
 
 static int ParseStr(char *Str, int pass) {
    struct ConstArg far *c;
    int ModFlag = 999, Len, Equals = 0, Mod[20], mdstk = 0;
    int NewStatement;
+   int jumptype;
+   unsigned long else_has_been_used = 0;
+   int waiting_for_endif = 0;
    struct ERROR { int n, s; } far *e;
    double const_pi, const_e;
 
    SetRandom = Randomized = 0;
+   uses_jump = 0;
+   jump_index = 0;
    e = (struct ERROR far *)farmemalloc(sizeof(struct ERROR) * 100L);
    /* PB 910417 changed "o" to be a temporary alloc, during ParseStr only */
    if(pass == 0)
@@ -1834,6 +2008,8 @@ static int ParseStr(char *Str, int pass) {
       StkCeil = dStkCeil;      /* TIW 06-30-96 */
       StkTrunc = dStkTrunc;    /* TIW 06-30-96 */
       StkRound = dStkRound;    /* TIW 06-30-96 */
+      StkJumpOnTrue  = dStkJumpOnTrue;     /* GGM 02-10-97 */
+      StkJumpOnFalse = dStkJumpOnFalse;    /* GGM 02-10-97 */
       break;
 #ifndef XFRACT
    case M_MATH:
@@ -1886,6 +2062,8 @@ static int ParseStr(char *Str, int pass) {
       StkCeil = mStkCeil;      /* TIW 06-30-96 */
       StkTrunc = mStkTrunc;    /* TIW 06-30-96 */
       StkRound = mStkRound;    /* TIW 06-30-96 */
+      StkJumpOnTrue  = mStkJumpOnTrue;     /* GGM 02-10-97 */
+      StkJumpOnFalse = mStkJumpOnFalse;    /* GGM 02-10-97 */
       break;
    case L_MATH:
       Delta16 = bitshift - 16;
@@ -1942,6 +2120,8 @@ static int ParseStr(char *Str, int pass) {
       StkCeil = lStkCeil;      /* TIW 06-30-96 */
       StkTrunc = lStkTrunc;    /* TIW 06-30-96 */
       StkRound = lStkRound;    /* TIW 06-30-96 */
+      StkJumpOnTrue  = lStkJumpOnTrue;     /* GGM 02-10-97 */
+      StkJumpOnFalse = lStkJumpOnFalse;    /* GGM 02-10-97 */
       break;
 #endif
    }
@@ -2082,6 +2262,11 @@ static int ParseStr(char *Str, int pass) {
             e[ErrPtr].n = InitN;
             e[ErrPtr++].s = 3;
          }
+         if(waiting_for_endif) {
+            e[ErrPtr].n = InitN;
+            e[ErrPtr++].s = 22;
+            waiting_for_endif = 0;
+         }
          if(ExpectingArg)
             SyntaxErr = 0;
          else
@@ -2205,28 +2390,112 @@ static int ParseStr(char *Str, int pass) {
             if(!ExpectingArg) {
                SyntaxErr = 1;
             }
-            NewStatement = ExpectingArg = 0;
             Len = (n+1)-InitN;
-            o[posp].f = isfunct(&Str[InitN], Len);
-            if(o[posp].f != NotAFnct) {
-               if(o[posp].f == FnctNotFound) {
-                  e[ErrPtr].n = InitN;
-                  e[ErrPtr++].s = 5;
+            ExpectingArg = 0;
+            if((jumptype = isjump(&Str[InitN], Len)) != 0) {
+               if(!NewStatement)
+                  SyntaxErr = 16;
+               else if (jump_index == MAX_JUMPS)
+                  SyntaxErr = 25;
+               else {
+                  uses_jump = 1;
+                  switch (jumptype) {
+                     case 1:                      /* if */
+                        else_has_been_used = else_has_been_used << 1;
+                        waiting_for_endif++;
+                        if(Str[n+1] != '(')
+                           SyntaxErr = 18;
+                        else {
+                           ExpectingArg = 1;
+                           jump_control[jump_index++].type = 1;
+                           o[posp].f = StkJumpOnFalse;
+                           o[posp++].p = 1;
+                        }
+                        break;
+                     case 2:                     /* elseif */
+                        if(Str[n+1] != '(') {
+                           SyntaxErr = 18;
+                        }
+                        else if (else_has_been_used % 2) {
+                           SyntaxErr = 19;
+                        }
+                        else if(!waiting_for_endif) {
+                           SyntaxErr = 21;
+                        }
+                        else {
+                           ExpectingArg = 1;
+                           jump_control[jump_index++].type = 2;
+                           jump_control[jump_index++].type = 2;
+                           o[posp].f = StkJump;
+                           o[posp++].p = 1;
+                           o[posp].f = (void(far*)(void))0;
+                           o[posp++].p = 15;
+                           o[posp].f = StkClr;
+                           o[posp++].p = -30000;
+                           o[posp].f = StkJumpOnFalse;
+                           o[posp++].p = 1;
+                        }
+                        break;
+                     case 3:                     /* else */
+                        if(Str[n+1] != ',') {
+                           SyntaxErr = 17;
+                        }
+                        else if (else_has_been_used % 2)
+                           SyntaxErr = 19;
+                        else if(!waiting_for_endif) {
+                           SyntaxErr = 21;
+                        }
+                        else {
+                           jump_control[jump_index++].type = 3;
+                           o[posp].f = StkJump;
+                           o[posp++].p = 1;
+                        }
+                        else_has_been_used = else_has_been_used | 1;  /* set right bit to 1 */
+                        break;
+                     case 4: /* endif */
+                        else_has_been_used = else_has_been_used >> 1;
+                        waiting_for_endif--;
+                        if(!(Str[n+1] == ',' || Str[n+1] == ':'))
+                           SyntaxErr = 17;
+                        else if(waiting_for_endif < 0) {
+                           waiting_for_endif = 0;
+                           SyntaxErr = 20;
+                        }
+                        else {
+                           jump_control[jump_index++].type = 4;
+                           o[posp].f = StkJumpLabel;
+                           o[posp++].p = 1;
+                        }
+                        break;
+                     default:
+                        break;
+                  }
                }
-               else
-                  o[posp++].p = 1 - (paren + Equals)*15;
-               ExpectingArg = 1;
+               NewStatement = 0;
             }
             else {
-               c = isconst(&Str[InitN], Len);
-               Load[LodPtr++] = &(c->a);
-               o[posp].f = StkLod;
-               o[posp++].p = 1 - (paren + Equals)*15;
-               n = InitN + c->len - 1;
-               if(vsp >= Max_Args-1) { /* PB 910417 safety test */
-                  e[ErrPtr].n = InitN;
-                  e[ErrPtr++].s = 7;
-                  break;
+               NewStatement = 0;
+               o[posp].f = isfunct(&Str[InitN], Len);
+               if(o[posp].f != NotAFnct) {
+                  if(o[posp].f == FnctNotFound) {
+                     e[ErrPtr].n = InitN;
+                     e[ErrPtr++].s = 5;
+                  }
+                  else
+                     o[posp++].p = 1 - (paren + Equals)*15;
+                  ExpectingArg = 1;
+               }
+               else {
+                  c = isconst(&Str[InitN], Len);
+                  Load[LodPtr++] = &(c->a);
+                  o[posp].f = StkLod;
+                  o[posp++].p = 1 - (paren + Equals)*15;
+                  n = InitN + c->len - 1;
+                  if(vsp >= Max_Args-1) { /* PB 910417 safety test */
+                     e[ErrPtr].n = InitN;
+                     e[ErrPtr++].s = 7;
+                     break;
+                  }
                }
             }
          }
@@ -2259,6 +2528,10 @@ static int ParseStr(char *Str, int pass) {
       e[ErrPtr].n = n;
       e[ErrPtr++].s = 3;
    }
+   if(waiting_for_endif > 0) {
+      e[ErrPtr].n = n;
+      e[ErrPtr++].s = 23;
+   }
    if (ErrPtr) {
       int i, j, k, m;
       char msgbuf[700];
@@ -2269,7 +2542,7 @@ static int ParseStr(char *Str, int pass) {
          if (n)
             strcat(msgbuf,"\n");
 #ifndef XFRACT
-         sprintf(&msgbuf[strlen(msgbuf)], "Error(%d):  %Fs\n  ", e[n].s, 
+         sprintf(&msgbuf[strlen(msgbuf)], "Error(%d):  %Fs\n  ", e[n].s,
             ParseErrs(e[n].s));
 #else
          sprintf(&msgbuf[strlen(msgbuf)], "Error(%d):  %s\n  ", e[n].s,
@@ -2339,7 +2612,7 @@ int Formula(void) {
    LodPtr = InitLodPtr;
    StoPtr = InitStoPtr;
    OpPtr = InitOpPtr;
-
+   jump_index=InitJumpIndex;
    /* Set the random number, MCP 11-21-91 */
    if(SetRandom || Randomized)
    {
@@ -2361,7 +2634,8 @@ int Formula(void) {
    Arg1 = &s[0];
    Arg2 = Arg1-1;
    while(OpPtr < (int)LastOp) {
-      f[OpPtr++]();
+      f[OpPtr]();
+      OpPtr++;
 #ifdef WATCH_MP
       x1 = *MP2d(Arg1->m.x);
       y1 = *MP2d(Arg1->m.y);
@@ -2390,7 +2664,7 @@ int Formula(void) {
 
 int form_per_pixel(void) {
    if (FormName[0] == 0) return(1);
-   overflow = LodPtr = StoPtr = OpPtr = 0;
+   overflow = LodPtr = StoPtr = OpPtr = jump_index = 0;
    Arg1 = &s[0];
    Arg2 = Arg1;
    Arg2--;
@@ -2478,9 +2752,10 @@ int form_per_pixel(void) {
 
    if(LastInitOp)
       LastInitOp = LastOp;
-   while(OpPtr < LastInitOp)
-      f[OpPtr++]();
-
+   while(OpPtr < LastInitOp) {
+      f[OpPtr]();
+      OpPtr++;
+   }
    InitLodPtr = LodPtr;
    InitStoPtr = StoPtr;
    InitOpPtr = OpPtr;
@@ -2505,12 +2780,107 @@ int form_per_pixel(void) {
       return(1);
 }
 
-char *FormStr;
+int fill_if_group(int endif_index, JUMP_PTRS_ST* jump_data)
+{
+   int i   = endif_index;
+   int ljp = endif_index; /* ljp means "last jump processed" */
+   while(i > 0) {
+      i--;
+      switch (jump_control[i].type) {
+         case 1:    /*if(); this concludes processing of this group*/
+            jump_control[i].ptrs = jump_data[ljp];
+            jump_control[i].DestJumpIndex = ljp + 1;
+            return i;
+         case 2:    /*elseif* ( 2 jumps, the else and the if*/
+               /* first, the "if" part */
+            jump_control[i].ptrs = jump_data[ljp];
+            jump_control[i].DestJumpIndex = ljp + 1;
+
+               /* then, the else part */
+            i--; /*fall through to "else" is intentional*/
+         case 3:
+            jump_control[i].ptrs = jump_data[endif_index];
+            jump_control[i].DestJumpIndex = endif_index + 1;
+            ljp = i;
+            break;
+         case 4:    /*endif*/
+               i = fill_if_group(i, jump_data);
+            break;
+         default:
+            break;
+      }
+   }
+   return -1; /* should never get here */
+}
+
+int fill_jump_struct(void)
+{ /* Completes all entries in jump structure. Returns 1 on error) */
+  /* On entry, jump_index is the number of jump functions in the formula*/
+   int i = 0;
+   int loadcount = 0;
+   int storecount = 0;
+   int checkforelse = 0;
+   void (*JumpFunc)(void);
+   int find_new_func = 1;
+   JUMP_PTRS_ST jump_data[MAX_JUMPS];
+
+   for (OpPtr = 0; OpPtr < (int) LastOp; OpPtr++) {
+      if(find_new_func) {
+         switch (jump_control[i].type) {
+            case 1:
+               JumpFunc = StkJumpOnFalse;
+               break;
+            case 2:
+               checkforelse = !checkforelse;
+               if(checkforelse)
+                  JumpFunc = StkJump;
+               else
+                  JumpFunc = StkJumpOnFalse;
+               break;
+            case 3:
+               JumpFunc = StkJump;
+               break;
+            case 4:
+               JumpFunc = StkJumpLabel;
+               break;
+            default:
+               break;
+         }
+         find_new_func = 0;
+      }
+      if(*(f[OpPtr]) == StkLod)
+         loadcount++;
+      else if(*(f[OpPtr]) == StkSto)
+         storecount++;
+      else if(*(f[OpPtr]) == JumpFunc) {
+         jump_data[i].JumpOpPtr = OpPtr;
+         jump_data[i].JumpLodPtr = loadcount;
+         jump_data[i].JumpStoPtr = storecount;
+         i++;
+         find_new_func = 1;
+      }
+   }
+
+   /* Following for safety only; all should always be false */
+   if(i != jump_index || jump_control[i - 1].type != 4
+           || jump_control[0].type != 1) {
+      return 1;
+   }
+
+   while(i > 0) {
+      i--;
+      i = fill_if_group(i, jump_data);
+   }
+   return i < 0 ? 1 : 0;
+}
+
+static char *FormStr;
+
 #if (_MSC_VER >= 700)
 #pragma code_seg ("parser1_text")     /* place following in an overlay */
 #endif
 
-char *PrepareFormula(FILE * File) {
+static char *PrepareFormula(FILE * File) {
 
     /* GGM 5-23-96: replaces FindFormula(). This function sets the
        symmetry and converts a formula into a string  with no spaces,
@@ -2537,7 +2907,7 @@ char *PrepareFormula(FILE * File) {
    /*Test for a repeat*/
    if(strlen(FormName) > ITEMNAMELEN)
       FormName[ITEMNAMELEN] = '\0';
-   if(!far_strnicmp(last_formula_file, FormFileName, FILE_MAX_PATH-1) && 
+   if(!far_strnicmp(last_formula_file, FormFileName, FILE_MAX_PATH-1) &&
       !far_strnicmp(last_formula_name, FormName,     ITEMNAMELEN))
       not_a_repeat = 0;
    far_strncpy(last_formula_file, FormFileName, FILE_MAX_PATH-1);
@@ -2710,20 +3080,14 @@ int RunForm(char *Name) {  /*  returns 1 if an error occurred  */
    }
 
    /* TW 5-31-94 add search for FRM files in directory */
-   if (find_file_item(FormFileName,Name,NULL))
-      return 1;
-   /* GGM 5-23-96 open file here for preparing formula string */
-   if((entry_file = fopen(FormFileName, "rb")) == NULL) {
+   if (find_file_item(FormFileName,Name,&entry_file, 1)) {
       stopmsg(0, ParseErrs(COULD_NOT_OPEN_FILE_WHERE_FORMULA_LOCATED));
       return 1;
    }
 
-   scan_entries(entry_file, NULL, Name); /*GGM 5-23-96 this positions
-                                           the file pointer to the
-                                           first letter of the name
-                                           of the entry*/
    FormStr = PrepareFormula(entry_file);
    fclose(entry_file);
+
    if(FormStr)  /*  No errors while making string */
    {
       parser_allocate();  /*  ParseStr() will test if this alloc worked  */
@@ -2731,7 +3095,12 @@ int RunForm(char *Name) {  /*  returns 1 if an error occurred  */
          return 1;   /*  parse failed, don't change fn pointers  */
       else
       {
-         /*  parse succeeded so set the pointers back to good functions  */
+         if(uses_jump == 1 && fill_jump_struct() == 1) {
+            stopmsg(0, ParseErrs(ERROR_IN_PARSING_JUMP_STATEMENTS));
+            return 1;
+         }
+
+         /* all parses succeeded so set the pointers back to good functions*/
          curfractalspecific->per_pixel = form_per_pixel;
          curfractalspecific->orbitcalc = Formula;
          return 0;
@@ -2750,7 +3119,7 @@ int fpFormulaSetup(void) {
       /* CAE changed below for fp */
       RunFormRes = !RunForm(FormName); /* RunForm() returns 1 for failure */
       if (RunFormRes && fpu >=387 && debugflag != 90 && (orbitsave&2) == 0
-         /* && !invert  */ )
+            /* && !uses_jump && !invert  */ )
          return CvtStk(); /* run fast assembler code in parsera.asm */
       return RunFormRes;
    }
@@ -2790,7 +3159,7 @@ void init_misc()
    ShiftBack = 32 - bitshift;
    Delta16 = bitshift - 16;
    bitshiftless1 = bitshift-1;
-   uses_p1 = uses_p2 = uses_p3 = 0;
+   uses_p1 = uses_p2 = uses_p3 = uses_jump = 0;
 }
 
 /* PB 910417 here to end changed.
@@ -2810,7 +3179,7 @@ static void parser_allocate(void)
    /* however Store and Load were reduced in size to help make up for it */
 
    long f_size,Store_size,Load_size,v_size, p_size;
-   int pass;
+   int pass, is_bad_form=0;
    long end_dx_array;
    /* TW Jan 1 1996 Made two passes to determine actual values of
       Max_Ops and Max_Args. Now use the end of extraseg if possible, so
@@ -2828,11 +3197,11 @@ static void parser_allocate(void)
       Load_size = sizeof(union Arg far *) * MAX_LOADS;
       v_size = sizeof(struct ConstArg) * Max_Args;
       p_size = sizeof(struct fls far *) * Max_Ops;
-      total_formula_mem = f_size+Load_size+Store_size+v_size+p_size
+      total_formula_mem = f_size+Load_size+Store_size+v_size+p_size /*+ jump_size*/
          + sizeof(struct PEND_OP) * Max_Ops;
       used_extra = 0;
       end_dx_array = 2L*(long)(xdots+ydots)*sizeof(double);
-      if(pass == 0)
+      if(pass == 0 || is_bad_form)
       {
          typespecific_workarea = (char far *)MK_FP(extraseg,0);
          used_extra = 1;
@@ -2842,7 +3211,7 @@ static void parser_allocate(void)
          typespecific_workarea = (char far *)MK_FP(extraseg,0) + end_dx_array;
          used_extra = 1;
       }
-      else
+      else if(is_bad_form == 0)
       {
          typespecific_workarea =
             farmemalloc((long)(f_size+Load_size+Store_size+v_size+p_size));
@@ -2856,17 +3225,13 @@ static void parser_allocate(void)
 
       if(pass == 0)
       {
-         if (ParseStr(FormStr,pass) == 0)
+         if((is_bad_form = ParseStr(FormStr,pass)) == 0)
          {
             /* per Chuck Ebbert, fudge these up a little */
             Max_Ops = posp+4;
             Max_Args = vsp+4;
          }
-         else
-         {
-            Max_Ops = MAX_OPS;
-            Max_Args = MAX_ARGS;
-         }
+
          typespecific_workarea = NULL;
          /* restore extraseg array */
          if(integerfractal && !invert)

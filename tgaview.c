@@ -7,10 +7,11 @@
    file (.pot) in version 15.  Delete this code after a few more revs.
 */
 
-#include <stdio.h>
-#include "fractint.h"
-#include "targa_lc.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "targa_lc.h"
 
 static FILE *fptarga = NULL;            /* FILE pointer           */
 

@@ -3,21 +3,19 @@ FRACSUBR.C contains subroutines which belong primarily to CALCFRAC.C and
 FRACTALS.C, i.e. which are non-fractal-specific fractal engine subroutines.
 */
 
-#include <stdio.h>
 #ifndef XFRACT
 #include <stdarg.h>
+#include <sys/timeb.h>
 #else
 #include <varargs.h>
 #endif
-#include <float.h>
 #include <sys/types.h>
 #include <time.h>
-#include <sys/timeb.h>
-#include <stdlib.h>
-#include "fractint.h"
-#include "fractype.h"
-#include "mpmath.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
 #include "prototyp.h"
+#include "fractype.h"
+
 
 /* routines in this module      */
 
@@ -321,7 +319,7 @@ init_restart:
       fill_dx_array();
    }
 
-   if(fractype != CELLULAR)  /* fudgetolong fails w >10 digits in double */
+   if(fractype != CELLULAR && fractype != ANT)  /* fudgetolong fails w >10 digits in double */
    {
       creal = fudgetolong(param[0]); /* integer equivs for it all */
       cimag = fudgetolong(param[1]);
@@ -399,30 +397,47 @@ expand_retry:
             }
          if(bf_math == 0) /* redundant test, leave for now */
          {
-            double Xctr, Yctr, Xmagfactor, Rotation, Skew;
-            LDBL Mag;
-            int dec;
-            cvtcentermag(&Xctr, &Yctr, &Mag, &Xmagfactor, &Rotation, &Skew);
-
-            /* 4 digits of padding sounds good */
-            /* keep this aligned with CMDFILES.C */
-            dec = getpower10(Mag) + 4;
-
-            /* following is the old logic for detecting failure of double
+            double testx_try, testx_exact;
+            double testy_try, testy_exact;
+            /* Following is the old logic for detecting failure of double
                precision. It has two advantages: it is independent of the
                representation of numbers, and it is sensitive to resolution
                (allows depper zooms at lower resolution. However it fails
                for rotations of exactly 90 degrees, so we added a safety net
-               by using the magnification */
+               by using the magnification.  */
             if(++tries < 2) /* for safety */
             {
             static FCODE err[] = {"precision-detection error"};
             if(tries > 1) stopmsg(0, err);
-            if (   ratio_bad(dx0[xdots-1]-xxmin,xxmax-xx3rd)
-                || ratio_bad(dy0[ydots-1]-yymax,yy3rd-yymax)
-                || ratio_bad(dx1[ydots-1],      xx3rd-xxmin)
-                || ratio_bad(dy1[xdots-1],      yymin-yy3rd)
-                || (xxmax==xx3rd && yy3rd==yymax && dec > DBL_DIG+1))
+            /* Previously there were four tests of distortions in the
+               zoom box used to detect precision limitations. In some
+               cases of rotated/skewed zoom boxs, this causes the algorithm
+               to bail out to arbitrary precision too soon. The logic
+               now only tests the larger of the two deltas in an attempt
+               to repair this bug. This should never make the transition
+               to arbitrary precision sooner, but always later.*/
+            if(fabs(xxmax-xx3rd) > fabs(xx3rd-xxmin))
+            {
+               testx_exact  = xxmax-xx3rd;
+               testx_try    = dx0[xdots-1]-xxmin;
+            }
+            else
+            {
+               testx_exact  = xx3rd-xxmin;
+               testx_try    = dx1[ydots-1];
+            }
+            if(fabs(yy3rd-yymax) > fabs(yymin-yy3rd))
+            {
+               testy_exact = yy3rd-yymax; 
+               testy_try   = dy0[ydots-1]-yymax;
+            }
+            else
+            {
+               testy_exact = yymin-yy3rd; 
+               testy_try   = dy1[xdots-1];
+            }
+            if(ratio_bad(testx_try,testx_exact) || 
+               ratio_bad(testy_try,testy_exact))
             {
                if(curfractalspecific->flags & BF_MATH)
                {
@@ -944,12 +959,21 @@ static void _fastcall smallest_add_bf(bf_t num)
 }
 
 static int _fastcall ratio_bad(double actual, double desired)
-{  double ftemp;
+{  
+   double ftemp, tol;
+   if(integerfractal)
+      tol = math_tol[0];
+   else
+      tol = math_tol[1];
+   if(tol <= 0.0)
+      return(1);
+   else if(tol >= 1.0)
+      return(0);         
    ftemp = 0;
    if (desired != 0 && debugflag != 3400)
       ftemp = actual / desired;
    if (desired != 0 && debugflag != 3400)
-      if ((ftemp = actual / desired) < 0.95 || ftemp > 1.05)
+      if ((ftemp = actual / desired) < (1.0-tol) || ftemp > (1.0+tol))
          return(1);
    return(0);
 }
@@ -1145,7 +1169,7 @@ void sleepms(long ms)
 {
     static long scalems = 0L;
     int savehelpmode,savetabmode;
-    struct timeb t1,t2;
+    struct timebx t1,t2;
 #define SLEEPINIT 250 /* milliseconds for calibration */
     savetabmode  = tabmode;
     savehelpmode = helpmode;
@@ -1164,13 +1188,13 @@ void sleepms(long ms)
         do
         {
            scalems *= 2;
-           ftime(&t2);
+           ftimex(&t2);
            do { /* wait for the start of a new tick */
-              ftime(&t1);
+              ftimex(&t1);
             }
             while (t2.time == t1.time && t2.millitm == t1.millitm);
            sleepms(10L * SLEEPINIT); /* about 1/4 sec */
-           ftime(&t2);
+           ftimex(&t2);
            if(keypressed()) {
               scalems = 0L;
               goto sleepexit;
@@ -1180,11 +1204,11 @@ void sleepms(long ms)
                 < SLEEPINIT);
         /* once more to see if faster (eg multi-tasking) */
         do { /* wait for the start of a new tick */
-           ftime(&t1);
+           ftimex(&t1);
            }
          while (t2.time == t1.time && t2.millitm == t1.millitm);
         sleepms(10L * SLEEPINIT);
-        ftime(&t2);
+        ftimex(&t2);
         if ((i = (int)(t2.time-t1.time)*1000 + t2.millitm-t1.millitm) < elapsed)
            elapsed = (i == 0) ? 1 : i;
         scalems = (long)((float)SLEEPINIT/(float)(elapsed) * scalems);
@@ -1199,10 +1223,10 @@ void sleepms(long ms)
     }
     if(ms > 10L * SLEEPINIT) { /* using ftime is probably more accurate */
         ms /= 10;
-        ftime(&t1);
+        ftimex(&t1);
         for(;;) {
            if(keypressed()) break;
-           ftime(&t2);
+           ftimex(&t2);
            if ((long)((t2.time-t1.time)*1000 + t2.millitm-t1.millitm) >= ms) break;
         }
     }
@@ -1445,12 +1469,12 @@ void get_julia_attractor (double real, double imag)
 
    if (maxit < 500)         /* we're going to try at least this hard */
       maxit = 500;
-   color = 0;
+   coloriter = 0;
    overflow = 0;
-   while (++color < maxit)
+   while (++coloriter < maxit)
       if(curfractalspecific->orbitcalc() || overflow)
          break;
-   if (color >= maxit)      /* if orbit stays in the lake */
+   if (coloriter >= maxit)      /* if orbit stays in the lake */
    {
       if (integerfractal)   /* remember where it went to */
          lresult = lnew;

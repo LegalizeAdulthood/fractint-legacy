@@ -6,15 +6,15 @@
 
 #define TARGA_DATA
 
-#include        <stdio.h>
-#include        <stdlib.h>
 #include        <string.h>
 #ifndef XFRACT
 #include        <conio.h>
 #endif
-#include        "targa.h"
-#include        "fractint.h"
-#include        "prototyp.h"
+
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
+#include "targa.h"
 
 /*************  ****************/
 

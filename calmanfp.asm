@@ -139,6 +139,7 @@ calcmandfpasmstart   PROC
                                         ; not sure if needed here
         FRAME   <di,si>                 ; std frame, for TC++ overlays
 
+        sub     dx,dx                   ; clear dx
         mov     ax,inside
         cmp     ax,0                    ; if (inside color == maxiter)
         jnl     non_neg_inside
@@ -177,7 +178,7 @@ calcmandfpasm  PROC
         je      initoldcolor            ;  set oldcolor to 0
         cmp     reset_periodicity,ax    ; periodicity reset?
         je      short initparms         ;  no, inherit oldcolor from prior invocation
-        mov     ax,word ptr maxit               ; yup.  reset oldcolor to maxit-250
+        mov     ax,word ptr maxit       ; yup.  reset oldcolor to maxit-250
         mov     dx,word ptr maxit+2
         sub     ax,250                  ; (avoids slowness at high maxits)
         sbb     dx,0                            ; (faster than conditional jump)
@@ -246,7 +247,7 @@ keyhit:
         mov     ax,-1                   ; return with -1
         mov     dx,ax
         mov     word ptr coloriter,ax   ; set color to -1
-        mov     word ptr coloriter+2,ax ; set color to -1
+        mov     word ptr coloriter+2,dx ; set color to -1
         UNFRAME <si,di>                 ; pop stack frame
         ret                             ; bail out!
 nokey:
@@ -583,7 +584,7 @@ notakey2:
         jecxz   step_to_pop_stack_386_387       ; if ecx=0, pop stack
         jmp     short end_periodicity_check_386_387
 step_to_pop_stack_386_387:
-        jmp     short pop_stack_386_387
+        jmp     pop_stack_386_387
 end_periodicity_check_386_387:
 
         cmp     show_orbit,0            ; is show_orbit clear
@@ -617,6 +618,7 @@ no_potflag_386_387:
 
 ; reached maxit, inside
         mov     oldcoloriter,-1        ; check periodicity immediately next time
+        mov     oldcoloriter+2,-1      ; check periodicity immediately next time
         mov     eax,maxit
         sub     kbdcount,ax            ; adjust the keyboard count
         mov     realcoloriter,eax      ; save unadjusted realcolor
@@ -1274,8 +1276,9 @@ do_check_386_387:                       ; fpu stack is
         fstsw   ax
         sahf
         ja      per_check_386_387_ret
-                                        ; caught a cycle!!!
+                                       ; caught a cycle!!!
         mov     oldcoloriter,-1        ; check periodicity immediately next time
+        mov     oldcoloriter+2,-1      ; check periodicity immediately next time
 
         mov     eax,maxit
         mov     realcoloriter,eax      ; save unadjusted realcolor as maxit
@@ -1340,7 +1343,7 @@ do_check_87:                            ; fpu stack is
         ja      per_check_87_ret
                                         ; caught a cycle!!!
         mov     word ptr oldcoloriter,-1    ; check periodicity immediately next time
-        mov     word ptr oldcoloriter+2,-1    ; check periodicity immediately next time
+        mov     word ptr oldcoloriter+2,-1  ; check periodicity immediately next time
 
         mov     ax,word ptr maxit
         mov     dx,word ptr maxit+2
@@ -1485,7 +1488,7 @@ epsilon_cross_386_387   ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .8086
 .8087
-show_orbit_xy   PROC NEAR USES cx si di
+show_orbit_xy   PROC NEAR USES bx cx dx si di
         local   tmp_ten_byte_0:tbyte    ; stupid klooge for MASM 5.1 LOCAL bug
         local   tmp_ten_byte_1:tbyte
         local   tmp_ten_byte_2:tbyte

@@ -3,33 +3,29 @@
 */
 
 #include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <ctype.h>
 #include <time.h>
 #include <malloc.h>
 #ifndef XFRACT
 #include <stdarg.h>
 #include <io.h>
-#include <dos.h>
 #else
 #include <varargs.h>
 #endif
-#include <math.h>
 /*#ifdef __TURBOC__
 #include <dir.h>
 #endif  */
 
-#include "fractint.h"
+  /* see Fractint.c for a description of the "include"  hierarchy */
+#include "port.h"
+#include "prototyp.h"
 #include "fractype.h"
 #include "helpdefs.h"
-#include "prototyp.h"
 
 /* routines in this module      */
 
 static  void trigdetails(char *);
 static void area(void);
-static int find_one_file_item(char *, char *, FILE **);
 
 /* TW's static string consolidation campaign to help brain-dead compilers */
 char s_cantwrite[]      = {"Can't write %s"};
@@ -739,7 +735,7 @@ static FCODE sinteger_math[]      = {"Integer math is in use"};
 static FCODE sin_use_required[] = {" in use (required)"};
 static FCODE sarbitrary_precision[] = {"Arbitrary precision "};
 static FCODE spressanykey[] = {"Press any key to continue, F6 for area, CTRL-TAB for next page"};
-static FCODE spressanykey1[] = {"Press any key to continue, Backspace for first screen"};
+static FCODE spressanykey1[] = {"Press Esc to continue, Backspace for first screen"};
 static FCODE sbatch[] = {" (Batch mode)"};
 static FCODE ssavename[] = {"Savename: "};
 static FCODE sstopsecret[] = {"Top Secret Developer's Screen"};
@@ -777,6 +773,8 @@ int tab_display_2(char *msg)
 
    s_row = 1;
    putstringcenter(s_row++,0,80,C_PROMPT_HI, sstopsecret);
+   sprintf(msg,"Version %d patch %d",release, patchlevel);
+   putstring(++s_row,2,C_GENERAL_HI,msg);
    sprintf(msg,"%u bytes conventional stack free",stackavail());
    putstring(++s_row,2,C_GENERAL_HI,msg);
    sprintf(msg,"%ld of %ld bignum memory used",maxptr,maxstack);
@@ -816,16 +814,35 @@ int tab_display_2(char *msg)
    putstring(s_row++,2,C_GENERAL_HI,msg);
    sprintf(msg,"xdots %d ydots %d sxdots %d sydots %d",xdots,ydots,sxdots,sydots);
    putstring(s_row++,2,C_GENERAL_HI,msg);
-   sprintf(msg,"xxstart %d xxstop %d yystart %d yystop %d ",
-      xxstart,xxstop,yystart,yystop);
+   sprintf(msg,"xxstart %d xxstop %d yystart %d yystop %d %s ",
+      xxstart,xxstop,yystart,yystop,
+#ifndef XFRACT
+      curfractalspecific->orbitcalc == fFormula?"fast parser":
+#endif
+      curfractalspecific->orbitcalc ==  Formula?"slow parser":
+      curfractalspecific->orbitcalc ==  BadFormula?"bad formula":
+      "");
    putstring(s_row++,2,C_GENERAL_HI,msg);
+/*
    sprintf(msg,"ixstart %d ixstop %d iystart %d iystop %d bitshift %d",
       ixstart,ixstop,iystart,iystop,bitshift);
+*/
+   {
+      extern long max_nextentry;
+      sprintf(msg,"max_nextentry %ld",max_nextentry);
+   }
    putstring(s_row++,2,C_GENERAL_HI,msg);
-
    putstringcenter(24,0,80,C_GENERAL_LO,spressanykey1);
+   *msg = 0;
+again: 
+   putstring(s_row,2,C_GENERAL_HI,msg);
    key=getakeynohelp();
-   if(key == BACKSPACE)
+   if(key != ESC && key != BACKSPACE && key != TAB)
+   {
+      sprintf(msg,"%d      ",key);
+      goto again;
+   }
+   if(key == BACKSPACE || key == TAB)
       ret = 1;
    return(ret);
 }
@@ -874,7 +891,7 @@ top:
          putstring(s_row+1,16,C_GENERAL_HI,FormName);
          i = strlen(FormName)+1;
          putstring(s_row+2,3,C_GENERAL_MED,sitem_file);
-         if(strlen(FormFileName) >= 29)
+         if((int)strlen(FormFileName) >= 29)
             addrow = 1;
          putstring(s_row+2+addrow,16,C_GENERAL_HI,FormFileName);
       }
@@ -885,7 +902,7 @@ top:
          putstring(s_row+1,3,C_GENERAL_MED,sitem_name);
          putstring(s_row+1,16,C_GENERAL_HI,LName);
          putstring(s_row+2,3,C_GENERAL_MED,sitem_file);
-         if(strlen(LFileName) >= 28)
+         if((int)strlen(LFileName) >= 28)
             addrow = 1;
          putstring(s_row+2+addrow,16,C_GENERAL_HI,LFileName);
       }
@@ -894,7 +911,7 @@ top:
          putstring(s_row+1,3,C_GENERAL_MED,sitem_name);
          putstring(s_row+1,16,C_GENERAL_HI,IFSName);
          putstring(s_row+2,3,C_GENERAL_MED,sitem_file);
-         if(strlen(IFSFileName) >= 28)
+         if((int)strlen(IFSFileName) >= 28)
             addrow = 1;
          putstring(s_row+2+addrow,16,C_GENERAL_HI,IFSFileName);
       }
@@ -1240,10 +1257,10 @@ static void area(void)
     stopmsg(4,buf);
 }
 
-int endswithslash(char *fl)
+int endswithslash(char far *fl)
 {
    int len;
-   len = strlen(fl);
+   len = far_strlen(fl);
    if(len)
       if(fl[--len] == SLASHC)
          return(1);
@@ -1286,7 +1303,7 @@ int ifsload()                   /* read in IFS parameters */
 
    ifs_type = 0;
    rowsize = IFSPARM;
-   if (find_file_item(IFSFileName,IFSName,&ifsfile) < 0)
+   if (find_file_item(IFSFileName,IFSName,&ifsfile, 3) < 0)
       return(-1);
 
    file_gets(buf,200,ifsfile);
@@ -1360,24 +1377,105 @@ int ifsload()                   /* read in IFS parameters */
 /* TW 5-31-94 - added search of current directory for entry files if
    entry item not found */
 
-int find_file_item(char *filename,char *itemname,FILE **fileptr)
+int find_file_item(char *filename,char *itemname,FILE **fileptr, int itemtype)
 {
    FILE *infile=NULL;
    int found = 0;
-   if((found=find_one_file_item(filename,itemname,&infile)) != 0)
-   {  /* search for file */
+   char parsearchname[ITEMNAMELEN + 6];
+   char drive[FILE_MAX_DRIVE];
+   char dir[FILE_MAX_DIR];
+   char fname[FILE_MAX_FNAME];
+   char ext[FILE_MAX_EXT];
+   char fullpath[FILE_MAX_PATH];
+   char defaultextension[5];
+
+
+   if((infile=fopen(filename, "rb")) != NULL) {
+      if(scan_entries(infile, NULL, itemname) == -1) {
+         found = 1;
+      }
+      else {
+         fclose(infile);
+         infile = NULL;
+      }
+   }
+
+   splitpath(filename,drive,dir,fname,ext);
+   makepath(fullpath,"","",fname,ext);
+   if(!found && checkcurdir) {
+      if((infile=fopen(fullpath, "rb")) != NULL) {
+         if(scan_entries(infile, NULL, itemname) == -1) {
+            strcpy(filename, fullpath);
+            found = 1;
+         }
+         else {
+            fclose(infile);
+            infile = NULL;
+         }
+      }
+   }
+
+   switch (itemtype) {
+      case 1:
+         strcpy(parsearchname, "frm:");
+         strcat(parsearchname, itemname);
+         parsearchname[ITEMNAMELEN + 5] = (char) 0; /*safety*/
+         strcpy(defaultextension, ".frm");
+         splitpath(searchfor.frm,drive,dir,NULL,NULL);
+         break;
+      case 2:
+         strcpy(parsearchname, "lsys:");
+         strcat(parsearchname, itemname);
+         parsearchname[ITEMNAMELEN + 5] = (char) 0; /*safety*/
+         strcpy(defaultextension, ".l");
+         splitpath(searchfor.lsys,drive,dir,NULL,NULL);
+         break;
+      case 3:
+         strcpy(parsearchname, "ifs:");
+         strcat(parsearchname, itemname);
+         parsearchname[ITEMNAMELEN + 5] = (char) 0; /*safety*/
+         strcpy(defaultextension, ".ifs");
+         splitpath(searchfor.ifs,drive,dir,NULL,NULL);
+         break;
+      default:
+         strcpy(defaultextension, ".par");
+         splitpath(searchfor.par,drive,dir,NULL,NULL);
+         break;
+   }
+
+   if(!found && itemtype) {
+      if((infile=fopen(CommandFile, "rb")) != NULL) {
+         if(scan_entries(infile, NULL, parsearchname) == -1) {
+            strcpy(filename, CommandFile);
+            found = 1;
+         }
+         else {
+            fclose(infile);
+            infile = NULL;
+         }
+      }
+   }
+
+   if(!found) {
+      makepath(fullpath,drive,dir,fname,ext);
+      if((infile=fopen(fullpath, "rb")) != NULL) {
+         if(scan_entries(infile, NULL, itemname) == -1) {
+            strcpy(filename, fullpath);
+            found = 1;
+         }
+         else {
+            fclose(infile);
+            infile = NULL;
+         }
+      }
+   }
+
+
+   if(!found) {  /* search for file */
       int out;
-      char drive[FILE_MAX_DRIVE];
-      char dir[FILE_MAX_DIR];
-      char fname[FILE_MAX_FNAME];
-      char ext[FILE_MAX_EXT];
-      char fullpath[FILE_MAX_PATH];
-      splitpath(filename,drive,dir,fname,ext);
-      makepath(fullpath,drive,dir,"*",ext);
+      makepath(fullpath,drive,dir,"*",defaultextension);
       out = fr_findfirst(fullpath);
-      found = 0;
-      while(out == 0)
-      {
+      while(out == 0) {
          char msg[200];
          DTA.filename[FILE_MAX_FNAME+FILE_MAX_EXT-2]=0;
          sprintf(msg,"Searching %13s for %s      ",DTA.filename,itemname);
@@ -1390,21 +1488,26 @@ int find_file_item(char *filename,char *itemname,FILE **fileptr)
 #endif
             splitpath(DTA.filename,NULL,NULL,fname,ext);
             makepath(fullpath,drive,dir,fname,ext);
-            if((found=find_one_file_item(fullpath,itemname,&infile)) == 0)
-            {
-               strcpy(filename,fullpath);
-               break;
+            if((infile=fopen(fullpath, "rb")) != NULL) {
+               if(scan_entries(infile, NULL, itemname) == -1) {
+                  strcpy(filename, fullpath);
+                  found = 1;
+                  break;
+               }
+               else {
+                  fclose(infile);
+                  infile = NULL;
+               }
             }
          }
          out = fr_findnext();
       }
       cleartempmsg();
-      if(found != 0)
-      {
-         sprintf(fullpath,"'%s' file entry item not found",itemname);
-         stopmsg(0,fullpath);
-         return(-1);
-      }
+   }
+   if(!found) {
+      sprintf(fullpath,"'%s' file entry item not found",itemname);
+      stopmsg(0,fullpath);
+      return(-1);
    }
    /* found file */
    if(fileptr != NULL)
@@ -1414,34 +1517,6 @@ int find_file_item(char *filename,char *itemname,FILE **fileptr)
    return(0);
 }
 
-static int find_one_file_item(char *filename,char *itemname,FILE **infile)
-{
-   char fullpathname[FILE_MAX_PATH];
-   char fname[FILE_MAX_FNAME];
-   char ext[FILE_MAX_EXT];
-
-   splitpath(filename ,NULL,NULL,fname,ext);
-   makepath(fullpathname,""   ,"" ,fname,ext);
-
-   /* first try current directory */
-   if(checkcurdir == 0 || access(fullpathname,0) != 0)
-      strcpy(fullpathname,filename);
-
-   /* now binary node as of 2/95 TW */
-   if ((*infile = fopen(fullpathname,"rb")) == NULL) {
-       return(-1);
-      }
-   /*
-      Scan_entries() resuses code from gfe_choose_entry() in PROMPTS1.C. The
-      original code used text mode, which made ftell() and fseek() unreliable
-      in cases where files have garbage after the EOF.
-    */
-   if(scan_entries(*infile, NULL, itemname)<0)
-      return(0);
-   fclose(*infile);
-   infile = NULL;
-   return(-1);
-}
 
 int file_gets(char *buf,int maxlen,FILE *infile)
 {
@@ -1469,7 +1544,7 @@ int matherr_ct = 0;
 /* call this something else to dodge the QC4WIN bullet... */
 int win_matherr( struct exception *except )
 #else
-int _cdecl matherr( struct exception *except )
+int _cdecl _matherr( struct exception *except )
 #endif
 {
     if(debugflag != 0)
