@@ -3,3 +3,6 @@
 *.dsk -text
 *.doc text
 *.doc diff
+*.obj -text
+*.exe -text
+*.zip -text
