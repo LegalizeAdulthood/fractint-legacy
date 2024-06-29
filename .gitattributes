@@ -1,0 +1,4 @@
+* text=auto
+*.prj -text
+*.dat -text
+*.dsk -text
